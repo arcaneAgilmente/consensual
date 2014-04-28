@@ -333,7 +333,6 @@ options_sets.mutually_exclusive_bools= {
 					return false
 				end
 			end,
-		disallow_unset= function(self, dis) self.disallow_unset= dis end
 }}
 
 options_sets.sick_float= {
@@ -736,8 +735,8 @@ local function extra_for_adj_float_mod(mod_name)
 						if tonumber(hope_is_value) then
 							return tonumber(hope_is_value)
 						else
-							Trace("Matched option '" .. mod_name .. "' in '" ..
-										lower_ray .. "' but value is '" .. hope_is_value .. "'")
+							-- If it's not, the string is just the mod name.  Default.
+							return 100
 						end
 					end
 				end
@@ -814,6 +813,11 @@ local function ass_bools(name, bool_names)
 		name= name, meta= options_sets.assorted_bools, args= {ops= bool_names}}
 end
 
+local function mut_exc_bools(name, bool_names)
+	return {
+		name= name, meta= options_sets.mutually_exclusive_bools, args= {ops= bool_names}}
+end
+
 local args= {}
 local menus= {}
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
@@ -853,9 +857,9 @@ local even_more_options= {
 	ass_bools("Inserts", {"little", "wide", "big", "quick", "bmrize", "skippy",
 												"echo", "stomp", "planted", "floored", "twister"}),
 	ass_bools("No", {"holdrolls", "nojumps","nohands","noquads"}),
-	ass_bools("Fail", {"failimmediate", "failimmediatecontinue",
+	mut_exc_bools("Fail", {"failimmediate", "failimmediatecontinue",
 										 "failatend", "failoff", "faildefault"}),
-	{ name= "Judgement", meta= options_sets.special_functions,
+	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions,
 		args= {eles= {
 						 generic_fake_judge_element("Random"),
 						 generic_fake_judge_element("TapNoteScore_Miss"),

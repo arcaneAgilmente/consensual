@@ -122,6 +122,10 @@ end
 -- Longer reference loop example:  a= {b= {c= {}}}   a.b.c[1]= a
 function rec_print_table(t, indent, depth_remaining)
 	if not indent then indent= "" end
+	if type(v) ~= "table" then
+		Trace(indent .. "rec_print_table passed a " .. type(v))
+		return
+	end
 	depth_remaining= depth_remaining or -1
 	if depth_remaining == 0 then return end
 	for k, v in pairs(t) do
@@ -133,6 +137,31 @@ function rec_print_table(t, indent, depth_remaining)
 		end
 	end
 	Trace(indent .. "end")
+end
+
+function lua_table_to_string(t, indent)
+	indent= indent or ""
+	local ret= "{\n"
+	local internal_indent= indent .. "  "
+	for k, v in pairs(t) do
+		local k_str= k
+		if type(k) == "number" then
+			k_str= "[" .. k .. "]"
+		else
+			k_str= '["' .. k .. '"]'
+		end
+		ret= ret .. internal_indent .. k_str .. "= "
+		if type(v) == "table" then
+			ret= ret .. lua_table_to_string(v, internal_indent)
+		elseif type(v) == "string" then
+			ret= ret .. "[[" .. v .. "]]"
+		else
+			ret= ret .. tostring(v)
+		end
+		ret= ret .. ",\n"
+	end
+	ret= ret .. indent .. "}"
+	return ret
 end
 
 function get_string_wrapper(section, string)

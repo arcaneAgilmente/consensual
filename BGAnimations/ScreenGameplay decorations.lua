@@ -491,7 +491,6 @@ local function Update(self)
 			if speed_info.prev_bps ~= this_bps then
 				speed_info.prev_bps= this_bps
 				local xmod= (speed_info.speed) / (this_bps * rate_coordinator:get_current_rate() * 60)
-				Trace("Applying cxmod of " .. xmod)
 				GAMESTATE:ApplyGameCommand("mod,"..("%.4f"):format(xmod).."x", v)
 			end
 		end
@@ -676,6 +675,35 @@ local function cleanup(self)
 	end
 end
 
+local function note_date_edit_test()
+	local top_screen= SCREENMAN:GetTopScreen()
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		local pinfo= top_screen:GetPlayerInfo(pn)
+		if pinfo then
+			Trace("Got pinfo, attempting to get note data.")
+			local note_data= pinfo:GetNoteData()
+			if note_data then
+				Trace("Got note_data, hold onto your butts.")
+				local tap_note= false
+				local function lengthen_holds(tapnote, row, track)
+					if not tap_note then tap_note= tapnote end
+					if tapnote:GetType() == "TapNoteType_HoldHead" then
+						local new_duration= tapnote:GetDuration()+2
+						Trace("Setting held at " .. row .. " to " .. new_duration)
+						tapnote:SetDuration(new_duration)
+					end
+				end
+				note_data:ForEachTapNoteAllTracks(0, -1, lengthen_holds)
+				--note_data:SetTapNote(2, 99, tap_note)
+				--note_data:AddHoldNote(
+				--	2, 100, {
+				--		Type= "TapNoteType_HoldHead", SubType= "TapNoteSubType_Roll",
+				--		Duration= 3})
+			end
+		end
+	end
+end
+
 return Def.ActorFrame {
 	Name= "SGPbgf",
 	InitCommand=
@@ -696,6 +724,7 @@ return Def.ActorFrame {
 		Name= "Cleaner S22",
 		OnCommand=
 			function(self)
+				--note_date_edit_test()
 				song_progress_bar:set_from_song()
 				local enabled_players= GAMESTATE:GetEnabledPlayers()
 				for k, v in pairs(enabled_players) do

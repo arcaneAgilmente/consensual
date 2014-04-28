@@ -172,6 +172,31 @@ function cons_player:stage_stats_reset()
 		TapNoteScore_W1= 0, TapNoteScore_W2= 0, TapNoteScore_W3= 0,
 		TapNoteScore_W4= 0, TapNoteScore_W5= 0, TapNoteScore_Miss= 0,
 	}
+	local cur_style= GAMESTATE:GetCurrentStyle()
+	if cur_style then
+		local columns= cur_style:ColumnsPerPlayer()
+		Trace("Making column score slots for " .. tostring(columns) .. " columns.")
+		self.column_scores= {}
+		-- Track indices from the engine are 0-indexed.
+		for c= 0, columns-1 do
+			self.column_scores[c]= {
+				dp= 0, mdp= 0,
+				judge_counts= {
+					TapNoteScore_W1= 0,
+					TapNoteScore_W2= 0,
+					TapNoteScore_W3= 0,
+					TapNoteScore_W4= 0,
+					TapNoteScore_W5= 0,
+					TapNoteScore_Miss= 0,
+					TapNoteScore_HitMine= 0,
+					TapNoteScore_AvoidMine= 0,
+					HoldNoteScore_Held= 0,
+					HoldNoteScore_LetGo= 0,
+					HoldNoteScore_MissedHold= 0,
+				}
+			}
+		end
+	end
 end
 
 function cons_player:flags_reset()

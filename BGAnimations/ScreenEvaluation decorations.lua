@@ -398,7 +398,7 @@ function score_report_interface:create_actors(player_number)
 		end
 		local pcent= tostring(math.round((num_taps / total_taps) * 100)) .. "%"
 		local fpcent= tostring(math.round((ftaps / total_taps) * 100)) .. "%"
-		if total_taps <= 0 then pcent= "0%" end
+		if total_taps <= 0 then pcent= "0%" fpcent= "0%" end
 		local jc= judgement_colors[j]
 		percent_set:add_number(fpcent, pcent, solar_colors.f_text())
 		taps_set:add_number(ftaps, num_taps, jc)
@@ -429,7 +429,7 @@ function score_report_interface:create_actors(player_number)
 		end
 		local pcent= tostring(math.round((num_holds / total_holds) * 100)) .. "%"
 		local fpcent= tostring(math.round((fnh / total_holds) * 100)) .. "%"
-		if total_holds <= 0 then pcent= "0%" end
+		if total_holds <= 0 then pcent= "0%" fpcent= "0%" end
 		local hc= judgement_colors[h]
 		percent_set:add_number(fpcent, pcent, solar_colors.f_text())
 		taps_set:add_number(fnh, num_holds, hc)
@@ -454,7 +454,7 @@ function score_report_interface:create_actors(player_number)
 		local max_combo= pstats:MaxCombo()
 		local percent= max_combo / total_taps
 		local pcent= tostring(math.round(percent * 100)) .. "%"
-		if total_taps <= 0 then pcent= "0%" end
+		if total_taps <= 0 then pcent= "0%" fpcent= "0%" end
 		percent_set:add_number(pcent, nil, solar_colors.f_text())
 		taps_set:add_number(max_combo, nil, convert_percent_to_color(percent, 1))
 		if judge_totals then
@@ -764,6 +764,42 @@ do
 		local pstats= curstats:GetPlayerStageStats(v)
 		highest_score= math.max(highest_score,
 			pstats:GetActualDancePoints() / pstats:GetPossibleDancePoints())
+		if not GAMESTATE:IsCourseMode() then
+			local profile_dir= false
+			if v == PLAYER_1 then
+				profile_dir= PROFILEMAN:GetProfileDir("ProfileSlot_Player1")
+			else
+				profile_dir= PROFILEMAN:GetProfileDir("ProfileSlot_Player2")
+			end
+			local cur_song= gamestate_get_curr_song()
+			local song_name= "unknown_song"
+			if cur_song then song_name= cur_song:GetDisplayFullTitle() end
+			if profile_dir then
+				local file_handle= RageFileUtil.CreateRageFile()
+				local file_name= profile_dir .. "/song_scores/" .. song_name .. "_column_scores.lua"
+				local all_attempts= {}
+				if FILEMAN:DoesFileExist(file_name) then
+					all_attempts= dofile(file_name)
+				end
+				local function pad_num(num)
+					if num < 10 then return "0" .. num
+					else return num end
+				end
+				cons_players[v].column_scores.timestamp= Year() .. "_" .. pad_num(MonthOfYear()) .. "_" .. pad_num(DayOfMonth()) .. "_" .. pad_num(Hour()) .. "_" .. pad_num(Minute()) .. "_" .. pad_num(Second())
+				all_attempts[#all_attempts+1]= cons_players[v].column_scores
+				if not file_handle:Open(file_name, 2) then
+					Trace("Could not open '" .. file_name .. "' to write column scores.")
+				else
+					local output= "return " .. lua_table_to_string(all_attempts) .. "\n"
+					file_handle:Write(output)
+					file_handle:Close()
+					file_handle:destroy()
+					Trace("column scores written to '" .. file_name .. "'")
+				end
+			else
+				Trace("Nil profile dir, unable to write column scores.")
+			end
+		end
 	end
 	local reward= convert_score_to_time(highest_score)
 	reduce_time_remaining(-reward)

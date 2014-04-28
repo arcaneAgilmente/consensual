@@ -52,6 +52,15 @@ local tns_texts= {
 	TapNoteScore_Miss= "Miss"
 }
 
+local non_mine_tnses= {
+	TapNoteScore_W1= true,
+	TapNoteScore_W2= true,
+	TapNoteScore_W3= true,
+	TapNoteScore_W4= true,
+	TapNoteScore_W5= true,
+	TapNoteScore_Miss= true,
+}
+
 local tns_values= {
 	TapNoteScore_CheckpointHit=
 		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightCheckpointHit"),
@@ -69,6 +78,10 @@ local tns_values= {
 		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightW5"),
 	TapNoteScore_Miss=
 		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightMiss"),
+	TapNoteScore_HitMine=
+		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightHitMine"),
+	TapNoteScore_AvoidMine= 0,
+	TapNoteScore_None= 0,
 	HoldNoteScore_Held=
 		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightHeld"),
 	HoldNoteScore_LetGo=
@@ -157,6 +170,22 @@ local args= {
 			if param.Player ~= player then return end
 			local fake_judge= cons_players[player].fake_judge
 			local fake_score= cons_players[player].fake_score
+			do
+				local step_judge= param.TapNoteScore or param.HoldNoteScore
+				local step_value= tns_values[step_judge]
+				local max_step_value= 0
+				if param.HoldNoteScore then
+					max_step_value= tns_values.HoldNoteScore_Held
+				elseif param.TapNoteScore then
+					if non_mine_tnses[param.TapNoteScore] then
+						max_step_value= tns_values.TapNoteScore_W1
+					end
+				end
+				local col_score= cons_players[player].column_scores[param.FirstTrack]
+				col_score.dp= col_score.dp + step_value
+				col_score.mdp= col_score.mdp + max_step_value
+				col_score.judge_counts[step_judge]= col_score.judge_counts[step_judge] + 1
+			end
 			if param.HoldNoteScore then
 				if not tns_values[param.HoldNoteScore] then
 					Trace("tns_values for " .. param.HoldNoteScore .. " is nil.")
