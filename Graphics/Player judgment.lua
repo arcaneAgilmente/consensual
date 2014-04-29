@@ -203,7 +203,7 @@ local args= {
 			local fake_judge= cons_players[player].fake_judge
 			local fake_score= cons_players[player].fake_score
 			do
-				local step_judge= param.TapNoteScore or param.HoldNoteScore
+				local step_judge= param.HoldNoteScore or param.TapNoteScore
 				local step_value= tns_values[step_judge]
 				local max_step_value= 0
 				if param.HoldNoteScore then
