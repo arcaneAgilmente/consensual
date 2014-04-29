@@ -368,9 +368,11 @@ options_sets.mutually_exclusive_special_functions= {
 				local ret= options_sets.special_functions.__index.interpret_start(self)
 				if ret then
 					for i, info in ipairs(self.info_set) do
-						if i ~= self.cursor_pos - 1 and info.underline then
-							info.underline= false
-							self.display:set_element_info(i, info)
+						if i ~= self.cursor_pos then
+							if info.underline then
+								info.underline= false
+								self.display:set_element_info(i, info)
+							end
 						end
 					end
 				end

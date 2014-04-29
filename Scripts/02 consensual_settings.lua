@@ -117,6 +117,7 @@ function cons_player:excessive_options_mode()
 	self.rating_cap= -1
 	self.flags.judge= true
 	self.flags.pct_column= true
+	self.flags.offset= true
 	self.flags.session_column= true
 	self.flags.sum_column= true
 	self.flags.best_scores= true
@@ -143,6 +144,7 @@ function cons_player:kyzentun_mode()
 	--   GAMESTATE:ApplyGameCommand("mod,blind", self.player_number)
 	self.flags.sigil= true
 	self.flags.judge= true
+	self.flags.offset= true
 	self.flags.pct_column= true
 	self.flags.session_column= true
 	self.flags.sum_column= true

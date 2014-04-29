@@ -836,29 +836,73 @@ for i, v in ipairs(mine_effects) do
 		generic_mine_effect_element(v)
 end
 
-local excessive_floats= {
-	"boost", "brake", "wave", "expand", "boomerang", "drunk", "dizzy",
-	"confusion", "mini", "tiny", "flip", "invert", "tornado", "tipsy","bumpy",
-	"beat", "xmode", "twirl", "roll", "hidden", "hiddenoffset", "sudden",
-	"suddenoffset", "stealth", "blink", "randomvanish", "split", "alternate",
-	"cross", "centered", "dark", "blind", "cover", "passmark", "overhead",
-	"incoming", "space", "hallway", "distant",
+local boost_mods= {
+	"boost", "brake", "wave", "expand", "boomerang",
 }
 
-local even_more_options= {
+local hidden_mods= {
+	"hidden", "hiddenoffset", "sudden", "suddenoffset",
+}
+
+local perspective_mods= {
+	"overhead", "incoming", "space", "hallway", "distant",
+}
+
+local sickness_mods= {
+	 "beat", "bumpy","drunk", "tipsy", "tornado",
+}
+
+local size_mods= {
+	"mini", "tiny",
+}
+
+local spin_mods= {
+	"confusion", "dizzy", "roll", "twirl",
+}
+
+local target_mods= {
+	"alternate", "centered", "cross", "flip", "invert", "split", "xmode",
+	"blind", "dark",
+}
+
+local visibility_mods= {
+	"blink", "cover", "randomvanish", "passmark", "stealth",
+}
+
+local floaty_mods= {
+	{ name= "Boost", meta= options_sets.menu,
+		args= make_menu_of_float_set(boost_mods) },
+	{ name= "Hidden", meta= options_sets.menu,
+		args= make_menu_of_float_set(hidden_mods) },
+	{ name= "Perspective", meta= options_sets.menu,
+		args= make_menu_of_float_set(perspective_mods) },
+	{ name= "Sickness", meta= options_sets.menu,
+		args= make_menu_of_float_set(sickness_mods) },
+	{ name= "Size", meta= options_sets.menu,
+		args= make_menu_of_float_set(size_mods) },
+	{ name= "Spin", meta= options_sets.menu,
+		args= make_menu_of_float_set(spin_mods) },
+	{ name= "Target", meta= options_sets.menu,
+		args= make_menu_of_float_set(target_mods) },
+	{ name= "Visibility", meta= options_sets.menu,
+		args= make_menu_of_float_set(visibility_mods) },
+}
+
+local chart_mods= {
+	ass_bools("Turn", {"mirror", "backwards", "left", "right",
+										 "shuffle", "softshuffle", "supershuffle"}),
+	ass_bools("Inserts", {"big", "bmrize", "echo", "floored", "little", "planted",
+												"quick", "skippy", "stomp", "twister", "wide"}),
+	ass_bools("No", {"holdrolls", "nojumps","nohands","noquads"}),
+}
+
+local special= {
 	{ name= "Distortion", meta= options_sets.special_functions,
 		args= {
 			eles= {
 				{ name= "On", init= function() return global_distortion_mode end,
 					set= function() global_distortion_mode= true end,
 					unset= function() global_distortion_mode= false end}}}},
-	ass_bools("Turn", {"mirror", "backwards", "left", "right",
-										 "shuffle", "softshuffle", "supershuffle"}),
-	ass_bools("Inserts", {"little", "wide", "big", "quick", "bmrize", "skippy",
-												"echo", "stomp", "planted", "floored", "twister"}),
-	ass_bools("No", {"holdrolls", "nojumps","nohands","noquads"}),
-	mut_exc_bools("Fail", {"failimmediate", "failimmediatecontinue",
-										 "failatend", "failoff", "faildefault"}),
 	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions,
 		args= {eles= {
 						 generic_fake_judge_element("Random"),
@@ -869,16 +913,17 @@ local even_more_options= {
 						 generic_fake_judge_element("TapNoteScore_W2"),
 						 generic_fake_judge_element("TapNoteScore_W1"),
 			 }}},
-	{ name= "Too Many", meta= options_sets.menu,
-		args= make_menu_of_float_set(excessive_floats) }
+	{ name= "Mine Effects",
+		meta= options_sets.mutually_exclusive_special_functions,
+		args= { eles= mine_effect_eles }},
 }
 
-local more_options= {
-	ass_bools("blindar", {"blind", "dark"}),
+local decorations= {
 	{ name= "Feedback", meta= options_sets.special_functions,
 		args= { eles= {
 							generic_flag_control_element("sigil"),
 							generic_flag_control_element("judge"),
+							generic_flag_control_element("offset"),
 							generic_flag_control_element("score_meter"),
 							generic_flag_control_element("dance_points"),
 							generic_flag_control_element("chart_info"),
@@ -895,13 +940,6 @@ local more_options= {
 	{ name= "Sigil Size", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_size()},
 	{ name= "Noteskin", meta= options_sets.noteskins},
-	{ name= "Clear", meta= options_sets.special_functions,
-		args= { eles= {{name= "clearall", init= noop_false,
-										set= set_clear_for_player, unset= noop_false}}}},
-	{ name= "Mine Effects",
-		meta= options_sets.mutually_exclusive_special_functions,
-		args= { eles= mine_effect_eles }},
-	{ name= "Even More", meta= options_sets.menu, args= even_more_options},
 }
 
 local base_options= {
@@ -912,7 +950,13 @@ local base_options= {
 	{ name= "Perspective", meta= options_sets.mutually_exclusive_bools,
 		args= { ops= {"overhead", "distant", "hallway", "space", "incoming"}}},
 	ass_bools("Reverse", {"reverse"}),
-	{ name= "More", meta= options_sets.menu, args= more_options},
+	{ name= "Decorations", meta= options_sets.menu, args= decorations},
+	{ name= "Special", meta= options_sets.menu, args= special},
+	{ name= "Chart mods", meta= options_sets.menu, args= chart_mods},
+	{ name= "Floaty mods", meta= options_sets.menu, args= floaty_mods},
+	{ name= "Clear", meta= options_sets.special_functions,
+		args= { eles= {{name= "clearall", init= noop_false,
+										set= set_clear_for_player, unset= noop_false}}}},
 }
 
 function args:InitCommand()

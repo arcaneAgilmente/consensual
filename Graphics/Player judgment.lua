@@ -6,6 +6,7 @@ local tani= setmetatable({upper= true}, text_and_number_interface_mt)
 local tani_params= {
 	sy= 60, tx= 8, nx= -8, ta= left, na= right, text_section= "Combo"
 }
+local OffsetQuad
 
 local JudgeCmds = {
 	TapNoteScore_W1 = THEME:GetMetric( "Judgment", "JudgmentW1Command" );
@@ -51,6 +52,26 @@ local tns_texts= {
 	TapNoteScore_W5= "Wayoff",
 	TapNoteScore_Miss= "Miss"
 }
+
+local tns_windows= {}
+local offset_scaler= 0
+do
+	local windows= {
+		PREFSMAN:GetPreference("TimingWindowSecondsW1"),
+		PREFSMAN:GetPreference("TimingWindowSecondsW2"),
+		PREFSMAN:GetPreference("TimingWindowSecondsW3"),
+		PREFSMAN:GetPreference("TimingWindowSecondsW4"),
+		PREFSMAN:GetPreference("TimingWindowSecondsW5"),
+		PREFSMAN:GetPreference("TimingWindowSecondsW5")*1.25,
+	}
+	offset_scaler= (SCREEN_WIDTH / 4) / windows[5]
+	tns_windows.TapNoteScore_W1= {0, windows[1]}
+	tns_windows.TapNoteScore_W2= {windows[1], windows[2]}
+	tns_windows.TapNoteScore_W3= {windows[2], windows[3]}
+	tns_windows.TapNoteScore_W4= {windows[3], windows[4]}
+	tns_windows.TapNoteScore_W5= {windows[4], windows[5]}
+	tns_windows.TapNoteScore_Miss= {windows[5], windows[6]}
+end
 
 local non_mine_tnses= {
 	TapNoteScore_W1= true,
@@ -146,10 +167,21 @@ end
 local args= {
 	Name= "Judgement",
 	normal_text("Judgment", "", solar_colors.f_text(), 0, 0, 1, center, {
-								ResetCommand= cmd(finishtweening;stopeffect;visible,false)}),
+								ResetCommand= cmd(xy,0,0;finishtweening;stopeffect;visible,false)}),
 	tani:create_actors("tani", tani_params),
+	Def.Quad{
+		Name= "offset",
+		InitCommand= function(self)
+									 self:y(30)
+									 self:SetWidth(0)
+									 self:SetHeight(8)
+									 self:visible(false)
+									 self:horizalign(left)
+								 end
+	},
 	InitCommand= function(self)
 								 Judgment= self:GetChild("Judgment")
+								 OffsetQuad= self:GetChild("offset")
 								 tani:find_actors(self:GetChild(tani.name))
 								 Judgment:visible(false)
 								 tani:hide()
@@ -227,8 +259,14 @@ local args= {
 				end
 			end
 			local disp_judge= this_tns
+			local disp_offset= param.TapNoteOffset
 			if fake_judge then
 				disp_judge= fake_judge()
+				local width= tns_windows[disp_judge][2] - tns_windows[disp_judge][1]
+				disp_offset= tns_windows[disp_judge][1] + (width * MersenneTwister.Random())
+				if MersenneTwister.Random() > .5 then
+					disp_offset= disp_offset * -1
+				end
 			end
 			local rev_disp= tns_reverse[disp_judge]
 			fake_score[disp_judge]= fake_score[disp_judge] + 1
@@ -271,6 +309,14 @@ local args= {
 				end
 			end
 			if text then
+				if cons_players[player].flags.offset then
+					OffsetQuad:finishtweening()
+					OffsetQuad:SetWidth(disp_offset * offset_scaler)
+					OffsetQuad:diffuse(judgement_colors[disp_judge])
+					OffsetQuad:visible(true)
+					OffsetQuad:linear(1)
+					OffsetQuad:diffusealpha(0)
+				end
 				Judgment:playcommand("Reset")
 				Judgment:settext(get_string_wrapper("JudgementNames", text):upper())
 				Judgment:diffuse(judgement_colors[disp_judge])
