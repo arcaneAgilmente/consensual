@@ -71,17 +71,26 @@ end
 
 function rec_print_children(parent, indent)
 	if not indent then indent= "" end
-	local pname= parent:GetName()
-	if parent.GetChildren then
+	local pname= (parent.GetName and parent:GetName()) or ""
+	if #parent > 0 and type(parent) == "table" then
+		for i, c in ipairs(parent) do
+			rec_print_children(c, indent .. pname .. "->")
+		end
+	elseif parent.GetChildren then
 		local children= parent:GetChildren()
 		Trace(indent .. pname .. " children:")
 		for k, v in pairs(children) do
-			--Trace(indent .. pname .. "->" .. v:GetName())
-			rec_print_children(v, indent .. pname .. "->")
+			if #v > 0 then
+				Trace(indent .. pname .. "->" .. k .. " shared name:")
+				rec_print_children(v, indent .. pname .. "->")
+				Trace(indent .. pname .. "->" .. k .. " shared name over.")
+			else
+				rec_print_children(v, indent .. pname .. "->")
+			end
 		end
 		Trace(indent .. pname .. " children over.")
 	else
-		Trace(indent .. pname)
+		Trace(indent .. pname .. "(" .. tostring(parent) .. ")")
 	end
 end
 
