@@ -385,54 +385,65 @@ options_sets.adjustable_float= {
 		initialize=
 			function(self, player_number, extra)
 				local function check_member(member_name)
-					if not self[member_name] then
-						error("adjustable_float '" .. self.name .. "' warning: " ..
+					assert(self[member_name],
+								 "adjustable_float '" .. self.name .. "' warning: " ..
 									member_name .. " not provided.")
-					end
 				end
-				Trace("adjustable_float extra:")
-				rec_print_table(extra)
+				local function to_text_default(player_number, value)
+					return tostring(value)
+				end
+				--Trace("adjustable_float extra:")
+				--rec_print_table(extra)
+				assert(extra, "adjustable_float passed a nil extra table.")
 				self.name= extra.name
 				self.cursor_pos= 1
 				self.player_number= player_number
 				self.min_scale= extra.min_scale
-				self.scale= extra.scale or 1
+				check_member("min_scale")
+				self.scale= extra.scale or 0
 				self.min_scale_used= self.scale
-				self.current_value= extra.initial_value(player_number)
+				self.current_value= extra.initial_value(player_number) or 0
 				if self.current_value ~= 0 then
-					local cv_scale= 10^math.floor(math.log(math.abs(self.current_value)) / math.log(10))
-					if self.min_scale then
-						cv_scale= math.max(self.min_scale, cv_scale)
+					local cv= math.round(self.current_value / 10^self.min_scale) * 10^self.min_scale
+					local prec= math.max(-self.min_scale, 0)
+					local cs= ("%." .. prec .. "f"):format(cv)
+					--Trace("cv: " .. cv .. " cs: " .. cs)
+					for n= 1, #cs do
+						if cs:sub(-n, -n) ~= "0" then
+							self.min_scale_used= self.min_scale + (n-1)
+							--Trace("adj float found non-0 at " .. n .. " set msu to " .. self.min_scale_used)
+							break
+						end
 					end
-					if self.max_scale then
-						cv_scale= math.min(cv_scale, self.max_scale)
-					end
-					self.min_scale_used= math.min(cv_scale, self.scale)
+					self.current_value= cv
 				end
 				self.max_scale= extra.max_scale
+				check_member("max_scale")
 				self.set= extra.set
 				check_member("set")
 				self.validator= extra.validator or noop_true
-				self.val_to_text= extra.val_to_text
-				check_member("val_to_text")
+				self.val_to_text= extra.val_to_text or to_text_default
+				self.scale_to_text= extra.scale_to_text or to_text_default
 				local scale_text= get_string_wrapper("OptionNames", "scale")
 				self.info_set= {
-					up_element(), {text= "+"..self.scale}, {text= "-"..self.scale},
+					up_element(),
+					{text= "+"..self.scale_to_text(self.player_number, 10^self.scale)},
+					{text= "-"..self.scale_to_text(self.player_number, 10^self.scale)},
 					{text= scale_text.."*10"}, {text= scale_text.."/10"}}
 			end,
 		interpret_start=
 			function(self)
 				if self.cursor_pos == 2 then
-					self:set_new_val(self.current_value + self.scale)
+					self:set_new_val(self.current_value + 10^self.scale)
 					return true
 				elseif self.cursor_pos == 3 then
-					self:set_new_val(self.current_value - self.scale)
+					self:set_new_val(self.current_value - 10^self.scale)
 					return true
 				elseif self.cursor_pos == 4 then
-					self:set_new_scale(self.scale * 10)
+					self:set_new_scale(self.scale + 1)
 					return true
 				elseif self.cursor_pos == 5 then
-					self:set_new_scale(self.scale / 10)
+					self:set_new_scale(self.scale - 1)
 					return true
 				else
 					return false
@@ -442,33 +453,85 @@ options_sets.adjustable_float= {
 			function(self)
 				if self.display then
 					self.display:set_heading(self.name)
-					self.display:set_display(self.val_to_text(self.current_value))
+					self.display:set_display(self.val_to_text(self.player_number, self.current_value))
 				end
 			end,
 		set_new_val=
 			function(self, nval)
-				local min_scale_log= math.floor(math.log10(self.min_scale_used))
-				local raise= 10^-min_scale_log
-				local lower= 10^min_scale_log
-				local rounded_val= math.floor(nval * raise) * lower
+				local raise= 10^-self.min_scale_used
+				local lower= 10^self.min_scale_used
+				local rounded_val= math.round(nval * raise) * lower
 				if self.validator(rounded_val) then
 					self.current_value= rounded_val
 					self.set(self.player_number, rounded_val)
-					self.display:set_display(self.val_to_text(rounded_val))
+					self.display:set_display(self.val_to_text(self.player_number, rounded_val))
 				end
 			end,
 		set_new_scale=
 			function(self, nscale)
-				nscale= pow_ten_force(nscale)
-				local valid= gte_nil(nscale, self.min_scale) and lte_nil(nscale, self.max_scale)
-				if valid then
+				if nscale >= self.min_scale and nscale <= self.max_scale then
 					self.min_scale_used= math.min(nscale, self.min_scale_used)
 					self.scale= nscale
-					self.info_set[2].text= "+" .. nscale
-					self.info_set[3].text= "-" .. nscale
+					self.info_set[2].text= "+" .. self.scale_to_text(self.player_number, 10^nscale)
+					self.info_set[3].text= "-" .. self.scale_to_text(self.player_number, 10^nscale)
 					self.display:set_element_info(2, self.info_set[2])
 					self.display:set_element_info(3, self.info_set[3])
 				end
+			end
+}}
+
+options_sets.enum_option= {
+	__index= {
+		initialize=
+			function(self, player_number, extra)
+				self.name= extra.name
+				self.player_number= player_number
+				self.enum_vals= {}
+				self.info_set= { up_element() }
+				self.cursor_pos= 1
+				self.get= extra.get
+				self.set= extra.set
+				self.ops_obj= extra.obj_get(player_number)
+				local cv= self:get_val()
+				for i, v in ipairs(extra.enum) do
+					self.enum_vals[#self.enum_vals+1]= v
+					self.info_set[#self.info_set+1]= {text= v, underline= v == cv}
+				end
+			end,
+		interpret_start=
+			function(self)
+				if self.cursor_pos > 1 then
+					for i, info in ipairs(self.info_set) do
+						if info.underline then
+							info.underline= false
+							self.display:set_element_info(i, info)
+						end
+					end
+					self.info_set[self.cursor_pos].underline= true
+					self.display:set_element_info(self.cursor_pos, self.info_set[self.cursor_pos])
+					if self.ops_obj then
+						self.set(self.ops_obj, self.enum_vals[self.cursor_pos-1])
+					else
+						self.set(self.enum_vals[self.cursor_pos-1])
+					end
+					self.display:set_display(self:get_val())
+					return true
+				else
+					return false
+				end
+			end,
+		get_val=
+			function(self)
+					if self.ops_obj then
+						return self.get(self.ops_obj)
+					else
+						return self.get()
+					end
+			end,
+		set_status=
+			function(self)
+				self.display:set_heading(self.name)
+				self.display:set_display(self:get_val())
 			end
 }}
 

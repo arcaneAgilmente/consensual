@@ -3,6 +3,7 @@ function noop_false() return false end
 function noop_true() return true end
 function noop_blank() return "" end
 function noop_nil() end
+function noop_retarg(...) return ... end
 
 function gte_nil(value, min)
 	if min then
@@ -18,6 +19,14 @@ function lte_nil(value, max)
 	else
 		return true
 	end
+end
+
+function min_nil(a, b)
+	return (lte_nil(a, b) and a) or b
+end
+
+function max_nil(a, b)
+	return (gte_nil(a, b) and a) or b
 end
 
 all_player_indices= {PLAYER_1, PLAYER_2}
@@ -71,12 +80,12 @@ end
 
 function rec_print_children(parent, indent)
 	if not indent then indent= "" end
-	local pname= (parent.GetName and parent:GetName()) or ""
 	if #parent > 0 and type(parent) == "table" then
 		for i, c in ipairs(parent) do
-			rec_print_children(c, indent .. pname .. "->")
+			rec_print_children(c, indent .. i .. "->")
 		end
 	elseif parent.GetChildren then
+		local pname= (parent.GetName and parent:GetName()) or ""
 		local children= parent:GetChildren()
 		Trace(indent .. pname .. " children:")
 		for k, v in pairs(children) do
@@ -90,6 +99,7 @@ function rec_print_children(parent, indent)
 		end
 		Trace(indent .. pname .. " children over.")
 	else
+		local pname= (parent.GetName and parent:GetName()) or ""
 		Trace(indent .. pname .. "(" .. tostring(parent) .. ")")
 	end
 end
@@ -131,8 +141,8 @@ end
 -- Longer reference loop example:  a= {b= {c= {}}}   a.b.c[1]= a
 function rec_print_table(t, indent, depth_remaining)
 	if not indent then indent= "" end
-	if type(v) ~= "table" then
-		Trace(indent .. "rec_print_table passed a " .. type(v))
+	if type(t) ~= "table" then
+		Trace(indent .. "rec_print_table passed a " .. type(t))
 		return
 	end
 	depth_remaining= depth_remaining or -1
@@ -401,25 +411,7 @@ function get_current_song_length()
 end
 
 function get_rate_from_songopts()
-	local song_opt_string= GAMESTATE:GetSongOptionsString():lower()
-	local opbeg, opend= song_opt_string:find("xmusic")
-	if opbeg then
-		local before_op= song_opt_string:sub(1, opbeg-1)
-		local comma_pos= #before_op
-		while comma_pos > 0 and before_op:sub(comma_pos, 1) ~= "," do
-			comma_pos= comma_pos - 1
-		end
-		comma_pos= comma_pos + 1
-		local hope_is_value= before_op:sub(comma_pos, opbeg - comma_pos)
-		if tonumber(hope_is_value) then
-			return tonumber(hope_is_value)
-		else
-			Trace("Hope was not a value.")
-			return 1
-		end
-	else
-		return 1
-	end
+	return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate()
 end
 
 -- An object to handle coordination of rate changes between things on a screen.
@@ -456,7 +448,7 @@ function rate_coordinator_interface:notify(new_rate, play_new_sample)
 			play_sample_music()
 		end
 	else
-		Trace("Someone notified of a bad new rate: \"" .. tostring(new_rate)
+		error("Someone notified of a bad new rate: \"" .. tostring(new_rate)
 				.. '"')
 	end
 end

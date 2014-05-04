@@ -423,4 +423,7 @@ local args= {
 	credit_reporter(SCREEN_CENTER_X, SCREEN_TOP+60, true),
 }
 
+Trace("TapNoteScore")
+print_table(TapNoteScore)
+
 return Def.ActorFrame(args)

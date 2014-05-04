@@ -120,3 +120,60 @@ local ysep= SCREEN_HEIGHT / #bm_list
 --	"bm_test", bm_list[0], bm_list[0],
 --	SCREEN_CENTER_X, SCREEN_CENTER_Y)
 
+local function test_getchild()
+	local top_screen= SCREENMAN:GetTopScreen()
+	Trace("Screen children:")
+	rec_print_children(top_screen)
+	local children= top_screen:GetChild("Overlay"):GetChildren()
+	Trace("Top level children:")
+	print_table(children)
+	Trace(#children['a'] .. " 'a' children from GetChildren.")
+	local as= top_screen:GetChild("Overlay"):GetChild("a")
+	Trace(#as .. " 'a' children from GetChild.")
+	children.a:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
+	as[1]:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y-40)
+	local a1_chils= as[1]:GetChildren()
+	local a2_chils= as[2]:GetChild("")
+	a1_chils[""][1]:xy(-40, 0)
+	a1_chils[""][2]:xy(-30, -5)
+	a1_chils[""][3]:xy(-20, -10)
+	a1_chils[""][4]:xy(-10, -15)
+	a2_chils[1]:xy(40, 0)
+	a2_chils[2]:xy(30, 5)
+	a2_chils[3]:xy(20, 10)
+	a2_chils[4]:xy(10, 15)
+end
+
+return Def.ActorFrame{
+	OnCommand= function(self) test_getchild() end,
+	Def.ActorFrame{
+		Name="a",
+		Def.Quad{
+			InitCommand= cmd(setsize, 20, 20; diffuse, solar_colors.yellow())
+		},
+		Def.Quad{
+			InitCommand= cmd(setsize, 20, 20; diffuse, solar_colors.orange())
+		},
+		Def.Quad{
+			InitCommand= cmd(setsize, 20, 20; diffuse, solar_colors.red())
+		},
+		Def.Quad{
+			InitCommand= cmd(setsize, 20, 20; diffuse, solar_colors.magenta())
+		},
+	},
+	Def.ActorFrame{
+		Name="a",
+		Def.Quad{
+			InitCommand= cmd(setsize, 20, 20; diffuse, solar_colors.violet())
+		},
+		Def.Quad{
+			InitCommand= cmd(setsize, 20, 20; diffuse, solar_colors.blue())
+		},
+		Def.Quad{
+			InitCommand= cmd(setsize, 20, 20; diffuse, solar_colors.cyan())
+		},
+		Def.Quad{
+			InitCommand= cmd(setsize, 20, 20; diffuse, solar_colors.green())
+		},
+	},
+}

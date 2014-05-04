@@ -491,7 +491,8 @@ local function Update(self)
 			if speed_info.prev_bps ~= this_bps then
 				speed_info.prev_bps= this_bps
 				local xmod= (speed_info.speed) / (this_bps * rate_coordinator:get_current_rate() * 60)
-				GAMESTATE:ApplyGameCommand("mod,"..("%.4f"):format(xmod).."x", v)
+				local poptions= cons_players[v].song_options
+				poptions:XMod(xmod, xmod*100) -- use a high approach speed  so the xmod changes in .01 seconds.
 			end
 		end
 		local pstats= curstats:GetPlayerStageStats(v)
@@ -589,28 +590,28 @@ local function make_special_actors_for_players()
 end
 
 local mods_before_mine= {}
-local function set_mod_from_mmod(pn)
+local function set_speed_from_speed_info(player)
 	-- mmods are just a poor mask over xmods, so if you set an mmod in
 	-- the middle of the song, it'll null out.  This means that if you
 	-- use PlayerState:SetPlayerOptions, it'll ruin whatever mmod the
 	-- player has set.  So this code is here to remove that mask.
-	local speed_info= cons_players[pn]:get_speed_info()
+	local speed_info= player:get_speed_info()
 	speed_info.prev_bps= nil
 	local mode_functions= {
 		x= function(speed)
-				 GAMESTATE:ApplyGameCommand("mod,"..("%.2f"):format(speed).."x", pn)
+				 player.song_options:XMod(speed)
 			 end,
 		C= function(speed)
 				 local real_speed= speed / rate_coordinator:get_current_rate()
-				 GAMESTATE:ApplyGameCommand("mod,C"..("%.0f"):format(real_speed), pn)
+				 player.song_options:CMod(real_speed)
 			 end,
 		m= function(speed)
 				 if GAMESTATE:GetCurrentSong():IsDisplayBpmConstant() then
-					 local max_bpm= GAMESTATE:GetCurrentSteps(pn):GetDisplayBpms()[2]
+					 local max_bpm= GAMESTATE:GetCurrentSteps(player.player_number):GetDisplayBpms()[2]
 					 local real_speed= (speed / max_bpm) / rate_coordinator:get_current_rate()
-					 GAMESTATE:ApplyGameCommand("mod,"..("%.2f"):format(real_speed).."x", pn)
+					 player.song_options:XMod(real_speed)
 				 else
-					 local timing_data= GAMESTATE:GetCurrentSteps(pn):GetTimingData()
+					 local timing_data= GAMESTATE:GetCurrentSteps(player.player_number):GetTimingData()
 					 local bpmsand= timing_data:GetBPMsAndTimes()
 					 if type(bpmsand[1]) == "string" then
 						 for i, s in ipairs(bpmsand) do
@@ -646,14 +647,13 @@ local function set_mod_from_mmod(pn)
 					 end
 					 local average= tot / num_beats
 					 local max_bpm= most_common[1]
-					 --max_bpm= GAMESTATE:GetCurrentSteps(pn):GetDisplayBpms()[2]
+					 --max_bpm= GAMESTATE:GetCurrentSteps(player.player_number):GetDisplayBpms()[2]
 					 local real_speed= (speed / max_bpm) / rate_coordinator:get_current_rate()
-					 GAMESTATE:ApplyGameCommand("mod,"..("%.2f"):format(real_speed).."x", pn)
+					 player.song_options:XMod(real_speed)
 				 end
 			 end
 	}
 	if mode_functions[speed_info.mode] then
-		GAMESTATE:ApplyGameCommand("mod,resetspeed", pn)
 		mode_functions[speed_info.mode](speed_info.speed)
 	end
 end
@@ -665,14 +665,6 @@ local function cleanup(self)
 	reduce_time_remaining(time_spent)
 	set_last_song_time(time_spent)
 	--Trace("Reduced time remaining. " .. get_time_remaining())
-	for k, v in pairs(cons_players) do
-		-- Set the mmod back so that the options screen and other things
-		-- report it correctly.
-		if v.had_an_mmod then
-			GAMESTATE:ApplyGameCommand("mod,m"..v.had_an_mmod, k)
-			v.had_an_mmod= nil
-		end
-	end
 end
 
 local function note_date_edit_test()
@@ -736,7 +728,12 @@ return Def.ActorFrame {
 					if speed_info then
 						speed_info.prev_bps= nil
 					end
-					set_mod_from_mmod(v)
+					set_speed_from_speed_info(cons_players[v])
+
+					local ps= GAMESTATE:GetPlayerState(v)
+					local ops= ps:GetPlayerOptionsString("ModsLevel_Song")
+					Trace("pops: " .. ops)
+					ps:SetPlayerOptions("ModsLevel_Song", ops)
 				end
 			end,
 		OffCommand= cleanup,
@@ -747,11 +744,11 @@ return Def.ActorFrame {
 			end,
 		CurrentStepsP1ChangedMessageCommand=
 			function(self, param)
-				set_mod_from_mmod(PLAYER_1)
+				set_speed_from_speed_info(cons_players[PLAYER_1])
 			end,
 		CurrentStepsP2ChangedMessageCommand=
 			function(self, param)
-				set_mod_from_mmod(PLAYER_2)
+				set_speed_from_speed_info(cons_players[PLAYER_2])
 			end,
 		JudgmentMessageCommand=
 			function(self, param)

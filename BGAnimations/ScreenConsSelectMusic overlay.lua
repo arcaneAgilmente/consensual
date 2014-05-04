@@ -620,17 +620,6 @@ return Def.ActorFrame {
 							 if top_screen.SetAllowLateJoin then
 								 top_screen:SetAllowLateJoin(true)
 							 end
-							 -- This is supposed to happen when ScreenGameplay exits, but
-							 -- if the player uses the back button, the OffCommand is
-							 -- skipped.
-							 for k, v in pairs(cons_players) do
-								 -- Set the mmod back so that the options screen and other
-								 -- things report it correctly.
-								 if v.had_an_mmod then
-									 GAMESTATE:ApplyGameCommand("mod,m"..v.had_an_mmod, k)
-									 v.had_an_mmod= nil
-								 end
-							 end
 						 end,
 	play_songCommand= function(self)
 											SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")

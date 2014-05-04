@@ -35,7 +35,7 @@ if GAMESTATE:GetCoinMode() ~= "CoinMode_Home" then
 		local new_rate= song_len / remain
 		new_rate= force_to_range(0.5, new_rate, 2.0)
 		new_rate= math.round(new_rate * 100) / 100
-		GAMESTATE:ApplyGameCommand("mod," .. new_rate .. "xmusic")
+		GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(new_rate)
 		rate_coordinator:notify(new_rate, true)
 	end
 end
@@ -48,8 +48,13 @@ local function get_screen_time()
 	end
 end
 
-local function get_pop(pn)
-	return GAMESTATE:GetPlayerState(pn):GetPlayerOptionsArray("ModsLevel_Song")
+local function mod_player(pn, mod_name, value)
+	local mod_func= PlayerOptions[mod_name]
+	if mod_func then
+		return mod_func(cons_players[pn].preferred_options, value)
+	else
+		Warn("mod '" .. tostring(mod_name) .. "' does not exist.")
+	end
 end
 
 local bpm_displayer_interface= {}
@@ -113,7 +118,6 @@ options_sets.speed= {
 	__index= {
 		initialize=
 			function(self, player_number)
-				local poptionsray= get_pop(player_number)
 				self.info_set= {
 					up_element(), {text= ""}, {text= ""}, {text= ""}, {text= ""},
 					{text= "Xmod"}, {text= "Cmod"}, {text= "Mmod"}, {text= "CXmod"}}
@@ -121,11 +125,6 @@ options_sets.speed= {
 				self.current_speed= speed_info.speed
 				self:set_mode_data_work(speed_info.mode)
 				self.cursor_pos= 1
-				rate_coordinator:add_to_notify(self)
-			end,
-		destructor=
-			function(self)
-				rate_coordinator:remove_from_notify(self)
 			end,
 		set_status=
 			function(self)
@@ -242,17 +241,12 @@ options_sets.speed= {
 				end
 				return true
 			end,
-		notify_of_rate_change=
-			function(self)
-				GAMESTATE:ApplyGameCommand(self:mod_command(),self.player_number)
-			end
 }}
 
 options_sets.assorted_bools= {
 	__index= {
 		initialize=
 			function(self, player_number, extra)
-				local poptionsray= get_pop(player_number)
 				self.player_number= player_number
 				self.name= extra.name
 				self.info_set= {up_element()}
@@ -260,14 +254,7 @@ options_sets.assorted_bools= {
 				for i, op in ipairs(extra.ops) do
 					local opsind= #self.ops+1
 					self.ops[opsind]= op
-					local is_set= false
-					for ipop, pop in ipairs(poptionsray) do
-						local lower_ray= pop:lower()
-						local opbeg, opend= lower_ray:find(op)
-						if opbeg then
-							is_set= true
-						end
-					end
+					local is_set= mod_player(self.player_number, op)
 					self.info_set[#self.info_set+1]= {text= op, underline= is_set}
 				end
 				self.cursor_pos= 1
@@ -283,11 +270,51 @@ options_sets.assorted_bools= {
 				local info= self.info_set[self.cursor_pos]
 				if self.ops[ops_pos] then
 					if info.underline then
-						GAMESTATE:ApplyGameCommand(
-							"mod,no " .. self.ops[ops_pos], self.player_number)
+						mod_player(self.player_number, self.ops[ops_pos], false)
 					else
-						GAMESTATE:ApplyGameCommand(
-							"mod," .. self.ops[ops_pos], self.player_number)
+						mod_player(self.player_number, self.ops[ops_pos], true)
+					end
+					info.underline= not info.underline
+					self.display:set_element_info(self.cursor_pos, info)
+					return true
+				else
+					return false
+				end
+			end
+}}
+
+options_sets.song_ops_bools= {
+	__index= {
+		initialize=
+			function(self, player_number, extra)
+				self.player_number= player_number
+				self.name= extra.name
+				self.info_set= {up_element()}
+				self.ops= self.ops or {}
+				local songops= GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred")
+				for i, op in ipairs(extra.ops) do
+					local opsind= #self.ops+1
+					self.ops[opsind]= op
+					local is_set= songops[op](songops)
+					self.info_set[#self.info_set+1]= {text= op, underline= is_set}
+				end
+				self.cursor_pos= 1
+			end,
+		set_status=
+			function(self)
+				self.display:set_heading(self.name)
+				self.display:set_display("")
+			end,
+		interpret_start=
+			function(self)
+				local ops_pos= self.cursor_pos - 1
+				local info= self.info_set[self.cursor_pos]
+				local songops= GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred")
+				if self.ops[ops_pos] then
+					if info.underline then
+						songops[self.ops[ops_pos]](songops, false)
+					else
+						songops[self.ops[ops_pos]](songops, true)
 					end
 					info.underline= not info.underline
 					self.display:set_element_info(self.cursor_pos, info)
@@ -312,8 +339,7 @@ options_sets.mutually_exclusive_bools= {
 					if info.underline then
 						if not self.disallow_unset then
 							info.underline= false
-							GAMESTATE:ApplyGameCommand(
-								"mod,no " .. self.ops[ops_pos], self.player_number)
+							mod_player(self.player_number, self.ops[ops_pos], false)
 							self.display:set_element_info(self.cursor_pos, info)
 						end
 					else
@@ -325,8 +351,7 @@ options_sets.mutually_exclusive_bools= {
 							end
 							self.display:set_element_info(i, tinfo)
 						end
-						GAMESTATE:ApplyGameCommand(
-							"mod," .. self.ops[ops_pos], self.player_number)
+						mod_player(self.player_number, self.ops[ops_pos], true)
 					end
 					return true
 				else
@@ -335,22 +360,32 @@ options_sets.mutually_exclusive_bools= {
 			end,
 }}
 
-options_sets.sick_float= {
+options_sets.rate_mod= {
 	__index= {
 		initialize=
 			function(self, player_number, extra)
-				local poptionsray= get_pop(player_number)
 				self.player_number= player_number
 				self.cursor_pos= 1
 				self.name= extra.name
 				self.info_set= {up_element()}
 				self.increments= {}
-				self.current_value= extra.default_value or 100
-				self:init_from_options(poptionsray)
+				self.current_value= rate_coordinator:get_current_rate()
 				for i, v in ipairs(extra.incs) do
 					self.increments[i]= v
-					self.info_set[#self.info_set+1]= {text= v}
+					local vt= tostring(v)
+					if v > 0 then vt= "+" .. vt end
+					self.info_set[#self.info_set+1]= {text= vt}
 				end
+				rate_coordinator:add_to_notify(self)
+			end,
+		destructor=
+			function(self)
+				rate_coordinator:remove_from_notify(self)
+			end,
+		set_status=
+			function(self)
+				self.display:set_heading(self.name)
+				self.display:set_display(self:get_eltext())
 			end,
 		interpret_start=
 			function(self)
@@ -362,74 +397,16 @@ options_sets.sick_float= {
 					end
 					self.display:set_display(self:get_eltext())
 					self:mod_command()
+					rate_coordinator:notify(self.current_value, true)
 					return true
 				else
 					return false
 				end
 			end,
-		valid_value= function() return true end,
-		get_eltext= function(self) return self.current_value .. "%" end,
-		set_status=
-			function(self)
-				self.display:set_heading(self.name)
-				self.display:set_display(self:get_eltext())
-			end,
-		init_from_options=
-			function(self, poptionsray)
-				for n= 1, #poptionsray do
-					local lower_ray= poptionsray[n]:lower()
-					local opbeg, opend= lower_ray:find(self.name)
-					if opbeg then
-						-- The beginning of the string is probably of the form "235% "
-						local hope_is_value= lower_ray:sub(1, opbeg - 3)
-						if tonumber(hope_is_value) then
-							self.current_value= tonumber(hope_is_value)
-						else
-							Trace("Matched option '" .. self.name .. "' in '" ..
-										lower_ray .. "' but value is '" .. hope_is_value .. "'")
-						end
-					end
-				end
-			end,
-		mod_command=
-			function(self)
-				GAMESTATE:ApplyGameCommand("mod," .. self.current_value .. "% "
-						.. self.name, self.player_number)
-			end
-}}
-
-options_sets.rate_mod= {
-	__index= {
-		initialize=
-			function(self, player_number, extra)
-				options_sets.sick_float.__index.initialize(
-					self, player_number, extra)
-				if self.current_value ~= 1 then
-					rate_coordinator:notify(self.current_value)
-				end
-				rate_coordinator:add_to_notify(self)
-			end,
-		destructor=
-			function(self)
-				rate_coordinator:remove_from_notify(self)
-			end,
-		set_status= options_sets.sick_float.__index.set_status,
-		interpret_start=
-			function(self)
-				local h= options_sets.sick_float.__index.interpret_start(self)
-				if h then
-					rate_coordinator:notify(self.current_value, true)
-				end
-				return h
-			end,
-		init_from_options=
-			function(self)
-				self.current_value= rate_coordinator:get_current_rate()
-			end,
 		get_eltext= function(self) return self.current_value .. "x" end,
 		mod_command=
 			function(self)
-				GAMESTATE:ApplyGameCommand("mod," .. self.current_value .. "xmusic")
+				GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(self.current_value)
 			end,
 		valid_value=
 			function(self, value)
@@ -515,16 +492,15 @@ options_sets.noteskins= {
 		scroll_to_move_on_start= true,
 		initialize=
 			function(self, player_number)
-				local poptionsray= get_pop(player_number)
 				self.player_number= player_number
 				self.cursor_pos= 1
 				self.ops= NOTESKIN:GetNoteSkinNames()
+				local player_noteskin= mod_player(self.player_number, "NoteSkin")
 				function find_matching_noteskin()
-					for i, v in ipairs(poptionsray) do
-						for ni, nv in ipairs(self.ops) do
-							if v == nv then
-								return ni
-							end
+					for ni, nv in ipairs(self.ops) do
+						Trace("Noteskin found: '" .. tostring(nv) .. "'")
+						if player_noteskin == nv then
+							return ni
 						end
 					end
 					return nil
@@ -537,7 +513,27 @@ options_sets.noteskins= {
 				end
 			end,
 		interpret_start=
-			options_sets.mutually_exclusive_bools.__index.interpret_start,
+			function(self)
+				local ops_pos= self.cursor_pos - 1
+				local info= self.info_set[self.cursor_pos]
+				if self.ops[ops_pos] then
+					for i, tinfo in ipairs(self.info_set) do
+						if i ~= self.cursor_pos and tinfo.underline then
+							tinfo.underline= false
+							self.display:set_element_info(i, tinfo)
+						end
+					end
+					local prev_note, succeeded= mod_player(self.player_number, "NoteSkin", self.ops[ops_pos])
+					if not succeeded then
+						Trace("Failed to set noteskin '" .. tostring(self.ops[ops_pos]) .. "'.  Leaving noteskin setting at '" .. prev_note .. "'")
+					end
+					info.underline= true
+					self.display:set_element_info(self.cursor_pos, info)
+					return true
+				else
+					return false
+				end
+			end,
 		set_status=
 			function(self)
 				self.display:set_heading("Noteskin")
@@ -698,8 +694,15 @@ local options_menu_mt= {
 local function set_clear_for_player(player_number)
 	GAMESTATE:ApplyGameCommand("mod,clearall", player_number)
 	-- SM5 will crash if a noteskin is not applied after clearing all mods.
+	-- Apply the default noteskin first in case Cel doesn't exist.
 	local default_noteskin= THEME:GetMetric("Common", "DefaultNoteSkinName")
-	GAMESTATE:ApplyGameCommand("mod,"..default_noteskin , player_number)
+	local prev_note, succeeded= self.song_options:NoteSkin("uswcelsm5")
+	if not succeeded then
+		prev_note, succeeded= self.song_options:NoteSkin(default_noteskin)
+		if not succeeded then
+			Warn("Failed to set default noteskin when clearing player options.  Please do not delete the default noteskin.")
+		end
+	end
 end
 
 local function generic_flag_control_element(flag_name)
@@ -720,41 +723,41 @@ end
 local function extra_for_adj_float_mod(mod_name)
 	return {
 		name= mod_name,
-		min_scale= .01,
-		scale= 10,
-		max_scale= 1000,
+		min_scale= -4,
+		scale= -1,
+		max_scale= 1,
 		initial_value=
 			function(player_number)
-				local poptionsray= get_pop(player_number)
-				for n= 1, #poptionsray do
-					local lower_ray= poptionsray[n]:lower()
-					local opbeg, opend= lower_ray:find(mod_name)
-					if opbeg then
-						-- The beginning of the string is probably of the form "235% "
-						local hope_is_value= lower_ray:sub(1, opbeg - 3)
-						if tonumber(hope_is_value) then
-							return tonumber(hope_is_value)
-						else
-							-- If it's not, the string is just the mod name.  Default.
-							return 100
-						end
-					end
-				end
-				return 0
+				return mod_player(player_number, mod_name)
 			end,
 		set=
 			function(player_number, value)
-				GAMESTATE:ApplyGameCommand("mod," .. value .. "% " .. mod_name, player_number)
+				mod_player(player_number, mod_name, value)
 			end,
-		val_to_text= function(value) return value .. "%" end
+		scale_to_text=
+			function(player_number, value)
+				if cons_players[player_number].flags.straight_floats then
+					return value
+				else
+					return value * 100
+				end
+			end,
+		val_to_text=
+			function(player_number, value)
+				if cons_players[player_number].flags.straight_floats then
+					return tostring(value)
+				else
+					return (value * 100) .. "%"
+				end
+			end
 	}
 end
 
 local function extra_for_sigil_detail()
 	return {
 		name= "Sigil Detail",
-		min_scale= 1,
-		scale= 1,
+		min_scale= 0,
+		scale= 0,
 		max_scale= 1,
 		initial_value=
 			function(player_number)
@@ -768,7 +771,6 @@ local function extra_for_sigil_detail()
 			function(player_number, value)
 				cons_players[player_number].sigil_data.detail= value
 			end,
-		val_to_text= function(value) return tostring(value) end
 	}
 end
 
@@ -790,16 +792,33 @@ local function extra_for_sigil_size()
 			function(player_number, value)
 				cons_players[player_number].sigil_data.size= value
 			end,
-		val_to_text= function(value) return tostring(value) end
+	}
+end
+
+local function extra_for_lives()
+	return {
+		name= "Battery Lives",
+		min_scale= 1,
+		scale= 1,
+		max_scale= 10,
+		initial_value=
+			function(player_number)
+				return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives()
+			end,
+		validator=
+			function(value)
+				return value >= 1 and value <= 100
+			end,
+		set=
+			function(player_number, value)
+				GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives(value)
+			end
 	}
 end
 
 local function make_menu_of_float_set(float_set)
 	local margs= {}
 	for i, fl in ipairs(float_set) do
---		margs[#margs+1]= {
---			name= fl, meta= options_sets.sick_float,
---			args= {default_value= 0, incs= {-100, -10, 10, 100} }}
 		margs[#margs+1]= {
 			name= fl, meta= options_sets.adjustable_float,
 			args= extra_for_adj_float_mod(fl)
@@ -811,6 +830,29 @@ end
 local function ass_bools(name, bool_names)
 	return {
 		name= name, meta= options_sets.assorted_bools, args= {ops= bool_names}}
+end
+
+local function song_bools(name, bool_names)
+	return {
+		name= name, meta= options_sets.song_ops_bools, args= {ops= bool_names}}
+end
+
+local function pops_get(pn)
+	return GAMESTATE:GetPlayerState(pn):GetPlayerOptions("ModsLevel_Preferred")
+end
+
+local function player_enum(name, enum, func_name)
+	return {
+		name= name, meta= options_sets.enum_option, args= {
+			get= PlayerOptions[func_name], set= PlayerOptions[func_name],
+			enum= enum, obj_get= pops_get }}
+end
+
+local function song_enum(name, enum, func_name)
+	return {
+		name= name, meta= options_sets.enum_option, args= {
+			get= SongOptions[func_name], set= SongOptions[func_name], enum= enum,
+			obj_get= function() return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred") end }}
 end
 
 local function mut_exc_bools(name, bool_names)
@@ -837,36 +879,37 @@ for i, v in ipairs(mine_effects) do
 end
 
 local boost_mods= {
-	"boost", "brake", "wave", "expand", "boomerang",
+	"Boost", "Brake", "Wave", "Expand", "Boomerang",
 }
 
 local hidden_mods= {
-	"hidden", "hiddenoffset", "sudden", "suddenoffset",
+	"Hidden", "HiddenOffset", "Sudden", "SuddenOffset",
 }
 
 local perspective_mods= {
-	"overhead", "incoming", "space", "hallway", "distant",
+	"Incoming", "Space", "Hallway", "Distant", "Skew", "Tilt"
 }
 
 local sickness_mods= {
-	 "beat", "bumpy","drunk", "tipsy", "tornado",
+	 "Beat", "Bumpy","Drunk", "Tipsy", "Tornado",
 }
 
 local size_mods= {
-	"mini", "tiny",
+	"Mini", "Tiny",
 }
 
 local spin_mods= {
-	"confusion", "dizzy", "roll", "twirl",
+	"Confusion", "Dizzy", "Roll", "Twirl",
 }
 
 local target_mods= {
-	"alternate", "centered", "cross", "flip", "invert", "split", "xmode",
-	"blind", "dark",
+	"Reverse", "Alternate", "Centered", "Cross", "Flip", "Invert", "Split",
+	"Xmode", "Blind", "Dark",
 }
 
 local visibility_mods= {
-	"blink", "cover", "randomvanish", "passmark", "stealth",
+	"Blink", "RandomVanish", "Stealth",
+	-- "Cover", "Passmark", TODO?  Add support for these mods.
 }
 
 local floaty_mods= {
@@ -874,8 +917,6 @@ local floaty_mods= {
 		args= make_menu_of_float_set(boost_mods) },
 	{ name= "Hidden", meta= options_sets.menu,
 		args= make_menu_of_float_set(hidden_mods) },
-	{ name= "Perspective", meta= options_sets.menu,
-		args= make_menu_of_float_set(perspective_mods) },
 	{ name= "Sickness", meta= options_sets.menu,
 		args= make_menu_of_float_set(sickness_mods) },
 	{ name= "Size", meta= options_sets.menu,
@@ -889,11 +930,22 @@ local floaty_mods= {
 }
 
 local chart_mods= {
-	ass_bools("Turn", {"mirror", "backwards", "left", "right",
-										 "shuffle", "softshuffle", "supershuffle"}),
-	ass_bools("Inserts", {"big", "bmrize", "echo", "floored", "little", "planted",
-												"quick", "skippy", "stomp", "twister", "wide"}),
-	ass_bools("No", {"holdrolls", "nojumps","nohands","noquads"}),
+	ass_bools("Turn", {"Mirror", "Backwards", "Left", "Right",
+										 "Shuffle", "SoftShuffle", "SuperShuffle"}),
+	ass_bools("Inserts", {"Big", "BMRize", "Echo", "Floored", "Little", "Planted",
+												"Quick", "Skippy", "Stomp", "Twister", "Wide"}),
+	ass_bools("No", {"HoldRolls", "NoJumps","NoHands","NoQuads", "NoStretch",
+									 "NoLifts", "NoFakes"}),
+}
+
+local song_options= {
+	song_enum("Life", LifeType, "LifeSetting"),
+	song_enum("Drain", DrainType, "DrainSetting"),
+	--song_enum("Autosync", AutosyncType, "AutosyncSetting"),
+	--song_enum("Sound Effect", SoundEffectType, "SoundEffectSetting"),
+	player_enum("Fail", FailType, "FailSetting"),
+	{ name= "Battery Lives", meta= options_sets.adjustable_float,
+		args= extra_for_lives()},
 }
 
 local special= {
@@ -916,6 +968,10 @@ local special= {
 	{ name= "Mine Effects",
 		meta= options_sets.mutually_exclusive_special_functions,
 		args= { eles= mine_effect_eles }},
+	song_bools("Assist", {"AssistClap", "AssistMetronome", "SaveScore", }),
+	{ name= "Song Options", meta= options_sets.menu, args= song_options},
+	-- TODO?  Add support for these?
+	--"StaticBackground", "RandomBGOnly", "SaveReplay" }),
 }
 
 local decorations= {
@@ -934,6 +990,7 @@ local decorations= {
 							generic_flag_control_element("sum_column"),
 							generic_flag_control_element("best_scores"),
 							generic_flag_control_element("allow_toasty"),
+							generic_flag_control_element("straight_floats"),
 				}}},
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
@@ -947,9 +1004,8 @@ local base_options= {
 	{ name= "Rate", meta= options_sets.rate_mod,
 		args= { default_value= 1, incs= {-.1, -.01, .01, .1}}},
 	{ name= "Steps", meta= options_sets.steps_list},
-	{ name= "Perspective", meta= options_sets.mutually_exclusive_bools,
-		args= { ops= {"overhead", "distant", "hallway", "space", "incoming"}}},
-	ass_bools("Reverse", {"reverse"}),
+	{ name= "Perspective", meta= options_sets.menu,
+		args= make_menu_of_float_set(perspective_mods) },
 	{ name= "Decorations", meta= options_sets.menu, args= decorations},
 	{ name= "Special", meta= options_sets.menu, args= special},
 	{ name= "Chart mods", meta= options_sets.menu, args= chart_mods},

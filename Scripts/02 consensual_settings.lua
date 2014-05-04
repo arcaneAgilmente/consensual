@@ -6,55 +6,54 @@ function get_input_mode()
 	return curr_input_mode
 end
 
-function add_mods_to_player(pn, mods)
-	local ps= GAMESTATE:GetPlayerState(pn)
-	local song_mods= ps:GetPlayerOptionsString("ModsLevel_Song")
-	ps:SetPlayerOptions("ModsLevel_Song", song_mods .. ", " .. mods)
-end
-
 mine_effects= {
 	{ name= "boomerang",
 		apply=
 			function(pn)
-				add_mods_to_player(pn, "*8 boomerang")
+				cons_players[pn].song_options:Boomerang(1, 8)
 			end,
 		unapply=
 			function(pn)
-				add_mods_to_player(pn, "*.25 0% boomerang")
+				cons_players[pn].song_options:Boomerang(0, .25)
 			end,
 		time= .125
 	},
 	{ name= "brake",
 		apply=
 			function(pn)
-				add_mods_to_player(pn, "*8 brake")
+				cons_players[pn].song_options:Brake(1, 8)
 			end,
 		unapply=
 			function(pn)
-				add_mods_to_player(pn, "*.25 0% brake")
+				cons_players[pn].song_options:Brake(0, .25)
 			end,
 		time= .125
 	},
 	{ name= "stealth",
 		apply=
 			function(pn)
-				add_mods_to_player(pn, "*8 75% stealth")
+				cons_players[pn].song_options:Stealth(.75, 8)
 			end,
 		unapply=
 			function(pn)
-				add_mods_to_player(pn, "*.25 0% stealth")
+				cons_players[pn].song_options:Stealth(0, .25)
 			end,
 		time= .125
 	},
 	{ name= "tiny",
 		apply=
 			function(pn)
-				add_mods_to_player(pn, "*8 tiny")
+				cons_players[pn].song_options:Tiny(1, 8)
 			end,
 		unapply=
 			function(pn)
-				add_mods_to_player(pn, "*.25 0% tiny")
+				cons_players[pn].song_options:Tiny(0, .25)
 			end,
+		time= .125
+	},
+	{ name= "none",
+		apply= noop_nil,
+		unapply= noop_nil,
 		time= .125
 	},
 }
@@ -72,6 +71,10 @@ function cons_player:clear_init(player_number)
 		end
 	end
 	self.player_number= player_number
+	self.current_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Current")
+	self.song_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Song")
+	self.stage_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Stage")
+	self.preferred_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Preferred")
 	self.rating_cap= 4
 	self.options_level= ops_level_none
 	-- Temporarily make simple the default until this theme is used somewhere that the options menu should be hidden from normal players.
@@ -92,8 +95,13 @@ function cons_player:noob_mode()
 	-- SM5 will crash if a noteskin is not applied after clearing all mods.
 	-- Apply the default noteskin first in case Cel doesn't exist.
 	local default_noteskin= THEME:GetMetric("Common", "DefaultNoteSkinName")
-	GAMESTATE:ApplyGameCommand("mod,"..default_noteskin , self.player_number)
-	GAMESTATE:ApplyGameCommand("mod,uswcelsm5", self.player_number)
+	local prev_note, succeeded= self.song_options:NoteSkin("uswcelsm5")
+	if not succeeded then
+		prev_note, succeeded= self.song_options:NoteSkin(default_noteskin)
+		if not succeeded then
+			Warn("Failed to set default noteskin when clearing player options.  Please do not delete the default noteskin.")
+		end
+	end
 end
 
 function cons_player:simple_options_mode()
@@ -130,9 +138,9 @@ function cons_player:kyzentun_mode()
 	local styletype= GAMESTATE:GetCurrentStyle():GetStyleType()
 	local new_speed= false
 	if styletype == "StyleType_OnePlayerTwoSides" then
-		new_speed= { speed= 450, mode= "m" }
+		new_speed= { speed= 500, mode= "m" }
 	else
-		new_speed= { speed= 800, mode= "m" }
+		new_speed= { speed= 900, mode= "m" }
 	end
 	if self.speed_info then
 		self.speed_info.speed= new_speed.speed
@@ -140,8 +148,7 @@ function cons_player:kyzentun_mode()
 	else
 		self.speed_info= new_speed
 	end
-	GAMESTATE:ApplyGameCommand("mod,distant", self.player_number)
-	--   GAMESTATE:ApplyGameCommand("mod,blind", self.player_number)
+	self.preferred_options:Distant(1.4)
 	self.flags.sigil= true
 	self.flags.judge= true
 	self.flags.offset= true
@@ -149,6 +156,7 @@ function cons_player:kyzentun_mode()
 	self.flags.session_column= true
 	self.flags.sum_column= true
 	self.flags.best_scores= true
+	self.flags.straight_floats= true
 end
 
 -- If the rating cap is less than or equal to 0, it has the special meaning of "no cap".
@@ -177,7 +185,7 @@ function cons_player:stage_stats_reset()
 	local cur_style= GAMESTATE:GetCurrentStyle()
 	if cur_style then
 		local columns= cur_style:ColumnsPerPlayer()
-		Trace("Making column score slots for " .. tostring(columns) .. " columns.")
+		--Trace("Making column score slots for " .. tostring(columns) .. " columns.")
 		self.column_scores= {}
 		-- Track indices from the engine are 0-indexed.
 		for c= 0, columns-1 do
@@ -215,23 +223,15 @@ function cons_player:set_speed_info_from_poptions()
 	local poptionsray= GAMESTATE:GetPlayerState(self.player_number):GetPlayerOptionsArray("ModsLevel_Song")
 	local speed= nil
 	local mode= nil
-	for i, el in ipairs(poptionsray) do
-		local fel= el:sub(1, 1)
-		local lel= el:sub(-1)
-		if fel == "m" or fel == "C" then
-			speed= tonumber(el:sub(2))
-			mode= fel
-		else
-			speed= tonumber(el:sub(1, -2))
-			mode= lel
-		end
-		if speed and mode then
-			break
-		end
-	end
-	if not speed or not mode then
-		speed= 1
+	if self.song_options:MaxScrollBPM() then
+		mode= "m"
+		speed= self.song_options:MaxScrollBPM()
+	elseif self.song_options:TimeSpacing() then
+		mode= "C"
+		speed= self.song_options:ScrollBPM()
+	else
 		mode= "x"
+		speed= self.song_options:ScrollSpeed()
 	end
 	self.speed_info= { speed= speed, mode= mode }
 	return self.speed_info
