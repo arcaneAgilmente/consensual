@@ -47,8 +47,13 @@ function lowered_game_name()
 end
 
 -- Lua:  Battery contacts not included.
+-- Round to nearest integer.
 function math.round(n)
-	return math.floor(n+0.5)
+	if n > 0 then
+		return math.floor(n+0.5)
+	else
+		return math.ceil(n-0.5)
+	end
 end
 
 function force_to_range(min, number, max)

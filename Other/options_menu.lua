@@ -410,7 +410,7 @@ options_sets.adjustable_float= {
 					--Trace("cv: " .. cv .. " cs: " .. cs)
 					for n= 1, #cs do
 						if cs:sub(-n, -n) ~= "0" then
-							self.min_scale_used= self.min_scale + (n-1)
+							self.min_scale_used= math.min(self.scale, self.min_scale + (n-1))
 							--Trace("adj float found non-0 at " .. n .. " set msu to " .. self.min_scale_used)
 							break
 						end
