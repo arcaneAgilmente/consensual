@@ -777,9 +777,9 @@ end
 local function extra_for_sigil_size()
 	return {
 		name= "Sigil Size",
-		min_scale= 1,
-		scale= 10,
-		max_scale= 100,
+		min_scale= 0,
+		scale= 1,
+		max_scale= 2,
 		initial_value=
 			function(player_number)
 				return cons_players[player_number].sigil_data.size
@@ -798,9 +798,9 @@ end
 local function extra_for_lives()
 	return {
 		name= "Battery Lives",
-		min_scale= 1,
-		scale= 1,
-		max_scale= 10,
+		min_scale= 0,
+		scale= 0,
+		max_scale= 1,
 		initial_value=
 			function(player_number)
 				return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives()
@@ -812,6 +812,27 @@ local function extra_for_lives()
 		set=
 			function(player_number, value)
 				GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives(value)
+			end
+	}
+end
+
+local function extra_for_haste()
+	return {
+		name= "Haste",
+		min_scale= -2,
+		scale= -1,
+		max_scale= 0,
+		initial_value=
+			function(player_number)
+				return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste()
+			end,
+		validator=
+			function(value)
+				return true
+			end,
+		set=
+			function(player_number, value)
+				GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste(value)
 			end
 	}
 end
@@ -946,6 +967,8 @@ local song_options= {
 	player_enum("Fail", FailType, "FailSetting"),
 	{ name= "Battery Lives", meta= options_sets.adjustable_float,
 		args= extra_for_lives()},
+	{ name= "Haste", meta= options_sets.adjustable_float,
+		args= extra_for_haste()},
 }
 
 local special= {
