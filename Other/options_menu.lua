@@ -405,7 +405,7 @@ options_sets.adjustable_float= {
 				self.current_value= extra.initial_value(player_number) or 0
 				if self.current_value ~= 0 then
 					local cv= math.round(self.current_value / 10^self.min_scale) * 10^self.min_scale
-					local prec= math.max(-self.min_scale, 0)
+					local prec= math.max(0, -self.min_scale)
 					local cs= ("%." .. prec .. "f"):format(cv)
 					--Trace("cv: " .. cv .. " cs: " .. cs)
 					for n= 1, #cs do
