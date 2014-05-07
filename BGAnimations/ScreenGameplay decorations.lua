@@ -7,6 +7,13 @@ local feedback_judgements= {
 	"TapNoteScore_W3", "TapNoteScore_W2", "TapNoteScore_W1"
 }
 
+local screen_gameplay= false
+
+local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
+local receptor_max= THEME:GetMetric("Player", "ReceptorArrowsYReverse")
+local arrow_height= THEME:GetMetric("ArrowEffects", "ArrowSpacing")
+local field_height= receptor_max - receptor_min
+
 local line_spacing= 24
 local h_line_spacing= line_spacing / 2
 
@@ -283,9 +290,10 @@ end
 function bpm_feedback_interface:update()
 	if self.container then
 		local pstate= GAMESTATE:GetPlayerState(self.player_number)
-		if pstate then
-			local bpm= pstate:GetSongPosition():GetCurBPS()
-			bpm= bpm * 60 * rate_coordinator:get_current_rate()
+		if pstate and screen_gameplay.GetTrueBPS then
+			local bpm= screen_gameplay:GetTrueBPS(self.player_number) * 60
+			--local bpm= pstate:GetSongPosition():GetCurBPS()
+			--bpm= bpm * 60 * rate_coordinator:get_current_rate()
 			self.tani:set_number(("%.0f"):format(bpm))
 		end
 	end
@@ -440,6 +448,121 @@ local function get_screen_time()
 	return timer_actor:GetSecsIntoEffect()
 end
 
+local dspeed_default_min= 0
+local dspeed_default_max= 2
+do
+	local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
+	local receptor_max= THEME:GetMetric("Player", "ReceptorArrowsYReverse")
+	local arrow_height= THEME:GetMetric("ArrowEffects", "ArrowSpacing")
+	local field_height= receptor_max - receptor_min
+	local center_effect_size= field_height / 2
+	dspeed_default_min= (SCREEN_CENTER_Y + receptor_min) / -center_effect_size
+	dspeed_default_max= (SCREEN_CENTER_Y + receptor_max) / center_effect_size
+end
+local dspeed_default_range= dspeed_default_max - dspeed_default_min
+
+local suddmin= -1
+local suddmax= .5
+
+local function dspeed_start(player)
+	local pdspeed= player.dspeed
+	local center_range= pdspeed.max - pdspeed.min
+	local field_hahs= (field_height / arrow_height)
+	local field_ahs= field_hahs * (center_range * .5)
+	local ahs_per_second= screen_gameplay:GetTrueBPS(player.player_number) * player.dspeed_mult
+	local fields_per_second= ahs_per_second / field_ahs
+	if pdspeed.special then
+		field_ahs= field_hahs * dspeed_default_range * .5
+		fields_per_second= ahs_per_second / field_ahs
+		local cen_dst_val, cen_dst_app= player.song_options:Centered(nil, dspeed_default_range * fields_per_second)
+		if pdspeed.alternate then
+			local suddoff_app= (suddmax - suddmin) / ((dspeed_default_max - dspeed_default_min) / cen_dst_app) * 3
+			player.song_options:SuddenOffset(nil, suddoff_app)
+		end
+	else
+		player.song_options:Centered(nil, center_range * fields_per_second)
+	end
+end
+
+local function dspeed_halt(player)
+	player.song_options:Centered(nil, 0)
+	if player.dspeed.special and player.dspeed.alternate then
+		player.song_options:SuddenOffset(nil, 0)
+	end
+end
+
+local function dspeed_alternate(player)
+	if player.current_options:Reverse() == 1 then
+		player.song_options:Reverse(0)
+		player.current_options:Reverse(0)
+		local rev_tilt= -player.song_options:Tilt()
+		player.song_options:Tilt(rev_tilt)
+		player.current_options:Tilt(rev_tilt)
+	else
+		player.song_options:Reverse(1)
+		player.current_options:Reverse(1)
+		local rev_tilt= -player.song_options:Tilt()
+		player.song_options:Tilt(rev_tilt)
+		player.current_options:Tilt(rev_tilt)
+	end
+end
+
+local function dspeed_reset(player)
+	if player.dspeed.alternate then
+		dspeed_alternate(player)
+	end
+	if player.dspeed.special then
+		if player.dspeed.alternate then
+			local cen= player.current_options:Centered()
+			if cen < 1 then
+				player.current_options:Centered(1)
+			else
+				player.current_options:Centered(dspeed_default_max)
+			end
+		else
+			player.current_options:Centered(1)
+		end
+	else
+		player.current_options:Centered(player.dspeed.min)
+	end
+end
+
+local dspeed_special_phase_starts= {
+	function(player)
+		player.song_options:Reverse(1)
+		player.current_options:Reverse(1)
+		player.song_options:Centered(dspeed_default_max)
+		player.current_options:Centered(dspeed_default_min)
+		player.current_options:SuddenOffset(suddmax)
+	end,
+	function(player)
+		player.song_options:Reverse(0)
+		player.current_options:Reverse(0)
+		player.current_options:SuddenOffset(.5)
+	end,
+}
+
+local dspeed_special_phase_updates= {
+	function(player)
+		local cen= player.current_options:Centered()
+		if cen >= 1 then
+			player.dspeed_phase= 2
+			dspeed_special_phase_starts[player.dspeed_phase](player)
+		else
+			dspeed_alternate(player)
+		end
+	end,
+	function(player)
+		local cen= player.current_options:Centered()
+		if cen >= dspeed_default_max then
+			player.dspeed_phase= 1
+			dspeed_special_phase_starts[player.dspeed_phase](player)
+		else
+			dspeed_alternate(player)
+		end
+	end
+}
+
 local already_spewed= true
 local spin_screen= true
 local spin_value= 0
@@ -486,13 +609,47 @@ local function Update(self)
 			cons_players[v].unmine_time= nil
 		end
 		local speed_info= cons_players[v]:get_speed_info()
-		if speed_info.mode == "CX" then
-			local this_bps= GAMESTATE:GetPlayerState(v):GetSongPosition():GetCurBPS()
-			if speed_info.prev_bps ~= this_bps then
+		if speed_info.mode == "CX" and screen_gameplay.GetTrueBPS then
+			local this_bps= screen_gameplay:GetTrueBPS(v)
+			--local this_bps= GAMESTATE:GetPlayerState(v):GetSongPosition():GetCurBPS()
+			if speed_info.prev_bps ~= this_bps and this_bps > 0 then
 				speed_info.prev_bps= this_bps
-				local xmod= (speed_info.speed) / (this_bps * rate_coordinator:get_current_rate() * 60)
+				local xmod= (speed_info.speed) / (this_bps * 60)
+				--local xmod= (speed_info.speed) / (this_bps * rate_coordinator:get_current_rate() * 60)
 				local poptions= cons_players[v].song_options
 				poptions:XMod(xmod, xmod*100) -- use a high approach speed  so the xmod changes in .01 seconds.
+			end
+		end
+		if speed_info.mode == "D" then
+			local this_bps= screen_gameplay:GetTrueBPS(v)
+			local song_pos= GAMESTATE:GetPlayerState(v):GetSongPosition()
+			local discard, approach= cons_players[v].song_options:Centered()
+			if approach == 0 then
+				if not song_pos:GetFreeze() and not song_pos:GetDelay() then
+					dspeed_start(cons_players[v])
+				end
+			else
+				if song_pos:GetFreeze() or song_pos:GetDelay() then
+					dspeed_halt(cons_players[v])
+				end
+			end
+			if speed_info.prev_bps ~= this_bps and this_bps > 0 then
+				speed_info.prev_bps= this_bps
+				dspeed_start(cons_players[v])
+			end
+			if cons_players[v].dspeed.special then
+				if cons_players[v].dspeed.alternate then
+					dspeed_special_phase_updates[cons_players[v].dspeed_phase](cons_players[v])
+				else
+					dspeed_alternate(cons_players[v])
+					if cons_players[v].current_options:Centered() >= dspeed_default_max then
+						dspeed_reset(cons_players[v])
+					end
+				end
+			else
+				if cons_players[v].current_options:Centered() >= cons_players[v].dspeed.max then
+					dspeed_reset(cons_players[v])
+				end
 			end
 		end
 		local pstats= curstats:GetPlayerStageStats(v)
@@ -589,6 +746,51 @@ local function make_special_actors_for_players()
 	return Def.ActorFrame(args)
 end
 
+local function find_read_bpm_for_player_steps(player_number)
+	if GAMESTATE:GetCurrentSong():IsDisplayBpmConstant() then
+		local max_bpm= GAMESTATE:GetCurrentSteps(player_number):GetDisplayBpms()[2]
+		return max_bpm
+	else
+		local timing_data= GAMESTATE:GetCurrentSteps(player_number):GetTimingData()
+		local bpmsand= timing_data:GetBPMsAndTimes()
+		if type(bpmsand[1]) == "string" then
+			for i, s in ipairs(bpmsand) do
+				local sand= split("=", s)
+				bpmsand[i]= {tonumber(sand[1]), tonumber(sand[2])}
+			end
+		end
+		local totals= {}
+		local num_beats= timing_data:GetBeatFromElapsedTime(GAMESTATE:GetCurrentSong():GetLastSecond())
+		local highest_sustained= 0
+		local sustain_limit= 32
+		for i, s in ipairs(bpmsand) do
+			local end_beat= 0
+			if bpmsand[i+1] then
+				end_beat= bpmsand[i+1][1]
+			else
+				end_beat= num_beats
+			end
+			local len= (end_beat - s[1])
+			if s[2] > highest_sustained and len > sustain_limit then
+				highest_sustained= s[2]
+			end
+			totals[s[2]]= len + (totals[s[2]] or 0)
+		end
+		local tot= 0
+		local most_common= false
+		for k, v in pairs(totals) do
+			local minutes_duration= v / k
+			if not most_common or minutes_duration > most_common[2] then
+				most_common= {k, minutes_duration}
+			end
+			tot= tot + (k * v)
+		end
+		local average= tot / num_beats
+		local max_bpm= most_common[1]
+		return max_bpm
+	end
+end
+
 local mods_before_mine= {}
 local function set_speed_from_speed_info(player)
 	-- mmods are just a poor mask over xmods, so if you set an mmod in
@@ -606,50 +808,29 @@ local function set_speed_from_speed_info(player)
 				 player.song_options:CMod(real_speed)
 			 end,
 		m= function(speed)
-				 if GAMESTATE:GetCurrentSong():IsDisplayBpmConstant() then
-					 local max_bpm= GAMESTATE:GetCurrentSteps(player.player_number):GetDisplayBpms()[2]
-					 local real_speed= (speed / max_bpm) / rate_coordinator:get_current_rate()
-					 player.song_options:XMod(real_speed)
+				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
+				 local real_speed= (speed / read_bpm) / rate_coordinator:get_current_rate()
+				 player.song_options:XMod(real_speed)
+			 end,
+		D= function(speed)
+				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
+				 local real_speed= (speed / read_bpm) / rate_coordinator:get_current_rate()
+				 player.dspeed_mult= real_speed
+				 player.song_options:XMod(real_speed)
+				 if math.abs(player.dspeed.max - player.dspeed.min) < .01 then
+					 player.dspeed.special= true
+					 if player.dspeed.alternate then
+						 player.current_options:Sudden(1)
+						 player.song_options:Sudden(1)
+						 player.song_options:SuddenOffset(suddmin)
+						 player.dspeed_phase= 1
+						 dspeed_special_phase_starts[player.dspeed_phase](player)
+					 else
+						 player.song_options:Centered(dspeed_default_max)
+					 end
 				 else
-					 local timing_data= GAMESTATE:GetCurrentSteps(player.player_number):GetTimingData()
-					 local bpmsand= timing_data:GetBPMsAndTimes()
-					 if type(bpmsand[1]) == "string" then
-						 for i, s in ipairs(bpmsand) do
-							 local sand= split("=", s)
-							 bpmsand[i]= {tonumber(sand[1]), tonumber(sand[2])}
-						 end
-					 end
-					 local totals= {}
-					 local num_beats= timing_data:GetBeatFromElapsedTime(GAMESTATE:GetCurrentSong():GetLastSecond())
-					 local highest_sustained= 0
-					 local sustain_limit= 32
-					 for i, s in ipairs(bpmsand) do
-						 local end_beat= 0
-						 if bpmsand[i+1] then
-							 end_beat= bpmsand[i+1][1]
-						 else
-							 end_beat= num_beats
-						 end
-						 local len= (end_beat - s[1])
-						 if s[2] > highest_sustained and len > sustain_limit then
-							 highest_sustained= s[2]
-						 end
-						 totals[s[2]]= len + (totals[s[2]] or 0)
-					 end
-					 local tot= 0
-					 local most_common= false
-					 for k, v in pairs(totals) do
-						 local minutes_duration= v / k
-						 if not most_common or minutes_duration > most_common[2] then
-							 most_common= {k, minutes_duration}
-						 end
-						 tot= tot + (k * v)
-					 end
-					 local average= tot / num_beats
-					 local max_bpm= most_common[1]
-					 --max_bpm= GAMESTATE:GetCurrentSteps(player.player_number):GetDisplayBpms()[2]
-					 local real_speed= (speed / max_bpm) / rate_coordinator:get_current_rate()
-					 player.song_options:XMod(real_speed)
+					 player.dspeed.special= false
+					 player.song_options:Centered(player.dspeed.max)
 				 end
 			 end
 	}
@@ -716,6 +897,15 @@ return Def.ActorFrame {
 		Name= "Cleaner S22",
 		OnCommand=
 			function(self)
+				screen_gameplay= SCREENMAN:GetTopScreen()
+				if not screen_gameplay.GetTrueBPS then
+					Trace("screen_gameplay lacks GetTrueBPS, something is wrong.")
+				else
+					screen_gameplay:HasteLifeSwitchPoint(.5)
+					screen_gameplay:HasteTimeBetweenUpdates(4)
+					screen_gameplay:HasteAddAmounts({-.25, 0, .25})
+					screen_gameplay:HasteTurningPoints({-1, 0, 1})
+				end
 				--note_date_edit_test()
 				song_progress_bar:set_from_song()
 				local enabled_players= GAMESTATE:GetEnabledPlayers()
@@ -730,10 +920,10 @@ return Def.ActorFrame {
 					end
 					set_speed_from_speed_info(cons_players[v])
 
-					local ps= GAMESTATE:GetPlayerState(v)
-					local ops= ps:GetPlayerOptionsString("ModsLevel_Song")
-					Trace("pops: " .. ops)
-					ps:SetPlayerOptions("ModsLevel_Song", ops)
+					--local ps= GAMESTATE:GetPlayerState(v)
+					--local ops= ps:GetPlayerOptionsString("ModsLevel_Song")
+					--Trace("pops: " .. ops)
+					--ps:SetPlayerOptions("ModsLevel_Song", ops)
 				end
 			end,
 		OffCommand= cleanup,

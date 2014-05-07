@@ -390,6 +390,7 @@ options_sets.adjustable_float= {
 									member_name .. " not provided.")
 				end
 				local function to_text_default(player_number, value)
+					if value == -0 then return "0" end
 					return tostring(value)
 				end
 				--Trace("adjustable_float extra:")
@@ -398,6 +399,7 @@ options_sets.adjustable_float= {
 				self.name= extra.name
 				self.cursor_pos= 1
 				self.player_number= player_number
+				self.reset_value= extra.reset_value or 0
 				self.min_scale= extra.min_scale
 				check_member("min_scale")
 				self.scale= extra.scale or 0
@@ -429,7 +431,8 @@ options_sets.adjustable_float= {
 					up_element(),
 					{text= "+"..self.scale_to_text(self.player_number, 10^self.scale)},
 					{text= "-"..self.scale_to_text(self.player_number, 10^self.scale)},
-					{text= scale_text.."*10"}, {text= scale_text.."/10"}}
+					{text= scale_text.."*10"}, {text= scale_text.."/10"},
+					{text= "Reset"}}
 			end,
 		interpret_start=
 			function(self)
@@ -444,6 +447,9 @@ options_sets.adjustable_float= {
 					return true
 				elseif self.cursor_pos == 5 then
 					self:set_new_scale(self.scale - 1)
+					return true
+				elseif self.cursor_pos == 6 then
+					self:set_new_val(self.reset_value)
 					return true
 				else
 					return false

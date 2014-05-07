@@ -59,8 +59,20 @@ mine_effects= {
 }
 
 local things_to_put_in_user_table= {
-	"flags", "options_level", "speed_info", "sigil_data"
+	"flags", "options_level", "speed_info", "sigil_data", "dspeed"
 }
+
+local dspeed_default_min= 0
+local dspeed_default_max= 2
+do
+	local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
+	local receptor_max= THEME:GetMetric("Player", "ReceptorArrowsYReverse")
+	local arrow_height= THEME:GetMetric("ArrowEffects", "ArrowSpacing")
+	local field_height= receptor_max - receptor_min
+	local center_effect_size= field_height / 2
+	dspeed_default_min= (SCREEN_CENTER_Y + receptor_min) / -center_effect_size
+	dspeed_default_max= (SCREEN_CENTER_Y + receptor_max) / center_effect_size
+end
 
 local cons_player= {}
 
@@ -82,6 +94,9 @@ function cons_player:clear_init(player_number)
 	self.options_level= ops_level_simple
 	self.judge_totals= {}
 	self:set_speed_info_from_poptions()
+	self.dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false}
+	Trace("Set dspeed defaults:")
+	print_table(self.dspeed)
 	self:flags_reset()
 	self:combo_qual_reset()
 	self:stage_stats_reset()

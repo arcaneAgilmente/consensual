@@ -49,17 +49,26 @@ Speed:
 	"Cmod" is the cmod system of speed mods.
 	"Mmod" is the mmod system, which just calculates an xmod for you based on the scroll speed you choose.
 	"CXmod" is Jousway's idea.  It works similarly to Mmod, calculating an xmod to use, but it recalculates the xmod every time the bpm changes.
+	"Driven" is the mmod system, with the "Driven" style, where the targets move instead of the arrows.  Overhead perspective is recommended when in use.
+	"Alt Driven" is the mmod system, with the "Driven" style, where the targets move instead of the arrows.  The targets reverse direction at the edges instead of resetting.
 	The chosen speed setting is saved to the profile.
 Feedback:
   Sigil:  Enables a sigil feedback during gameplay.  It is a combined life bar and score meter.  The complexity of it comes from the score out of the current possible (based only on steps that have gone by).
   Judgement:  A list of all TapNoteScores gathered so far.
+  Offset: A rectangle between the combo and the judgment showing how far off your timing is.
 	Score meter:  A meter adjacent to the life bar that fills non-linearly with the percent of dance points earned.
+  Dance Points: Display of current dance points out of maximum dance points.
+  Chart Info: Display of who made the chart, the difficulty, and foot rating.
+  BPM Meter: Displays the current bpm during the song, adjusted for any rate or haste mod that is active.
 	Song/pct/session/sum column:  Flags for enabling columns on the score screen.
 	Best scores:  Whether to show the best scores on the score screen.
 	Allow toasty:  Whether to allow the toasty.
+  Straight Floats: Whether the float mods are in the old % style or just the raw numbers.
 	The flags set in the Feedback menu are saved to the profile.
 Sigil Detail:  The maximum detail of the sigil feedback.
 Sigil Size:  The size of the sigil feedback.
+Driven Min:  Configuration for the Driven speed mod.
+Driven Max:  Configuration for the Driven speed mod.
 Mine Effects:
 	Mod changes occur when a mine is hit.  This menu selects which effect occurs.
 	Suggestions for new effects or tuning existing effects are welcome.

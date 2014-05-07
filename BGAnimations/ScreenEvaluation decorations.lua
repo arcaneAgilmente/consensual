@@ -21,6 +21,11 @@ do
 	end
 end
 
+local function not_negzero(s)
+	if s == "-0%" then return "0%" end
+	return s
+end
+
 local function changing_text(name, first_text, second_text, color, tx, ty, z, align, commands)
 	commands= commands or {}
 	if type(second_text) == "table" then
@@ -398,6 +403,8 @@ function score_report_interface:create_actors(player_number)
 		end
 		local pcent= tostring(math.round((num_taps / total_taps) * 100)) .. "%"
 		local fpcent= tostring(math.round((ftaps / total_taps) * 100)) .. "%"
+		pcent= not_negzero(pcent)
+		fpcent= not_negzero(fpcent)
 		if total_taps <= 0 then pcent= "0%" fpcent= "0%" end
 		local jc= judgement_colors[j]
 		percent_set:add_number(fpcent, pcent, solar_colors.f_text())
@@ -429,6 +436,8 @@ function score_report_interface:create_actors(player_number)
 		end
 		local pcent= tostring(math.round((num_holds / total_holds) * 100)) .. "%"
 		local fpcent= tostring(math.round((fnh / total_holds) * 100)) .. "%"
+		pcent= not_negzero(pcent)
+		fpcent= not_negzero(fpcent)
 		if total_holds <= 0 then pcent= "0%" fpcent= "0%" end
 		local hc= judgement_colors[h]
 		percent_set:add_number(fpcent, pcent, solar_colors.f_text())
@@ -487,6 +496,10 @@ end
 
 function score_report_interface:find_actors(container, allowed_width)
 	self.container= container
+	if not container then
+		Trace("score_report_interface for " .. self.player_number .. " passed nil container.")
+		return
+	end
 	local chart_info= container:GetChild("chart_info")
 	if chart_info then
 		width_limit_text(chart_info, allowed_width)
@@ -533,7 +546,11 @@ function profile_report_interface:create_actors(player_number)
 	self.player_number= player_number
 	self.name= "profile_report"
 	local spacing= 12
-	local args= { Name= self.name, InitCommand=cmd(y, 36; diffusealpha, 0) }
+	local difa= 0
+	if #GAMESTATE:GetEnabledPlayers() == 1 then
+		difa= 1
+	end
+	local args= { Name= self.name, InitCommand=cmd(y, 36; diffusealpha, difa) }
 	local pro= PROFILEMAN:GetProfile(player_number)
 	if pro then
 		args[#args+1]= normal_text(
@@ -543,11 +560,30 @@ function profile_report_interface:create_actors(player_number)
 			local goal_seconds= pro:GetGoalSeconds()
 			local gameplay_seconds= pro:GetTotalGameplaySeconds()
 			things_in_list[#things_in_list+1]= {
-				name= "Played", number= seconds_to_time_string(gameplay_seconds)}
+				name= "Played Time", number= seconds_to_time_string(gameplay_seconds)}
 			if goal_seconds > 0 then
 				things_in_list[#things_in_list+1]= {
-					name= "Goal", number= seconds_to_time_string(goal_seconds)}
+					name= "Goal Time", number= seconds_to_time_string(goal_seconds)}
 			end
+		end
+		do
+			local percent= "%.2f%%"
+			local num= "%.2f"
+			local goal_calories= pro:GetGoalCalories()
+			local today_calories= pro:GetCaloriesBurnedToday()
+			local total_calories= pro:GetTotalCaloriesBurned()
+			local goal_pct= (today_calories/goal_calories)*100
+			things_in_list[#things_in_list+1]= {
+				name= "Calories Today", number= num:format(today_calories)}
+			if goal_calories > 0 then
+				things_in_list[#things_in_list+1]= {
+					name= "Goal Calories", number= num:format(goal_calories)}
+				things_in_list[#things_in_list+1]= {
+					name= "Goal Percent", number= percent:format(goal_pct),
+					color= convert_percent_to_color(goal_pct/100)}
+			end
+			things_in_list[#things_in_list+1]= {
+				name= "Total Calories", number= num:format(total_calories)}
 		end
 		things_in_list[#things_in_list+1]= {
 			name= "Sessions", number= pro:GetTotalSessions() }
@@ -582,7 +618,7 @@ function profile_report_interface:create_actors(player_number)
 				thing.name .. "t", get_string_wrapper("ScreenEvaluation", thing.name),
 				nil, -sep, y, .5, left)
 			args[#args+1]= normal_text(
-				thing.name .. "n", thing.number, nil, sep, y, .5, right)
+				thing.name .. "n", thing.number, thing.color, sep, y, .5, right)
 		end
 	end
 	return Def.ActorFrame(args)
@@ -649,7 +685,18 @@ local function make_player_specific_actors()
 		args[#args+1]= frame_helpers[v]:create_actors(
 			"frame", 2, 0, 0, solar_colors[v](), solar_colors.bg(), 0, 0)
 		args[#args+1]= score_reports[v]:create_actors(v)
-		args[#args+1]= profile_reports[v]:create_actors(v)
+		if #enabled_players > 1 then
+			args[#args+1]= profile_reports[v]:create_actors(v)
+		end
+		all_actors[#all_actors+1]= Def.ActorFrame(args)
+	end
+	if #enabled_players == 1 then
+		local this= enabled_players[1]
+		local other= other_player[this]
+		local args= { Name= other, InitCommand=cmd(x,player_xs[other];y,SCREEN_TOP+120;vertalign,top) }
+		args[#args+1]= frame_helpers[other]:create_actors(
+			"frame", 2, 0, 0, solar_colors[this](), solar_colors.bg(), 0, 0)
+		args[#args+1]= profile_reports[this]:create_actors(this)
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
 	end
 	return Def.ActorFrame(all_actors)
@@ -729,7 +776,21 @@ local function find_actors(self)
 		width= width - (pad * 2)
 		local score_cont= pcont:GetChild("judge_list")
 		score_reports[v]:find_actors(score_cont, width)
-		profile_reports[v]:find_actors(pcont:GetChild(profile_reports[v].name), width)
+		if #GAMESTATE:GetEnabledPlayers() == 1 then
+			local other= other_player[v]
+			local opcont= players_container:GetChild(other)
+			profile_reports[v]:find_actors(opcont:GetChild(profile_reports[v].name), width)
+			frame_helpers[other]:find_actors(opcont:GetChild(frame_helpers[other].name))
+			local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(opcont)
+			local fw= fxmx - fxmn + pad
+			local fh= fymx - fymn + pad
+			local fx= fxmn + (fw / 2)
+			local fy= fymn + (fh / 2)
+			frame_helpers[other]:move(fx-pad/2, fy)
+			frame_helpers[other]:resize(fw, fh)
+		else
+			profile_reports[v]:find_actors(pcont:GetChild(profile_reports[v].name), width)
+		end
 		frame_helpers[v]:find_actors(pcont:GetChild(frame_helpers[v].name))
 		local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(pcont)
 		local fw= fxmx - fxmn + pad
@@ -826,7 +887,7 @@ return Def.ActorFrame{
 				local code_name= param.Name
 				local pn= param.PlayerNumber
 				if not code_name:find("release") then
-					if GAMESTATE:IsSideJoined(pn) then
+					if GAMESTATE:IsSideJoined(pn) and #GAMESTATE:GetEnabledPlayers() > 1 then
 						if score_reports[pn].hidden then
 							score_reports[pn].hidden= false
 							score_reports[pn].container:diffusealpha(1)

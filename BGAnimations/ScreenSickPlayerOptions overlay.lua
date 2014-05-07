@@ -120,7 +120,8 @@ options_sets.speed= {
 			function(self, player_number)
 				self.info_set= {
 					up_element(), {text= ""}, {text= ""}, {text= ""}, {text= ""},
-					{text= "Xmod"}, {text= "Cmod"}, {text= "Mmod"}, {text= "CXmod"}}
+					{text= "Xmod"}, {text= "Cmod"}, {text= "Mmod"}, {text= "CXmod"},
+					{text= "Driven"}, {text= "Alt Driven"}}
 				local speed_info= cons_players[player_number]:get_speed_info()
 				self.current_speed= speed_info.speed
 				self:set_mode_data_work(speed_info.mode)
@@ -143,6 +144,8 @@ options_sets.speed= {
 					local form_speed= ("%.2f"):format(self.current_speed)
 					if self.mode == "x" then
 						self.display:set_display(form_speed .. "x")
+					elseif self.mode == "D" and cons_players[self.player_number].dspeed.alternate then
+						self.display:set_display(self.mode .. "A" .. form_speed)
 					else
 						self.display:set_display(self.mode .. form_speed)
 					end
@@ -210,7 +213,7 @@ options_sets.speed= {
 					return
 				end
 				if new_mode ~= "m" and new_mode ~= "x" and new_mode ~= "C"
-				and new_mode ~= "CX" then
+				and new_mode ~= "CX" and new_mode ~= "D" then
 					Trace("options_sets.speed.set_mode:  Attempted to set invalid mode " .. new_mode)
 					return
 				end
@@ -230,6 +233,18 @@ options_sets.speed= {
 					self:set_mode("m")
 				elseif cp == 9 then
 					self:set_mode("CX")
+				elseif cp == 10 then
+					self:set_mode("D")
+					if not cons_players[self.player_number].dspeed then
+						cons_players[self.player_number].dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false}
+					end
+					cons_players[self.player_number].dspeed.alternate= false
+				elseif cp == 11 then
+					self:set_mode("D")
+					if not cons_players[self.player_number].dspeed then
+						cons_players[self.player_number].dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false}
+					end
+					cons_players[self.player_number].dspeed.alternate= true
 				elseif self.info_set[cp] then
 					self.current_speed=
 						self:inc_lock_speed(
@@ -376,6 +391,7 @@ options_sets.rate_mod= {
 					if v > 0 then vt= "+" .. vt end
 					self.info_set[#self.info_set+1]= {text= vt}
 				end
+				self.info_set[#self.info_set+1]= {text= "Reset"}
 				rate_coordinator:add_to_notify(self)
 			end,
 		destructor=
@@ -391,17 +407,24 @@ options_sets.rate_mod= {
 			function(self)
 				local incs_pos= self.cursor_pos - 1
 				if self.increments[incs_pos] then
-					local nval= self.current_value + self.increments[incs_pos]
-					if self:valid_value(nval) then
-						self.current_value= nval
-					end
-					self.display:set_display(self:get_eltext())
-					self:mod_command()
-					rate_coordinator:notify(self.current_value, true)
+					self:set_new_val(self.current_value + self.increments[incs_pos])
+					return true
+				elseif self.cursor_pos == #self.info_set then
+					self:set_new_val(1)
 					return true
 				else
 					return false
 				end
+			end,
+		set_new_val=
+			function(self, nval)
+				if nval == -0 then nval= 0 end
+				if self:valid_value(nval) then
+					self.current_value= nval
+				end
+				self.display:set_display(self:get_eltext())
+				self:mod_command()
+				rate_coordinator:notify(self.current_value, true)
 			end,
 		get_eltext= function(self) return self.current_value .. "x" end,
 		mod_command=
@@ -745,11 +768,59 @@ local function extra_for_adj_float_mod(mod_name)
 		val_to_text=
 			function(player_number, value)
 				if cons_players[player_number].flags.straight_floats then
+					if value == -0 then return "0" end
 					return tostring(value)
 				else
+					if value == -0 then return "0%" end
 					return (value * 100) .. "%"
 				end
 			end
+	}
+end
+
+local function extra_for_dspeed_min(name)
+	local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
+	local receptor_max= THEME:GetMetric("Player", "ReceptorArrowsYReverse")
+	local arrow_height= THEME:GetMetric("ArrowEffects", "ArrowSpacing")
+	local field_height= receptor_max - receptor_min
+	local center_effect_size= field_height / 2
+	return {
+		name= name,
+		min_scale= -4,
+		scale= -1,
+		max_scale= 1,
+		reset_value= (SCREEN_CENTER_Y + receptor_min) / -center_effect_size,
+		initial_value=
+			function(player_number)
+				return cons_players[player_number].dspeed.min
+			end,
+		set=
+			function(player_number, value)
+				cons_players[player_number].dspeed.min= value
+			end,
+	}
+end
+
+local function extra_for_dspeed_max(name)
+	local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
+	local receptor_max= THEME:GetMetric("Player", "ReceptorArrowsYReverse")
+	local arrow_height= THEME:GetMetric("ArrowEffects", "ArrowSpacing")
+	local field_height= receptor_max - receptor_min
+	local center_effect_size= field_height / 2
+	return {
+		name= name,
+		min_scale= -4,
+		scale= -1,
+		max_scale= 1,
+		reset_value= (SCREEN_CENTER_Y + receptor_max) / center_effect_size,
+		initial_value=
+			function(player_number)
+				return cons_players[player_number].dspeed.max
+			end,
+		set=
+			function(player_number, value)
+				cons_players[player_number].dspeed.max= value
+			end,
 	}
 end
 
@@ -820,7 +891,7 @@ local function extra_for_haste()
 	return {
 		name= "Haste",
 		min_scale= -2,
-		scale= -1,
+		scale= 0,
 		max_scale= 0,
 		initial_value=
 			function(player_number)
@@ -828,7 +899,7 @@ local function extra_for_haste()
 			end,
 		validator=
 			function(value)
-				return true
+				return value >= -1 and value <= 1
 			end,
 		set=
 			function(player_number, value)
@@ -930,7 +1001,7 @@ local target_mods= {
 
 local visibility_mods= {
 	"Blink", "RandomVanish", "Stealth",
-	-- "Cover", "Passmark", TODO?  Add support for these mods.
+	-- "PlayerAutoPlay", "Cover", "Passmark", TODO?  Add support for these mods.
 }
 
 local floaty_mods= {
@@ -993,6 +1064,10 @@ local special= {
 		args= { eles= mine_effect_eles }},
 	song_bools("Assist", {"AssistClap", "AssistMetronome", "SaveScore", }),
 	{ name= "Song Options", meta= options_sets.menu, args= song_options},
+	{ name= "Driven Min", meta= options_sets.adjustable_float,
+		args= extra_for_dspeed_min("Driven Min")},
+	{ name= "Driven Max", meta= options_sets.adjustable_float,
+		args= extra_for_dspeed_max("Driven Max")},
 	-- TODO?  Add support for these?
 	--"StaticBackground", "RandomBGOnly", "SaveReplay" }),
 }
