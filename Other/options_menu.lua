@@ -380,6 +380,19 @@ options_sets.mutually_exclusive_special_functions= {
 			end
 }}
 
+local function find_scale_for_number(num, min_scale)
+	local cv= math.round(num /10^min_scale) * 10^min_scale
+	local prec= math.max(0, -min_scale)
+	local cs= ("%." .. prec .. "f"):format(cv)
+	local ret_scale= 0
+	for n= 1, #cs do
+		if cs:sub(-n, -n) ~= "0" then
+			ret_scale= math.min(ret_scale, min_scale + (n-1))
+		end
+	end
+	return ret_scale, cv
+end
+
 options_sets.adjustable_float= {
 	__index= {
 		initialize=
@@ -406,18 +419,8 @@ options_sets.adjustable_float= {
 				self.min_scale_used= self.scale
 				self.current_value= extra.initial_value(player_number) or 0
 				if self.current_value ~= 0 then
-					local cv= math.round(self.current_value / 10^self.min_scale) * 10^self.min_scale
-					local prec= math.max(0, -self.min_scale)
-					local cs= ("%." .. prec .. "f"):format(cv)
-					--Trace("cv: " .. cv .. " cs: " .. cs)
-					for n= 1, #cs do
-						if cs:sub(-n, -n) ~= "0" then
-							self.min_scale_used= math.min(self.scale, self.min_scale + (n-1))
-							--Trace("adj float found non-0 at " .. n .. " set msu to " .. self.min_scale_used)
-							break
-						end
-					end
-					self.current_value= cv
+					self.min_scale_used, self.current_value=
+						find_scale_for_number(self.current_value, self.min_scale)
 				end
 				self.max_scale= extra.max_scale
 				check_member("max_scale")
@@ -448,11 +451,14 @@ options_sets.adjustable_float= {
 				elseif self.cursor_pos == 5 then
 					self:set_new_scale(self.scale - 1)
 					return true
-				elseif self.cursor_pos == 7 then
+				elseif self.cursor_pos == 6 then
 					self:set_new_val(math.round(self.current_value))
 					return true
-				elseif self.cursor_pos == 6 then
-					self:set_new_val(self.reset_value)
+				elseif self.cursor_pos == 7 then
+					local new_scale, new_value=
+						find_scale_for_number(self.reset_value, self.min_scale)
+					self:set_new_scale(new_scale)
+					self:set_new_val(new_value)
 					return true
 				else
 					return false
