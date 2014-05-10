@@ -154,6 +154,14 @@ function convert_wrapping_number_to_color(n, a)
 	return percent_colors[index](a)
 end
 
+function color_for_score(score)
+	if score > 31/32 then
+		return convert_percent_to_color(((score) - (31/32)) * 32)
+	else
+		return solar_colors.f_text()
+	end
+end
+
 function solar_report()
    for k, v in pairs(solar_colors) do
       Trace("solar_colors." .. k .. " is a " .. type(v))

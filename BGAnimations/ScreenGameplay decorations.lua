@@ -908,6 +908,12 @@ return Def.ActorFrame {
 				end
 				--note_date_edit_test()
 				song_progress_bar:set_from_song()
+				local song_ops= GAMESTATE:GetSongOptionsObject("ModsLevel_Current")
+				if song_ops:MusicRate() < 1 or song_ops:Haste() < 0 then
+					song_ops:SaveScore(false)
+				else
+					song_ops:SaveScore(true)
+				end
 				local enabled_players= GAMESTATE:GetEnabledPlayers()
 				for k, v in pairs(enabled_players) do
 					cons_players[v].prev_steps= gamestate_get_curr_steps(v)

@@ -95,13 +95,12 @@ function cons_player:clear_init(player_number)
 	self.judge_totals= {}
 	self:set_speed_info_from_poptions()
 	self.dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false}
-	Trace("Set dspeed defaults:")
-	print_table(self.dspeed)
 	self:flags_reset()
 	self:combo_qual_reset()
 	self:stage_stats_reset()
 	self.mine_effect= mine_effects[1]
 	self.sigil_data= {detail= 16, size= 150}
+	self.play_history= {}
 end
 
 function cons_player:noob_mode()
@@ -235,18 +234,17 @@ function cons_player:flags_reset()
 end
 
 function cons_player:set_speed_info_from_poptions()
-	local poptionsray= GAMESTATE:GetPlayerState(self.player_number):GetPlayerOptionsArray("ModsLevel_Song")
 	local speed= nil
 	local mode= nil
-	if self.song_options:MaxScrollBPM() then
+	if self.preferred_options:MaxScrollBPM() > 0 then
 		mode= "m"
-		speed= self.song_options:MaxScrollBPM()
-	elseif self.song_options:TimeSpacing() then
+		speed= self.preferred_options:MaxScrollBPM()
+	elseif self.preferred_options:TimeSpacing() > 0 then
 		mode= "C"
-		speed= self.song_options:ScrollBPM()
+		speed= self.preferred_options:ScrollBPM()
 	else
 		mode= "x"
-		speed= self.song_options:ScrollSpeed()
+		speed= self.preferred_options:ScrollSpeed()
 	end
 	self.speed_info= { speed= speed, mode= mode }
 	return self.speed_info
@@ -435,7 +433,7 @@ end
 
 local time_remaining= 0
 function set_time_remaining_to_default()
-	time_remaining= 60 * 7
+	time_remaining= 60 * 6
 end
 
 function reduce_time_remaining(amount)

@@ -432,7 +432,7 @@ options_sets.adjustable_float= {
 					{text= "+"..self.scale_to_text(self.player_number, 10^self.scale)},
 					{text= "-"..self.scale_to_text(self.player_number, 10^self.scale)},
 					{text= scale_text.."*10"}, {text= scale_text.."/10"},
-					{text= "Reset"}}
+					{text= "Round"}, {text= "Reset"}}
 			end,
 		interpret_start=
 			function(self)
@@ -447,6 +447,9 @@ options_sets.adjustable_float= {
 					return true
 				elseif self.cursor_pos == 5 then
 					self:set_new_scale(self.scale - 1)
+					return true
+				elseif self.cursor_pos == 7 then
+					self:set_new_val(math.round(self.current_value))
 					return true
 				elseif self.cursor_pos == 6 then
 					self:set_new_val(self.reset_value)

@@ -117,25 +117,6 @@ local function make_banner_actor()
 	end
 end
 
-local function make_chart_info_actor(player_number, x, y)
-	local cur_steps= gamestate_get_curr_steps(player_number)
-	local info_text= ""
-	if cur_steps then
-		local author= steps_get_author(cur_steps)
-		if GAMESTATE:IsCourseMode() then
-			author= GAMESTATE:GetCurrentCourse():GetScripter()
-		end
-		if not author or author == "" then
-			author= "Uncredited"
-		end
-		local difficulty= steps_to_string(cur_steps)
-		local rating= cur_steps:GetMeter()
-		info_text= author .. ": " .. difficulty .. ": " .. rating
-	end
-	return normal_text("chart_info", info_text, solar_colors.f_text(), x, y, 1,
-									 center)
-end
-
 local feedback_judgements= {
 	"TapNoteScore_W1", "TapNoteScore_W2", "TapNoteScore_W3",
 	"TapNoteScore_W4", "TapNoteScore_W5", "TapNoteScore_Miss"
@@ -272,7 +253,7 @@ local score_report_interface= {}
 function score_report_interface:create_actors(player_number)
 	self.player_number= player_number
 	local args= { Name= "judge_list", InitCommand=cmd(y,36) }
-	args[#args+1]= make_chart_info_actor(player_number, 0, -24)
+	args[#args+1]= chart_info(gamestate_get_curr_steps(player_number), 0, -24)
 	local spacing= 24
 	local curstats= STATSMAN:GetCurStageStats()
 	local pstats= curstats:GetPlayerStageStats(player_number)
@@ -296,10 +277,7 @@ function score_report_interface:create_actors(player_number)
 	local lower= 10^-precision
 	local percent_score= fmat:format(math.floor(adp/mdp * raise) * lower)
 	local fpcts= fmat:format(math.floor(fadp/mdp * raise) * lower)
-	local score_color= solar_colors.f_text()
-	if adp/mdp > 31/32 then
-		score_color= convert_percent_to_color(((adp/mdp) - (31/32)) * 32)
-	end
+	local score_color= color_for_score(adp/mdp)
 	args[#args+1]= changing_text("score", fpcts, percent_score, score_color)
 	args[#args+1]= changing_text("dp", fadp .. " / " .. mdp,
 															 adp .. " / " .. mdp, score_color, 0,
@@ -573,8 +551,11 @@ function profile_report_interface:create_actors(player_number)
 			local today_calories= pro:GetCaloriesBurnedToday()
 			local total_calories= pro:GetTotalCaloriesBurned()
 			local goal_pct= (today_calories/goal_calories)*100
+			local pstats= STATSMAN:GetCurStageStats():GetPlayerStageStats(player_number)
 			things_in_list[#things_in_list+1]= {
 				name= "Calories Today", number= num:format(today_calories)}
+			things_in_list[#things_in_list+1]= {
+				name= "Calories Song", number= num:format(pstats:GetCaloriesBurned())}
 			if goal_calories > 0 then
 				things_in_list[#things_in_list+1]= {
 					name= "Goal Calories", number= num:format(goal_calories)}
@@ -822,6 +803,11 @@ do
 	local highest_score= 0
 	local curstats= STATSMAN:GetCurStageStats()
 	for i, v in ipairs(enabled_players) do
+		if not GAMESTATE:IsEventMode() then
+			local play_history= cons_players[v].play_history
+			play_history[#play_history+1]= {
+				song= gamestate_get_curr_song(), steps= gamestate_get_curr_steps(v)}
+		end
 		local pstats= curstats:GetPlayerStageStats(v)
 		highest_score= math.max(highest_score,
 			pstats:GetActualDancePoints() / pstats:GetPossibleDancePoints())

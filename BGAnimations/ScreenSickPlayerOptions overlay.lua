@@ -114,6 +114,9 @@ local menu_path= THEME:GetPathO("", "options_menu.lua")
 --Trace("Attempting loadfile of (" .. menu_path .. ")")
 dofile(menu_path)
 
+local speed_inc_base= 25
+local speed_inc_base_recip= 1/speed_inc_base
+
 options_sets.speed= {
 	__index= {
 		initialize=
@@ -154,9 +157,9 @@ options_sets.speed= {
 		inc_lock_speed=
 			function(self, mode, speed)
 				if mode == "x" then
-					return (math.round((speed * 100) * .04) * 25) * .01
+					return (math.round((speed * 100) * speed_inc_base_recip) * speed_inc_base) * .01
 				else
-					return math.round(speed * 0.04) * 25
+					return math.round(speed * speed_inc_base_recip) * speed_inc_base
 				end
 			end,
 		set_mode_data_work=
@@ -189,9 +192,9 @@ options_sets.speed= {
 				end
 				local bi= 1
 				if new_mode == "x" then
-					bi= .25
+					bi= speed_inc_base * .01
 				else
-					bi= 25
+					bi= speed_inc_base
 				end
 				self.info_set[2].text= "" .. (bi * -4)
 				self.info_set[3].text= "" .. (bi * -1)
@@ -715,6 +718,10 @@ local options_menu_mt= {
 }}
 
 local function set_clear_for_player(player_number)
+	if true then
+		Trace("Clear option disabled until partial clear of player data is added.")
+		return
+	end
 	GAMESTATE:ApplyGameCommand("mod,clearall", player_number)
 	-- SM5 will crash if a noteskin is not applied after clearing all mods.
 	-- Apply the default noteskin first in case Cel doesn't exist.
@@ -1108,9 +1115,9 @@ local base_options= {
 	{ name= "Special", meta= options_sets.menu, args= special},
 	{ name= "Chart mods", meta= options_sets.menu, args= chart_mods},
 	{ name= "Floaty mods", meta= options_sets.menu, args= floaty_mods},
-	{ name= "Clear", meta= options_sets.special_functions,
-		args= { eles= {{name= "clearall", init= noop_false,
-										set= set_clear_for_player, unset= noop_false}}}},
+	--{ name= "Clear", meta= options_sets.special_functions,
+	--	args= { eles= {{name= "clearall", init= noop_false,
+	--									set= set_clear_for_player, unset= noop_false}}}},
 }
 
 function args:InitCommand()

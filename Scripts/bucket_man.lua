@@ -281,6 +281,10 @@ function music_whale_interface:create_actors(x)
 	self.sick_wheel= setmetatable({}, sick_wheel_mt)
 	self.frame_helper= setmetatable({}, frame_helper_mt)
 	self.name= "MusicWheel"
+	self.current_sort_name= "Group"
+	if music_whale_state then
+		self.current_sort_name= music_whale_state.cur_sort_info.name
+	end
 	local args= {
 		Name= self.name,
 		self.frame_helper:create_actors("cursor", 1, 0, 0, solar_colors.violet(),

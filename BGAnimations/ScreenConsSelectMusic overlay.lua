@@ -256,7 +256,7 @@ function pain_display_interface:create_actors(player_number, x, y)
 		tani_args.tt= radar_poses[v].short_name
 		local rad= setmetatable({}, text_and_number_interface_mt)
 		rad.short_name= radar_poses[v].short_name
-		rad.upper= true
+		rad.upper= false
 		self.radars[i]= rad
 		args[#args+1]= rad:create_actors(v, tani_args)
 	end
@@ -325,7 +325,19 @@ function pain_display_interface:update()
 							local highest_score= hs_list:GetHighScores()[1]
 							if highest_score then
 								tani:set_text(highest_score:GetName())
-								tani:set_number(("%.2f%%"):format(highest_score:GetPercentDP() * 100))
+								width_clip_text(tani.text, pane_w * .25)
+								local score= highest_score:GetPercentDP()
+								tani:set_number(("%.2f%%"):format(score * 100))
+								tani.number:diffuse(color_for_score(score))
+								if score > .9999 then
+									if global_distortion_mode then
+										tani.number:undistort()
+									else
+										tani.number:distort(.5)
+									end
+								elseif not global_distortion_mode then
+									tani.number:undistort()
+								end
 								tani:unhide()
 							end
 						end
@@ -478,14 +490,26 @@ local codes= {
 	{ name= "sort_mode", ignore_release= false,
 		"menu_left", "menu_right" },
 	{ name= "sort_mode", ignore_release= false,
-		"menu_right", "menu_left" },
+		ignore_press_list= {"menu_left", "menu_right", "start"},
+		ignore_release_list= {"menu_left_release", "menu_right_release"},
+		"select", "start" },
 	{ name= "diff_up", ignore_release= true,
 		"up", "up" },
 	{ name= "diff_down", ignore_release= true,
 		"down", "down" },
-	{ name= "noob_mode", ignore_release= true,
-	"left", "left", "left", "right", "right", "right", "up", "up",
-	"up", "down", "down", "down" },
+	{ name= "diff_up", ignore_release= false, repeat_first_on_end= true,
+		ignore_press_list= {"menu_right", "start"},
+		ignore_release_list= {
+			"menu_left_release", "menu_right_release", "start_release"},
+		"select", "menu_left"},
+	{ name= "diff_down", ignore_release= false, repeat_first_on_end= true,
+		ignore_press_list= {"menu_left", "start"},
+		ignore_release_list= {
+			"menu_left_release", "menu_right_release", "start_release"},
+		"select", "menu_right"},
+	--{ name= "noob_mode", ignore_release= true,
+	--"left", "left", "left", "right", "right", "right", "up", "up",
+	--"up", "down", "down", "down" },
 	{ name= "simple_options_mode", ignore_release= true,
 	"left", "down", "right", "left", "down", "right" },
 	{ name= "all_options_mode", ignore_release= true,
@@ -500,6 +524,18 @@ local codes= {
 for i, v in ipairs(codes) do
 	v.curr_pos= { [PLAYER_1]= 1, [PLAYER_2]= 1}
 end
+
+local function key_on_list(key, list)
+	if list then
+		for i, entry in ipairs(list) do
+			if entry == key then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 local function update_code_status(press, player)
 	local triggered= {}
 	for i, v in ipairs(codes) do
@@ -508,14 +544,21 @@ local function update_code_status(press, player)
 			if v.curr_pos[player] > #v then
 				triggered[#triggered+1]= v.name
 				v.curr_pos[player]= 1
+				if v.repeat_first_on_end then
+					v.curr_pos[player]= 2
+				end
 			end
 		else
 			if press:find("release") then
-				if not v.ignore_release then
+				local on_ignore= key_on_list(press, v.ignore_release_list)
+				if not v.ignore_release and not on_ignore then
 					v.curr_pos[player]= 1
 				end
 			else
-				v.curr_pos[player]= 1
+				local on_ignore= key_on_list(press, v.ignore_press_list)
+				if not on_ignore then
+					v.curr_pos[player]= 1
+				end
 			end
 		end
 	end
@@ -862,8 +905,10 @@ return Def.ActorFrame {
 									cons_players[pn][v](cons_players[pn])
 								end
 							end
-							if curr_input_map[name] then
-								curr_input_map[name]()
+							if #triggered == 0 then
+								if curr_input_map[name] then
+									curr_input_map[name]()
+								end
 							end
 						end
 					end
@@ -903,14 +948,16 @@ return Def.ActorFrame {
 	},
 	normal_text("code_text", "", solar_colors.f_text(0), 0, 0, .75),
 	normal_text("sort", "Sort", solar_colors.uf_text(), sort_text_x, SCREEN_TOP + 36),
-	normal_text("sort_text", "Group", solar_colors.f_text(), sort_text_x, SCREEN_TOP + 12),
+	normal_text("sort_text", music_wheel.current_sort_name,
+							solar_colors.f_text(), sort_text_x, SCREEN_TOP + 12),
 	credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
 	Def.ActorFrame{
 		Name= "options message",
 		InitCommand= function(self)
 									 self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
 									 self:diffusealpha(0)
-									 options_message_frame_helper:find_actors(self:GetChild(options_message_frame_helper.name))
+									 options_message_frame_helper:find_actors(
+										 self:GetChild(options_message_frame_helper.name))
 								 end,
 		OnCommand= function(self)
 								 local xmn, xmx, ymn, ymx= rec_calc_actor_extent(self)

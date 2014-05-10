@@ -177,6 +177,25 @@ function width_limit_text(text, limit, natural_zoom)
 	end
 end
 
+function width_clip_text(text, limit)
+	local full_text= text:GetText()
+	local fits= text:GetZoomedWidth() <= limit
+	local prev_max= #full_text - 1
+	local prev_min= 0
+	if not fits then
+		while prev_max - prev_min > 1 do
+			local new_max= math.round((prev_max + prev_min) / 2)
+			text:settext(full_text:sub(1, 1+new_max))
+			if text:GetZoomedWidth() <= limit then
+				prev_min= new_max
+			else
+				prev_max= new_max
+			end
+		end
+		text:settext(full_text:sub(1, 1+prev_min))
+	end
+end
+
 function rec_calc_actor_extent(aframe, depth)
 	depth= depth or ""
 	if not aframe then return 0, 0, 0, 0 end
@@ -332,4 +351,26 @@ function credit_reporter(x, y, show_credits)
 					self:settext(text)
 				end
 		})
+end
+
+function chart_info_text(steps)
+	local info_text= ""
+	if steps then
+		local author= steps_get_author(steps)
+		if GAMESTATE:IsCourseMode() then
+			author= GAMESTATE:GetCurrentCourse():GetScripter()
+		end
+		if not author or author == "" then
+			author= "Uncredited"
+		end
+		local difficulty= steps_to_string(steps)
+		local rating= steps:GetMeter()
+		info_text= author .. ": " .. difficulty .. ": " .. rating
+	end
+	return info_text
+end
+
+function chart_info(steps, x, y)
+	return normal_text("chart_info", chart_info_text(steps),
+										 solar_colors.f_text(), x, y, 1, center)
 end
