@@ -44,6 +44,65 @@ local function difficulty_wrapper(difficulty)
 				 end
 end
 
+local machine_profile= false
+
+local function highest_score(score_list)
+	if #score_list > 0 then
+		return math.round(score_list[1]:GetPercentDP() * 100000) * .001
+	else
+		return 0
+	end
+end
+
+local function newest_score(score_list)
+	if #score_list > 0 then
+		return score_list[1]:GetDate()
+	else
+		return 0
+	end
+end
+
+local function open_score(score_list)
+	if #score_list > 0 then
+		return math.max(0, 10 - #score_list)
+	else
+		return 10
+	end
+end
+
+local function num_scores(score_list)
+	return #score_list
+end
+
+local function score_wrapper(score_func)
+	return function(difficulty)
+					 return function(song, depth)
+										if not machine_profile then return 0 end
+										if song.GetStepsByStepsType then
+											local curr_style= GAMESTATE:GetCurrentStyle()
+											local filter_type= curr_style:GetStepsType()
+											local all_steps= song:GetStepsByStepsType(filter_type)
+											local matched_steps= false
+											for i, v in ipairs(all_steps) do
+												if v:GetDifficulty() == difficulty then
+													matched_steps= v
+													break
+												end
+											end
+											if matched_steps then
+												local score_list= machine_profile:GetHighScoreList(
+													song, matched_steps):GetHighScores()
+												return score_func(score_list)
+											else
+												return 0
+											end
+										else
+											return 0
+										end
+									end
+				 end
+end
+
 local sort_info= {}
 
 local function set_course_mode_sort_info()
@@ -85,19 +144,34 @@ local function set_song_mode_sort_info()
 	}
 
 	do
-		local meter_list= {
-			{ name= "Novice Meter", diff= "Difficulty_Beginner" },
-			{ name= "Easy Meter", diff= "Difficulty_Easy" },
-			{ name= "Medium Meter", diff= "Difficulty_Medium" },
-			{ name= "Hard Meter", diff= "Difficulty_Hard" },
-			{ name= "Expert Meter", diff= "Difficulty_Challenge" },
-			{ name= "Edit Meter", diff= "Difficulty_Edit" },
+		local difficulty_list= {
+			{ name= "Novice", diff= "Difficulty_Beginner" },
+			{ name= "Easy", diff= "Difficulty_Easy" },
+			{ name= "Medium", diff= "Difficulty_Medium" },
+			{ name= "Hard", diff= "Difficulty_Hard" },
+			{ name= "Expert", diff= "Difficulty_Challenge" },
+			{ name= "Edit", diff= "Difficulty_Edit" },
 		}
-		for i, v in ipairs(meter_list) do
-			sort_info[#sort_info+1]= {
-				name= v.name, main= {
-					get_bucket= difficulty_wrapper(v.diff), depth= false },
-				fallback= main_title_info }
+		local scoreish_sort_types= {
+			{ name= "Meter", func= difficulty_wrapper },
+			{ pre_name="Highest", name="Score", func=score_wrapper(highest_score)},
+			{ pre_name="Newest", name="Score", func=score_wrapper(newest_score), depth= true},
+			{ pre_name="Open", name="Scores", func=score_wrapper(open_score)},
+			{ pre_name="Total", name="Scores", func=score_wrapper(num_scores)},
+		}
+		for i, sort_type in ipairs(scoreish_sort_types) do
+			for d, difficulty in ipairs(difficulty_list) do
+				local name= ""
+				if sort_type.pre_name then
+					name= sort_type.pre_name .. " "
+				end
+				name= name .. difficulty.name .. " " .. sort_type.name
+				sort_info[#sort_info+1]= {
+					name= name, main= {
+						get_bucket= sort_type.func(difficulty.diff),
+						depth= sort_type.depth },
+					fallback= main_title_info }
+			end
 		end
 	end
 end
@@ -106,6 +180,7 @@ local bucket_man_interface= {}
 local bucket_man_interface_mt= { __index= bucket_man_interface }
 
 function bucket_man_interface:initialize()
+	machine_profile= PROFILEMAN:GetMachineProfile()
 	if GAMESTATE:IsCourseMode() then
 		self.song_set= SONGMAN:GetAllCourses(false) -- fuck autogen courses
 		set_course_mode()

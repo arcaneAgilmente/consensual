@@ -328,7 +328,12 @@ function bucket_sort(params)
 		real_buckets[#real_buckets+1]= new_bucket
 	end
 	local final_name= (fallback and fallback.get_bucket) or main.get_bucket
-	local function bucket_cmp(a, b) return a.name < b.name end
+	local function bucket_cmp(a, b)
+		if type(a.name) ~= type(b.name) then
+			return tostring(a.name) < tostring(b.name)
+		end
+		return a.name < b.name
+	end
 	table.sort(real_buckets, bucket_cmp)
 	split_too_large_buckets(real_buckets, params)
 	combine_too_small_buckets(real_buckets, can_join, final_name)

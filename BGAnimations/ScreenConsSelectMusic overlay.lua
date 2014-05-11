@@ -663,6 +663,10 @@ return Def.ActorFrame {
 							 if top_screen.SetAllowLateJoin then
 								 top_screen:SetAllowLateJoin(true)
 							 end
+							 local stext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_text")
+							 if stext then
+								 width_limit_text(stext, sort_width)
+							 end
 						 end,
 	play_songCommand= function(self)
 											SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
@@ -883,6 +887,12 @@ return Def.ActorFrame {
 								end
 								if v == "sort_mode" then
 									music_wheel:show_sort_list()
+									local sort_name= music_wheel.current_sort_name
+									local stext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_text")
+									if stext then
+										stext:settext(sort_name)
+										width_limit_text(stext, sort_width)
+									end
 								elseif v == "diff_up" then
 									adjust_difficulty(pn, -1, "up.ogg")
 								elseif v == "diff_down" then
