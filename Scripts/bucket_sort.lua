@@ -190,6 +190,7 @@ local function split_too_large_buckets(real_buckets, params)
 	local main= params.main
 	local fallback= params.fallback
 	local can_join= params.can_join
+	local dont_clip= params.dont_clip
 	local main_depth= main.depth
 	local i= 1
 	while i <= #real_buckets do
@@ -198,11 +199,11 @@ local function split_too_large_buckets(real_buckets, params)
 			if main_depth and #real_buckets > 1 then
 				v.contents= bucket_sort{
 					set= v.contents, main= main, fallback= fallback,
-					can_join= can_join, depth= params.depth + 1}
+					can_join= can_join, dont_clip= dont_clip, depth= params.depth + 1}
 			elseif fallback then
 				v.contents= bucket_sort{
 					set= v.contents, main= fallback, fallback= nil,
-					can_join= can_join, depth= 1}
+					can_join= can_join, dont_clip= dont_clip, depth= 1}
 			else
 				local get_name= (fallback and fallback.get_bucket) or main.get_bucket
 				v.contents= split_bucket(v.contents, get_name)
@@ -215,9 +216,10 @@ end
 local function split_string_to_words(s)
 	local words= {}
 	local cur_word_start= 1
+	s= tostring(s)
 	for i= 1, #s do
 		local c= s:sub(i, i)
-		if c == " " or c == "_" then
+		if c == " " or c == "_" or c == "-" or c == "." then
 			words[#words+1]= s:sub(cur_word_start, i-1)
 			cur_word_start= i+1
 			-- Yeah, this doesn't handle double space conditions well.
@@ -246,13 +248,14 @@ local function get_initial_similarity(a, b)
 	return ret
 end
 
-local function group_similar_buckets(real_buckets)
-	local min_similarity= 3 -- the number of identical initial chars required
+local function group_similar_buckets(real_buckets, dont_clip)
+	local min_similarity= 2 -- the number of identical initial chars required
 	local i= 2
 	function rename_grouped_buckets(group)
+		if dont_clip then return end
 		local shared_len= #group.name + 2
 		for i, b in ipairs(group.contents) do
-			local new_name= b.disp_name:sub(shared_len)
+			local new_name= tostring(b.disp_name):sub(shared_len)
 			if new_name == "" then new_name= "1" end
 			b.disp_name= new_name
 		end
@@ -310,6 +313,8 @@ end
 -- can_join is a function that will be passed a bucket to divine whether
 --   that bucket can be combined with another bucket.
 -- can_join is only used if non-nil
+-- dont_clip is a boolean value for if bucket names can be clipped when being
+--   grouped by group_similar_buckets.
 -- depth is for internal use and is passed to the get_bucket functions
 -- Limitations:
 --   Do not pass in anything with "name", "disp_name", or "contents" members.
@@ -338,7 +343,7 @@ function bucket_sort(params)
 	split_too_large_buckets(real_buckets, params)
 	combine_too_small_buckets(real_buckets, can_join, final_name)
 	if params.main.group_similar then
-		group_similar_buckets(real_buckets)
+		group_similar_buckets(real_buckets, params.dont_clip)
 	end
 	if #real_buckets > max_bucket_size then
 		local get_name= (fallback and fallback.get_bucket) or main.get_bucket

@@ -1,3 +1,13 @@
+local machine_profile= false
+local difficulty_list= {
+	{ name= "Novice", diff= "Difficulty_Beginner" },
+	{ name= "Easy", diff= "Difficulty_Easy" },
+	{ name= "Medium", diff= "Difficulty_Medium" },
+	{ name= "Hard", diff= "Difficulty_Hard" },
+	{ name= "Expert", diff= "Difficulty_Challenge" },
+	{ name= "Edit", diff= "Difficulty_Edit" },
+}
+
 local function get_song_bpm(song)
 	return (song.GetDisplayBpms and math.round(song:GetDisplayBpms()[2])) or 0
 end
@@ -26,6 +36,9 @@ local function generic_ndget_wrapper(func_name)
 				 end
 end
 
+local main_title_info= {
+	get_bucket= generic_get_wrapper("GetDisplayMainTitle"), depth= true }
+
 local function difficulty_wrapper(difficulty)
 	return function(song, depth)
 					 if song.GetStepsByStepsType then
@@ -44,8 +57,6 @@ local function difficulty_wrapper(difficulty)
 				 end
 end
 
-local machine_profile= false
-
 local function highest_score(score_list)
 	if #score_list > 0 then
 		return math.round(score_list[1]:GetPercentDP() * 100000) * .001
@@ -58,7 +69,7 @@ local function newest_score(score_list)
 	if #score_list > 0 then
 		return score_list[1]:GetDate()
 	else
-		return 0
+		return ""
 	end
 end
 
@@ -74,106 +85,130 @@ local function num_scores(score_list)
 	return #score_list
 end
 
-local function score_wrapper(score_func)
-	return function(difficulty)
-					 return function(song, depth)
-										if not machine_profile then return 0 end
-										if song.GetStepsByStepsType then
-											local curr_style= GAMESTATE:GetCurrentStyle()
-											local filter_type= curr_style:GetStepsType()
-											local all_steps= song:GetStepsByStepsType(filter_type)
-											local matched_steps= false
-											for i, v in ipairs(all_steps) do
-												if v:GetDifficulty() == difficulty then
-													matched_steps= v
-													break
-												end
-											end
-											if matched_steps then
-												local score_list= machine_profile:GetHighScoreList(
-													song, matched_steps):GetHighScores()
-												return score_func(score_list)
-											else
-												return 0
-											end
-										else
-											return 0
-										end
-									end
+local function score_wrapper(score_func, difficulty)
+	local default_return= score_func({})
+	return function(song, depth)
+					 if not machine_profile then return default_return end
+					 if song.GetStepsByStepsType then
+						 local curr_style= GAMESTATE:GetCurrentStyle()
+						 local filter_type= curr_style:GetStepsType()
+						 local all_steps= song:GetStepsByStepsType(filter_type)
+						 local matched_steps= false
+						 for i, v in ipairs(all_steps) do
+							 if v:GetDifficulty() == difficulty then
+								 matched_steps= v
+								 break
+							 end
+						 end
+						 if matched_steps then
+							 local score_list= machine_profile:GetHighScoreList(
+								 song, matched_steps):GetHighScores()
+							 return score_func(score_list)
+						 else
+							 return default_return
+						 end
+					 else
+						 return default_return
+					 end
 				 end
 end
 
-local sort_info= {}
+local function sort_info_wrapper(info)
+	return {
+		name= info.name, sort= {
+			name= info.name, main= {
+				get_bucket= info.get_bucket, depth= info.depth,
+				group_similar= info.group_similar}, fallback= main_title_info,
+			can_join= info.can_join, dont_clip= info.dont_clip}}
+end
+
+local function no_fallback_sort_info_wrapper(info)
+	return {
+		name= info.name, sort= {
+			name= info.name, main= {
+				get_bucket= info.get_bucket, depth= info.depth,
+				group_similar= info.group_similar}, fallback= nil,
+			can_join= info.can_join, dont_clip= info.dont_clip}}
+end
+
+local meter_bucket= {name= "Meter", contents= {}}
+for d, diff in ipairs(difficulty_list) do
+	meter_bucket.contents[#meter_bucket.contents+1]=
+		sort_info_wrapper{name= diff.name .. " Meter",
+											get_bucket= difficulty_wrapper(diff.diff)}
+end
+
+local function is_digit(str)
+	return str:match("%d")
+end
+
+local function score_sub_bucket_maker(score_func, prename, postname)
+	local contents= {}
+	local function can_join(bucket)
+		if bucket.name then
+			if type(bucket.name) == "number" then
+				return not (bucket.name == math.floor(bucket.name) and
+									bucket.name < 100)
+			else
+				return not (#bucket.name <= 2 and bucket.name:match("^%d%d?$"))
+			end
+		end
+		return true
+	end
+	prename= (prename and prename .. " ") or ""
+	postname= (postname and " " .. postname) or ""
+	for d, diff in ipairs(difficulty_list) do
+		contents[#contents+1]= sort_info_wrapper{
+			name= prename .. diff.name .. postname,
+			get_bucket= score_wrapper(score_func, diff.diff),
+			group_similar= true, can_join= can_join, dont_clip= true}
+	end
+	return contents
+end
+
+local score_bucket= {
+	name= "Score", contents= {
+		{name= "Highest", contents= score_sub_bucket_maker(highest_score,
+																											 "Highest", "Score")},
+		{name= "Newest", contents= score_sub_bucket_maker(newest_score,
+																											"Newest", "Score")},
+		{name= "Open", contents= score_sub_bucket_maker(open_score,
+																										"Open", "Scores")},
+		{name= "Total", contents= score_sub_bucket_maker(num_scores,
+																										 "Total", "Scores")},
+}}
+
+local global_sort_info= {}
 
 local function set_course_mode_sort_info()
-	local main_title_info= {
-		get_bucket= generic_get_wrapper("GetDisplayFullTitle"), depth= true }
-	sort_info= {
-		{ name= "Group", main= {
-				get_bucket= generic_ndget_wrapper("GetGroupName"), depth= false,
-				group_similar= true },
-			fallback= main_title_info, },
-		{ name= "Title", main= main_title_info, fallback= nil },
-		{ name= "Length", main= {
-				get_bucket= song_get_length, depth= false },
-			fallback= main_title_info },
+	local course_sort_bucket= {
+		sort_info_wrapper{name= "Group", group_similar= true,
+											get_bucket= generic_ndget_wrapper("GetGroupName")},
+		no_fallback_sort_info_wrapper{name= "Title", depth= true,
+																	get_bucket= main_title_info.get_bucket},
+		sort_info_wrapper{name= "Length", get_bucket= song_get_length},
+		meter_bucket,
+		score_bucket,
 	}
+	global_sort_info= course_sort_bucket
 end
 
 local function set_song_mode_sort_info()
-	local main_title_info= {
-		get_bucket= generic_get_wrapper("GetDisplayMainTitle"), depth= true }
-	sort_info= {
-		{ name= "Group", main= {
-				get_bucket= generic_ndget_wrapper("GetGroupName"), depth= false,
-				group_similar= true },
-			fallback= main_title_info, },
-		{ name= "Title", main= main_title_info, fallback= nil },
-		{ name= "BPM", main= {
-				get_bucket= get_song_bpm, depth= false },
-			fallback= main_title_info },
-		{ name= "Artist", main= {
-				get_bucket= generic_get_wrapper("GetDisplayArtist"), depth= true },
-			fallback= main_title_info },
-		{ name= "Genre", main= {
-				get_bucket= generic_get_wrapper("GetGenre"), depth= true },
-			fallback= main_title_info },
-		{ name= "Length", main= {
-				get_bucket= song_get_length, depth= false },
-			fallback= main_title_info },
+	local song_sort_bucket= {
+		sort_info_wrapper{name= "Group", group_similar= true,
+											get_bucket= generic_ndget_wrapper("GetGroupName")},
+		no_fallback_sort_info_wrapper{name= "Title", depth= true,
+																	get_bucket= main_title_info.get_bucket},
+		sort_info_wrapper{name= "BPM", get_bucket= get_song_bpm},
+		sort_info_wrapper{name= "Artist", depth= true,
+											get_bucket= generic_get_wrapper("GetDisplayArtist")},
+		sort_info_wrapper{name= "Genre", depth= true,
+											get_bucket= generic_get_wrapper("GetGenre")},
+		sort_info_wrapper{name= "Length", get_bucket= song_get_length},
+		meter_bucket,
+		score_bucket,
 	}
-
-	do
-		local difficulty_list= {
-			{ name= "Novice", diff= "Difficulty_Beginner" },
-			{ name= "Easy", diff= "Difficulty_Easy" },
-			{ name= "Medium", diff= "Difficulty_Medium" },
-			{ name= "Hard", diff= "Difficulty_Hard" },
-			{ name= "Expert", diff= "Difficulty_Challenge" },
-			{ name= "Edit", diff= "Difficulty_Edit" },
-		}
-		local scoreish_sort_types= {
-			{ name= "Meter", func= difficulty_wrapper },
-			{ pre_name="Highest", name="Score", func=score_wrapper(highest_score)},
-			{ pre_name="Newest", name="Score", func=score_wrapper(newest_score), depth= true},
-			{ pre_name="Open", name="Scores", func=score_wrapper(open_score)},
-			{ pre_name="Total", name="Scores", func=score_wrapper(num_scores)},
-		}
-		for i, sort_type in ipairs(scoreish_sort_types) do
-			for d, difficulty in ipairs(difficulty_list) do
-				local name= ""
-				if sort_type.pre_name then
-					name= sort_type.pre_name .. " "
-				end
-				name= name .. difficulty.name .. " " .. sort_type.name
-				sort_info[#sort_info+1]= {
-					name= name, main= {
-						get_bucket= sort_type.func(difficulty.diff),
-						depth= sort_type.depth },
-					fallback= main_title_info }
-			end
-		end
-	end
+	global_sort_info= song_sort_bucket
 end
 
 local bucket_man_interface= {}
@@ -252,13 +287,13 @@ function bucket_man_interface:sort_songs(sort_info)
 	local function can_join(bucket)
 		if bucket.name then
 			return not songman_does_group_exist(bucket.name)
-		else
-			return true
 		end
+		return true
 	end
 	self.sorted_songs= bucket_sort{
 		set= self.filtered_songs, main= sort_info.main,
-		fallback= sort_info.fallback, can_join= can_join}
+		fallback= sort_info.fallback, can_join= sort_info.can_join or can_join,
+		dont_clip= sort_info.dont_clip}
 	return self.sorted_songs
 end
 
@@ -389,7 +424,7 @@ function music_whale_interface:find_actors(container)
 		end
 		self:sort_songs(music_whale_state.cur_sort_info)
 	else
-		self:sort_songs(sort_info[1])
+		self:sort_songs(global_sort_info[1].sort)
 	end
 end
 
@@ -729,10 +764,6 @@ function music_whale_interface:show_sort_list()
 		self.current_sort_name= "Sort Menu"
 		self.cursor_song= gamestate_get_curr_song()
 		self:push_onto_disp_stack()
-		local sort_list= {}
-		for i, s in ipairs(sort_info) do
-			sort_list[#sort_list+1]= { name= s.name, sort= s }
-		end
-		self:set_display_bucket({ b= sort_list, p= 1 })
+		self:set_display_bucket({ b= global_sort_info, p= 1 })
 	end
 end
