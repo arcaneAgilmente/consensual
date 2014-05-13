@@ -657,6 +657,12 @@ return Def.ActorFrame {
 								 end
 								 steps_display:find_actors(self:GetChild(steps_display.name))
 								 music_wheel:find_actors(self:GetChild(music_wheel.name))
+								 -- Give everybody enough tokens to play, as a way of disabling the stage system.
+								 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+									 while GAMESTATE:GetNumStagesLeft(pn) < 3 do
+										 GAMESTATE:AddStageToPlayer(pn)
+									 end
+								 end
 							 end,
 	OnCommand= function(self)
 							 local top_screen= SCREENMAN:GetTopScreen()

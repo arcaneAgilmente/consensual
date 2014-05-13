@@ -192,7 +192,7 @@ local name_display_mt= {
 		create_actors=
 			function(self, name, x, y, color, player_number)
 				self.name= name
-				self.max_len= THEME:GetMetric("ScreenNameEntryTraditional", "MaxRankingNameLength")
+				self.max_len= 10
 				local profile= PROFILEMAN:GetProfile(player_number)
 				local player_name= profile:GetLastUsedHighScoreName()
 				local args= { Name= name, InitCommand= cmd(xy, x, y) }
@@ -247,6 +247,9 @@ local name_display_mt= {
 				else
 					self.cursor:y(12)
 				end
+			end,
+		set_name_from_text=
+			function(self)
 			end
 }}
 
@@ -392,13 +395,22 @@ local score_display_mt= {
 local score_wheel= setmetatable({disable_wrapping= all_scores_on_screen}, sick_wheel_mt)
 local keyboard= setmetatable({}, keyboard_mt)
 local name_displays= {}
+local unfinished_players= {}
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	name_displays[pn]= setmetatable({}, name_display_mt)
+	unfinished_players[pn]= true
 end
 local keyboard_top= keyboard:calculate_top()
 local nd_poses= {
 	[PLAYER_1]= {SCREEN_CENTER_X * .5, keyboard_top-24},
 	[PLAYER_2]= {SCREEN_CENTER_X * 1.5, keyboard_top-24}}
+
+local function maybe_finish()
+	for k, fin in pairs(unfinished_players) do
+		if fin then return end
+	end
+	SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
+end
 
 local args= {
 	InitCommand= function(self)
@@ -436,12 +448,20 @@ local args= {
 					elseif key_ret == "shift" then
 						name_displays[param.PlayerNumber]:toggle_shift()
 					elseif key_ret == "backspace" then
-						name_displays[param.PlayerNumber]:remove_text()
+						if unfinished_players[param.PlayerNumber] then
+							name_displays[param.PlayerNumber]:remove_text()
+						end
 					elseif key_ret == "enter" then
 						local screen= SCREENMAN:GetTopScreen()
 						SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
-						screen:SetSelection(param.PlayerNumber, name_displays[param.PlayerNumber]:get_text())
-						screen:Finish(param.PlayerNumber)
+						local player_name= name_displays[param.PlayerNumber]:get_text()
+						local profile= PROFILEMAN:GetProfile(param.PlayerNumber)
+						if profile then
+							profile:SetLastUsedHighScoreName(player_name)
+						end
+						GAMESTATE:StoreRankingName(param.PlayerNumber, player_name)
+						unfinished_players[param.PlayerNumber]= false
+						maybe_finish()
 					elseif key_ret == "sc_left" then
 						if disps_on_screen < #combined_play_history then
 							score_wheel:scroll_by_amount(-1)
@@ -451,9 +471,11 @@ local args= {
 							score_wheel:scroll_by_amount(1)
 						end
 					elseif key_ret then
-						local full= name_displays[param.PlayerNumber]:add_text(key_ret)
-						if full then
-							keyboard:move_to_exit(param.PlayerNumber)
+						if unfinished_players[param.PlayerNumber] then
+							local full= name_displays[param.PlayerNumber]:add_text(key_ret)
+							if full then
+								keyboard:move_to_exit(param.PlayerNumber)
+							end
 						end
 					end
 				end
