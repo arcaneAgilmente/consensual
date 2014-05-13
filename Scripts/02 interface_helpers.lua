@@ -196,6 +196,22 @@ function width_clip_text(text, limit)
 	end
 end
 
+function split_string_to_words(s)
+	local words= {}
+	local cur_word_start= 1
+	s= tostring(s)
+	for i= 1, #s do
+		local c= s:sub(i, i)
+		if c == " " or c == "_" or c == "-" or c == "." then
+			words[#words+1]= s:sub(cur_word_start, i-1)
+			cur_word_start= i+1
+			-- Yeah, this doesn't handle double space conditions well.
+		end
+	end
+	words[#words+1]= s:sub(cur_word_start)
+	return words
+end
+
 function rec_calc_actor_extent(aframe, depth)
 	depth= depth or ""
 	if not aframe then return 0, 0, 0, 0 end

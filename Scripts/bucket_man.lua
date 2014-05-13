@@ -58,35 +58,89 @@ local function difficulty_wrapper(difficulty)
 end
 
 local function highest_score(score_list)
-	if #score_list > 0 then
-		return math.round(score_list[1]:GetPercentDP() * 100000) * .001
+	if #score_list:GetHighScores() > 0 then
+		return math.round(score_list:GetHighScores()[1]:GetPercentDP() * 100000) * .001
 	else
 		return 0
 	end
 end
 
 local function newest_score(score_list)
-	if #score_list > 0 then
-		return score_list[1]:GetDate()
+	if #score_list:GetHighScores() > 0 then
+		return score_list:GetHighScores()[1]:GetDate()
 	else
 		return ""
 	end
 end
 
 local function open_score(score_list)
-	if #score_list > 0 then
-		return math.max(0, 10 - #score_list)
+	if #score_list:GetHighScores() > 0 then
+		return math.max(0, 10 - #score_list:GetHighScores())
 	else
 		return 10
 	end
 end
 
 local function num_scores(score_list)
-	return #score_list
+	return #score_list:GetHighScores()
 end
 
+local active_rival= "Taisetsu"
+local function set_rival(name)
+	active_rival= name
+end
+local rival_functions= {
+	{ name= "Rank", func=
+		function(score_list)
+			if score_list.GetRankOfName then
+				return score_list:GetRankOfName(active_rival)
+			else
+				return 0
+			end
+		end,
+		name_func=
+			function(name, diff_name)
+				return name .. " " .. diff_name .. " Rank"
+			end,
+	},
+	{ name= "Highest", func=
+		function(score_list)
+			if score_list.GetHighestScoreOfName then
+				local highest= score_list:GetHighestScoreOfName(active_rival)
+				if highest then
+					return math.round(highest:GetPercentDP() * 100000) * .001
+				end
+				return 0
+			else
+				return 0
+			end
+		end,
+		name_func=
+			function(name, diff_name)
+				return "Highest " .. name .. " " .. diff_name .. " Score"
+			end,
+	},
+	{ name= "Newest", func=
+		function(score_list)
+			if score_list.GetHighestScoreOfName then
+				local highest= score_list:GetHighestScoreOfName(active_rival)
+				if highest then
+					return highest:GetDate();
+				end
+				return "0"
+			else
+				return "0"
+			end
+		end,
+		name_func=
+			function(name, diff_name)
+				return "Newest " .. name .. " " .. diff_name .. " Score"
+			end,
+	},
+}
+
 local function score_wrapper(score_func, difficulty)
-	local default_return= score_func({})
+	local default_return= score_func({GetHighScores= function() return {} end})
 	return function(song, depth)
 					 if not machine_profile then return default_return end
 					 if song.GetStepsByStepsType then
@@ -101,9 +155,13 @@ local function score_wrapper(score_func, difficulty)
 							 end
 						 end
 						 if matched_steps then
-							 local score_list= machine_profile:GetHighScoreList(
-								 song, matched_steps):GetHighScores()
-							 return score_func(score_list)
+							 local score_list= machine_profile:GetHighScoreListIfExists(
+								 song, matched_steps)
+							 if score_list then
+								 return score_func(score_list)
+							 else
+								 return default_return
+							 end
 						 else
 							 return default_return
 						 end
@@ -119,7 +177,8 @@ local function sort_info_wrapper(info)
 			name= info.name, main= {
 				get_bucket= info.get_bucket, depth= info.depth,
 				group_similar= info.group_similar}, fallback= main_title_info,
-			can_join= info.can_join, dont_clip= info.dont_clip}}
+			can_join= info.can_join, dont_clip= info.dont_clip,
+			pre_sort_func= info.pre_sort_func, pre_sort_arg= info.pre_sort_arg}}
 end
 
 local function no_fallback_sort_info_wrapper(info)
@@ -128,7 +187,8 @@ local function no_fallback_sort_info_wrapper(info)
 			name= info.name, main= {
 				get_bucket= info.get_bucket, depth= info.depth,
 				group_similar= info.group_similar}, fallback= nil,
-			can_join= info.can_join, dont_clip= info.dont_clip}}
+			can_join= info.can_join, dont_clip= info.dont_clip,
+			pre_sort_func= info.pre_sort_func, pre_sort_arg= info.pre_sort_arg}}
 end
 
 local meter_bucket= {name= "Meter", contents= {}}
@@ -138,32 +198,74 @@ for d, diff in ipairs(difficulty_list) do
 											get_bucket= difficulty_wrapper(diff.diff)}
 end
 
-local function is_digit(str)
-	return str:match("%d")
+local function number_buckets_can_join(bucket)
+	if bucket.name then
+		if type(bucket.name) == "number" then
+			return not (bucket.name == math.floor(bucket.name) and
+								bucket.name < 100)
+		else
+			return not (#bucket.name <= 2 and bucket.name:match("^%d%d?$"))
+		end
+	end
+	return true
 end
 
 local function score_sub_bucket_maker(score_func, prename, postname)
 	local contents= {}
-	local function can_join(bucket)
-		if bucket.name then
-			if type(bucket.name) == "number" then
-				return not (bucket.name == math.floor(bucket.name) and
-									bucket.name < 100)
-			else
-				return not (#bucket.name <= 2 and bucket.name:match("^%d%d?$"))
-			end
-		end
-		return true
-	end
 	prename= (prename and prename .. " ") or ""
 	postname= (postname and " " .. postname) or ""
 	for d, diff in ipairs(difficulty_list) do
 		contents[#contents+1]= sort_info_wrapper{
 			name= prename .. diff.name .. postname,
 			get_bucket= score_wrapper(score_func, diff.diff),
-			group_similar= true, can_join= can_join, dont_clip= true}
+			group_similar= true, can_join= number_buckets_can_join,
+			dont_clip= true}
 	end
 	return contents
+end
+
+
+local function make_rival_bucket()
+	if machine_profile then
+		local all_names= machine_profile:GetAllUsedHighScoreNames()
+		-- Transform each name into a table so that after they're sorted, they
+		-- can be turned into buckets.
+		for i= 1, #all_names do
+			all_names[i]= {n= all_names[i]}
+		end
+		local function get_bucket_for_name(name, depth)
+			return name.n:sub(1, depth)
+		end
+		local sorted_names= bucket_sort{
+			set= all_names, main= {
+				get_bucket= get_bucket_for_name, depth= true, group_similar= false},
+			fallback= nil, can_join= noop_true}
+		--Trace("Sorted names:")
+		--rec_print_table(sorted_names)
+		local function per_name(name)
+			local contents= {}
+			for r, rival_element in ipairs(rival_functions) do
+				local sub_contents= {}
+				for d, diff in ipairs(difficulty_list) do
+					local elname= rival_element.name_func(name.n, diff.name)
+					sub_contents[#sub_contents+1]= sort_info_wrapper{
+						name= elname, pre_sort_func= set_rival, pre_sort_arg= name.n,
+						get_bucket= score_wrapper(rival_element.func, diff.diff),
+						group_similar= true, can_join= number_buckets_can_join,
+						dont_clip= true}
+				end
+				contents[#contents+1]= {
+					name= rival_element.name, contents= sub_contents}
+			end
+			return {name= name.n, contents= contents}
+		end
+		bucket_traverse{set= sorted_names, per_element= per_name}
+		--Trace("Transformed names:")
+		--rec_print_table(sorted_names)
+		return {name= "Rival", contents= sorted_names}
+	else
+		return {name= "No Machine Profile", contents= {}}
+	end
 end
 
 local score_bucket= {
@@ -189,6 +291,7 @@ local function set_course_mode_sort_info()
 		sort_info_wrapper{name= "Length", get_bucket= song_get_length},
 		meter_bucket,
 		score_bucket,
+		make_rival_bucket(),
 	}
 	global_sort_info= course_sort_bucket
 end
@@ -207,6 +310,7 @@ local function set_song_mode_sort_info()
 		sort_info_wrapper{name= "Length", get_bucket= song_get_length},
 		meter_bucket,
 		score_bucket,
+		make_rival_bucket(),
 	}
 	global_sort_info= song_sort_bucket
 end
@@ -281,6 +385,9 @@ function bucket_man_interface:sort_songs(sort_info)
 	if not self.filtered_songs then
 		Trace("bucket_man_interface:  Songs must be filtered before sorting.")
 		return
+	end
+	if sort_info.pre_sort_func then
+		sort_info.pre_sort_func(sort_info.pre_sort_arg)
 	end
 	self.current_sort_name= sort_info.name
 	self.cur_sort_info= sort_info
@@ -465,7 +572,8 @@ function music_whale_interface:sort_songs(si)
 			self:set_display_bucket({b= self.sorted_songs, p= 1})
 		end
 	end
-	if si == self.cur_sort_info then
+	if false and si == self.cur_sort_info then
+		-- TODO:  This does not work anymore because there are sort options inside buckets.  The structure has to change so that the sort menu and the song buckets do not share the same stack.
 		local parent_group= self.disp_stack[#self.disp_stack]
 		if parent_group then
 			self:pop_from_disp_stack()

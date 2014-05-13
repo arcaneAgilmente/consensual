@@ -53,6 +53,40 @@ end
 update_player_profile(PLAYER_1)
 update_player_profile(PLAYER_2)
 
+local function change_sort_text(new_text)
+	local stext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_text")
+	if stext then
+		new_text= new_text or stext:GetText()
+		local stext2= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_text2")
+		local text_words= split_string_to_words(new_text)
+		local second_used= false
+		local first_line= ""
+		local second_line= ""
+		for i, word in ipairs(text_words) do
+			if i == 1 then
+				first_line= word
+			elseif i == 2 then
+				first_line= first_line .. " " .. word
+			elseif i == 3 then
+				second_used= true
+				second_line= word
+			else
+				second_line= second_line .. " " .. word
+			end
+		end
+		stext:settext(first_line)
+		width_limit_text(stext, sort_width)
+		stext2:settext(second_line)
+		width_limit_text(stext2, sort_width)
+		local stext_sort_word= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort")
+		if second_used then
+			stext_sort_word:y(stext2:GetY()+24)
+		else
+			stext_sort_word:y(stext:GetY()+24)
+		end
+	end
+end
+
 local steps_display_interface= {}
 local steps_display_interface_mt= { __index= steps_display_interface }
 
@@ -592,12 +626,7 @@ local input_functions= {
 	stop_scroll= function() stop_auto_scrolling() end,
 	interact= function()
 							music_wheel:interact_with_element()
-							local sort_name= music_wheel.current_sort_name
-							local stext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_text")
-							if stext then
-								stext:settext(sort_name)
-								width_limit_text(stext, sort_width)
-							end
+							change_sort_text(music_wheel.current_sort_name)
 						end,
 	back= function()
 					stop_music()
@@ -669,10 +698,7 @@ return Def.ActorFrame {
 							 if top_screen.SetAllowLateJoin then
 								 top_screen:SetAllowLateJoin(true)
 							 end
-							 local stext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_text")
-							 if stext then
-								 width_limit_text(stext, sort_width)
-							 end
+							 change_sort_text(music_wheel.current_sort_name)
 						 end,
 	play_songCommand= function(self)
 											SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
@@ -893,12 +919,7 @@ return Def.ActorFrame {
 								end
 								if v == "sort_mode" then
 									music_wheel:show_sort_list()
-									local sort_name= music_wheel.current_sort_name
-									local stext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_text")
-									if stext then
-										stext:settext(sort_name)
-										width_limit_text(stext, sort_width)
-									end
+									change_sort_text(music_wheel.current_sort_name)
 								elseif v == "diff_up" then
 									adjust_difficulty(pn, -1, "up.ogg")
 								elseif v == "diff_down" then
@@ -963,9 +984,12 @@ return Def.ActorFrame {
 			end
 	},
 	normal_text("code_text", "", solar_colors.f_text(0), 0, 0, .75),
-	normal_text("sort", "Sort", solar_colors.uf_text(), sort_text_x, SCREEN_TOP + 36),
-	normal_text("sort_text", music_wheel.current_sort_name,
-							solar_colors.f_text(), sort_text_x, SCREEN_TOP + 12),
+	normal_text("sort_text", "NO SORT", solar_colors.f_text(), sort_text_x,
+							SCREEN_TOP + 12),
+	normal_text("sort_text2", "", solar_colors.f_text(), sort_text_x,
+							SCREEN_TOP + 36),
+	normal_text("sort", "Sort", solar_colors.uf_text(), sort_text_x),
+	-- See change_sort_text for actual y position.
 	credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
 	Def.ActorFrame{
 		Name= "options message",

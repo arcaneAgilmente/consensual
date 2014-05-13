@@ -213,22 +213,6 @@ local function split_too_large_buckets(real_buckets, params)
 	end
 end
 
-local function split_string_to_words(s)
-	local words= {}
-	local cur_word_start= 1
-	s= tostring(s)
-	for i= 1, #s do
-		local c= s:sub(i, i)
-		if c == " " or c == "_" or c == "-" or c == "." then
-			words[#words+1]= s:sub(cur_word_start, i-1)
-			cur_word_start= i+1
-			-- Yeah, this doesn't handle double space conditions well.
-		end
-	end
-	words[#words+1]= s:sub(cur_word_start)
-	return words
-end
-
 local function get_initial_similarity(a, b)
 	local ret= ""
 	local a_words= split_string_to_words(a)
@@ -299,7 +283,7 @@ end
 -- { set= {},
 --   main= { get_bucket= function, depth= bool, group_similar= bool },
 --   fallback= { identical to main },
---   can_join= function, depth= number
+--   can_join= function, dont_clip= bool, depth= number
 -- }
 -- If set is too small or nil, or main is nil, set is returned.
 -- main.get_bucket is a function that takes an element or bucket and returns
@@ -315,6 +299,8 @@ end
 -- can_join is only used if non-nil
 -- dont_clip is a boolean value for if bucket names can be clipped when being
 --   grouped by group_similar_buckets.
+-- TODO:  Should dont_clip be inside of main/fallback?  It controls the
+--   behavior of group_similar_buckets.
 -- depth is for internal use and is passed to the get_bucket functions
 -- Limitations:
 --   Do not pass in anything with "name", "disp_name", or "contents" members.
@@ -434,12 +420,15 @@ function bucket_traverse(params)
 	local depth= params.depth or 1
 	local bucket= params.set
 	if bucket.contents then bucket= bucket.contents end
-	for i, v in ipairs(bucket) do
-		if v.contents then
+	for i= 1, #bucket do
+		if bucket[i].contents then
 			bucket_traverse{
-				set= v.contents, per_element= per_element, depth= depth + 1}
+				set= bucket[i].contents, per_element= per_element, depth= depth + 1}
 		else
-			per_element(v, depth)
+			local new_element= per_element(bucket[i], depth)
+			if new_element then
+				bucket[i]= new_element
+			end
 		end
 	end
 end
