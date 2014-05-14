@@ -954,6 +954,12 @@ return Def.ActorFrame {
 						local curr_style_type= GAMESTATE:GetCurrentStyle():GetStyleType()
 						if curr_style_type == "StyleType_OnePlayerOneSide" then
 							if cons_join_player(pn) then
+								-- Give everybody enough tokens to play, as a way of disabling the stage system.
+								for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+									while GAMESTATE:GetNumStagesLeft(pn) < 3 do
+										GAMESTATE:AddStageToPlayer(pn)
+									end
+								end
 								SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
 								cons_players[pn]:clear_init(pn)
 								local cpm= GAMESTATE:GetPlayMode()

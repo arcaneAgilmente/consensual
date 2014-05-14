@@ -109,7 +109,7 @@ local keyboard_mt= {
 					local xp, yp= curactor:GetX(), curactor:GetY()
 					cur:resize(xmx - xmn + 4, ymx - ymn + 4)
 					cur:move(xp, yp)
-					if other_cursor then
+					if other_cur then
 						if other_pos[1] == curpos[1] and other_pos[2] == curpos[2] then
 							self.cursors[PLAYER_1].inner:cropright(.5)
 							self.cursors[PLAYER_1].outer:cropright(.5)
@@ -398,8 +398,20 @@ local name_displays= {}
 local unfinished_players= {}
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	name_displays[pn]= setmetatable({}, name_display_mt)
-	unfinished_players[pn]= true
 end
+for i, play_entry in ipairs(combined_play_history) do
+	local score_list= machine_profile:GetHighScoreList(play_entry.song, play_entry.steps):GetHighScores()
+	for h, score in ipairs(score_list) do
+		if score:IsFillInMarker() then
+			if score:GetName():find("P1") then
+				unfinished_players[PLAYER_1]= true
+			elseif score:GetName():find("P2") then
+				unfinished_players[PLAYER_2]= true
+			end
+		end
+	end
+end
+
 local keyboard_top= keyboard:calculate_top()
 local nd_poses= {
 	[PLAYER_1]= {SCREEN_CENTER_X * .5, keyboard_top-24},
