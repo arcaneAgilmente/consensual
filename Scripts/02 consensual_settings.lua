@@ -7,6 +7,17 @@ function get_input_mode()
 end
 
 mine_effects= {
+	{ name= "stealth",
+		apply=
+			function(pn)
+				cons_players[pn].song_options:Stealth(.75, 8)
+			end,
+		unapply=
+			function(pn)
+				cons_players[pn].song_options:Stealth(0, .75)
+			end,
+		time= .0625
+	},
 	{ name= "boomerang",
 		apply=
 			function(pn)
@@ -14,9 +25,9 @@ mine_effects= {
 			end,
 		unapply=
 			function(pn)
-				cons_players[pn].song_options:Boomerang(0, .25)
+				cons_players[pn].song_options:Boomerang(0, 1)
 			end,
-		time= .125
+		time= .0625
 	},
 	{ name= "brake",
 		apply=
@@ -25,20 +36,9 @@ mine_effects= {
 			end,
 		unapply=
 			function(pn)
-				cons_players[pn].song_options:Brake(0, .25)
+				cons_players[pn].song_options:Brake(0, 1)
 			end,
-		time= .125
-	},
-	{ name= "stealth",
-		apply=
-			function(pn)
-				cons_players[pn].song_options:Stealth(.75, 8)
-			end,
-		unapply=
-			function(pn)
-				cons_players[pn].song_options:Stealth(0, .25)
-			end,
-		time= .125
+		time= .0625
 	},
 	{ name= "tiny",
 		apply=
@@ -47,14 +47,14 @@ mine_effects= {
 			end,
 		unapply=
 			function(pn)
-				cons_players[pn].song_options:Tiny(0, .25)
+				cons_players[pn].song_options:Tiny(0, 1)
 			end,
-		time= .125
+		time= .0625
 	},
 	{ name= "none",
 		apply= noop_nil,
 		unapply= noop_nil,
-		time= .125
+		time= .0625
 	},
 }
 
@@ -263,12 +263,11 @@ function cons_player:set_ops_from_profile(profile)
 	--Trace("Setting options from user table for " .. profile:GetDisplayName())
 	if ut then
 		--rec_print_table(ut)
+		-- Thanks for converting the numbers I stored into strings, stepmania.
+		-- TODO:  Fix this stupid mistake in the engine.
+		rec_convert_strings_to_numbers(ut)
 		for k, v in pairs(ut) do
-			if tonumber(v) then
-				self[k]= tonumber(v)
-			else
-				self[k]= v
-			end
+			self[k]= v
 		end
 		for i, eff in ipairs(mine_effects) do
 			if ut.mine_effect == eff.name then

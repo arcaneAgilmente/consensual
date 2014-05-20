@@ -257,6 +257,20 @@ local function set_profile_index_for_player(pn)
 	end
 end
 
+-- Players have to be joined before Screen:Finish can be called, but Screen:Finish can fail for various reasons, and joining uses up credits.
+-- So this function exists to check the things that can cause Screen:Finish to fail, so a failed attempt doesn't use up credits.
+local function play_will_succeed(pns)
+	if get_coin_info() < #pns then
+		return false
+	end
+	for i, pn in ipairs(pns) do
+		if not profile_choices[pn] then
+			return false
+		end
+	end
+	return true
+end
+
 local function interpret_code(pn, code)
 	local current_menu= all_menus[choosing_states[pn]]
 	if current_menu == profile_menus then
@@ -305,11 +319,11 @@ local function interpret_code(pn, code)
 					cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] then
 					if num_players == 1 then
 						--Trace("Single player: " .. pn)
-						if cons_join_player(pn) then
+						if play_will_succeed{pn} and cons_join_player(pn) then
 							GAMESTATE:ApplyGameCommand("style,single", pn)
 							GAMESTATE:ApplyGameCommand("playmode,"..playmode, pn)
 							set_profile_index_for_player(pn)
-							maybe_finalize_and_exit({pn})
+							maybe_finalize_and_exit{pn}
 						else
 							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
 							--Trace("Failed to join player.")
@@ -319,13 +333,17 @@ local function interpret_code(pn, code)
 						--Trace("IsJoined: " .. tostring(GAMESTATE:IsSideJoined(pn)))
 					else
 						--Trace("Versus")
-						for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
-							cons_join_player(rpn)
-							GAMESTATE:ApplyGameCommand("playmode,"..playmode, rpn)
-							set_profile_index_for_player(rpn)
+						if play_will_succeed{PLAYER_1, PLAYER_2} then
+							for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
+								cons_join_player(rpn)
+								GAMESTATE:ApplyGameCommand("playmode,"..playmode, rpn)
+								set_profile_index_for_player(rpn)
+							end
+							GAMESTATE:ApplyGameCommand("style,versus")
+							maybe_finalize_and_exit{PLAYER_1, PLAYER_2}
+						else
+							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
 						end
-						GAMESTATE:ApplyGameCommand("style,versus")
-						maybe_finalize_and_exit({PLAYER_1, PLAYER_2})
 					end
 				else
 					--Trace("Different choice states.")

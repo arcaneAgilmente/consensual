@@ -67,7 +67,8 @@ end
 
 local function newest_score(score_list)
 	if #score_list:GetHighScores() > 0 then
-		return score_list:GetHighScores()[1]:GetDate()
+		-- Date is clipped to YYYY-MM-DD
+		return score_list:GetHighScores()[1]:GetDate():sub(1, 10)
 	else
 		return ""
 	end
@@ -125,7 +126,8 @@ local rival_functions= {
 			if score_list.GetHighestScoreOfName then
 				local highest= score_list:GetHighestScoreOfName(active_rival)
 				if highest then
-					return highest:GetDate();
+					-- Date is clipped to YYYY-MM-DD
+					return highest:GetDate():sub(1, 10)
 				end
 				return "0"
 			else
@@ -198,16 +200,30 @@ for d, diff in ipairs(difficulty_list) do
 											get_bucket= difficulty_wrapper(diff.diff)}
 end
 
-local function number_buckets_can_join(bucket)
+local function bucket_name_to_type(bucket)
 	if bucket.name then
 		if type(bucket.name) == "number" then
-			return not (bucket.name == math.floor(bucket.name) and
-								bucket.name < 100)
+			if bucket.name == math.floor(bucket.name) and bucket.name < 100 then
+				return "rank"
+			else
+				return "number"
+			end
 		else
-			return not (#bucket.name <= 2 and bucket.name:match("^%d%d?$"))
+			if #bucket.name <= 2 and bucket.name:match("^%d%d?$") then
+				return "rank"
+			elseif bucket.name:match("^%d%d%d%d%-") then
+				return "date"
+			else
+				return "string"
+			end
 		end
+	else
+		return "nil"
 	end
-	return true
+end
+
+local function number_buckets_can_join(lbucket, rbucket)
+	return bucket_name_to_type(lbucket) == bucket_name_to_type(rbucket)
 end
 
 local function score_sub_bucket_maker(score_func, prename, postname)
@@ -240,8 +256,6 @@ local function make_rival_bucket()
 			set= all_names, main= {
 				get_bucket= get_bucket_for_name, depth= true, group_similar= false},
 			fallback= nil, can_join= noop_true}
-		--Trace("Sorted names:")
-		--rec_print_table(sorted_names)
 		local function per_name(name)
 			local contents= {}
 			for r, rival_element in ipairs(rival_functions) do
@@ -260,8 +274,6 @@ local function make_rival_bucket()
 			return {name= name.n, contents= contents}
 		end
 		bucket_traverse{set= sorted_names, per_element= per_name}
-		--Trace("Transformed names:")
-		--rec_print_table(sorted_names)
 		return {name= "Rival", contents= sorted_names}
 	else
 		return {name= "No Machine Profile", contents= {}}
@@ -391,9 +403,10 @@ function bucket_man_interface:sort_songs(sort_info)
 	end
 	self.current_sort_name= sort_info.name
 	self.cur_sort_info= sort_info
-	local function can_join(bucket)
-		if bucket.name then
-			return not songman_does_group_exist(bucket.name)
+	local function can_join(lbucket, rbucket)
+		if ((lbucket.name and songman_does_group_exist(lbucket.name)) or
+			(rbucket.name and songman_does_group_exist(rbucket.name))) then
+			return false
 		end
 		return true
 	end

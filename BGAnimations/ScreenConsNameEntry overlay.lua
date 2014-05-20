@@ -373,7 +373,7 @@ local score_display_mt= {
 				local high_scores= machine_profile:GetHighScoreList(
 					info.song, info.steps):GetHighScores()
 				for i, tani in ipairs(self.tanis) do
-					if high_scores[i] and high_scores[i]:GetPercentDP() > 0 then
+					if high_scores[i] then
 						local score= high_scores[i]:GetPercentDP()
 						local score_color= color_for_score(score)
 						tani:set_number(("%.2f%%"):format(score*100))
@@ -385,6 +385,7 @@ local score_display_mt= {
 					else
 						--Trace("tani " .. i .. " should be hidden.")
 						--TODO: Track down why hide isn't working.
+						tani:set_text("")
 						tani:set_number("")
 						tani:hide()
 					end

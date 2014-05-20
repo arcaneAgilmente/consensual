@@ -126,6 +126,16 @@ function rec_find_child(parent, name)
 	return nil
 end
 
+function rec_convert_strings_to_numbers(t)
+	for k, v in pairs(t) do
+		if tonumber(v) then
+			t[k]= tonumber(v)
+		elseif type(v) == "table" then
+			rec_convert_strings_to_numbers(v)
+		end
+	end
+end
+
 -- Usage:  Pass in a table and a string to indent each line with.
 function print_table(t, indent)
 	if not indent then indent= "" end
@@ -167,25 +177,62 @@ function lua_table_to_string(t, indent)
 	indent= indent or ""
 	local ret= "{\n"
 	local internal_indent= indent .. "  "
-	for k, v in pairs(t) do
+	local function do_value_for_key(k, v)
 		local k_str= k
 		if type(k) == "number" then
 			k_str= "[" .. k .. "]"
 		else
 			k_str= '["' .. k .. '"]'
 		end
-		ret= ret .. internal_indent .. k_str .. "= "
+		local v_str= ""
 		if type(v) == "table" then
-			ret= ret .. lua_table_to_string(v, internal_indent)
+			v_str= lua_table_to_string(v, internal_indent)
 		elseif type(v) == "string" then
-			ret= ret .. "[[" .. v .. "]]"
+			v_str= "[===[" .. v .. "]===]"
+		elseif type(v) == "number" then
+			if v ~= math.floor(v) then
+				v_str= ("%.3f"):format(v)
+			else
+				v_str= tostring(v)
+			end
 		else
-			ret= ret .. tostring(v)
+			v_str= tostring(v)
 		end
-		ret= ret .. ",\n"
+		ret= ret .. internal_indent .. k_str .. "= " .. v_str .. ",\n"
+	end
+	-- do the integer indices from 0 to n first, in order.
+	for n= 0, #t do
+		if t[n] then
+			do_value_for_key(n, t[n])
+		end
+	end
+	for k, v in pairs(t) do
+		local is_integer_key= (type(k) == "number") and (k == math.floor(k)) and k >= 0 and k < #t
+		if not is_integer_key then
+			do_value_for_key(k, v)
+		end
 	end
 	ret= ret .. indent .. "}"
 	return ret
+end
+
+function generate_song_sort_test_data()
+	local song_table= {}
+	for i, song in ipairs(SONGMAN:GetAllSongs()) do
+		song_table[#song_table+1]=
+			{group= song:GetGroupName(), song= song:GetDisplayMainTitle()}
+	end
+	local file_handle= RageFileUtil.CreateRageFile()
+	local file_name= "test_song_sort_data.lua"
+	if not file_handle:Open(file_name, 2) then
+		Trace("Could not open '" .. file_name .. "' to write test song sort data.")
+	else
+		local output= "return " .. lua_table_to_string(song_table) .. "\n"
+		file_handle:Write(output)
+		file_handle:Close()
+		file_handle:destroy()
+		Trace("test song sort data written to '" .. file_name .. "'")
+	end
 end
 
 function get_string_wrapper(section, string)

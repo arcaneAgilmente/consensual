@@ -9,23 +9,33 @@ local function name_sub(e)
 	end
 end
 
-local function to_cmp(a, final_name)
-	return a and (a.name or final_name(a))
-end
-
-local function cmp_cmp(a, b)
-	if a then
-		if b then
-			if type(a) == type(b) then
-				return a < b
-			else
-				return true
-			end
+local function agnostic_compare(a, b, main_name, final_name)
+	if not a then return false end
+	if not b then return true end
+	if a.name then
+		if b.name then
+			return a.name < b.name
 		else
-			return true
+			if a.name == tostring(main_name(b, -1)) and final_name then
+				return a.name < tostring(final_name(b, -1))
+			else
+				return a.name < tostring(main_name(b, -1))
+			end
 		end
 	else
-		return false
+		if b.name then
+			if tostring(main_name(a, -1)) == b.name and final_name then
+				return tostring(final_name(a, -1)) < b.name
+			else
+				return tostring(main_name(a, -1)) < b.name
+			end
+		else
+			if main_name(a, -1) == main_name(b, -1) and final_name then
+				return final_name(a, -1) < final_name(b, -1)
+			else
+				return main_name(a, -1) < main_name(b, -1)
+			end
+		end
 	end
 end
 
@@ -90,16 +100,16 @@ local function split_bucket(buckets, get_name)
 	return sub_buckets
 end
 
-function combine_buckets(a, b, final_name)
-	function agnostic_compare(a, b)
-		return cmp_cmp(to_cmp(a, final_name), to_cmp(b, final_name))
+function combine_buckets(a, b, main_name, final_name)
+	local function agnostic_wrapper(l, r)
+		return agnostic_compare(l, r, main_name, final_name)
 	end
 	if not a.sorted then
-		table.sort(a.contents, agnostic_compare)
+		table.sort(a.contents, agnostic_wrapper)
 		a.sorted= true
 	end
 	if not b.sorted then
-		table.sort(b.contents, agnostic_compare)
+		table.sort(b.contents, agnostic_wrapper)
 		b.sorted= true
 	end
 	a.disp_name= name_sub(a.disp_name) .. "..." .. name_sub(b.disp_name)
@@ -118,7 +128,7 @@ function combine_buckets(a, b, final_name)
 	while aindex <= #acon or bindex <= #bcon do
 		local ael= acon[aindex]
 		local bel= bcon[bindex]
-		if cmp_cmp(to_cmp(ael, final_name), to_cmp(bel, final_name)) then
+		if agnostic_wrapper(ael, bel) then
 			merged[#merged+1]= ael
 			aindex= aindex + 1
 		else
@@ -129,9 +139,9 @@ function combine_buckets(a, b, final_name)
 	a.contents= merged
 end
 
-local function combine_too_small_buckets(buckets, can_join, final_name)
-	function agnostic_compare(a, b)
-		return cmp_cmp(to_cmp(a, final_name), to_cmp(b, final_name))
+local function combine_too_small_buckets(buckets, can_join, main_name, final_name)
+	local function agnostic_wrapper(a, b)
+		return agnostic_compare(a, b, main_name, final_name)
 	end
 	can_join= can_join or function() return true end
 	local i= 1
@@ -140,16 +150,16 @@ local function combine_too_small_buckets(buckets, can_join, final_name)
 		local combined= false
 		local should_not_break= true
 		if v and not v.sorted then
-			table.sort(v.contents, agnostic_compare)
+			table.sort(v.contents, agnostic_wrapper)
 			v.sorted= true
 		end
 		while v and #v.contents < min_bucket_size and should_not_break do
 			local left_neighbor= buckets[i-1]
 			local right_neighbor= buckets[i+1]
 			local used_neighbor= 0
-			local can_use_left= left_neighbor and can_join(left_neighbor) and
+			local can_use_left= left_neighbor and can_join(left_neighbor, v) and
 				#left_neighbor.contents + #v.contents < max_bucket_size
-			local can_use_right= right_neighbor and can_join(right_neighbor) and
+			local can_use_right= right_neighbor and can_join(v, right_neighbor) and
 				#right_neighbor.contents + #v.contents < max_bucket_size
 			if can_use_left then
 				if can_use_right then
@@ -166,13 +176,13 @@ local function combine_too_small_buckets(buckets, can_join, final_name)
 			end
 			local switch= {
 				[-1]= function()
-								combine_buckets(left_neighbor, v, final_name)
+								combine_buckets(left_neighbor, v, main_name, final_name)
 								table.remove(buckets, i)
 								v= buckets[i]
 							end,
 				[0]= function() should_not_break= false end,
 				[1]= function()
-							 combine_buckets(v, right_neighbor, final_name)
+							 combine_buckets(v, right_neighbor, main_name, final_name)
 							 table.remove(buckets, i+1)
 							 v= buckets[i]
 						 end
@@ -293,10 +303,10 @@ end
 -- main.group_similar is whether buckets with names that start with the
 --   same sequence should be placed into a bucket together.
 -- fallback is an alternative to main, used when main doesn't seperate
---   elements enough.  fallback may be nil
--- can_join is a function that will be passed a bucket to divine whether
---   that bucket can be combined with another bucket.
--- can_join is only used if non-nil
+--   elements enough.  fallback may be nil.
+-- can_join is a function that will be passed a pair of buckets to divine
+--   whether those buckets can be combined.
+-- can_join is treated as noop_true if nil.
 -- dont_clip is a boolean value for if bucket names can be clipped when being
 --   grouped by group_similar_buckets.
 -- TODO:  Should dont_clip be inside of main/fallback?  It controls the
@@ -318,7 +328,8 @@ function bucket_sort(params)
 		local new_bucket= { name= k, disp_name= k, contents= v }
 		real_buckets[#real_buckets+1]= new_bucket
 	end
-	local final_name= (fallback and fallback.get_bucket) or main.get_bucket
+	local main_name= main.get_bucket
+	local final_name= (fallback and fallback.get_bucket) or nil
 	local function bucket_cmp(a, b)
 		if type(a.name) ~= type(b.name) then
 			return tostring(a.name) < tostring(b.name)
@@ -327,7 +338,7 @@ function bucket_sort(params)
 	end
 	table.sort(real_buckets, bucket_cmp)
 	split_too_large_buckets(real_buckets, params)
-	combine_too_small_buckets(real_buckets, can_join, final_name)
+	combine_too_small_buckets(real_buckets, can_join, main_name, final_name)
 	if params.main.group_similar then
 		group_similar_buckets(real_buckets, params.dont_clip)
 	end
