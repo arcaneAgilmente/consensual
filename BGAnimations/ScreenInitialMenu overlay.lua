@@ -260,7 +260,8 @@ end
 -- Players have to be joined before Screen:Finish can be called, but Screen:Finish can fail for various reasons, and joining uses up credits.
 -- So this function exists to check the things that can cause Screen:Finish to fail, so a failed attempt doesn't use up credits.
 local function play_will_succeed(pns)
-	if get_coin_info() < #pns then
+	local credits, coins, needed= get_coin_info()
+	if needed > 0 and credits < #pns then
 		return false
 	end
 	for i, pn in ipairs(pns) do

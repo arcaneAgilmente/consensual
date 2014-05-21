@@ -416,12 +416,12 @@ options_sets.adjustable_float= {
 				self.min_scale= extra.min_scale
 				check_member("min_scale")
 				self.scale= extra.scale or 0
-				self.min_scale_used= self.scale
 				self.current_value= extra.initial_value(player_number) or 0
 				if self.current_value ~= 0 then
 					self.min_scale_used, self.current_value=
 						find_scale_for_number(self.current_value, self.min_scale)
 				end
+				self.min_scale_used= math.min(self.scale, self.min_scale_used or 0)
 				self.max_scale= extra.max_scale
 				check_member("max_scale")
 				self.set= extra.set
@@ -430,45 +430,78 @@ options_sets.adjustable_float= {
 				self.val_to_text= extra.val_to_text or to_text_default
 				self.scale_to_text= extra.scale_to_text or to_text_default
 				local scale_text= get_string_wrapper("OptionNames", "scale")
+				self.pi_text= get_string_wrapper("OptionNames", "pi")
 				self.info_set= {
 					up_element(),
 					{text= "+"..self.scale_to_text(self.player_number, 10^self.scale)},
 					{text= "-"..self.scale_to_text(self.player_number, 10^self.scale)},
 					{text= scale_text.."*10"}, {text= scale_text.."/10"},
 					{text= "Round"}, {text= "Reset"}}
+				self.menu_functions= {
+					function() return false end, -- up element
+					function() -- increment
+						self:set_new_val(self.current_value + 10^self.scale)
+						return true
+					end,
+					function() -- decrement
+						self:set_new_val(self.current_value - 10^self.scale)
+						return true
+					end,
+					function() -- scale up
+						self:set_new_scale(self.scale + 1)
+						return true
+					end,
+					function() -- scale down
+						self:set_new_scale(self.scale - 1)
+						return true
+					end,
+					function() -- round
+						self:set_new_val(math.round(self.current_value))
+						return true
+					end,
+					function() -- reset
+						local new_scale, new_value=
+							find_scale_for_number(self.reset_value, self.min_scale)
+						self:set_new_scale(new_scale)
+						self:set_new_val(new_value)
+						return true
+					end
+				}
+				if extra.is_angle then
+					-- insert the pi option before the Round option.
+					local pi_pos= #self.info_set-1
+					local function pi_function()
+						self.pi_exp= not self.pi_exp
+						if self.pi_exp then
+							self.info_set[6].text= "/"..self.pi_text
+						else
+							self.info_set[6].text= "*"..self.pi_text
+						end
+						self.display:set_element_info(6, self.info_set[6])
+						self:set_new_val(self.current_value)
+						return true
+					end
+					table.insert(self.info_set, pi_pos, {text= "*"..self.pi_text})
+					table.insert(self.menu_functions, pi_pos, pi_function)
+				end
 			end,
 		interpret_start=
 			function(self)
-				if self.cursor_pos == 2 then
-					self:set_new_val(self.current_value + 10^self.scale)
-					return true
-				elseif self.cursor_pos == 3 then
-					self:set_new_val(self.current_value - 10^self.scale)
-					return true
-				elseif self.cursor_pos == 4 then
-					self:set_new_scale(self.scale + 1)
-					return true
-				elseif self.cursor_pos == 5 then
-					self:set_new_scale(self.scale - 1)
-					return true
-				elseif self.cursor_pos == 6 then
-					self:set_new_val(math.round(self.current_value))
-					return true
-				elseif self.cursor_pos == 7 then
-					local new_scale, new_value=
-						find_scale_for_number(self.reset_value, self.min_scale)
-					self:set_new_scale(new_scale)
-					self:set_new_val(new_value)
-					return true
-				else
-					return false
+				if self.menu_functions[self.cursor_pos] then
+					return self.menu_functions[self.cursor_pos]()
 				end
+				return false
 			end,
 		set_status=
 			function(self)
 				if self.display then
 					self.display:set_heading(self.name)
-					self.display:set_display(self.val_to_text(self.player_number, self.current_value))
+					local val_text=
+						self.val_to_text(self.player_number, self.current_value)
+					if self.pi_exp then
+						val_text= val_text .. "*" .. self.pi_text
+					end
+					self.display:set_display(val_text)
 				end
 			end,
 		set_new_val=
@@ -478,8 +511,11 @@ options_sets.adjustable_float= {
 				local rounded_val= math.round(nval * raise) * lower
 				if self.validator(rounded_val) then
 					self.current_value= rounded_val
+					if self.pi_exp then
+						rounded_val= rounded_val * math.pi
+					end
 					self.set(self.player_number, rounded_val)
-					self.display:set_display(self.val_to_text(self.player_number, rounded_val))
+					self:set_status()
 				end
 			end,
 		set_new_scale=

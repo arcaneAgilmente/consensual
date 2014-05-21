@@ -750,12 +750,13 @@ local function generic_mine_effect_element(effect_table)
 					set= set_mine_effect(effect_table), unset= unset_mine_effect}
 end
 
-local function extra_for_adj_float_mod(mod_name)
+local function extra_for_adj_float_mod(mod_name, is_angle)
 	return {
 		name= mod_name,
 		min_scale= -4,
 		scale= -1,
 		max_scale= 1,
+		is_angle= is_angle,
 		initial_value=
 			function(player_number)
 				return mod_player(player_number, mod_name)
@@ -915,12 +916,12 @@ local function extra_for_haste()
 	}
 end
 
-local function make_menu_of_float_set(float_set)
+local function make_menu_of_float_set(float_set, is_angle)
 	local margs= {}
 	for i, fl in ipairs(float_set) do
 		margs[#margs+1]= {
 			name= fl, meta= options_sets.adjustable_float,
-			args= extra_for_adj_float_mod(fl)
+			args= extra_for_adj_float_mod(fl, is_angle)
 		}
 	end
 	return margs
@@ -1021,7 +1022,7 @@ local floaty_mods= {
 	{ name= "Size", meta= options_sets.menu,
 		args= make_menu_of_float_set(size_mods) },
 	{ name= "Spin", meta= options_sets.menu,
-		args= make_menu_of_float_set(spin_mods) },
+		args= make_menu_of_float_set(spin_mods, true) },
 	{ name= "Target", meta= options_sets.menu,
 		args= make_menu_of_float_set(target_mods) },
 	{ name= "Visibility", meta= options_sets.menu,
