@@ -196,10 +196,10 @@ options_sets.speed= {
 				else
 					bi= speed_inc_base
 				end
-				self.info_set[2].text= "" .. (bi * -4)
-				self.info_set[3].text= "" .. (bi * -1)
-				self.info_set[4].text= "+" .. bi
-				self.info_set[5].text= "+" .. (bi * 4)
+				self.info_set[2].text= "+" .. (bi * 4)
+				self.info_set[3].text= "+" .. bi
+				self.info_set[4].text= "" .. (bi * -1)
+				self.info_set[5].text= "" .. (bi * -4)
 				if self.display then
 					for i= 2, 5 do
 						self.display:set_element_info(i, self.info_set[i])
@@ -1032,10 +1032,11 @@ local floaty_mods= {
 local chart_mods= {
 	ass_bools("Turn", {"Mirror", "Backwards", "Left", "Right",
 										 "Shuffle", "SoftShuffle", "SuperShuffle"}),
-	ass_bools("Inserts", {"Big", "BMRize", "Echo", "Floored", "Little", "Planted",
-												"Quick", "Skippy", "Stomp", "Twister", "Wide"}),
+	ass_bools("Inserts", {"Big", "BMRize", "Echo", "Floored", "Little",
+												"Planted", "AttackMines", "Quick", "Skippy", "Stomp",
+												"Twister", "Wide"}),
 	ass_bools("No", {"HoldRolls", "NoJumps","NoHands","NoQuads", "NoStretch",
-									 "NoLifts", "NoFakes"}),
+									 "NoLifts", "NoFakes", "NoMines"}),
 }
 
 local song_options= {
@@ -1108,7 +1109,7 @@ local decorations= {
 local base_options= {
 	{ name= "Speed", meta= options_sets.speed},
 	{ name= "Rate", meta= options_sets.rate_mod,
-		args= { default_value= 1, incs= {-.1, -.01, .01, .1}}},
+		args= { default_value= 1, incs= {.1, .01, -.01, -.1}}},
 	{ name= "Steps", meta= options_sets.steps_list},
 	{ name= "Perspective", meta= options_sets.menu,
 		args= make_menu_of_float_set(perspective_mods) },

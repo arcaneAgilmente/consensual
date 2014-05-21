@@ -1,10 +1,6 @@
 Some theme elements might overlap with each other if the aspect ratio isn't 16:10.  If they do, report your aspect ratio, resolution, and the elements to Kyzentun so they can be fixed.
 
-This theme is only tested on the tip of the github repository.  If you're not building from up to date source, some things that rely on recently added features might not work.
-
-Make sure you set SongsPerPlay in Preferences.ini to something high so that my replacement for the stage system will work.  (I set it to 128)
-This doesn't matter if event mode is on or the coin mode isn't set to pay.
-Don't set coin mode to pay.
+This theme is only tested on the tip of the github repository.  If you're not building from up to date source, some things that rely on recently added features might not work.  If there are any open pull requests from me, assume that they are necessary to run this theme.
 
 Initial screen:
 2 player mode is under Style->Versus.
@@ -33,11 +29,25 @@ A custom music wheel is used.  This music wheel is recursively bucket sorted to 
 Options screen:
 Navigate the menu with up, down, and start.
 The "<--" at the top level options menu is exit.  Both players must be on exit if two players are joined.
-Any option that can be set with a floating point value is controlled by a menu of numbers that change its current value.
-Most of them are buried at the deepest level, "Too Many".
+Options are semi-organized by category.
+Floaty Mods:
+	Any modifier that accepts a floating point value (besides special cases for
+		rate and speed) is set through a common interface.
+	The actions are increment, decrement, increase scale, decrease scale,
+		round, and reset.
+	The current value for the modifier is displayed at the top.
+	If the "straight_floats" option is true, the current value is a number,
+		where 1.0 is equivalent to 100%.
+	The increment/decrement options increase or decrease the current value.
+	The increase/decrease scale options change the size of the increment.
+	Round rounds the current value to the nearest integer or n00%.
+	Reset sets the current value to the default (usually 0).
+	Some modifiers are angles and have a special toggleable option for setting
+		whether the current value should be treated as a multiple of pi.  The pi
+		setting is not stored, so if the menu is closed and reopened, it is lost.
 
 Unsupported options:
-no mines, attackmines
+Clear
 
 Special options:
 Speed:
