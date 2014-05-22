@@ -190,9 +190,9 @@ function cons_player:combo_qual_reset()
 end
 
 function cons_player:stage_stats_reset()
-	self.stage_stats= { firsts= {}}
+	self.stage_stats= { firsts= {}, offset_score= 0, offsets_judged= 0}
 	self.fake_score= {
-		firsts= {}, combo= 0, life= 50, dp= 0,
+		firsts= {}, combo= 0, life= 50, dp= 0, offset_score= 0, offsets_judged= 0,
 		TapNoteScore_W1= 0, TapNoteScore_W2= 0, TapNoteScore_W3= 0,
 		TapNoteScore_W4= 0, TapNoteScore_W5= 0, TapNoteScore_Miss= 0,
 	}
@@ -217,7 +217,8 @@ function cons_player:stage_stats_reset()
 					HoldNoteScore_Held= 0,
 					HoldNoteScore_LetGo= 0,
 					HoldNoteScore_MissedHold= 0,
-				}
+				},
+				step_timings= {}
 			}
 		end
 	end

@@ -253,8 +253,10 @@ local score_report_interface= {}
 function score_report_interface:create_actors(player_number)
 	self.player_number= player_number
 	local args= { Name= "judge_list", InitCommand=cmd(y,36) }
-	args[#args+1]= chart_info(gamestate_get_curr_steps(player_number), 0, -24)
-	local spacing= 24
+	local scale= .9
+	local spacing= 24 * scale
+	args[#args+1]= chart_info(
+		gamestate_get_curr_steps(player_number), 0, -spacing, scale)
 	local curstats= STATSMAN:GetCurStageStats()
 	local pstats= curstats:GetPlayerStageStats(player_number)
 	local fake_score= (cons_players[player_number].fake_judge and
@@ -278,27 +280,63 @@ function score_report_interface:create_actors(player_number)
 	local percent_score= fmat:format(math.floor(adp/mdp * raise) * lower)
 	local fpcts= fmat:format(math.floor(fadp/mdp * raise) * lower)
 	local score_color= color_for_score(adp/mdp)
-	args[#args+1]= changing_text("score", fpcts, percent_score, score_color)
+	args[#args+1]= changing_text("score", fpcts, percent_score, score_color, 0, 0, scale)
 	args[#args+1]= changing_text("dp", fadp .. " / " .. mdp,
 															 adp .. " / " .. mdp, score_color, 0,
-															 spacing*.75, .5)
-	local next_y= spacing*2
+															 spacing*.75, .5*scale)
+	local next_y= spacing*1.5
+	if cons_players[player_number].flags.offset then
+		local function offround(off)
+			return math.round(off * 1000)
+		end
+		local offs_judged= cons_players[player_number].stage_stats.offsets_judged
+		local off_precision= math.ceil(math.log(offs_judged) / math.log(10))
+		local function offavground(avg)
+			return math.round(avg * 10^(3+off_precision)) / 10^(off_precision)
+		end
+		local real_offscore=
+			offround(cons_players[player_number].stage_stats.offset_score)
+		local real_offavg= offavground(cons_players[player_number].stage_stats.offset_score / offs_judged)
+		local fake_offscore= real_offscore
+		local fake_offavg= real_offavg
+		if cons_players[player_number].fake_score then
+			fake_offscore=
+				offround(cons_players[player_number].fake_score.offset_score)
+			fake_offavg= offavground(cons_players[player_number].fake_score.offset_score / cons_players[player_number].fake_score.offsets_judged)
+		end
+		local wa_window= PREFSMAN:GetPreference("TimingWindowSecondsW1") * 1000
+		local offcolor= solar_colors.f_text()
+		if real_offavg <= wa_window then
+			local perfection_pct= 1 - (real_offavg / wa_window)
+			offcolor= convert_percent_to_color(perfection_pct)
+		end
+		local ms_text= " "..get_string_wrapper("ScreenEvaluation", "ms")
+		local avg_text= " "..get_string_wrapper("ScreenEvaluation", "avg")
+		local tot_text= " "..get_string_wrapper("ScreenEvaluation", "tot")
+		args[#args+1]= changing_text("offavgms", fake_offavg..ms_text..avg_text, real_offavg..ms_text..avg_text, offcolor, 0, next_y, scale)
+		next_y= next_y + spacing*.75
+		args[#args+1]= changing_text("offms", fake_offscore..ms_text..tot_text, real_offscore..ms_text..tot_text, offcolor, 0, next_y, .5*scale)
+		next_y= next_y + spacing*.75
+	end
 	if cons_players[player_number].flags.best_scores then
-		next_y= spacing*3
+		next_y= next_y - spacing*.75
+		local best_text_y= next_y + spacing*.5
+		local score_y= best_text_y + spacing*.5
+		next_y= next_y + spacing*1.5
 		local seperation= 50
 		local sub_sep= 40
 		local rank_sep= #percent_score * 8 + 15
 		args[#args+1]= normal_text(
 			"mbest", get_string_wrapper("ScreenEvaluation", "Machine Best"),
-			solar_colors.f_text(), -seperation, spacing*1.5, .5)
+			solar_colors.f_text(), -seperation, best_text_y, .5*scale)
 		args[#args+1]= normal_text(
 			"pbest", get_string_wrapper("ScreenEvaluation", "Your Best"),
-			solar_colors.f_text(), seperation, spacing*1.5, .5)
+			solar_colors.f_text(), seperation, best_text_y, .5*scale)
 		local mpro= PROFILEMAN:GetMachineProfile()
 		local ppro= PROFILEMAN:GetProfile(player_number)
 		local pro_score_tani_args= {
-			sx= -seperation, sy= spacing*2, tx= -sub_sep, tz= .5, tt="", ta= left,
-			nx= sub_sep, nz= .5, nt= "", na= right
+			sx= -seperation, sy= score_y, tx= -sub_sep, tz= .5*scale, tt="", ta= left,
+			nx= sub_sep, nz= .5*scale, nt= "", na= right
 		}
 		self.mscore= setmetatable({}, text_and_number_interface_mt)
 		self.pscore= setmetatable({}, text_and_number_interface_mt)
@@ -342,12 +380,12 @@ function score_report_interface:create_actors(player_number)
 		if mrank ~= 0 then
 			args[#args+1]= normal_text("mrank", "#" .. mrank,
 																 convert_percent_to_color((9 - mrank) / 8),
-																 -rank_sep, 0, .5)
+																 -rank_sep, 0, .5*scale)
 		end
 		if prank ~= 0 then
 			args[#args+1]= normal_text("prank", "#" .. prank,
 																 convert_percent_to_color((9 - prank) / 8),
-																 rank_sep, 0, .5)
+																 rank_sep, 0, .5*scale)
 		end
 	end
 	local total_taps= 0
@@ -455,19 +493,19 @@ function score_report_interface:create_actors(player_number)
 	end
 	if cons_players[player_number].flags.pct_column then
 		args[#args+1]= percent_set:create_actors(
-			"percents", 0, next_y, 0, 0, 0, spacing, .5, center)
+			"percents", 0, next_y, 0, 0, 0, spacing, .5*scale, center)
 	end
 	if cons_players[player_number].flags.song_column then
 		args[#args+1]= taps_set:create_actors(
-			"taps", 0, next_y, 0, 0, 0, spacing, 1, center)
+			"taps", 0, next_y, 0, 0, 0, spacing, 1*scale, center)
 	end
 	if cons_players[player_number].flags.session_column then
 		args[#args+1]= totals_set:create_actors(
-			"totals", 0, next_y, 0, 0, 0, spacing, .5, center)
+			"totals", 0, next_y, 0, 0, 0, spacing, .5*scale, center)
 	end
 	if cons_players[player_number].flags.sum_column then
 		args[#args+1]= running_totals_set:create_actors(
-			"running_totals", 0, next_y, 0, 0, 0, spacing, .5, center)
+			"running_totals", 0, next_y, 0, 0, 0, spacing, .5*scale, center)
 	end
 	return Def.ActorFrame(args)
 end
@@ -481,6 +519,10 @@ function score_report_interface:find_actors(container, allowed_width)
 	local chart_info= container:GetChild("chart_info")
 	if chart_info then
 		width_limit_text(chart_info, allowed_width)
+	end
+	local offavgms= container:GetChild("offavgms")
+	if offavgms then
+		width_limit_text(offavgms, allowed_width)
 	end
 	local cnames= { "percents", "taps", "totals", "running_totals" }
 	local children= {}

@@ -386,7 +386,7 @@ function chart_info_text(steps)
 	return info_text
 end
 
-function chart_info(steps, x, y)
+function chart_info(steps, x, y, z)
 	return normal_text("chart_info", chart_info_text(steps),
-										 solar_colors.f_text(), x, y, 1, center)
+										 solar_colors.f_text(), x, y, z or 1, center)
 end

@@ -202,6 +202,7 @@ local args= {
 			if param.Player ~= player then return end
 			local fake_judge= cons_players[player].fake_judge
 			local fake_score= cons_players[player].fake_score
+			local stage_stats= cons_players[player].stage_stats
 			do
 				local step_judge= param.HoldNoteScore or param.TapNoteScore
 				local step_value= tns_values[step_judge]
@@ -217,6 +218,7 @@ local args= {
 				col_score.dp= col_score.dp + step_value
 				col_score.mdp= col_score.mdp + max_step_value
 				col_score.judge_counts[step_judge]= col_score.judge_counts[step_judge] + 1
+				col_score.step_timings[#col_score.step_timings+1]= { judge= step_judge, offset= (param.TapNoteOffset and math.round(param.TapNoteOffset * 1000)) or 0}
 			end
 			if param.HoldNoteScore then
 				if not tns_values[param.HoldNoteScore] then
@@ -252,7 +254,7 @@ local args= {
 			if this_tns == "TapNoteScore_HitMine"
 				or this_tns == "TapNoteScore_AvoidMine"
 				or this_tns == "TapNoteScore_None" then return end
-			local firsts= cons_players[player].stage_stats.firsts
+			local firsts= stage_stats.firsts
 			if firsts then
 				if not firsts[this_tns] then
 					firsts[this_tns]= GAMESTATE:GetCurMusicSeconds()
@@ -260,6 +262,11 @@ local args= {
 			end
 			local disp_judge= this_tns
 			local disp_offset= param.TapNoteOffset
+			-- Misses have an offset of 0.
+			if this_tns ~= "TapNoteScore_Miss" then
+				stage_stats.offset_score= stage_stats.offset_score + math.abs(param.TapNoteOffset)
+				stage_stats.offsets_judged= stage_stats.offsets_judged + 1
+			end
 			if fake_judge then
 				disp_judge= fake_judge()
 				local width= tns_windows[disp_judge][2] - tns_windows[disp_judge][1]
@@ -271,6 +278,10 @@ local args= {
 			local rev_disp= tns_reverse[disp_judge]
 			fake_score[disp_judge]= fake_score[disp_judge] + 1
 			fake_score.dp= fake_score.dp + tns_values[disp_judge]
+			if disp_judge ~= "TapNoteScore_Miss" then
+				fake_score.offset_score= fake_score.offset_score + math.abs(disp_offset)
+				fake_score.offsets_judged= fake_score.offsets_judged + 1
+			end
 			if fake_score.combo_is_misses then
 				if rev_disp <= tns_inc_miss_combo then
 					fake_score.combo= fake_score.combo + 1
