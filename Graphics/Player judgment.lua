@@ -214,11 +214,19 @@ local args= {
 						max_step_value= tns_values.TapNoteScore_W1
 					end
 				end
-				local col_score= cons_players[player].column_scores[param.FirstTrack]
-				col_score.dp= col_score.dp + step_value
-				col_score.mdp= col_score.mdp + max_step_value
-				col_score.judge_counts[step_judge]= col_score.judge_counts[step_judge] + 1
-				col_score.step_timings[#col_score.step_timings+1]= { judge= step_judge, offset= (param.TapNoteOffset and math.round(param.TapNoteOffset * 1000)) or 0}
+				local tracks= {param.FirstTrack}
+				if param.Tracks then
+					tracks= param.Tracks
+				end
+				for ic, col in ipairs(tracks) do
+					local col_score= cons_players[player].column_scores[col]
+					col_score.dp= col_score.dp + step_value
+					col_score.mdp= col_score.mdp + max_step_value
+					col_score.judge_counts[step_judge]=
+						col_score.judge_counts[step_judge] + 1
+					col_score.step_timings[#col_score.step_timings+1]= {
+						judge= step_judge, offset= math.round(param.TapNoteOffset or 0)}
+				end
 			end
 			if param.HoldNoteScore then
 				if not tns_values[param.HoldNoteScore] then

@@ -99,7 +99,7 @@ local function make_banner_actor()
 				InitCommand= function(self)
 											 if cur_song then
 												 self:LoadFromSongBanner(cur_song)
-												 self:scaletofit(-128, -40, 128, 40)
+												 scale_to_fit(self, 256, 80)
 											 else
 												 self:visible(false)
 											 end
@@ -847,8 +847,12 @@ do
 	for i, v in ipairs(enabled_players) do
 		if not GAMESTATE:IsEventMode() then
 			local play_history= cons_players[v].play_history
+			Trace("Adding song to play_history with timestamp " ..
+							tostring(prev_song_start_timestamp) .. "-" ..
+							tostring(prev_song_end_timestamp))
 			play_history[#play_history+1]= {
-				song= gamestate_get_curr_song(), steps= gamestate_get_curr_steps(v)}
+				song= gamestate_get_curr_song(), steps= gamestate_get_curr_steps(v),
+				start= prev_song_start_timestamp, finish= prev_song_end_timestamp}
 		end
 		local pstats= curstats:GetPlayerStageStats(v)
 		highest_score= math.max(highest_score,

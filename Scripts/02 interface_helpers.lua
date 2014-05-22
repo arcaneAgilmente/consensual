@@ -390,3 +390,11 @@ function chart_info(steps, x, y, z)
 	return normal_text("chart_info", chart_info_text(steps),
 										 solar_colors.f_text(), x, y, z or 1, center)
 end
+
+-- Because somebody decided stepmania's scaletofit should change the position
+-- of the actor.
+function scale_to_fit(actor, width, height)
+	local xscale= width / actor:GetWidth()
+	local yscale= height / actor:GetHeight()
+	actor:zoom(math.min(xscale, yscale))
+end

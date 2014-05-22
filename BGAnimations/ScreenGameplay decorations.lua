@@ -840,12 +840,10 @@ local function set_speed_from_speed_info(player)
 end
 
 local function cleanup(self)
+	prev_song_end_timestamp= hms_timestamp()
 	local time_spent= gameplay_end_time - gameplay_start_time
-	--Trace("Reducing time remaining. " .. get_time_remaining()
-	--		.. " - " .. time_spent)
 	reduce_time_remaining(time_spent)
 	set_last_song_time(time_spent)
-	--Trace("Reduced time remaining. " .. get_time_remaining())
 end
 
 local function note_date_edit_test()
@@ -915,6 +913,7 @@ return Def.ActorFrame {
 					song_ops:SaveScore(true)
 				end
 				local enabled_players= GAMESTATE:GetEnabledPlayers()
+				prev_song_start_timestamp= hms_timestamp()
 				for k, v in pairs(enabled_players) do
 					cons_players[v].prev_steps= gamestate_get_curr_steps(v)
 					cons_players[v]:stage_stats_reset()

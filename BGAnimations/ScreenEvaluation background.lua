@@ -10,8 +10,7 @@ return Def.ActorFrame {
 									 else
 										 self:visible(false)
 									 end
-									 self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
-									 self:scaletofit(0, 0, SCREEN_RIGHT, SCREEN_BOTTOM)
+									 self:FullScreen()
 									 self:diffusealpha(.25)
 								 end
 	}

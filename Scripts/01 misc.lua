@@ -589,92 +589,14 @@ function stop_music()
 	SOUND:PlayMusicPart("", 0, 0)
 end
 
-music_wheel_width= SCREEN_WIDTH*.3125
-
-local poptions_queries= {
-	{ n= "Alternate", f= PlayerOptions.GetAlternate },
-	{ n= "AttackMines", f= PlayerOptions.GetAttackMines },
-	{ n= "Backwards", f= PlayerOptions.GetBackwards },
-	{ n= "Beat", f= PlayerOptions.GetBeat },
-	{ n= "Big", f= PlayerOptions.GetBig },
-	{ n= "Blind", f= PlayerOptions.GetBlind },
-	{ n= "Blink", f= PlayerOptions.GetBlink },
-	{ n= "BMRize", f= PlayerOptions.GetBMRize },
-	{ n= "Boomerang", f= PlayerOptions.GetBoomerang },
-	{ n= "Boost", f= PlayerOptions.GetBoost },
-	{ n= "Brake", f= PlayerOptions.GetBrake },
-	{ n= "Bumpy", f= PlayerOptions.GetBumpy },
-	{ n= "Centered", f= PlayerOptions.GetCentered },
-	{ n= "CMod", f= PlayerOptions.GetCMod },
-	{ n= "Confusion", f= PlayerOptions.GetConfusion },
-	{ n= "Cover", f= PlayerOptions.GetCover },
-	{ n= "Cross", f= PlayerOptions.GetCross },
-	{ n= "Dark", f= PlayerOptions.GetDark },
-	{ n= "Dizzy", f= PlayerOptions.GetDizzy },
-	{ n= "Drunk", f= PlayerOptions.GetDrunk },
-	{ n= "Echo", f= PlayerOptions.GetEcho },
-	{ n= "Expand", f= PlayerOptions.GetExpand },
-	{ n= "Flip", f= PlayerOptions.GetFlip },
-	{ n= "Floored", f= PlayerOptions.GetFloored },
-	{ n= "Hidden", f= PlayerOptions.GetHidden },
-	{ n= "HiddenOffset", f= PlayerOptions.GetHiddenOffset },
-	{ n= "HoldRolls", f= PlayerOptions.GetHoldRolls },
-	{ n= "Invert", f= PlayerOptions.GetInvert },
-	{ n= "Left", f= PlayerOptions.GetLeft },
-	{ n= "Little", f= PlayerOptions.GetLittle },
-	{ n= "Mines", f= PlayerOptions.GetMines },
-	{ n= "Mini", f= PlayerOptions.GetMini },
-	{ n= "Mirror", f= PlayerOptions.GetMirror },
-	{ n= "MMod", f= PlayerOptions.GetMMod },
-	{ n= "MuteOnError", f= PlayerOptions.GetMuteOnError },
-	{ n= "NoAttacks", f= PlayerOptions.GetNoAttacks },
-	{ n= "NoFakes", f= PlayerOptions.GetNoFakes },
-	{ n= "NoHands", f= PlayerOptions.GetNoHands },
-	{ n= "NoHolds", f= PlayerOptions.GetNoHolds },
-	{ n= "NoJumps", f= PlayerOptions.GetNoJumps },
-	{ n= "NoLifts", f= PlayerOptions.GetNoLifts },
-	{ n= "NoMines", f= PlayerOptions.GetNoMines },
-	{ n= "NoQuads", f= PlayerOptions.GetNoQuads },
-	{ n= "NoRolls", f= PlayerOptions.GetNoRolls },
-	{ n= "NoStretch", f= PlayerOptions.GetNoStretch },
-	{ n= "NoteSkin", f= PlayerOptions.GetNoteSkin },
-	{ n= "Passmark", f= PlayerOptions.GetPassmark },
-	{ n= "Planted", f= PlayerOptions.GetPlanted },
-	{ n= "Quick", f= PlayerOptions.GetQuick },
-	{ n= "RandomAttacks", f= PlayerOptions.GetRandomAttacks },
-	{ n= "RandomSpeed", f= PlayerOptions.GetRandomSpeed },
-	{ n= "RandomVanish", f= PlayerOptions.GetRandomVanish },
-	{ n= "Reverse", f= PlayerOptions.GetReverse },
-	{ n= "Right", f= PlayerOptions.GetRight },
-	{ n= "Roll", f= PlayerOptions.GetRoll },
-	{ n= "Shuffle", f= PlayerOptions.GetShuffle },
-	{ n= "Skew", f= PlayerOptions.GetSkew },
-	{ n= "Skippy", f= PlayerOptions.GetSkippy },
-	{ n= "SoftShuffle", f= PlayerOptions.GetSoftShuffle },
-	{ n= "SongAttacks", f= PlayerOptions.GetSongAttacks },
-	{ n= "Split", f= PlayerOptions.GetSplit },
-	{ n= "Stealth", f= PlayerOptions.GetStealth },
-	{ n= "StepAttacks", f= PlayerOptions.GetStepAttacks },
-	{ n= "Stomp", f= PlayerOptions.GetStomp },
-	{ n= "Sudden", f= PlayerOptions.GetSudden },
-	{ n= "SuddenOffset", f= PlayerOptions.GetSuddenOffset },
-	{ n= "SuperShuffle", f= PlayerOptions.GetSuperShuffle },
-	{ n= "Tiny", f= PlayerOptions.GetTiny },
-	{ n= "Tipsy", f= PlayerOptions.GetTipsy },
-	{ n= "Tornado", f= PlayerOptions.GetTornado },
-	{ n= "Twirl", f= PlayerOptions.GetTwirl },
-	{ n= "Twister", f= PlayerOptions.GetTwister },
-	{ n= "Wave", f= PlayerOptions.GetWave },
-	{ n= "Wide", f= PlayerOptions.GetWide },
-	{ n= "XMod", f= PlayerOptions.GetXMod },
-	{ n= "XMode", f= PlayerOptions.GetXMode },
-}
-
-function spew_player_options(poptions)
-	Trace("Spewing player options.")
-	for e= 1, #poptions_queries do
-		local el= poptions_queries[e]
-		Trace(el.n .. ": " .. tostring(el.f(poptions)))
-	end
-	Trace("Done.")
+function hms_timestamp()
+	local h= Hour()
+	local m= Minute()
+	local s= Second()
+	if h < 10 then h= "0" .. h end
+	if m < 10 then m= "0" .. m end
+	if s < 10 then s= "0" .. s end
+	return h..":"..m..":"..s
 end
+
+music_wheel_width= SCREEN_WIDTH*.3125

@@ -764,7 +764,6 @@ return Def.ActorFrame {
 	Def.Sprite {
 		Name="Banner",
 		InitCommand=cmd(xy, banner_x, banner_y),
-		OnCommand=cmd(scaletoclipped, banner_w, banner_h),
 		CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
 		CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
 		SetCommand=
@@ -772,6 +771,7 @@ return Def.ActorFrame {
 				local song= gamestate_get_curr_song()
 				if song and song:HasBanner()then
 					self:Load(song:GetBannerPath())
+					scale_to_fit(self, banner_w, banner_h)
 					self:visible(true)
 				else
 					self:visible(false)
@@ -784,6 +784,7 @@ return Def.ActorFrame {
 					local path= songman_get_group_banner_path(name)
 					if path and path ~= "" then
 						self:Load(path)
+						scale_to_fit(self, banner_w, banner_h)
 						self:visible(true)
 					else
 						self:visible(false)

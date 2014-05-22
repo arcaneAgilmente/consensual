@@ -259,7 +259,8 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		local already_in_combined_history= false
 		for c, cph_ent in ipairs(combined_play_history) do
 			if (history_entry.song == cph_ent.song and
-					history_entry.steps == cph_ent.steps) then
+					history_entry.steps == cph_ent.steps and
+					history_entry.start == cph_ent.start) then
 				already_in_combined_history= true
 				break
 			end
@@ -298,26 +299,41 @@ end
 
 local hbanner_height= banner_height/2
 local hbanner_width= banner_width/2
+local entry_width= banner_width*.75
+local hentry_width= entry_width/2
 
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 
 local score_display_mt= {
 	__index= {
+		banner_center_y=
+			function(self)
+				local tz= .75
+				local line_height= 24 * tz
+				return hbanner_height + (line_height)
+			end,
 		create_actors=
 			function(self, name)
 				self.name= name
-				local line_height= 18
 				local tz= .75
+				local line_height= 24 * tz
 				local args= { Name= name }
-				args[#args+1]= Def.Sprite{ Name= "banner" }
-				local next_y= (banner_height / 2) + (line_height / 2)
+				local next_y= line_height / 2
+				args[#args+1]= normal_text("timeframe", "", nil, 0, next_y, tz)
+				next_y= next_y + banner_height + line_height
+				local why= self:banner_center_y()
+				-- The arrows used to indicate that there are scores to scroll
+				-- through need to be placed at the same y as the banner.
+				args[#args+1]= Def.Sprite{InitCommand=cmd(y,why),Name="banner"}
 				args[#args+1]= normal_text("title", "", nil, 0, next_y, tz)
 				next_y= next_y + line_height
 				args[#args+1]= normal_text("chart_info", "", nil, 0, next_y, tz)
 				next_y= next_y + line_height
 				local score_entries= 10
 				self.tanis= {}
-				local tani_params= { tx= -8, nx= 8, tz= tz, nz= tz, text_section= "" }
+				local tani_params= { tx= -hentry_width, nx= hentry_width,
+														 tz= tz, nz= tz, ta= left, na= right,
+														 text_section= ""}
 				for s= 1, score_entries do
 					tani_params.sy= (line_height * (s-1)) + next_y
 					self.tanis[s]= setmetatable({}, text_and_number_interface_mt)
@@ -330,6 +346,7 @@ local score_display_mt= {
 				self.container= container
 				self.banner= container:GetChild("banner")
 				self.title= container:GetChild("title")
+				self.timeframe= container:GetChild("timeframe")
 				self.chart_info= container:GetChild("chart_info")
 				for s, tani in ipairs(self.tanis) do
 					tani:find_actors(container:GetChild(tani.name))
@@ -357,17 +374,18 @@ local score_display_mt= {
 			function(self, info)
 				self.info= info
 				if not info then return end
-				-- info is a {song= Song, steps= Steps}
+				-- info is a {song= Song, steps= Steps, start= time, finish= time}
 				if info.song:HasBanner() then
 					self.banner:LoadFromSongBanner(info.song)
-					self.banner:scaletofit(
-							-hbanner_width, -hbanner_height, hbanner_width, hbanner_height)
+					scale_to_fit(self.banner, banner_width, banner_height)
 					self.banner:visible(true)
 				else
 					self.banner:visible(false)
 				end
 				self.title:settext(info.song:GetDisplayFullTitle())
 				width_limit_text(self.title, banner_width)
+				self.timeframe:settext(info.start .. "-" .. info.finish)
+				width_limit_text(self.timeframe, banner_width)
 				self.chart_info:settext(chart_info_text(info.steps))
 				width_limit_text(self.chart_info, banner_width)
 				local high_scores= machine_profile:GetHighScoreList(
@@ -379,7 +397,8 @@ local score_display_mt= {
 						tani:set_number(("%.2f%%"):format(score*100))
 						tani.number:diffuse(score_color)
 						tani:set_text(high_scores[i]:GetName())
-						width_limit_text(tani.text, score_disp_width / 2)
+						local num_width= tani.number:GetZoomedWidth()
+						width_limit_text(tani.text, entry_width - num_width - 8)
 						--Trace("tani " .. i .. " unhidden with score " .. score)
 						tani:unhide()
 					else
@@ -496,7 +515,7 @@ local args= {
 	}
 }
 
-local score_wheel_y= hbanner_height+8
+local score_wheel_y= SCREEN_TOP+4
 if all_scores_on_screen then
 	args[#args+1]= score_wheel:create_actors(
 		#combined_play_history, score_display_mt, SCREEN_CENTER_X,
@@ -504,13 +523,14 @@ if all_scores_on_screen then
 else
 	args[#args+1]= score_wheel:create_actors(
 		disps_on_screen+2, score_display_mt, SCREEN_CENTER_X, score_wheel_y)
+	local arrow_y= score_wheel_y+score_display_mt.__index.banner_center_y()
 	args[#args+1]= arrow_amv(
 		"left_arrow", SCREEN_LEFT + arrow_width + arrow_pad,
-		score_wheel_y, arrow_width, arrow_height, arrow_detail,
+		arrow_y, arrow_width, arrow_height, arrow_detail,
 		solar_colors.uf_text())
 	args[#args+1]= arrow_amv(
 		"right_arrow", SCREEN_RIGHT - arrow_width - arrow_pad,
-		score_wheel_y, -arrow_width, arrow_height, arrow_detail,
+		arrow_y, -arrow_width, arrow_height, arrow_detail,
 		solar_colors.uf_text())
 end
 for pn, nd in pairs(name_displays) do
