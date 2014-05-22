@@ -182,13 +182,13 @@ function lua_table_to_string(t, indent)
 		if type(k) == "number" then
 			k_str= "[" .. k .. "]"
 		else
-			k_str= '["' .. k .. '"]'
+			k_str= "[" .. ("%q"):format(k) .. "]"
 		end
 		local v_str= ""
 		if type(v) == "table" then
 			v_str= lua_table_to_string(v, internal_indent)
 		elseif type(v) == "string" then
-			v_str= "[===[" .. v .. "]===]"
+			v_str= ("%q"):format(v)
 		elseif type(v) == "number" then
 			if v ~= math.floor(v) then
 				v_str= ("%.3f"):format(v)

@@ -1058,6 +1058,15 @@ local special= {
 				{ name= "On", init= function() return global_distortion_mode end,
 					set= function() global_distortion_mode= true end,
 					unset= function() global_distortion_mode= false end}}}},
+	{ name= "Color palette", meta= options_sets.special_functions,
+		args= {
+			eles= {
+				{ name= "Light", init= noop_false,
+					set= solar_colors.set_light_map,
+					unset= noop_nil},
+				{ name= "Dark", init= noop_false,
+					set= solar_colors.set_dark_map,
+					unset= noop_nil}}}},
 	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions,
 		args= {eles= {
 						 generic_fake_judge_element("Random"),

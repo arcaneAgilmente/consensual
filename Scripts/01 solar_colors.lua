@@ -43,12 +43,10 @@ local palette_light_map= {
 solar_colors=
    {
    set_dark_map= function()
-                    Trace("Setting palette to dark map.")
                     palette= palette_dark_map
                  end,
 
    set_light_map= function()
-                    Trace("Setting palette to light map.")
                      palette= palette_light_map
                   end,
 
