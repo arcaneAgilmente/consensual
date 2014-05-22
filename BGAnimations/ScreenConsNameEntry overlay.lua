@@ -337,6 +337,17 @@ local score_display_mt= {
 				for s= 1, score_entries do
 					tani_params.sy= (line_height * (s-1)) + next_y
 					self.tanis[s]= setmetatable({}, text_and_number_interface_mt)
+					local quad_y= tani_params.sy
+					if s % 2 == 1 then
+						args[#args+1]= Def.Quad{
+							Name= "shadow" .. s,
+							InitCommand= function(self)
+								self:y(quad_y)
+								self:SetHeight(line_height)
+								self:SetWidth(entry_width)
+								self:diffuse(solar_colors.bg_shadow())
+							end}
+					end
 					args[#args+1]= self.tanis[s]:create_actors("entry"..s, tani_params)
 				end
 				return Def.ActorFrame(args)
@@ -348,8 +359,10 @@ local score_display_mt= {
 				self.title= container:GetChild("title")
 				self.timeframe= container:GetChild("timeframe")
 				self.chart_info= container:GetChild("chart_info")
+				self.shadows= {}
 				for s, tani in ipairs(self.tanis) do
 					tani:find_actors(container:GetChild(tani.name))
+					self.shadows[s]= container:GetChild("shadow" .. s)
 				end
 			end,
 		transform=
@@ -400,6 +413,9 @@ local score_display_mt= {
 						local num_width= tani.number:GetZoomedWidth()
 						width_limit_text(tani.text, entry_width - num_width - 8)
 						--Trace("tani " .. i .. " unhidden with score " .. score)
+						if self.shadows[i] then
+							self.shadows[i]:visible(true)
+						end
 						tani:unhide()
 					else
 						--Trace("tani " .. i .. " should be hidden.")
@@ -407,6 +423,9 @@ local score_display_mt= {
 						tani:set_text("")
 						tani:set_number("")
 						tani:hide()
+						if self.shadows[i] then
+							self.shadows[i]:visible(false)
+						end
 					end
 				end
 			end
