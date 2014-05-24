@@ -98,6 +98,7 @@ function cons_player:clear_init(player_number)
 	self:flags_reset()
 	self:combo_qual_reset()
 	self:stage_stats_reset()
+	self:session_stats_reset()
 	self.mine_effect= mine_effects[1]
 	self.sigil_data= {detail= 16, size= 150}
 	self.play_history= {}
@@ -137,12 +138,9 @@ end
 function cons_player:excessive_options_mode()
 	self.options_level= ops_level_excessive
 	self.rating_cap= -1
-	self.flags.judge= true
-	self.flags.pct_column= true
-	self.flags.offset= true
-	self.flags.session_column= true
-	self.flags.sum_column= true
-	self.flags.best_scores= true
+	for i, fname in ipairs(sorted_flag_names) do
+		self.flags[fname]= true
+	end
 end
 
 function cons_player:kyzentun_mode()
@@ -163,14 +161,9 @@ function cons_player:kyzentun_mode()
 		self.speed_info= new_speed
 	end
 	self.preferred_options:Distant(1.4)
-	self.flags.sigil= true
-	self.flags.judge= true
-	self.flags.offset= true
-	self.flags.pct_column= true
-	self.flags.session_column= true
-	self.flags.sum_column= true
-	self.flags.best_scores= true
-	self.flags.straight_floats= true
+	for i, fname in ipairs(sorted_flag_names) do
+		self.flags[fname]= true
+	end
 end
 
 -- If the rating cap is less than or equal to 0, it has the special meaning of "no cap".
@@ -189,48 +182,101 @@ function cons_player:combo_qual_reset()
 	self.combo_quality= {}
 end
 
-function cons_player:stage_stats_reset()
-	self.stage_stats= { firsts= {}, offset_score= 0, offsets_judged= 0}
-	self.fake_score= {
-		firsts= {}, combo= 0, life= 50, dp= 0, offset_score= 0, offsets_judged= 0,
-		TapNoteScore_W1= 0, TapNoteScore_W2= 0, TapNoteScore_W3= 0,
-		TapNoteScore_W4= 0, TapNoteScore_W5= 0, TapNoteScore_Miss= 0,
+local function empty_judge_count_set()
+	return {
+		TapNoteScore_W1= 0,
+		TapNoteScore_W2= 0,
+		TapNoteScore_W3= 0,
+		TapNoteScore_W4= 0,
+		TapNoteScore_W5= 0,
+		TapNoteScore_Miss= 0,
+		TapNoteScore_HitMine= 0,
+		TapNoteScore_AvoidMine= 0,
+		HoldNoteScore_Held= 0,
+		HoldNoteScore_LetGo= 0,
+		HoldNoteScore_MissedHold= 0,
 	}
+end
+
+function cons_player:stage_stats_reset()
+	self.stage_stats= {firsts= {}}
+	local function empty_col_score()
+		return {
+			dp= 0, mdp= 0, max_combo= 0, step_timings= {},
+			judge_counts= empty_judge_count_set(),
+		}
+	end
+	self.fake_score= empty_col_score()
 	local cur_style= GAMESTATE:GetCurrentStyle()
 	if cur_style then
 		local columns= cur_style:ColumnsPerPlayer()
 		--Trace("Making column score slots for " .. tostring(columns) .. " columns.")
 		self.column_scores= {}
 		-- Track indices from the engine are 0-indexed.
-		for c= 0, columns-1 do
-			self.column_scores[c]= {
-				dp= 0, mdp= 0,
-				judge_counts= {
-					TapNoteScore_W1= 0,
-					TapNoteScore_W2= 0,
-					TapNoteScore_W3= 0,
-					TapNoteScore_W4= 0,
-					TapNoteScore_W5= 0,
-					TapNoteScore_Miss= 0,
-					TapNoteScore_HitMine= 0,
-					TapNoteScore_AvoidMine= 0,
-					HoldNoteScore_Held= 0,
-					HoldNoteScore_LetGo= 0,
-					HoldNoteScore_MissedHold= 0,
-				},
-				step_timings= {}
-			}
+		-- Column -1 is for all columns combined.
+		for c= -1, columns-1 do
+			self.column_scores[c]= empty_col_score()
 		end
 	end
 end
 
+function cons_player:session_stats_reset()
+	self.session_stats= {}
+	-- Columns in the session stats are for every panel on the pad, to handle
+	-- mixed sessions.  Otherwise, a session where P2 played one song on single,
+	-- and one song on double would put the data for the single song in the
+	-- wrong columns.
+	-- style compatibility issue:  Dance, Pump, and Techno are the only supported games.
+	for i= -1, 18 do
+		self.session_stats[i]= {
+			dp= 0, mdp= 0, max_combo= 0, judge_counts= {
+				early= empty_judge_count_set(), late= empty_judge_count_set()}
+		}
+	end
+end
+
+player_flag_defaults= {
+	allow_toasty= true,
+	best_scores= false,
+	bpm_meter= true,
+	chart_info= true,
+	dance_points= true,
+	judge= false,
+	offset= false,
+	pct_column= false,
+	score_early_late= false,
+	score_meter= true,
+	session_column= false,
+	sigil= false,
+	song_column= true,
+	straight_floats= false,
+	sum_column= false,
+}
+
+sorted_flag_names= {
+	"sigil",
+	"judge",
+	"offset",
+	"score_meter",
+	"dance_points",
+	"chart_info",
+	"bpm_meter",
+	"song_column",
+	"pct_column",
+	"session_column",
+	"sum_column",
+	"best_scores",
+	"allow_toasty",
+	"score_early_late",
+	"straight_floats",
+}
+
 function cons_player:flags_reset()
 	self.flags= {}
-	self.flags.score_meter= true
-	self.flags.dance_points= true
-	self.flags.chart_info= true
-	self.flags.bpm_meter= true
-	self.flags.song_column= true
+	for k, v in ipairs(player_flag_defaults) do
+		self.flags[k]= v
+	end
+	-- allow_toasty is set here so it will be affected if the preference is changed while the game is running.
 	self.flags.allow_toasty= PREFSMAN:GetPreference("EasterEggs")
 end
 
@@ -517,6 +563,7 @@ function get_coin_info()
 	return credits, coins, needed
 end
 
+-- style compatibility issue:  Dance, Pump, and Techno are the only supported games.
 -- Suspiciously similar design to CodeDetectorCodes in _fallback/Scripts/03 Gameplay.lua
 local cons_codes= {
 	left= {
@@ -566,7 +613,7 @@ function cons_get_code(name)
 	return code[lowered_game_name()] or code.default
 end
 
--- second index is number of players enabled.
+-- style compatibility issue:  Dance, Pump, and Techno are the only supported games.
 local steps_types_by_game= {
 	dance= {
 		{
@@ -586,9 +633,25 @@ local steps_types_by_game= {
 		{
 			"StepsType_Pump_Single",
 		}
-	}
+	},
+	techno= {
+		{
+			"StepsType_Techno_Single4",
+			"StepsType_Techno_Single5",
+			"StepsType_Techno_Single8",
+			"StepsType_Techno_Double4",
+			"StepsType_Techno_Double5",
+			"StepsType_Techno_Double8",
+		},
+		{
+			"StepsType_Techno_Single4",
+			"StepsType_Techno_Single5",
+			"StepsType_Techno_Single8",
+		}
+	},
 }
 
+-- style compatibility issue:  Dance, Pump, are the only supported games.
 style_command_for_steps_type= {
 	StepsType_Dance_Single= "style,single",
 	StepsType_Dance_Double= "style,double",

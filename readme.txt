@@ -73,6 +73,7 @@ Feedback:
 	Song/pct/session/sum column:  Flags for enabling columns on the score screen.
 	Best scores:  Whether to show the best scores on the score screen.
 	Allow toasty:  Whether to allow the toasty.
+	Score early/late:  Whether to split up the stats on the score screen into early/late.
   Straight Floats: Whether the float mods are in the old % style or just the raw numbers.
 	The flags set in the Feedback menu are saved to the profile.
 Sigil Detail:  The maximum detail of the sigil feedback.
@@ -92,5 +93,17 @@ Dance point total out of maximum is at the top of the screen, colored by worst j
 Chart author and foot rating are below that.
 
 Score screen:
-Self explanatory.
-Press Up to see profile stats.
+Self explanatory if you have the flags for special stuff at defaults.
+Profile data is shown on the other player's side if in single player.
+Use left/right on the pad or the menu buttons to change which column stats are shown for.  The dance pad highlights the current column if an individual column is being viewed.
+If two players are joined, the profile data is accessed the same way the columns are.
+Machine best and player best are shown with the current score's rank above the player's stats if the best_scores flag is set.
+The dance pad diagram indicates the play style and which column the stats are for.
+Offset stats are shown if the offset flag is set.  The average is how far off the steps were on average (by totaling absolute values).  The total is the accumulated total (by absolute values).
+The percent column shows what percent each judgment was out of the total.
+The song column shows how many of each judgment occurred in the song.
+The session column shows how many of each judgment occurred in the session.
+The sum column is a total of the session column values with the same or better judgment.
+The combo graph is at the edge of the screen and colored by the step judgments that affect the combo.
+The life graph is inward from the combo graph and colored to indicate where the first judgment of each type occurred.
+The color coding on the graphs is the same as in the stats.

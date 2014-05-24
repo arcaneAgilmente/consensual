@@ -215,9 +215,14 @@ local args= {
 					end
 				end
 				local tracks= {param.FirstTrack}
-				if param.Tracks then
+				if param.Tracks and #param.Tracks > 0 then
+					-- TODO:  Figure out why Tracks is sometimes blank.
+					--Trace("Using param.Tracks: " .. step_judge)
+					--rec_print_table(param.Tracks)
 					tracks= param.Tracks
 				end
+				-- Add the column for the combined score to the list.
+				table.insert(tracks, 1, -1)
 				for ic, col in ipairs(tracks) do
 					local col_score= cons_players[player].column_scores[col]
 					col_score.dp= col_score.dp + step_value
@@ -225,7 +230,8 @@ local args= {
 					col_score.judge_counts[step_judge]=
 						col_score.judge_counts[step_judge] + 1
 					col_score.step_timings[#col_score.step_timings+1]= {
-						judge= step_judge, offset= math.round(param.TapNoteOffset or 0)}
+						time= GAMESTATE:GetCurMusicSeconds(),
+						judge= step_judge, offset= param.TapNoteOffset}
 				end
 			end
 			if param.HoldNoteScore then
@@ -270,11 +276,6 @@ local args= {
 			end
 			local disp_judge= this_tns
 			local disp_offset= param.TapNoteOffset
-			-- Misses have an offset of 0.
-			if this_tns ~= "TapNoteScore_Miss" then
-				stage_stats.offset_score= stage_stats.offset_score + math.abs(param.TapNoteOffset)
-				stage_stats.offsets_judged= stage_stats.offsets_judged + 1
-			end
 			if fake_judge then
 				disp_judge= fake_judge()
 				local width= tns_windows[disp_judge][2] - tns_windows[disp_judge][1]
@@ -282,17 +283,17 @@ local args= {
 				if MersenneTwister.Random() > .5 then
 					disp_offset= disp_offset * -1
 				end
+				fake_score.judge_counts[disp_judge]=
+					fake_score.judge_counts[disp_judge] + 1
+				fake_score.dp= fake_score.dp + tns_values[disp_judge]
+				fake_score.step_timings[#fake_score.step_timings+1]= {
+					time= GAMESTATE:GetCurMusicSeconds(),
+					judge= disp_judge, offset= disp_offset}
 			end
 			local rev_disp= tns_reverse[disp_judge]
-			fake_score[disp_judge]= fake_score[disp_judge] + 1
-			fake_score.dp= fake_score.dp + tns_values[disp_judge]
-			if disp_judge ~= "TapNoteScore_Miss" then
-				fake_score.offset_score= fake_score.offset_score + math.abs(disp_offset)
-				fake_score.offsets_judged= fake_score.offsets_judged + 1
-			end
 			if fake_score.combo_is_misses then
 				if rev_disp <= tns_inc_miss_combo then
-					fake_score.combo= fake_score.combo + 1
+					fake_score.combo= (fake_score.combo or 0) + 1
 				elseif rev_disp >= tns_cont_combo then
 					fake_score.combo= 1
 					fake_score.combo_is_misses= false
@@ -305,7 +306,7 @@ local args= {
 						fake_score.combo_is_misses= true
 					end
 				elseif rev_disp >= tns_cont_combo then
-					fake_score.combo= fake_score.combo + 1
+					fake_score.combo= (fake_score.combo or 0) + 1
 				end
 			end
 			if cons_players[player].toasty then

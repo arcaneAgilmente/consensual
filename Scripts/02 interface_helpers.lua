@@ -48,8 +48,6 @@ do
 		return Def.ActorFrame{
 			Name= name,
 			InitCommand= cmd(x,params.sx;y,params.sy),
-			HideCommand= cmd(diffusealpha, 0),
-			UnhideCommand= cmd(diffusealpha, 1),
 			LoadFont(params.tf) .. {
 				Name= "text",
 				Text= self:get_string(params.tt),
@@ -156,13 +154,15 @@ end
 
 function text_and_number_interface:hide()
 	if self.container then
-		self.container:queuecommand("Hide")
+		self.text:diffusealpha(0)
+		self.number:diffusealpha(0)
 	end
 end
 
 function text_and_number_interface:unhide()
 	if self.container then
-		self.container:queuecommand("Unhide")
+		self.text:diffusealpha(1)
+		self.number:diffusealpha(1)
 	end
 end
 
@@ -230,14 +230,16 @@ function rec_calc_actor_extent(aframe, depth)
 		local yz= aframe:GetZoomY()
 		local children= aframe:GetChildren()
 		for i, c in pairs(children) do
-			local cx= c:GetX() + halignjust
-			local cy= c:GetY() + valignjust
-			--Trace(depth .. "child " .. i .. " at " .. cx .. ", " .. cy)
-			local cxmin, cxmax, cymin, cymax= rec_calc_actor_extent(c, depth .. "  ")
-			xmin= math.min((cxmin * xz) + cx, xmin)
-			ymin= math.min((cymin * yz) + cy, ymin)
-			xmax= math.max((cxmax * xz) + cx, xmax)
-			ymax= math.max((cymax * yz) + cy, ymax)
+			if c:GetVisible() then
+				local cx= c:GetX() + halignjust
+				local cy= c:GetY() + valignjust
+				--Trace(depth .. "child " .. i .. " at " .. cx .. ", " .. cy)
+				local cxmin, cxmax, cymin, cymax= rec_calc_actor_extent(c,depth.."  ")
+				xmin= math.min((cxmin * xz) + cx, xmin)
+				ymin= math.min((cymin * yz) + cy, ymin)
+				xmax= math.max((cxmax * xz) + cx, xmax)
+				ymax= math.max((cymax * yz) + cy, ymax)
+			end
 		end
 	else
 		--Trace(depth .. "no children")

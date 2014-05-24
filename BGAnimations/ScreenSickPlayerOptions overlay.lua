@@ -1090,24 +1090,14 @@ local special= {
 	--"StaticBackground", "RandomBGOnly", "SaveReplay" }),
 }
 
+local flag_eles= {}
+for i, fname in ipairs(sorted_flag_names) do
+	flag_eles[i]= generic_flag_control_element(fname)
+end
+
 local decorations= {
 	{ name= "Feedback", meta= options_sets.special_functions,
-		args= { eles= {
-							generic_flag_control_element("sigil"),
-							generic_flag_control_element("judge"),
-							generic_flag_control_element("offset"),
-							generic_flag_control_element("score_meter"),
-							generic_flag_control_element("dance_points"),
-							generic_flag_control_element("chart_info"),
-							generic_flag_control_element("bpm_meter"),
-							generic_flag_control_element("song_column"),
-							generic_flag_control_element("pct_column"),
-							generic_flag_control_element("session_column"),
-							generic_flag_control_element("sum_column"),
-							generic_flag_control_element("best_scores"),
-							generic_flag_control_element("allow_toasty"),
-							generic_flag_control_element("straight_floats"),
-				}}},
+		args= { eles= flag_eles}},
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
 	{ name= "Sigil Size", meta= options_sets.adjustable_float,

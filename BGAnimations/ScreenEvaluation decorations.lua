@@ -21,69 +21,232 @@ do
 	end
 end
 
-local function not_negzero(s)
-	if s == "-0%" then return "0%" end
-	return s
-end
+dofile(THEME:GetPathO("", "art_helpers.lua"))
 
-local function changing_text(name, first_text, second_text, color, tx, ty, z, align, commands)
-	commands= commands or {}
-	if type(second_text) == "table" then
-		Trace("Bad second_text: " .. tostring(second_text))
-		rec_print_table(second_text)
+local tns_reverse= TapNoteScore:Reverse()
+local tnss_that_affect_combo= {
+	TapNoteScore_W1= true,
+	TapNoteScore_W2= true,
+	TapNoteScore_W3= true,
+	TapNoteScore_W4= true,
+	TapNoteScore_W5= true,
+	TapNoteScore_Miss= true,
+}
+local tns_cont_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToContinueCombo")]
+local tns_maint_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToMaintainCombo")]
+local tnss_that_can_be_early= {
+	TapNoteScore_W1= true,
+	TapNoteScore_W2= true,
+	TapNoteScore_W3= true,
+	TapNoteScore_W4= true,
+	TapNoteScore_W5= true,
+}
+
+-- style compatibility issue:  Dance, Pump, and Techno are the only supported games.
+local column_to_pad_arrow_map= {
+	[PLAYER_1]= {
+		StepsType_Dance_Single= {[0]= 4, 8, 2, 6},
+		StepsType_Dance_Double= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Dance_Couple= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Dance_Solo= {[0]= 4, 1, 8, 2, 3, 6},
+		StepsType_Dance_Threepanel= {[0]= 1, 8, 3},
+		StepsType_Dance_Routine= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Pump_Single= {[0]= 7, 1, 5, 3, 9},
+		StepsType_Pump_Halfdouble= {[0]= 5, 3, 9, 16, 10, 14},
+		StepsType_Pump_Double= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Pump_Couple= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Pump_Routine= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Techno_Single4= {[0]= 4, 8, 2, 6},
+		StepsType_Techno_Single5= {[0]= 7, 1, 5, 3, 9},
+		StepsType_Techno_Single8= {[0]= 1, 2, 3, 4, 6, 7, 8, 9},
+		StepsType_Techno_Double4= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Techno_Double5= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Techno_Double8= {[0]= 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
+	},
+	[PLAYER_2]= {
+		StepsType_Dance_Single= {[0]= 13, 17, 11, 15},
+		StepsType_Dance_Double= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Dance_Couple= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Dance_Solo= {[0]= 13, 10, 17, 11, 12, 15},
+		StepsType_Dance_Threepanel= {[0]= 10, 17, 12},
+		StepsType_Dance_Routine= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Pump_Single= {[0]= 16, 10, 14, 12, 18},
+		StepsType_Pump_Halfdouble= {[0]= 5, 3, 9, 16, 10, 14},
+		StepsType_Pump_Double= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Pump_Couple= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Pump_Routine= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Techno_Single4= {[0]= 13, 17, 11, 15},
+		StepsType_Techno_Single5= {[0]= 16, 10, 14, 12, 18},
+		StepsType_Techno_Single8= {[0]= 10, 11, 12, 13, 15, 16, 17, 18},
+		StepsType_Techno_Double4= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Techno_Double5= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Techno_Double8= {[0]= 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
+}}
+
+local function get_pad_arrow_for_col(pn, col)
+	-- -1 is the index for the combined stats of all panels
+	if col == -1 then return -1 end
+	local steps_type= gamestate_get_curr_steps(pn):GetStepsType()
+	if column_to_pad_arrow_map[pn][steps_type] then
+		return column_to_pad_arrow_map[pn][steps_type][col]
 	end
-	if commands.OnCommand then
-		commands.OnCommand= function(self)
-													commands.OnCommand(self)
-													self:queuecommand("Wait")
-												end
-	else
-		commands.OnCommand= cmd(queuecommand, "Wait")
+end
+
+local function color_dance_pad_by_score(pn, pad)
+	local steps_type= gamestate_get_curr_steps(pn):GetStepsType()
+	local col_score= cons_players[pn].column_scores
+	if column_to_pad_arrow_map[pn][steps_type] then
+		for c= 0, #col_score do
+			local arrow_id= column_to_pad_arrow_map[pn][steps_type][c]
+			if arrow_id then
+				pad:color_arrow(arrow_id, color_for_score(col_score[c].dp/col_score[c].mdp))
+				pad.arrows[arrow_id]:SetVertices(vert_colors)
+			end
+		end
 	end
-	commands.WaitCommand= cmd(sleep, 5; queuecommand, "Change")
-	commands.ChangeCommand= cmd(settext, second_text)
-	return normal_text(name, first_text, color, tx, ty, z, align, commands)
 end
 
-local number_set= {}
-local number_set_mt= { __index= number_set }
-function number_set:init()
-	self.first_numbers= {}
-	self.second_numbers= {}
-	self.colors= {}
-	self.zooms= {}
+local function toggle_visible_indicator(pn, pad, col)
+	if col < 0 then return end
+	pad:toggle_indicator(get_pad_arrow_for_col(pn, col))
 end
 
-function number_set:add_number(n, nb, color, z)
-	nb= nb or n
-	local index= #self.first_numbers+1
-	self.first_numbers[index]= n
-	self.second_numbers[index]= nb
-	self.colors[index]= color
-	self.zooms[index]= z
-end
+local number_set_mt= {
+	__index= {
+		create_actors= function(self, name, x, y, sx, sy, dx, dy, elz, ela, elc,
+														elw)
+			x= x or 0
+			y= y or 0
+			sx= sx or 0
+			sy= sy or 0
+			dx= dx or 0
+			dy= dy or 0
+			elz= elz or 1
+			ela= ela or center
+			elc= elc or 10
+			elw= elw or 80
+			self.name= name
+			local args= {Name= name, InitCommand= cmd(xy, x, y)}
+			self.els= {}
+			self.elzooms= {}
+			self.elz= elz
+			self.elw= elw
+			for i= 1, elc do
+				local im= i-1
+				self.els[i]= "n"..i
+				args[#args+1]= normal_text(
+					self.els[i], "", nil, sx + (dx * im), sy + (dy * im), elz, ela)
+			end
+			return Def.ActorFrame(args)
+		end,
+		find_actors= function(self, container)
+			self.container= container
+			for i= 1, #self.els do
+				self.els[i]= container:GetChild(self.els[i])
+			end
+		end,
+		set= function(self, number_data)
+			-- Each entry in number_data is {number= n, color= c, zoom= z}
+			for i, el in ipairs(self.els) do
+				if number_data[i] then
+					local number= number_data[i].number or ""
+					local color= number_data[i].color or solar_colors.f_text()
+					local zoom= (number_data[i].zoom or 1) * self.elz
+					self.elzooms[i]= zoom
+					el:settext(number)
+					el:diffuse(color)
+					el:zoom(zoom)
+					width_limit_text(el, self.elw, zoom)
+					el:visible(true)
+				else
+					el:visible(false)
+				end
+			end
+		end,
+		width_limit= function(self, width)
+			for i, el in pairs(self.els) do
+				width_limit_text(el, width, self.elzooms[i])
+			end
+		end
+}}
 
-function number_set:create_actors(name, x, y, sx, sy, dx, dy, elz, ela)
-	x= x or 0
-	y= y or 0
-	sx= sx or 0
-	sy= sy or 0
-	dx= dx or 0
-	dy= dy or 0
-	elz= elz or 1
-	ela= ela or center
-	local args= { Name= name, InitCommand= cmd(xy, x, y) }
-	for i= 1, #self.first_numbers do
-		local n= self.first_numbers[i]
-		local nb= self.second_numbers[i]
-		local c= self.colors[i] or solar_colors.f_text()
-		local z= self.zooms[i] or elz
-		local im= i - 1
-		args[#args+1]= changing_text(
-			"n" .. i, n, nb, c, sx + (dx * im), sy + (dy * im), z, ela)
-	end
-	return Def.ActorFrame(args)
-end
+local best_score_mt= {
+	__index= {
+		create_actors= function(self, name, x, y, z, score_name)
+			self.name= name
+			local args= {Name= name, InitCommand= cmd(xy, x, y)}
+			self.fh= setmetatable({}, frame_helper_mt)
+			args[#args+1]= self.fh:create_actors(
+				"frame", .5, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
+			local bt= get_string_wrapper("ScreenEvaluation", score_name)
+			args[#args+1]= normal_text("best_text", bt, nil, 0, 0, z*.5)
+			args[#args+1]= normal_text("rank", "", nil, 0, -24*.5*z, z*.5)
+			self.score= setmetatable({}, text_and_number_interface_mt)
+			args[#args+1]= self.score:create_actors(
+				"score", {sy= 24*.5*z, tx= -40, nx= 40, tz= .5*z, nz= .5*z, ta= left,
+									na= right, tt= "", nt= ""})
+			return Def.ActorFrame(args)
+		end,
+		find_actors= function(self, container)
+			self.container= container
+			self.fh:find_actors(container:GetChild(self.fh.name))
+			self.score:find_actors(container:GetChild(self.score.name))
+			self.rank= container:GetChild("rank")
+		end,
+		set= function(self, profile_pn, rank_pn)
+			local profile= false
+			if profile_pn then
+				profile= PROFILEMAN:GetProfile(profile_pn)
+			else
+				profile= PROFILEMAN:GetMachineProfile()
+			end
+			local rank_profile= PROFILEMAN:GetProfile(rank_pn)
+			self.score:hide()
+			if profile and rank_profile then
+				local hs_list= profile:GetHighScoreListIfExists(
+					gamestate_get_curr_song(), gamestate_get_curr_steps(rank_pn))
+				if hs_list then
+					hs_list= hs_list:GetHighScores()
+					local highest_score= hs_list[1]
+					if highest_score then
+						local pn_to_filler= {[PLAYER_1]= "#P1#", [PLAYER_2]= "#P2#"}
+						local rank= 0
+						local pstats=
+							STATSMAN:GetCurStageStats():GetPlayerStageStats(rank_pn)
+						for i, hs in ipairs(hs_list) do
+							if hs:GetName() == pn_to_filler[rank_pn] or
+								(hs:GetName() == rank_profile:GetLastUsedHighScoreName() and
+								 hs:GetScore() == pstats:GetScore()) then
+									rank= i
+									break
+							end
+						end
+						if rank == 0 then
+							self.rank:visible(false)
+						else
+							self.rank:settext("#"..rank)
+							self.rank:diffuse(convert_percent_to_color((9 - rank) / 8))
+							self.rank:visible(true)
+						end
+						self.score:set_text(highest_score:GetName())
+						local pct= math.floor(highest_score:GetPercentDP() * 10000) * .01
+						self.score:set_number(("%.2f%%"):format(pct))
+						local name_width= 80 - self.score.number:GetZoomedWidth() - 4
+						width_clip_text(self.score.text, name_width)
+						self.score:unhide()
+						local fxmn, fxmx, fymn, fymx=
+							rec_calc_actor_extent(self.container)
+						local fw= fxmx - fxmn + 2
+						local fh= fymx - fymn + 4
+						local fx= fxmn + (fw / 2)
+						local fy= fymn + (fh / 2)
+						self.fh:move(fx, fy-2)
+						self.fh:resize(fw, fh)
+					end
+				end
+			end
+		end
+}}
 
 local function make_banner_actor()
 	local cur_song= gamestate_get_curr_song()
@@ -92,26 +255,26 @@ local function make_banner_actor()
 		return Def.ActorFrame{
 			Name= "song_stuff",
 			InitCommand= function(self)
-										 self:xy(SCREEN_CENTER_X, SCREEN_TOP + 48)
-									 end,
+				self:xy(SCREEN_CENTER_X, SCREEN_TOP + 12)
+			end,
 			Def.Sprite{
 				Name= "banner",
 				InitCommand= function(self)
-											 if cur_song then
-												 self:LoadFromSongBanner(cur_song)
-												 scale_to_fit(self, 256, 80)
-											 else
-												 self:visible(false)
-											 end
-										 end
+					self:xy(0, 56)
+					if cur_song then
+						self:LoadFromSongBanner(cur_song)
+						scale_to_fit(self, 256, 80)
+					else
+						self:visible(false)
+					end
+				end
 			},
 			normal_text(
-				"song_name", song_name, solar_colors.f_text(), 0, 52, 1, center,
-				{ OnCommand=
-					function(self)
+				"song_name", song_name, solar_colors.f_text(), 0, 0, 1, center,
+				{ OnCommand= function(self)
 						local limit= SCREEN_WIDTH - ((cg_thickness+lg_thickness)*2) - 16
 						width_limit_text(self, limit)
-					end
+				end
 			})
 		}
 	end
@@ -178,387 +341,301 @@ function life_graph_interface:create_actors(pstats, firsts, gx, gy, gw, gh, refl
 	return Def.ActorFrame(args)
 end
 
-local combo_graph_interface= {}
-function combo_graph_interface:create_actors(combo_data, cx, cy, cw, ch,
-                                             normal_color, max_color)
-	--local length= song_get_length(gamestate_get_curr_song())
-	local length= gameplay_end_time - gameplay_start_time
-	local seconds_resolution= (length) / ch
-	local combo_resolution= 4 -- chosen by fair dice roll
-	-- Any combo smaller than seconds_resolution or combo_resolution will not
-	-- be shown.
-	local deshou= {}
-	local max_combo= 0
-	for n= 1, #combo_data do
-		if combo_data[n].SizeSeconds > seconds_resolution
-			and combo_data[n].Count > combo_resolution then
-			max_combo= math.max(max_combo, combo_data[n].Count)
-			deshou[#deshou+1]= combo_data[n]
-		end
-	end
-	local args= { Name= "ComboGraph", InitCommand= cmd(x,cx;y,cy-ch/2)}
-	local verts= {}
-	local max_texts= {}
-	for n= 1, #deshou do
-		local info= deshou[n]
-		local py= info.StartSecond / seconds_resolution
-		local ph= info.SizeSeconds / seconds_resolution
-		local is_max= info.Count >= max_combo
-		local cc= normal_color
-		if is_max then cc= max_color end
-		verts[#verts+1]= {{cw, py, 0}, cc}
-		verts[#verts+1]= {{0, py, 0}, cc}
-		verts[#verts+1]= {{0, py+ph, 0}, cc}
-		verts[#verts+1]= {{cw, py+ph, 0}, cc}
-		if is_max then
-			max_texts[#max_texts+1]= {num= info.Count, x= 0, y= py + (ph/2)}
-		end
-	end
-	args[#args+1]= Def.ActorMultiVertex{
-		Name= "cgraph",
-		InitCommand=
-			function(self)
-				self:x(cw*-.5)
-				self:SetVertices(verts)
-				self:SetDrawState{Mode="DrawMode_Quads"}
-			end
-	}
-	for i, mt in ipairs(max_texts) do
-		args[#args+1]= normal_text("max_text" .. i, mt.num, solar_colors.red(),
-															 mt.x, mt.y, .5)
-	end
-	return Def.ActorFrame(args)
-end
-
-function combo_graph_interface.reposition_max_texts(container, cx)
-	local children= container:GetChildren()
-	for k, v in pairs(children) do
-		if k:find("max_text") then
-			local halfw= v:GetZoomedWidth() / 2
-			local left= cx - halfw - 1
-			local right= cx + halfw + 1
-			if left < SCREEN_LEFT then
-				v:x(2 - left)
-			end
-			if right > SCREEN_RIGHT then
-				v:x(SCREEN_RIGHT - 1 - right)
-			end
-		end
-	end
-end
-
-local combo_graph_interface_mt= { __index= combo_graph_interface }
-
-local score_report_interface= {}
-function score_report_interface:create_actors(player_number)
-	self.player_number= player_number
-	local args= { Name= "judge_list", InitCommand=cmd(y,36) }
-	local scale= .9
-	local spacing= 24 * scale
-	args[#args+1]= chart_info(
-		gamestate_get_curr_steps(player_number), 0, -spacing, scale)
-	local curstats= STATSMAN:GetCurStageStats()
-	local pstats= curstats:GetPlayerStageStats(player_number)
-	local fake_score= (cons_players[player_number].fake_judge and
-										 cons_players[player_number].fake_score) or nil
-	local adp= pstats:GetActualDancePoints()
-	local fadp= adp
-	if fake_score then
-		fadp= fake_score.dp
-	end
-	local mdp= pstats:GetPossibleDancePoints()
-	cons_players[player_number].prev_score= adp/mdp
-	local min_precision= 2
-	local precision= math.ceil(math.log(mdp) / math.log(10)) - 2
-	--Trace("Seval: mdp: " .. mdp .. ", log: " .. math.log(mdp, 10) ..
-	--   ", precision: " .. precision)
-	precision= math.max(min_precision, precision)
-	local fmat= "%." .. precision .. "f%%"
-	--Trace("fmat: " .. fmat)
-	local raise= 10^(precision+2)
-	local lower= 10^-precision
-	local percent_score= fmat:format(math.floor(adp/mdp * raise) * lower)
-	local fpcts= fmat:format(math.floor(fadp/mdp * raise) * lower)
-	local score_color= color_for_score(adp/mdp)
-	args[#args+1]= changing_text("score", fpcts, percent_score, score_color, 0, 0, scale)
-	args[#args+1]= changing_text("dp", fadp .. " / " .. mdp,
-															 adp .. " / " .. mdp, score_color, 0,
-															 spacing*.75, .5*scale)
-	local next_y= spacing*1.5
-	if cons_players[player_number].flags.offset then
-		local function offround(off)
-			return math.round(off * 1000)
-		end
-		local offs_judged= cons_players[player_number].stage_stats.offsets_judged
-		local off_precision= math.ceil(math.log(offs_judged) / math.log(10))
-		local function offavground(avg)
-			return math.round(avg * 10^(3+off_precision)) / 10^(off_precision)
-		end
-		local real_offscore=
-			offround(cons_players[player_number].stage_stats.offset_score)
-		local real_offavg= offavground(cons_players[player_number].stage_stats.offset_score / offs_judged)
-		local fake_offscore= real_offscore
-		local fake_offavg= real_offavg
-		if cons_players[player_number].fake_score then
-			fake_offscore=
-				offround(cons_players[player_number].fake_score.offset_score)
-			fake_offavg= offavground(cons_players[player_number].fake_score.offset_score / cons_players[player_number].fake_score.offsets_judged)
-		end
-		local wa_window= PREFSMAN:GetPreference("TimingWindowSecondsW1") * 1000
-		local offcolor= solar_colors.f_text()
-		if real_offavg <= wa_window then
-			local perfection_pct= 1 - (real_offavg / wa_window)
-			offcolor= convert_percent_to_color(perfection_pct)
-		end
-		local ms_text= " "..get_string_wrapper("ScreenEvaluation", "ms")
-		local avg_text= " "..get_string_wrapper("ScreenEvaluation", "avg")
-		local tot_text= " "..get_string_wrapper("ScreenEvaluation", "tot")
-		args[#args+1]= changing_text("offavgms", fake_offavg..ms_text..avg_text, real_offavg..ms_text..avg_text, offcolor, 0, next_y, scale)
-		next_y= next_y + spacing*.75
-		args[#args+1]= changing_text("offms", fake_offscore..ms_text..tot_text, real_offscore..ms_text..tot_text, offcolor, 0, next_y, .5*scale)
-		next_y= next_y + spacing*.75
-	end
-	if cons_players[player_number].flags.best_scores then
-		next_y= next_y - spacing*.75
-		local best_text_y= next_y + spacing*.5
-		local score_y= best_text_y + spacing*.5
-		next_y= next_y + spacing*1.5
-		local seperation= 50
-		local sub_sep= 40
-		local rank_sep= #percent_score * 8 + 15
-		args[#args+1]= normal_text(
-			"mbest", get_string_wrapper("ScreenEvaluation", "Machine Best"),
-			solar_colors.f_text(), -seperation, best_text_y, .5*scale)
-		args[#args+1]= normal_text(
-			"pbest", get_string_wrapper("ScreenEvaluation", "Your Best"),
-			solar_colors.f_text(), seperation, best_text_y, .5*scale)
-		local mpro= PROFILEMAN:GetMachineProfile()
-		local ppro= PROFILEMAN:GetProfile(player_number)
-		local pro_score_tani_args= {
-			sx= -seperation, sy= score_y, tx= -sub_sep, tz= .5*scale, tt="", ta= left,
-			nx= sub_sep, nz= .5*scale, nt= "", na= right
-		}
-		self.mscore= setmetatable({}, text_and_number_interface_mt)
-		self.pscore= setmetatable({}, text_and_number_interface_mt)
-		function set_score_tani_from_profile(pro, tani_args)
-			tani_args.tt= ""
-			tani_args.nt= ""
-			tani_args.tc= nil
-			tani_args.nc= nil
-			local rank_ret= 0
-			if pro then
-				local hs_list= pro:GetHighScoreList(
-					gamestate_get_curr_song(), gamestate_get_curr_steps(player_number))
-				if hs_list then
-					hs_list= hs_list:GetHighScores()
-					for i, hs in ipairs(hs_list) do
-						if hs:GetName() == ppro:GetLastUsedHighScoreName() and
-							hs:GetScore() == pstats:GetScore() then
-							rank_ret= i
-							break
-						end
-					end
-					if rank_ret == 1 then
-						tani_args.tc= convert_percent_to_color(1)
-						tani_args.nc= convert_percent_to_color(1)
-					end
-					local highest_score= hs_list[1]
-					if highest_score then
-						tani_args.tt= highest_score:GetName():sub(1, 4)
-						local pct= math.floor(highest_score:GetPercentDP() * 10000) * .01
-						tani_args.nt= ("%.2f%%"):format(pct)
-					end
+local combo_graph_mt= {
+	__index= {
+		create_actors= function(self, name, x, y, w, h)
+			self.name= name
+			self.w= w or 12
+			self.h= h or SCREEN_HEIGHT
+			return Def.ActorMultiVertex{
+				Name= name,
+				InitCommand= function(self)
+					self:xy(x, y)
+					self:SetDrawState{Mode="DrawMode_QuadStrip"}
+				end
+			}
+		end,
+		find_actors= function(self, container)
+			self.container= container
+		end,
+		set= function(self, step_timings)
+			local length= gameplay_end_time - gameplay_start_time
+			local pix_per_sec= self.h / length
+			local true_disp_height= DISPLAY:GetDisplayHeight()
+			local min_sex= length / true_disp_height
+			local verts= {}
+			local prev_time= 0
+			for i, tim in ipairs(step_timings) do
+				if tnss_that_affect_combo[tim.judge] and
+				(tim.time - prev_time > min_sex or prev_time == 0) then
+					local color= judgement_colors[tim.judge]
+					local y= tim.time * pix_per_sec
+					prev_time= tim.time
+					verts[#verts+1]= {{-self.w, y, 0}, color}
+					verts[#verts+1]= {{self.w, y, 0}, color}
 				end
 			end
-			return rank_ret
-		end
-		local mrank= set_score_tani_from_profile(mpro, pro_score_tani_args)
-		args[#args+1]= self.mscore:create_actors("mscore", pro_score_tani_args)
-		pro_score_tani_args.sx= -pro_score_tani_args.sx
-		local prank= set_score_tani_from_profile(ppro, pro_score_tani_args)
-		args[#args+1]= self.pscore:create_actors("pscore", pro_score_tani_args)
-		if mrank ~= 0 then
-			args[#args+1]= normal_text("mrank", "#" .. mrank,
-																 convert_percent_to_color((9 - mrank) / 8),
-																 -rank_sep, 0, .5*scale)
-		end
-		if prank ~= 0 then
-			args[#args+1]= normal_text("prank", "#" .. prank,
-																 convert_percent_to_color((9 - prank) / 8),
-																 rank_sep, 0, .5*scale)
-		end
-	end
-	local total_taps= 0
-	for n, j in ipairs(feedback_judgements) do
-		total_taps= total_taps + pstats:GetTapNoteScores(j)
-	end
-	local total_holds= 0
-	for n, h in ipairs(holdnote_names) do
-		total_holds= total_holds + pstats:GetHoldNoteScores(h)
-	end
-	local judge_totals= cons_players[player_number].judge_totals
-	local percent_set= setmetatable({}, number_set_mt)
-	percent_set:init()
-	percent_set:add_number("", nil, solar_colors.bg())
-	local taps_set= setmetatable({}, number_set_mt)
-	taps_set:init()
-	taps_set:add_number(get_string_wrapper("ScreenEvaluation", "Song"), nil, solar_colors.uf_text(), .5)
-	local totals_set= setmetatable({}, number_set_mt)
-	totals_set:init()
-	totals_set:add_number(get_string_wrapper("ScreenEvaluation", "Session"), nil, solar_colors.uf_text())
-	local running_totals_set= setmetatable({}, number_set_mt)
-	running_totals_set:init()
-	running_totals_set:add_number(get_string_wrapper("ScreenEvaluation", "Sum"), nil, solar_colors.uf_text())
-	local running_total= 0
-	local frunning_total= 0
-	for n, j in ipairs(feedback_judgements) do
-		local num_taps= pstats:GetTapNoteScores(j)
-		local ftaps= num_taps
-		if fake_score then
-			ftaps= fake_score[j] or 0
-		end
-		local pcent= tostring(math.round((num_taps / total_taps) * 100)) .. "%"
-		local fpcent= tostring(math.round((ftaps / total_taps) * 100)) .. "%"
-		pcent= not_negzero(pcent)
-		fpcent= not_negzero(fpcent)
-		if total_taps <= 0 then pcent= "0%" fpcent= "0%" end
-		local jc= judgement_colors[j]
-		percent_set:add_number(fpcent, pcent, solar_colors.f_text())
-		taps_set:add_number(ftaps, num_taps, jc)
-		if judge_totals then
-			local jt= 0
-			local fjt= 0
-			if judge_totals[j] then
-				jt= judge_totals[j] + num_taps
-				fjt= judge_totals[j] + ftaps
-			else
-				jt= num_taps
-				fjt= ftaps
+			if #verts > 2 and #verts % 2 == 0 then
+				self.container:SetVertices(verts)
+				self.container:SetDrawState{Num= #verts}
 			end
-			judge_totals[j]= jt
-			totals_set:add_number(fjt, jt, jc)
-			running_total= running_total + jt
-			frunning_total= frunning_total + fjt
-			running_totals_set:add_number(frunning_total, running_total, jc)
 		end
-	end
-	running_total= 0
-	frunning_total= 0
-	for n, h in ipairs(holdnote_names) do
-		local num_holds= pstats:GetHoldNoteScores(h)
-		local fnh= num_holds
-		if fake_score then
-			fnh= fake_score[h] or 0
-		end
-		local pcent= tostring(math.round((num_holds / total_holds) * 100)) .. "%"
-		local fpcent= tostring(math.round((fnh / total_holds) * 100)) .. "%"
-		pcent= not_negzero(pcent)
-		fpcent= not_negzero(fpcent)
-		if total_holds <= 0 then pcent= "0%" fpcent= "0%" end
-		local hc= judgement_colors[h]
-		percent_set:add_number(fpcent, pcent, solar_colors.f_text())
-		taps_set:add_number(fnh, num_holds, hc)
-		if judge_totals then
-			local jt= 0
-			local fjt= 0
-			if judge_totals[h] then
-				jt= judge_totals[h] + num_holds
-				fjt= judge_totals[h] + fnh
-			else
-				jt= num_holds
-				fjt= fnh
-			end
-			judge_totals[h]= jt
-			totals_set:add_number(fjt, jt, hc)
-			running_total= running_total + jt
-			frunning_total= frunning_total + fjt
-			running_totals_set:add_number(frunning_total, running_total, hc)
-		end
-	end
-	do
-		local max_combo= pstats:MaxCombo()
-		local percent= max_combo / total_taps
-		local pcent= tostring(math.round(percent * 100)) .. "%"
-		if total_taps <= 0 then pcent= "0%" fpcent= "0%" end
-		percent_set:add_number(pcent, nil, solar_colors.f_text())
-		taps_set:add_number(max_combo, nil, convert_percent_to_color(percent, 1))
-		if judge_totals then
-			if judge_totals.max_combo then
-				judge_totals.max_combo= math.max(judge_totals.max_combo, max_combo)
-			else
-				judge_totals.max_combo= max_combo
-			end
-			running_totals_set:add_number(judge_totals.max_combo, nil, solar_colors.f_text())
-		end
-	end
-	if cons_players[player_number].flags.pct_column then
-		args[#args+1]= percent_set:create_actors(
-			"percents", 0, next_y, 0, 0, 0, spacing, .5*scale, center)
-	end
-	if cons_players[player_number].flags.song_column then
-		args[#args+1]= taps_set:create_actors(
-			"taps", 0, next_y, 0, 0, 0, spacing, 1*scale, center)
-	end
-	if cons_players[player_number].flags.session_column then
-		args[#args+1]= totals_set:create_actors(
-			"totals", 0, next_y, 0, 0, 0, spacing, .5*scale, center)
-	end
-	if cons_players[player_number].flags.sum_column then
-		args[#args+1]= running_totals_set:create_actors(
-			"running_totals", 0, next_y, 0, 0, 0, spacing, .5*scale, center)
-	end
-	return Def.ActorFrame(args)
-end
+}}
 
-function score_report_interface:find_actors(container, allowed_width)
-	self.container= container
-	if not container then
-		Trace("score_report_interface for " .. self.player_number .. " passed nil container.")
-		return
-	end
-	local chart_info= container:GetChild("chart_info")
-	if chart_info then
-		width_limit_text(chart_info, allowed_width)
-	end
-	local offavgms= container:GetChild("offavgms")
-	if offavgms then
-		width_limit_text(offavgms, allowed_width)
-	end
-	local cnames= { "percents", "taps", "totals", "running_totals" }
-	local children= {}
-	local widths= {}
-	local total_width= 0
-	for i, cn in ipairs(cnames) do
-		local child= container:GetChild(cn)
-		if child then
-			children[#children+1]= child
-			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(child)
-			widths[#widths+1]= (xmx - xmn)
-			total_width= total_width + (xmx - xmn)
-		end
-	end
-	if self.mscore then
-		self.mscore:find_actors(container:GetChild(self.mscore.name))
-		self.pscore:find_actors(container:GetChild(self.pscore.name))
-	end
-	local pad= 8
-	total_width= total_width + (pad * (#cnames - 1))
-	local scale= 1
-	if total_width > allowed_width then
-		scale= allowed_width / total_width
-		total_width= allowed_width
-	end
-	local left_edge= total_width * -.5
-	for i= 1, #children do
-		local scaled_width= (widths[i] * scale)
-		local x= left_edge + (scaled_width / 2)
-		children[i]:x(x)
-		children[i]:zoomx(scale * children[i]:GetZoomX())
-		left_edge= left_edge + scaled_width + pad
-	end
-end
+local score_report_mt= {
+	__index= {
+		create_actors= function(self, name)
+			self.scale= .9
+			self.spacing= 24 * self.scale
+			self.name= name
+			self.pct_col= setmetatable({}, number_set_mt)
+			self.song_col= setmetatable({}, number_set_mt)
+			self.session_col= setmetatable({}, number_set_mt)
+			self.sum_col= setmetatable({}, number_set_mt)
+			local args= {
+				Name= name,
+				-- Create actors assuming all stats will be displayed.
+				-- The set function will fill in/position the ones that are enabled.
+				-- This will allow us to toggle the visibility flags on this screen.
+				normal_text("chart_info", "", nil, 0, 0, self.scale),
+				normal_text("score", "", nil, 0, 0, self.scale),
+				normal_text("dp", "", nil, 0, 0, self.scale*.5),
+				normal_text("offavgms", "", nil, 0, 0, self.scale),
+				normal_text("offms", "", nil, 0, 0, self.scale*.5),
+				self.pct_col:create_actors(
+					"pct", 0, 0, 0, 0, 0, self.spacing, self.scale, center, 10),
+				self.song_col:create_actors(
+					"song", 0, 0, 0, 0, 0, self.spacing, self.scale, center, 10),
+				self.session_col:create_actors(
+					"session", 0, 0, 0, 0, 0, self.spacing, self.scale, center, 10),
+				self.sum_col:create_actors(
+					"sum", 0, 0, 0, 0, 0, self.spacing, self.scale, center, 10),
+			}
+			return Def.ActorFrame(args)
+		end,
+		find_actors= function(self, container)
+			self.container= container
+			self.chart_info= container:GetChild("chart_info")
+			self.score= container:GetChild("score")
+			self.dp= container:GetChild("dp")
+			self.offavgms= container:GetChild("offavgms")
+			self.offms= container:GetChild("offms")
+			self.pct_col:find_actors(container:GetChild(self.pct_col.name))
+			self.song_col:find_actors(container:GetChild(self.song_col.name))
+			self.session_col:find_actors(container:GetChild(self.session_col.name))
+			self.sum_col:find_actors(container:GetChild(self.sum_col.name))
+		end,
+		set= function(self, player_number, col_id, score_data, allowed_width)
+			if allowed_width then
+				self.allowed_width= allowed_width
+			else
+				allowed_width= self.allowed_width or 1
+			end
+			local flags= cons_players[player_number].flags
+			local session_col= get_pad_arrow_for_col(player_number, col_id)
+			local session_score= cons_players[player_number].session_stats[session_col]
+			local next_y= 0
+			self.chart_info:settext(
+				chart_info_text(gamestate_get_curr_steps(player_number)))
+			width_limit_text(self.chart_info, allowed_width, self.scale)
+			next_y= next_y + self.spacing
+			do -- score stuff
+				-- TODO: session stats for score?  The data is calculated, but not displayed.
+				local adp= score_data.dp
+				local mdp= score_data.mdp
+				local min_precision= 2
+				local precision= math.ceil(math.log(mdp) / math.log(10)) - 2
+				precision= math.max(min_precision, precision)
+				local fmat= "%." .. precision .. "f%%"
+				--Trace("fmat: " .. fmat)
+				local raise= 10^(precision+2)
+				local lower= 10^-precision
+				local percent_score= fmat:format(math.floor(adp/mdp * raise) * lower)
+				local score_color= color_for_score(adp/mdp)
+				self.score:settext(percent_score)
+				self.score:diffuse(score_color)
+				self.score:y(next_y)
+				next_y= next_y + (self.spacing * .75)
+				self.dp:settext(adp .. " / " .. mdp)
+				self.dp:diffuse(score_color)
+				self.dp:y(next_y)
+				next_y= next_y + (self.spacing * .25)
+			end
+			if flags.offset then
+				-- TODO: session stats for offset?  The data is not calculated.
+				local function offround(off)
+					return math.round(off * 1000)
+				end
+				local offs_judged= 0
+				local offset_total= 0
+				-- Mines and others don't have a valid offset, don't count them.
+				for i, tim in ipairs(score_data.step_timings) do
+					-- Misses have an offset of 0.
+					if tim.offset and tim.judge ~= "TapNoteScore_Miss" then
+						offs_judged= offs_judged + 1
+						offset_total= offset_total + math.abs(tim.offset)
+					end
+				end
+				local off_precision= math.ceil(math.log(offs_judged) / math.log(10))
+				local function offavground(avg)
+					return math.round(avg * 10^(3+off_precision)) / 10^(off_precision)
+				end
+				local offscore= offround(offset_total)
+				local offavg= offavground(offset_total / offs_judged)
+				local offcolor= solar_colors.f_text()
+				local wa_window= PREFSMAN:GetPreference("TimingWindowSecondsW1")*1000
+				if offavg <= wa_window then
+					local perfection_pct= 1 - (offavg / wa_window)
+					offcolor= convert_percent_to_color(perfection_pct)
+				end
+				local ms_text= " "..get_string_wrapper("ScreenEvaluation", "ms")
+				local avg_text= " "..get_string_wrapper("ScreenEvaluation", "avg")
+				local tot_text= " "..get_string_wrapper("ScreenEvaluation", "tot")
+				next_y= next_y + (self.spacing * .5)
+				self.offavgms:settext(offavg..ms_text..avg_text)
+				self.offavgms:y(next_y)
+				self.offavgms:diffuse(offcolor)
+				width_limit_text(self.offavgms, allowed_width, self.scale)
+				self.offavgms:visible(true)
+				next_y= next_y + (self.spacing * .75)
+				self.offms:settext(offscore..ms_text..tot_text)
+				self.offms:y(next_y)
+				self.offms:diffuse(offcolor)
+				self.offms:visible(true)
+				next_y= next_y + (self.spacing * .25)
+			else
+				self.offavgms:visible(false)
+				self.offms:visible(false)
+			end
+			do -- columns
+				local pct_data= {{}}
+				local song_data= {
+					{number= "Song", color= solar_colors.uf_text(), zoom= .5}}
+				local session_data= {
+					{number= "Session", color= solar_colors.uf_text(), zoom= .5}}
+				local sum_data= {
+					{number= "Sum", color= solar_colors.uf_text(), zoom= .5}}
+				local judge_totals= {}
+				local early_counts= {}
+				local late_counts= {}
+				for i, tim in ipairs(score_data.step_timings) do
+					-- Misses count as early because of this.
+					if tnss_that_can_be_early[tim.judge] and tim.offset >= 0 then
+						late_counts[tim.judge]= (late_counts[tim.judge] or 0) + 1
+					else
+						early_counts[tim.judge]= (early_counts[tim.judge] or 0) + 1
+					end
+				end
+				local function add_judge_data(judge_names)
+					local sum_ear_total= 0
+					local sum_lat_total= 0
+					local fj_ear_total= 0
+					local fj_lat_total= 0
+					for i, fj in ipairs(judge_names) do
+						fj_ear_total= fj_ear_total + (early_counts[fj] or 0)
+						fj_lat_total= fj_lat_total + (late_counts[fj] or 0)
+					end
+					judge_totals[#judge_totals+1]= fj_ear_total + fj_lat_total
+					local function pct_to_str(num, den)
+						if num == 0 or den == 0 then return "" end
+						return math.round((num/den)*100) .. "%"
+					end
+					for i, fj in ipairs(judge_names) do
+						local jcolor= judgement_colors[fj]
+						local earnum= early_counts[fj] or 0
+						local latnum= late_counts[fj] or 0
+						local sessear= session_score.judge_counts.early[fj]
+						local sesslat= session_score.judge_counts.late[fj]
+						sum_ear_total= sum_ear_total + sessear
+						sum_lat_total= sum_lat_total + sesslat
 
-local score_report_interface_mt= { __index= score_report_interface }
+						local pctstr= ""
+						local numstr= ""
+						local sessstr= ""
+						local sumstr= ""
+
+						local numz= 1
+						if flags.score_early_late and tnss_that_can_be_early[fj] then
+							local earpstr= pct_to_str(earnum, fj_ear_total)
+							local latpstr= pct_to_str(latnum, fj_lat_total)
+							local divstr= "/"
+							if earpstr == "" or latpstr == "" then divstr= "" end
+							pctstr= earpstr .. divstr .. latpstr
+							numstr= earnum .. "/" .. latnum
+							numz= .5
+							sessstr= sessear .. "/" .. sesslat
+							sumstr= sum_ear_total .. "/" .. sum_lat_total
+						else
+							pctstr= pct_to_str(earnum+latnum, fj_ear_total+fj_lat_total)
+							numstr= earnum + latnum
+							sessstr= sessear + sesslat
+							sumstr= sum_ear_total + sum_lat_total
+						end
+
+						pct_data[#pct_data+1]= {
+							number= pctstr, color= solar_colors.f_text(), zoom= .5}
+						song_data[#song_data+1]= {
+							number= numstr, color= jcolor, zoom= numz}
+						session_data[#session_data+1]= {
+							number= sessstr, color= jcolor, zoom= .5}
+						sum_data[#sum_data+1]= {
+							number= sumstr, color= jcolor, zoom= .5}
+					end
+				end
+				add_judge_data(feedback_judgements)
+				add_judge_data(holdnote_names)
+				local max_combo= score_data.max_combo
+				if max_combo then
+					local percent= max_combo / judge_totals[1]
+					local pcent= tostring(math.round(percent * 100)) .. "%"
+					if judge_totals[1] <= 0 or max_combo == 0 then pcent= "" end
+					pct_data[#pct_data+1]= {
+						number= pcent, color= solar_colors.f_text(), zoom= .5}
+					song_data[#song_data+1]= {
+						number= max_combo, color= convert_percent_to_color(percent),
+						zoom= 1}
+				end
+				local column_slots= {}
+				if flags.pct_column then
+					column_slots[#column_slots+1]= self.pct_col
+					self.pct_col:set(pct_data)
+					self.pct_col.container:visible(true)
+				else
+					self.pct_col.container:visible(false)
+				end
+				if flags.song_column then
+					column_slots[#column_slots+1]= self.song_col
+					self.song_col:set(song_data)
+					self.song_col.container:visible(true)
+				else
+					self.song_col.container:visible(false)
+				end
+				if flags.session_column then
+					column_slots[#column_slots+1]= self.session_col
+					self.session_col:set(session_data)
+					self.session_col.container:visible(true)
+				else
+					self.session_col.container:visible(false)
+				end
+				if flags.sum_column then
+					column_slots[#column_slots+1]= self.sum_col
+					self.sum_col:set(sum_data)
+					self.sum_col.container:visible(true)
+				else
+					self.sum_col.container:visible(false)
+				end
+				local column_width= allowed_width / #column_slots
+				local left_edge= -(column_width * (#column_slots / 2)) +
+					(column_width / 2)
+				next_y= next_y + (self.spacing * .5)
+				for i, col in ipairs(column_slots) do
+					local x= left_edge + (column_width * (i - 1))
+					col.container:xy(x, next_y)
+					col:width_limit(column_width - 8)
+				end
+			end
+		end
+}}
 
 local profile_report_interface= {}
 local profile_report_interface_mt= { __index= profile_report_interface }
@@ -651,14 +728,17 @@ function profile_report_interface:find_actors(container)
 	self.container= container
 end
 
-local cg_centers= { [PLAYER_1]= { SCREEN_LEFT + cg_thickness/2,
-                                  SCREEN_CENTER_Y },
-                    [PLAYER_2]= { SCREEN_RIGHT - cg_thickness/2,
-                                  SCREEN_CENTER_Y }}
+local cg_centers= { [PLAYER_1]= {SCREEN_LEFT + cg_thickness/2, 0},
+	[PLAYER_2]= {SCREEN_RIGHT - cg_thickness/2, 0}}
 local lg_centers= { [PLAYER_1]= { SCREEN_LEFT + lg_thickness/2 + cg_thickness,
                                   SCREEN_CENTER_Y },
                     [PLAYER_2]= { SCREEN_RIGHT - lg_thickness/2 - cg_thickness,
                                   SCREEN_CENTER_Y }}
+
+local combo_graphs= {
+	[PLAYER_1]= setmetatable({}, combo_graph_mt),
+	[PLAYER_2]= setmetatable({}, combo_graph_mt)
+}
 
 local function make_graph_actors()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
@@ -674,19 +754,16 @@ local function make_graph_actors()
 			lg_pos[1], lg_pos[2], lg_thickness, SCREEN_HEIGHT,
 			player_number == PLAYER_2)
 		local cg_pos= cg_centers[player_number]
-		local new_element= {}
-		setmetatable(new_element, combo_graph_interface_mt)
-		args[#args+1]= new_element:create_actors(
-			pstats:GetComboList(), cg_pos[1], cg_pos[2], cg_thickness, SCREEN_HEIGHT,
-			solar_colors.f_text(), solar_colors.cyan())
+		args[#args+1]= combo_graphs[player_number]:create_actors(
+			"cgraph", cg_pos[1], cg_pos[2], 12, SCREEN_HEIGHT)
 		outer_args[#outer_args+1]= Def.ActorFrame(args)
 	end
 	return Def.ActorFrame(outer_args)
 end
 
 local score_reports= { [PLAYER_1]= {}, [PLAYER_2]= {}}
-setmetatable(score_reports[PLAYER_1], score_report_interface_mt)
-setmetatable(score_reports[PLAYER_2], score_report_interface_mt)
+setmetatable(score_reports[PLAYER_1], score_report_mt)
+setmetatable(score_reports[PLAYER_2], score_report_mt)
 
 local profile_reports= { [PLAYER_1]= {}, [PLAYER_2]= {}}
 setmetatable(profile_reports[PLAYER_1], profile_report_interface_mt)
@@ -699,18 +776,31 @@ setmetatable(frame_helpers[PLAYER_2], frame_helper_mt)
 local player_xs= { [PLAYER_1]= SCREEN_RIGHT * .25,
                    [PLAYER_2]= SCREEN_RIGHT * .75 }
 
+local dance_pads= {[PLAYER_1]= setmetatable({}, dance_pad_mt),
+	[PLAYER_2]= setmetatable({}, dance_pad_mt)}
+
+local besties= {
+	[PLAYER_1]= {machine= setmetatable({}, best_score_mt),
+							 player= setmetatable({}, best_score_mt)},
+	[PLAYER_2]= {machine= setmetatable({}, best_score_mt),
+							 player= setmetatable({}, best_score_mt)}}
+
 local function make_player_specific_actors()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
 	local all_actors= { Name= "players" }
 	for k, v in pairs(enabled_players) do
-		local args= { Name= v, InitCommand=cmd(x,player_xs[v];y,SCREEN_TOP+120;vertalign,top) }
-		local info_height= (#feedback_judgements + #holdnote_names + 3) * 24 + 8
+		local args= { Name= v, InitCommand=cmd(x,player_xs[v];y,SCREEN_TOP+160;vertalign,top) }
 		args[#args+1]= frame_helpers[v]:create_actors(
 			"frame", 2, 0, 0, solar_colors[v](), solar_colors.bg(), 0, 0)
 		args[#args+1]= score_reports[v]:create_actors(v)
 		if #enabled_players > 1 then
 			args[#args+1]= profile_reports[v]:create_actors(v)
 		end
+		args[#args+1]= dance_pads[v]:create_actors("dance_pad", 0, -34, 10)
+		args[#args+1]= besties[v].machine:create_actors("mbest", 0, -114, 1,
+																										"Machine Best")
+		args[#args+1]= besties[v].player:create_actors("pbest", 0, -72, 1,
+																										"Player Best")
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
 	end
 	if #enabled_players == 1 then
@@ -726,6 +816,8 @@ local function make_player_specific_actors()
 end
 
 local judge_frame_helper= setmetatable({}, frame_helper_mt)
+local judge_name_set= setmetatable({}, number_set_mt)
+local judge_name_data= {}
 local function make_judge_name_actors()
 	local args= {
 		Name= "judge_names",
@@ -735,18 +827,27 @@ local function make_judge_name_actors()
 		frame_pad= 1
 	end
 	args[#args+1]= judge_frame_helper:create_actors("frame", frame_pad, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
-	local name_set= setmetatable({}, number_set_mt)
-	name_set:init()
 	for i, v in ipairs(feedback_judgements) do
-		name_set:add_number(get_string_wrapper("ShortJudgmentNames", v), nil, judgement_colors[v])
+		judge_name_data[#judge_name_data+1]= {
+			number= get_string_wrapper("ShortJudgmentNames", v),
+			color= judgement_colors[v], zoom= .5}
 	end
 	for i, v in ipairs(holdnote_names) do
-		name_set:add_number(get_string_wrapper("ShortJudgmentNames", v), nil, judgement_colors[v])
+		judge_name_data[#judge_name_data+1]= {
+			number= get_string_wrapper("ShortJudgmentNames", v),
+			color= judgement_colors[v], zoom= .5}
 	end
-	name_set:add_number(get_string_wrapper("ShortJudgmentNames", "MaxCombo"), nil, solar_colors.f_text())
-	args[#args+1]= name_set:create_actors("names", 0, 0, 0, 0, 0, 24, .5, center)
+	judge_name_data[#judge_name_data+1]= {
+		number= get_string_wrapper("ShortJudgmentNames", "MaxCombo"),
+		color= solar_colors.f_text(), zoom= .5}
+	args[#args+1]= judge_name_set:create_actors(
+		"names", 0, 0, 0, 0, 0, 24, 1, center, #judge_name_data)
 	return Def.ActorFrame(args)
 end
+
+local score_datas= {}
+local score_data_viewing_indices= {}
+local showing_profile_on_other_side= false
 
 local function find_actors(self)
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
@@ -755,6 +856,8 @@ local function find_actors(self)
 	local judge_left= SCREEN_CENTER_X
 	local judge_right= SCREEN_CENTER_X
 	if judge_names then
+		judge_name_set:find_actors(judge_names:GetChild(judge_name_set.name))
+		judge_name_set:set(judge_name_data)
 		judge_frame_helper:find_actors(judge_names:GetChild(judge_frame_helper.name))
 		local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(judge_names)
 		local fw= fxmx - fxmn + 8
@@ -797,9 +900,18 @@ local function find_actors(self)
 		pcont:x(cpos)
 		local pad= 16
 		width= width - (pad * 2)
-		local score_cont= pcont:GetChild("judge_list")
-		score_reports[v]:find_actors(score_cont, width)
+		combo_graphs[v]:find_actors(self:GetChild("graphs"):GetChild(v.."_graphs"):GetChild(combo_graphs[v].name))
+		score_reports[v]:find_actors(pcont:GetChild(score_reports[v].name))
+		frame_helpers[v]:find_actors(pcont:GetChild(frame_helpers[v].name))
+		score_reports[v].allowed_width= width
+		dance_pads[v]:find_actors(pcont:GetChild(dance_pads[v].name))
+		color_dance_pad_by_score(v, dance_pads[v])
+		besties[v].machine:find_actors(pcont:GetChild(besties[v].machine.name))
+		besties[v].machine:set(nil, v)
+		besties[v].player:find_actors(pcont:GetChild(besties[v].player.name))
+		besties[v].player:set(v, v)
 		if #GAMESTATE:GetEnabledPlayers() == 1 then
+			showing_profile_on_other_side= true
 			local other= other_player[v]
 			local opcont= players_container:GetChild(other)
 			profile_reports[v]:find_actors(opcont:GetChild(profile_reports[v].name), width)
@@ -814,28 +926,97 @@ local function find_actors(self)
 		else
 			profile_reports[v]:find_actors(pcont:GetChild(profile_reports[v].name), width)
 		end
-		frame_helpers[v]:find_actors(pcont:GetChild(frame_helpers[v].name))
-		local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(pcont)
-		local fw= fxmx - fxmn + pad
-		local fh= fymx - fymn + pad
-		local fx= fxmn + (fw / 2)
-		local fy= fymn + (fh / 2)
-		frame_helpers[v]:move(fx-pad/2, fy)
-		frame_helpers[v]:resize(fw, fh)
-		--Trace("Resizing frame to " .. frame_width .. " x " .. frame_height)
-		--frame_helpers[v]:resize(frame_width, frame_height)
 	end
-	local graphs= self:GetChild("graphs")
-	if graphs then
-		local pa_graphs= graphs:GetChild(PLAYER_1 .. "_graphs")
-		if pa_graphs then
-			local pa_combo_graph= pa_graphs:GetChild("ComboGraph")
-			combo_graph_interface.reposition_max_texts(pa_combo_graph, cg_centers[PLAYER_1][1])
+end
+
+local function add_column_score_to_session(pn, session_stats, col_id, col_score)
+	local session_col_id= get_pad_arrow_for_col(pn, col_id)
+	local sesscol= session_stats[session_col_id]
+	sesscol.dp= sesscol.dp + col_score.dp
+	sesscol.mdp= sesscol.mdp + col_score.mdp
+	sesscol.max_combo= math.max(sesscol.max_combo, col_score.max_combo)
+	for i, tim in ipairs(col_score.step_timings) do
+		if sesscol.judge_counts.early[tim.judge] then
+			if tnss_that_can_be_early[tim.judge] and tim.offset >= 0 then
+				sesscol.judge_counts.late[tim.judge]=
+					sesscol.judge_counts.late[tim.judge] + 1
+			else
+				sesscol.judge_counts.early[tim.judge]=
+					sesscol.judge_counts.early[tim.judge] + 1
+			end
 		end
-		local pb_graphs= graphs:GetChild(PLAYER_2 .. "_graphs")
-		if pb_graphs then
-			local pb_combo_graph= pb_graphs:GetChild("ComboGraph")
-			combo_graph_interface.reposition_max_texts(pb_combo_graph, cg_centers[PLAYER_2][1])
+	end
+end
+
+local function crunch_combo_data_for_column(col)
+	local step_timings= col.step_timings
+	local max_combo= 0
+	local curr_combo= 0
+	local combo_data= {}
+	local curr_combo_start= 0
+	local function end_combo(time)
+		if curr_combo > 0 then
+			max_combo= math.max(curr_combo, max_combo)
+			combo_data[#combo_data+1]= {
+				StartSecond= curr_combo_start,
+				SizeSeconds= time - curr_combo_start,
+				Count= curr_combo}
+		end
+		curr_combo= 0
+	end
+	for i, tim in ipairs(step_timings) do
+		if tnss_that_affect_combo[tim.judge] then
+			local revj= tns_reverse[tim.judge]
+			if revj >= tns_cont_combo then
+				if curr_combo == 0 then
+					curr_combo_start= tim.time
+				end
+				curr_combo= curr_combo + 1
+			elseif revj < tns_maint_combo then
+				end_combo(tim.time)
+			end
+		end
+	end
+	end_combo(step_timings[#step_timings].time)
+	col.max_combo= max_combo
+	col.combo_data= combo_data
+end
+
+local function save_column_scores(pn)
+	if not GAMESTATE:IsCourseMode() then
+		local profile_dir= false
+		if pn == PLAYER_1 then
+			profile_dir= PROFILEMAN:GetProfileDir("ProfileSlot_Player1")
+		else
+			profile_dir= PROFILEMAN:GetProfileDir("ProfileSlot_Player2")
+		end
+		local cur_song= gamestate_get_curr_song()
+		local song_name= "unknown_song"
+		if cur_song then song_name= cur_song:GetDisplayFullTitle() end
+		if profile_dir then
+			local file_handle= RageFileUtil.CreateRageFile()
+			local file_name= profile_dir .. "/song_scores/" .. song_name .. "_column_scores.lua"
+			local all_attempts= {}
+			if FILEMAN:DoesFileExist(file_name) then
+				all_attempts= dofile(file_name)
+			end
+			local function pad_num(num)
+				if num < 10 then return "0" .. num
+				else return num end
+			end
+			cons_players[pn].column_scores.timestamp= Year() .. "_" .. pad_num(MonthOfYear()) .. "_" .. pad_num(DayOfMonth()) .. "_" .. pad_num(Hour()) .. "_" .. pad_num(Minute()) .. "_" .. pad_num(Second())
+			all_attempts[#all_attempts+1]= cons_players[pn].column_scores
+			if not file_handle:Open(file_name, 2) then
+				Trace("Could not open '" .. file_name .. "' to write column scores.")
+			else
+				local output= "return " .. lua_table_to_string(all_attempts) .. "\n"
+				file_handle:Write(output)
+				file_handle:Close()
+				file_handle:destroy()
+				Trace("column scores written to '" .. file_name .. "'")
+			end
+		else
+			Trace("Nil profile dir, unable to write column scores.")
 		end
 	end
 end
@@ -854,87 +1035,139 @@ do
 				song= gamestate_get_curr_song(), steps= gamestate_get_curr_steps(v),
 				start= prev_song_start_timestamp, finish= prev_song_end_timestamp}
 		end
+		score_datas[v]= {}
 		local pstats= curstats:GetPlayerStageStats(v)
+		for i= -1, #cons_players[v].column_scores do
+			score_datas[v][i]= cons_players[v].column_scores[i]
+		end
+		score_datas[v][-1].dp= pstats:GetActualDancePoints()
+		score_datas[v][-1].mdp= pstats:GetPossibleDancePoints()
+		score_datas[v][-1].max_combo= pstats:MaxCombo()
+		for i, fj in ipairs(feedback_judgements) do
+			score_datas[v][-1].judge_counts[fj]= pstats:GetTapNoteScores(fj)
+		end
+		for i, hj in ipairs(holdnote_names) do
+			score_datas[v][-1].judge_counts[hj]= pstats:GetHoldNoteScores(hj)
+		end
+		cons_players[v].fake_score.mdp= score_datas[v][-1].mdp
+		score_data_viewing_indices[v]= -1
 		highest_score= math.max(highest_score,
 			pstats:GetActualDancePoints() / pstats:GetPossibleDancePoints())
-		if not GAMESTATE:IsCourseMode() then
-			local profile_dir= false
-			if v == PLAYER_1 then
-				profile_dir= PROFILEMAN:GetProfileDir("ProfileSlot_Player1")
-			else
-				profile_dir= PROFILEMAN:GetProfileDir("ProfileSlot_Player2")
-			end
-			local cur_song= gamestate_get_curr_song()
-			local song_name= "unknown_song"
-			if cur_song then song_name= cur_song:GetDisplayFullTitle() end
-			if profile_dir then
-				local file_handle= RageFileUtil.CreateRageFile()
-				local file_name= profile_dir .. "/song_scores/" .. song_name .. "_column_scores.lua"
-				local all_attempts= {}
-				if FILEMAN:DoesFileExist(file_name) then
-					all_attempts= dofile(file_name)
-				end
-				local function pad_num(num)
-					if num < 10 then return "0" .. num
-					else return num end
-				end
-				cons_players[v].column_scores.timestamp= Year() .. "_" .. pad_num(MonthOfYear()) .. "_" .. pad_num(DayOfMonth()) .. "_" .. pad_num(Hour()) .. "_" .. pad_num(Minute()) .. "_" .. pad_num(Second())
-				all_attempts[#all_attempts+1]= cons_players[v].column_scores
-				if not file_handle:Open(file_name, 2) then
-					Trace("Could not open '" .. file_name .. "' to write column scores.")
-				else
-					local output= "return " .. lua_table_to_string(all_attempts) .. "\n"
-					file_handle:Write(output)
-					file_handle:Close()
-					file_handle:destroy()
-					Trace("column scores written to '" .. file_name .. "'")
-				end
-			else
-				Trace("Nil profile dir, unable to write column scores.")
-			end
+		--save_column_scores(v)
+		add_column_score_to_session(v, cons_players[v].session_stats, -1, score_datas[v][-1])
+		for ic= 0, #cons_players[v].column_scores do
+			crunch_combo_data_for_column(cons_players[v].column_scores[ic])
+			add_column_score_to_session(v, cons_players[v].session_stats, ic, cons_players[v].column_scores[ic])
 		end
 	end
 	local reward= convert_score_to_time(highest_score)
 	reduce_time_remaining(-reward)
 end
 
+local function set_visible_score_data(pn, index)
+	local function size_frame_to_report(report_container)
+		local pad= 16
+		local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(report_container)
+		local fw= fxmx - fxmn + pad
+		local fh= fymx - fymn + pad
+		local fx= fxmn + (fw / 2)
+		local fy= fymn + (fh / 2)
+		frame_helpers[pn]:move(fx-pad/2, fy-pad/2)
+		frame_helpers[pn]:resize(fw, fh)
+	end
+	if index == -3 then
+		score_reports[pn]:set(pn, -1, cons_players[pn].fake_score)
+		score_reports[pn].container:diffusealpha(1)
+		size_frame_to_report(profile_reports[pn].container)
+		if not showing_profile_on_other_side then
+			profile_reports[pn].container:diffusealpha(0)
+		end
+		combo_graphs[pn]:set(fake_score.step_timings)
+	elseif index == -2 then
+		score_reports[pn].container:diffusealpha(0)
+		profile_reports[pn].container:diffusealpha(1)
+		size_frame_to_report(profile_reports[pn].container)
+	else
+		score_reports[pn]:set(pn, index, score_datas[pn][index])
+		score_reports[pn].container:diffusealpha(1)
+		size_frame_to_report(score_reports[pn].container)
+		if not showing_profile_on_other_side then
+			profile_reports[pn].container:diffusealpha(0)
+		end
+		combo_graphs[pn]:set(score_datas[pn][index].step_timings)
+	end
+end
+
 return Def.ActorFrame{
 	Name= "SEd",
 	InitCommand= function(self)
-								 find_actors(self)
-							 end,
+		find_actors(self)
+	end,
 	make_banner_actor(),
 	make_player_specific_actors(),
 	make_judge_name_actors(),
 	make_graph_actors(),
 	Def.Actor{
-		Name= "Vacuum Cleaner D27",
-		InitCommand= function(self)
-									 self:effectperiod(2^16)
-									 timer_actor= self
-								 end,
-		CodeMessageCommand=
-			function(self, param)
-				if self:GetSecsIntoEffect() < 0.25 then return end
-				local code_name= param.Name
-				local pn= param.PlayerNumber
-				if not code_name:find("release") then
-					if GAMESTATE:IsSideJoined(pn) and #GAMESTATE:GetEnabledPlayers() > 1 then
-						if score_reports[pn].hidden then
-							score_reports[pn].hidden= false
-							score_reports[pn].container:diffusealpha(1)
-							profile_reports[pn].container:diffusealpha(0)
-						else
-							score_reports[pn].hidden= true
-							score_reports[pn].container:diffusealpha(0)
-							profile_reports[pn].container:diffusealpha(1)
-						end
+		Name= "Honmono dayo",
+		OnCommand= function(self)
+			for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+				if cons_players[pn].fake_judge then
+					set_visible_score_data(pn, -3)
+				else
+					set_visible_score_data(pn, -1)
+				end
+			end
+			self:sleep(5)
+			self:queuecommand("ShowRealScore")
+		end,
+		ShowRealScoreCommand= function(self)
+			for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+				if cons_players[pn].fake_judge then
+					if score_data_viewing_indices[pn] == -1 then
+						set_visible_score_data(pn, -1)
 					end
 				end
-			end,
-		OffCommand=
-			function(self)
-				filter_bucket_songs_by_time()
 			end
+		end,
+	},
+	Def.Actor{
+		Name= "Vacuum Cleaner D27",
+		InitCommand= function(self)
+			self:effectperiod(2^16)
+			timer_actor= self
+		end,
+		CodeMessageCommand= function(self, param)
+			if self:GetSecsIntoEffect() < 0.25 then return end
+			local code_name= param.Name
+			local pn= param.PlayerNumber
+			if not score_data_viewing_indices[pn] then return end
+			local view_changers= { left= true, menu_left= true,
+														 right= true, menu_right= true}
+			if view_changers[code_name] then
+				toggle_visible_indicator(pn, dance_pads[pn], score_data_viewing_indices[pn])
+				if code_name == "left" or code_name == "menu_left" then
+					score_data_viewing_indices[pn]= score_data_viewing_indices[pn] - 1
+				elseif code_name == "right" or code_name == "menu_right" then
+					score_data_viewing_indices[pn]= score_data_viewing_indices[pn] + 1
+				end
+				if score_data_viewing_indices[pn] < -2 then
+					score_data_viewing_indices[pn]= #score_datas[pn]
+				elseif (score_data_viewing_indices[pn] == -2 and
+								showing_profile_on_other_side) then
+					score_data_viewing_indices[pn]= #score_datas[pn]
+				elseif score_data_viewing_indices[pn] > #score_datas[pn] then
+					if showing_profile_on_other_side then
+						score_data_viewing_indices[pn]= -1
+					else
+						score_data_viewing_indices[pn]= -2
+					end
+				end
+				toggle_visible_indicator(pn, dance_pads[pn], score_data_viewing_indices[pn])
+				set_visible_score_data(pn, score_data_viewing_indices[pn])
+			end
+		end,
+		OffCommand= function(self)
+			filter_bucket_songs_by_time()
+		end
 	}
 }

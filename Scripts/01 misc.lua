@@ -589,6 +589,15 @@ function stop_music()
 	SOUND:PlayMusicPart("", 0, 0)
 end
 
+local function ymd_timestamp()
+	local y= Year()
+	local m= Month()
+	local d= Day()
+	if m < 10 then m = "0" .. m end
+	if d < 10 then d = "0" .. d end
+	return y.."-"..m.."-"..d
+end
+
 function hms_timestamp()
 	local h= Hour()
 	local m= Minute()
@@ -597,6 +606,10 @@ function hms_timestamp()
 	if m < 10 then m= "0" .. m end
 	if s < 10 then s= "0" .. s end
 	return h..":"..m..":"..s
+end
+
+function ymdhms_timestamp()
+	return ymd_timestamp() .. " " .. hms_timestamp()
 end
 
 music_wheel_width= SCREEN_WIDTH*.3125
