@@ -23,8 +23,24 @@ excessive:  left, up, right, up, left, down, right, down, left
 
 
 The Music Wheel:
-A custom music wheel is used.  This music wheel is recursively bucket sorted to make navigating huge song lists easier.  Pad code for changing to select sort is up, down, up, down.  If people say it's hard to understand, I'll add more explanation.
-
+A custom music wheel is used.  This music wheel is recursively bucket sorted to make navigating huge song lists easier.  Pad code for changing to select sort is up, down, up, down.
+Long explanation:
+The music wheel is based around the idea of recursive buckets with no depth limit. Min bucket size is 32, max bucket size is 96. Any bucket smaller than the minimum is combined with an adjacent bucket. Any bucket larger than the maximum is split into smaller buckets. Buckets that are song groups are not combined with other buckets.
+Only the currently open bucket is displayed. The wheel works as a sort of stack. Open a bucket to descend and see what is inside it, close it by picking its name to ascend to the previous bucket.
+Additionally, in group sort mode, groups that share the same first "word" of their name are put into a combined bucket. The shared first word is clipped off the displayed title when viewing the entries inside the bucket.
+From a usability perspective, this means that you no longer have to scroll past hundreds of irrelevant songs or groups to choose the one you want. In title sort, this is especially important, because "The " is a popular choice for the beginning of a song title.
+Random:
+There is the traditional Random option on the wheel, which picks a random song from the current bucket or any sub-bucket. In addition, there are four per-player random options. 
+"Random Easier" - one foot rating easier than the previous chart
+"Random Same" - same foot rating as the previous chart
+"Random Harder" - one foot rating harder than the previous chart
+"Random +n" - n is calculated based on player's score on the previous chart. The range for n is -4 to 4 for 8 footers and below, -3 to 3 for 8-10 footers, -2 to 2 for 10-13 footers, and -1 to 1 for anything above 13. 100% score will make it apply the maximum, and 62.5% score or below will make it apply the minimum.
+Sorting:
+The following simple sort options are supported: Group, Title, BPM, Artist, Genre, Length.
+In addition, there are more complicated sort options:
+"Meter" sort folder that allows you to pick a difficulty from Beginner to Edit for sorting by meter.
+"Score" sort folder, pick one of "Highest", "Newest", "Open", "Total" and select a difficulty for sorting by score.
+"Rival" sort folder, pick a rival name (from the list of all names used on the machine), one of "Rank", "Highest", "Newest", and a difficulty to sort based on that rival's scores.
 
 Options screen:
 Navigate the menu with up, down, and start.
