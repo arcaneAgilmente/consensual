@@ -1130,7 +1130,8 @@ function args:InitCommand()
 end
 
 function args:ExitOptionsCommand()
-	SCREENMAN:SetNewScreen("ScreenStageInformation")
+	SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
+--	SCREENMAN:SetNewScreen("ScreenStageInformation")
 end
 
 args[#args+1]= Def.Actor{

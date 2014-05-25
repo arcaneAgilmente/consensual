@@ -23,6 +23,9 @@ end
 
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 
+Trace("jmc_time: " .. tostring(jmc_time))
+Trace("jmc_calls: " .. tostring(jmc_calls))
+
 local tns_reverse= TapNoteScore:Reverse()
 local tnss_that_affect_combo= {
 	TapNoteScore_W1= true,
