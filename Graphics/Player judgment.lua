@@ -216,9 +216,6 @@ local args= {
 				end
 				local tracks= {param.FirstTrack}
 				if param.Tracks and #param.Tracks > 0 then
-					-- TODO:  Figure out why Tracks is sometimes blank.
-					--Trace("Using param.Tracks: " .. step_judge)
-					--rec_print_table(param.Tracks)
 					tracks= param.Tracks
 				end
 				-- Add the column for the combined score to the list.

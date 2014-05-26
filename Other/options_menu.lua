@@ -259,7 +259,7 @@ local option_set_general_mt= {
 					menu_left= funs.up, menu_right= funs.down, start= funs.start
 				}
 				local use_funs= funs
-				if get_input_mode() == input_mode_cabinet then
+				if use_cabinet_input() then
 					use_funs= cabinet_funs
 				end
 				if use_funs[code] then return use_funs[code](self) end

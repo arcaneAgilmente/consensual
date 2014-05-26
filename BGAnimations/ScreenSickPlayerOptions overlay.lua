@@ -679,7 +679,7 @@ local options_menu_mt= {
 							end
 						end,
 				}
-				if get_input_mode() == input_mode_pad then
+				if not use_cabinet_input() then
 					if funs[code] then funs[code](self) return true end
 				end
 				local handled, new_set_data= top_set:interpret_code(code)

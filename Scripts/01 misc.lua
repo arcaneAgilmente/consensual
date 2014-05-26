@@ -56,6 +56,14 @@ function math.round(n)
 	end
 end
 
+function math.round_to_zero(n)
+	if n > 0 then
+		return math.floor(n)
+	else
+		return math.ceil(n)
+	end
+end
+
 function force_to_range(min, number, max)
 	return math.min(max, math.max(min, number))
 end

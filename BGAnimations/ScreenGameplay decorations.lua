@@ -69,7 +69,7 @@ function judge_feedback_interface:update(player_stage_stats)
 		local fake_score= cons_players[self.player_number].fake_score
 		for n= 1, #self.elements do
 			local ele= self.elements[n]
-			ele:set_number(fake_score[ele.name])
+			ele:set_number(fake_score.judge_counts[ele.name])
 		end
 	else
 		for n= 1, #self.elements do
@@ -183,7 +183,7 @@ function score_feedback_interface:update(player_stage_stats)
 	end
 	if fake_score then
 		for i, fj in ipairs(feedback_judgements) do
-			if fake_score[fj] > 0 then
+			if fake_score.judge_counts[fj] > 0 then
 				set_color(judgement_colors[fj])
 				break
 			end
@@ -242,7 +242,7 @@ function dance_points_feedback_interface:update(player_stage_stats)
 	end
 	if fake_score then
 		for i, fj in ipairs(feedback_judgements) do
-			if fake_score[fj] > 0 then
+			if fake_score.judge_counts[fj] > 0 then
 					set_color(judgement_colors[fj])
 					break
 				end

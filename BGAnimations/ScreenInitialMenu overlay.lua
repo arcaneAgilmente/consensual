@@ -19,6 +19,7 @@ local num_players= 1
 local playmode= "regular"
 local profile_choices= {}
 
+dofile(THEME:GetPathO("", "consensual_conf.lua"))
 dofile(THEME:GetPathO("", "options_menu.lua"))
 
 local function check_one_player()

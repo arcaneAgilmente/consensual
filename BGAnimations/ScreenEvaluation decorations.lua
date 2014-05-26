@@ -1,5 +1,6 @@
 local cg_thickness= 24
 local lg_thickness= 40
+local reward_time= 0
 do
 	local conversions= {
 		{1, 60, ""}, {60, 60, ":"}, {3600, 24, ":"}, {86400, 365, "/"},
@@ -279,6 +280,69 @@ local function make_banner_actor()
 		}
 	end
 end
+
+local reward_time_mt= {
+	__index= {
+		create_actors= function(self, name, x, y)
+			self.name= name
+			local args= {Name= name, InitCommand= cmd(xy, x, y)}
+			self.frame= setmetatable({}, frame_helper_mt)
+			args[#args+1]= self.frame:create_actors("frame", .5, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
+			args[#args+1]= normal_text("reward_text", "", solar_colors.uf_text(), 0, 0, .5)
+			args[#args+1]= normal_text("reward_amount", "", solar_colors.f_text(), 0, 0, 1)
+			args[#args+1]= normal_text("remain_text", "", solar_colors.uf_text(), 0, 0, .5)
+			args[#args+1]= normal_text("remain_time", "", solar_colors.f_text(), 0, 0, 1)
+			return Def.ActorFrame(args)
+		end,
+		find_actors= function(self, container)
+			self.container= container
+			self.frame:find_actors(container:GetChild(self.frame.name))
+			self.reward_text= container:GetChild("reward_text")
+			self.reward_amount= container:GetChild("reward_amount")
+			self.remain_text= container:GetChild("remain_text")
+			self.remain_time= container:GetChild("remain_time")
+		end,
+		set= function(self, width, reward_time)
+			local next_y= 0
+			if reward_time ~= 0 then
+				self.reward_text:settext(get_string_wrapper("ScreenEvaluation", "Reward"))
+				width_limit_text(self.reward_text, width, .5)
+				next_y= next_y + (24 * .75)
+				local reward_str= ""
+				local minutes= math.round_to_zero(reward_time / 60)
+				local seconds= math.round_to_zero(reward_time % 60)
+				if reward_time > 0 then
+					reward_str= "+" .. minutes .. ":" .. seconds
+				elseif reward_time < 0 then
+					reward_str= minutes .. ":" .. seconds
+				end
+				self.reward_amount:settext(reward_str)
+				width_limit_text(self.reward_amount, width, 1)
+				self.reward_amount:y(next_y)
+				next_y= next_y + (24 * .75)
+			end
+			self.remain_text:settext(get_string_wrapper("ScreenEvaluation", "Remaining"))
+			width_limit_text(self.remain_text, width, .5)
+			self.remain_text:y(next_y)
+			next_y= next_y + (24 * .75)
+			local seconds= get_time_remaining()
+			local minutes= math.floor(math.round(seconds) / 60)
+			seconds= math.round(seconds) % 60
+			if seconds < 10 then seconds= "0" .. seconds end
+			self.remain_time:settext(minutes .. ":" .. seconds)
+			width_limit_text(self.remain_time, width, 1)
+			self.remain_time:y(next_y)
+			local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(self.container)
+			local fw= fxmx - fxmn + 2
+			local fh= fymx - fymn + 4
+			local fx= fxmn + (fw / 2)
+			local fy= fymn + (fh / 2)
+			self.frame:move(fx, fy-1)
+			self.frame:resize(fw, fh)
+		end
+}}
+
+local reward_indicator= setmetatable({}, reward_time_mt)
 
 local feedback_judgements= {
 	"TapNoteScore_W1", "TapNoteScore_W2", "TapNoteScore_W3",
@@ -821,7 +885,7 @@ local judge_name_data= {}
 local function make_judge_name_actors()
 	local args= {
 		Name= "judge_names",
-		InitCommand= cmd(xy, SCREEN_CENTER_X, SCREEN_TOP + 204) }
+		InitCommand= cmd(xy, SCREEN_CENTER_X, SCREEN_TOP + 226) }
 	local frame_pad= .5
 	if SCREEN_WIDTH == 640 then
 		frame_pad= 1
@@ -869,6 +933,8 @@ local function find_actors(self)
 		judge_frame_helper:move(fx-4, fy-4)
 		judge_frame_helper:resize(fw, fh)
 	end
+	reward_indicator:find_actors(self:GetChild(reward_indicator.name))
+	reward_indicator:set(judge_right - judge_left, reward_time)
 	local graphs= self:GetChild("graphs")
 	local left_graph_edge= SCREEN_LEFT
 	local right_graph_edge= SCREEN_RIGHT
@@ -1028,9 +1094,9 @@ do
 	for i, v in ipairs(enabled_players) do
 		if not GAMESTATE:IsEventMode() then
 			local play_history= cons_players[v].play_history
-			Trace("Adding song to play_history with timestamp " ..
-							tostring(prev_song_start_timestamp) .. "-" ..
-							tostring(prev_song_end_timestamp))
+--			Trace("Adding song to play_history with timestamp " ..
+--							tostring(prev_song_start_timestamp) .. "-" ..
+--							tostring(prev_song_end_timestamp))
 			play_history[#play_history+1]= {
 				song= gamestate_get_curr_song(), steps= gamestate_get_curr_steps(v),
 				start= prev_song_start_timestamp, finish= prev_song_end_timestamp}
@@ -1060,8 +1126,8 @@ do
 			add_column_score_to_session(v, cons_players[v].session_stats, ic, cons_players[v].column_scores[ic])
 		end
 	end
-	local reward= convert_score_to_time(highest_score)
-	reduce_time_remaining(-reward)
+	reward_time= convert_score_to_time(highest_score)
+	reduce_time_remaining(-reward_time)
 end
 
 local function set_visible_score_data(pn, index)
@@ -1078,11 +1144,11 @@ local function set_visible_score_data(pn, index)
 	if index == -3 then
 		score_reports[pn]:set(pn, -1, cons_players[pn].fake_score)
 		score_reports[pn].container:diffusealpha(1)
-		size_frame_to_report(profile_reports[pn].container)
+		size_frame_to_report(score_reports[pn].container)
 		if not showing_profile_on_other_side then
 			profile_reports[pn].container:diffusealpha(0)
 		end
-		combo_graphs[pn]:set(fake_score.step_timings)
+		combo_graphs[pn]:set(cons_players[pn].fake_score.step_timings)
 	elseif index == -2 then
 		score_reports[pn].container:diffusealpha(0)
 		profile_reports[pn].container:diffusealpha(1)
@@ -1105,6 +1171,7 @@ return Def.ActorFrame{
 	end,
 	make_banner_actor(),
 	make_player_specific_actors(),
+	reward_indicator:create_actors("reward", SCREEN_CENTER_X, SCREEN_TOP+150),
 	make_judge_name_actors(),
 	make_graph_actors(),
 	Def.Actor{

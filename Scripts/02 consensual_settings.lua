@@ -1,9 +1,12 @@
 ops_level_none, ops_level_simple, ops_level_all, ops_level_excessive= 1, 2, 3, 4
 
 input_mode_pad, input_mode_cabinet= 1, 2
-local curr_input_mode= input_mode_pad
+function use_cabinet_input()
+	return PREFSMAN:GetPreference("OnlyDedicatedMenuButtons")
+end
+
 function get_input_mode()
-	return curr_input_mode
+	return (use_cabinet_input() and input_mode_cabinet) or input_mode_pad
 end
 
 mine_effects= {
@@ -498,7 +501,7 @@ function song_short_enough(s)
 	else
 		if s.GetLastSecond then
 			local len= s:GetLastSecond() - s:GetFirstSecond()
-			return len <= time_remaining and len > 0
+			return len <= time_remaining + song_length_grace and len > 0
 		else
 			return s:GetTotalSeconds() <= time_remaining
 		end
@@ -526,9 +529,15 @@ function get_last_song_time()
 end
 
 function convert_score_to_time(score)
-	-- A quad on a 2 minute song is worth 30 seconds.
 	if not score then return 0 end
-	return math.max(0, score - .75) * 120 * (last_song_time / 120)
+	if score < min_score_for_reward then return 0 end
+	local score_factor= score - min_score_for_reward
+	local reward_factor_high= 1-min_score_for_reward
+	if reward_time_by_pct then
+		return scale(score_factor, min_score_for_reward, reward_factor_high, min_reward_pct, max_reward_pct) * last_song_time
+	else
+		return scale(score_factor, min_score_for_reward, reward_factor_high, min_reward_time, max_reward_time)
+	end
 end
 
 function cons_can_join()
