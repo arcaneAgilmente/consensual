@@ -332,8 +332,9 @@ function set_course_mode()
 	get_group_banner_path= SONGMAN.GetCourseGroupBannerPath
 	song_get_length=
 		function(song)
-			local steps_type= GAMESTATE:GetCurrentStyle():GetStepsType()
-			return (song.GetTotalSeconds and song:GetTotalSeconds(steps_type)) or 0
+			return 0
+--			local steps_type= GAMESTATE:GetCurrentStyle():GetStepsType()
+--			return (song.GetTotalSeconds and song:GetTotalSeconds(steps_type)) or 0
 		end
 end
 

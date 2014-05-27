@@ -14,8 +14,8 @@ local banner_h= 80
 local sort_width= 120
 local sort_text_x= banner_x + (banner_w / 2) + (sort_width/2)
 local wheel_x= sort_text_x + (sort_width/2) + 32
-local title_x= banner_x - (banner_w / 2)
-local title_y= banner_y + (banner_h / 2) + 12
+local title_x= 4
+local title_y= SCREEN_TOP + 108
 local title_width= (wheel_x - 40) - title_x
 
 local pane_text_zoom= .625
@@ -54,37 +54,29 @@ update_player_profile(PLAYER_1)
 update_player_profile(PLAYER_2)
 
 local function change_sort_text(new_text)
-	local stext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_text")
-	if stext then
-		new_text= new_text or stext:GetText()
-		local stext2= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_text2")
-		local text_words= split_string_to_words(new_text)
-		local second_used= false
-		local first_line= ""
-		local second_line= ""
-		for i, word in ipairs(text_words) do
-			if i == 1 then
-				first_line= word
-			elseif i == 2 then
-				first_line= first_line .. " " .. word
-			elseif i == 3 then
-				second_used= true
-				second_line= word
-			else
-				second_line= second_line .. " " .. word
-			end
-		end
-		stext:settext(first_line)
-		width_limit_text(stext, sort_width)
-		stext2:settext(second_line)
-		width_limit_text(stext2, sort_width)
-		local stext_sort_word= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort")
-		if second_used then
-			stext_sort_word:y(stext2:GetY()+24)
+	local overlay= SCREENMAN:GetTopScreen():GetChild("Overlay")
+	local stext= overlay:GetChild("sort_text")
+	new_text= new_text or stext:GetText()
+	local stext2= overlay:GetChild("sort_text2")
+	local text_words= split_string_to_words(new_text)
+	local first_line= ""
+	local second_line= ""
+	for i, word in ipairs(text_words) do
+		if i == 1 then
+			first_line= word
+		elseif i == 2 then
+			first_line= first_line .. " " .. word
+		elseif i == 3 then
+			second_line= word
 		else
-			stext_sort_word:y(stext:GetY()+24)
+			second_line= second_line .. " " .. word
 		end
 	end
+	stext:settext(first_line)
+	width_limit_text(stext, sort_width)
+	stext2:settext(second_line)
+	width_limit_text(stext2, sort_width)
+	overlay:GetChild("sort_prop"):playcommand("Set")
 end
 
 local steps_display_interface= {}
@@ -135,7 +127,7 @@ local std_items_mt= {
 local steps_display_elements= 5
 function steps_display_interface:create_actors(name)
 	self.name= name
-	local args= { Name= name, InitCommand= cmd(xy, banner_x, banner_y + (banner_h / 2) + 84) }
+	local args= { Name= name, InitCommand= cmd(xy, banner_x, title_y + 66) }
 	local cursors= {}
 	for i, v in ipairs(all_player_indices) do
 		local new_curs= {}
@@ -821,8 +813,8 @@ return Def.ActorFrame {
 											self:visible(false)
 										end
 									end }),
-	normal_text("length", "", solar_colors.f_text(), SCREEN_LEFT + 16,
-							banner_y + (banner_h / 2) + 36, 1, left, {
+	normal_text("length", "", solar_colors.f_text(), SCREEN_LEFT + 4,
+							title_y + 24, 1, left, {
 								CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
 								CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
 								SetCommand=
@@ -840,8 +832,8 @@ return Def.ActorFrame {
 										end
 									end
 							}),
-	normal_text("remaining", "", solar_colors.uf_text(), SCREEN_LEFT + 16,
-							banner_y + (banner_h / 2) + 60, 1, left, {
+	normal_text("remain", "", solar_colors.uf_text(), SCREEN_LEFT + 4,
+							title_y + 48, 1, left, {
 								OnCommand=
 									function(self)
 										local seconds= get_time_remaining()
@@ -991,11 +983,29 @@ return Def.ActorFrame {
 			end
 	},
 	normal_text("code_text", "", solar_colors.f_text(0), 0, 0, .75),
-	normal_text("sort_text", "NO SORT", solar_colors.f_text(), sort_text_x,
+	normal_text("sort", "Sort", solar_colors.uf_text(), sort_text_x,
 							SCREEN_TOP + 12),
-	normal_text("sort_text2", "", solar_colors.f_text(), sort_text_x,
+	normal_text("sort_text", "NO SORT", solar_colors.f_text(), sort_text_x,
 							SCREEN_TOP + 36),
-	normal_text("sort", "Sort", solar_colors.uf_text(), sort_text_x),
+	normal_text("sort_text2", "", solar_colors.f_text(), sort_text_x,
+							SCREEN_TOP + 60),
+	normal_text("sort_prop", "", solar_colors.uf_text(), sort_text_x,
+							SCREEN_TOP + 84, 1, center, {
+								CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
+								CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
+								SetCommand= function(self)
+									local song= gamestate_get_curr_song()
+									if song and music_wheel.current_sort_name ~= "Group" and
+										music_wheel.current_sort_name ~= "Title" and
+									music_wheel.current_sort_name ~= "Length" then
+										self:settext(music_wheel.cur_sort_info.main.get_bucket(song, -1))
+										width_limit_text(self, sort_width)
+										self:visible(true)
+									else
+										self:visible(false)
+									end
+								end
+	}),
 	-- See change_sort_text for actual y position.
 	credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
 	Def.ActorFrame{
