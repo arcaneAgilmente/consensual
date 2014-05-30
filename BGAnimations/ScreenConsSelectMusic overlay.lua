@@ -998,11 +998,8 @@ return Def.ActorFrame {
 									function(self)
 										local song= gamestate_get_curr_song()
 										if song then
-											local seconds= song_get_length(song)
-											local minutes= math.floor(math.round(seconds) / 60)
-											seconds= math.round(seconds) % 60
-											if seconds < 10 then seconds= "0" .. seconds end
-											self:settext(minutes .. ":" .. seconds .. " long")
+											local lenstr= secs_to_str(song_get_length(song))
+											self:settext(lenstr .. " long")
 											self:visible(true)
 										else
 											self:visible(false)
@@ -1013,11 +1010,8 @@ return Def.ActorFrame {
 							title_y + 48, 1, left, {
 								OnCommand=
 									function(self)
-										local seconds= get_time_remaining()
-										local minutes= math.floor(math.round(seconds) / 60)
-										seconds= math.round(seconds) % 60
-										if seconds < 10 then seconds= "0" .. seconds end
-										self:settext(minutes .. ":" .. seconds .. " remaining")
+										local remstr= secs_to_str(get_time_remaining())
+										self:settext(remstr .. " remaining")
 									end
 							}),
 	music_wheel:create_actors(wheel_x),

@@ -628,4 +628,13 @@ function pn_to_profile_slot(pn)
 	return "ProfileSlot_Player2"
 end
 
+function secs_to_str(secs)
+	local minutes= math.round_to_zero(secs / 60)
+	local seconds= math.round_to_zero(secs % 60)
+	if seconds < 10 then
+		return minutes .. ":" .. "0" .. seconds
+	end
+	return minutes .. ":" .. seconds
+end
+
 music_wheel_width= SCREEN_WIDTH*.3125

@@ -308,16 +308,9 @@ local reward_time_mt= {
 				self.reward_text:settext(get_string_wrapper("ScreenEvaluation", "Reward"))
 				width_limit_text(self.reward_text, width, .5)
 				next_y= next_y + (24 * .75)
-				local reward_str= ""
-				local minutes= math.round_to_zero(reward_time / 60)
-				local seconds= math.round_to_zero(reward_time % 60)
-				if seconds < 10 and minutes > 0 and reward_time ~= 0 then
-					seconds= "0" .. seconds
-				end
+				local reward_str= secs_to_str(reward_time)
 				if reward_time > 0 then
-					reward_str= "+" .. minutes .. ":" .. seconds
-				elseif reward_time < 0 then
-					reward_str= minutes .. ":" .. seconds
+					reward_str= "+" .. reward_str
 				end
 				self.reward_amount:settext(reward_str)
 				width_limit_text(self.reward_amount, width, 1)
@@ -328,11 +321,8 @@ local reward_time_mt= {
 			width_limit_text(self.remain_text, width, .5)
 			self.remain_text:y(next_y)
 			next_y= next_y + (24 * .75)
-			local seconds= get_time_remaining()
-			local minutes= math.floor(math.round(seconds) / 60)
-			seconds= math.round(seconds) % 60
-			if seconds < 10 then seconds= "0" .. seconds end
-			self.remain_time:settext(minutes .. ":" .. seconds)
+			local remstr= secs_to_str(get_time_remaining())
+			self.remain_time:settext(remstr)
 			width_limit_text(self.remain_time, width, 1)
 			self.remain_time:y(next_y)
 			local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(self.container)
