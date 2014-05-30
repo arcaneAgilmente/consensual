@@ -9,8 +9,8 @@ for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do
 		name= profile:GetDisplayName(), index= p + 1}
 end
 
-local cursor_pos= 1
-local p= PLAYER_1
+load_favorites("ProfileSlot_Machine")
+
 local num_songs= SONGMAN:GetNumSongs()
 local num_groups= SONGMAN:GetNumSongGroups()
 local frame_helper= setmetatable({}, frame_helper_mt)
@@ -170,8 +170,8 @@ for i, disp in ipairs(all_displays) do
 	display_frames[i]= setmetatable({}, frame_helper_mt)
 end
 local cursors= {
-	[PLAYER_1]= setmetatable({}, frame_helper_mt),
-	[PLAYER_2]= setmetatable({}, frame_helper_mt),
+	[PLAYER_1]= setmetatable({}, amv_cursor_mt),
+	[PLAYER_2]= setmetatable({}, amv_cursor_mt)
 }
 
 local function create_actors()
@@ -183,8 +183,7 @@ local function create_actors()
 	end
 	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
 		args[#args+1]= cursors[rpn]:create_actors(
-			rpn .. "_cursor", 1, 0, 0, solar_colors[rpn](), solar_colors.bg(),
-			SCREEN_CENTER_X, SCREEN_CENTER_Y)
+			rpn .. "_cursor", 0, 0, 0, 0, 1, solar_colors[rpn]())
 	end
 	args[#args+1]= menu_display:create_actors(
 		"Menu", SCREEN_CENTER_X, SCREEN_CENTER_Y - 0, 4, disp_width, 24, 1,
@@ -293,6 +292,7 @@ local function interpret_code(pn, code)
 				if prof then
 					if prof ~= PROFILEMAN:GetMachineProfile() then
 						cons_players[rpn]:set_ops_from_profile(prof)
+						load_favorites(pn_to_profile_slot(rpn))
 					end
 				end
 			end
@@ -386,8 +386,7 @@ local function update_cursor_pos()
 		if item then
 			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(item.container)
 			local xp, yp= rec_calc_actor_pos(item.container)
-			cursors[rpn]:resize(xmx - xmn + 4, ymx - ymn + 4)
-			cursors[rpn]:move(xp, yp)
+			cursors[rpn]:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
 		end
 	end
 	for i, frame in ipairs(display_frames) do
@@ -399,16 +398,12 @@ local function update_cursor_pos()
 	end
 	if choosing_states[PLAYER_1] == choosing_states[PLAYER_2] and
 		cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] and
-		choosing_states[PLAYER_1] ~= choosing_profile then
-		cursors[PLAYER_1].inner:cropright(.5)
-		cursors[PLAYER_1].outer:cropright(.5)
-		cursors[PLAYER_2].inner:cropleft(.5)
-		cursors[PLAYER_2].outer:cropleft(.5)
+	choosing_states[PLAYER_1] ~= choosing_profile then
+		cursors[PLAYER_1]:left_half()
+		cursors[PLAYER_2]:right_half()
 	else
-		cursors[PLAYER_1].inner:cropright(0)
-		cursors[PLAYER_1].outer:cropright(0)
-		cursors[PLAYER_2].inner:cropleft(0)
-		cursors[PLAYER_2].outer:cropleft(0)
+		cursors[PLAYER_1]:un_half()
+		cursors[PLAYER_2]:un_half()
 	end
 end
 

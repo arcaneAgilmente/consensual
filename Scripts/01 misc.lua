@@ -621,4 +621,11 @@ function ymdhms_timestamp()
 	return ymd_timestamp() .. " " .. hms_timestamp()
 end
 
+function pn_to_profile_slot(pn)
+	if pn == PLAYER_1 then
+		return "ProfileSlot_Player1"
+	end
+	return "ProfileSlot_Player2"
+end
+
 music_wheel_width= SCREEN_WIDTH*.3125

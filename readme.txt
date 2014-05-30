@@ -21,6 +21,11 @@ simple:  left, down, right, left, down, right
 all:  right, down, left, right, down, left
 excessive:  left, up, right, up, left, down, right, down, left
 
+Special menu on Select Music:
+Press select to bring up the special menu.
+Currently contains options for adjusting the favor value of a song and marking
+a song for censoring.
+
 
 The Music Wheel:
 A custom music wheel is used.  This music wheel is recursively bucket sorted to make navigating huge song lists easier.  Pad code for changing to select sort is up, down, up, down.
@@ -41,6 +46,15 @@ In addition, there are more complicated sort options:
 "Meter" sort folder that allows you to pick a difficulty from Beginner to Edit for sorting by meter.
 "Score" sort folder, pick one of "Highest", "Newest", "Open", "Total" and select a difficulty for sorting by score.
 "Rival" sort folder, pick a rival name (from the list of all names used on the machine), one of "Rank", "Highest", "Newest", and a difficulty to sort based on that rival's scores.
+"Favor" sort folder, pick one of "Machine Favor", "P1 Favor", or "P2 Favor" to sort by how favored the song is.
+
+Song favoriting system:
+Each song has an adjustable "favor" value.  The default is 0 and it can be adjusted up or down to any integer value.  The favor value can be displayed in the pane display, and used for sorting songs.  Each profile has a separate favor value for each song, so one profile's favorites do not affect the machine favorites or the favorites of another profile.
+
+Song censoring system:
+Currently just adds songs to a list that is saved in Save/censor_list.lua
+
+
 
 Options screen:
 Navigate the menu with up, down, and start.

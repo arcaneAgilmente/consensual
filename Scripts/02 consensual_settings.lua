@@ -62,7 +62,7 @@ mine_effects= {
 }
 
 local things_to_put_in_user_table= {
-	"flags", "options_level", "speed_info", "sigil_data", "dspeed"
+	"flags", "pain_flags", "options_level", "speed_info", "sigil_data", "dspeed"
 }
 
 local dspeed_default_min= 0
@@ -127,6 +127,10 @@ function cons_player:simple_options_mode()
 	self.rating_cap= -1
 	self.flags.pct_column= true
 	self.flags.best_scores= true
+	self.pain_flags.taps= true
+	self.pain_flags.jumps= true
+	self.pain_flags.holds= true
+	self.pain_flags.rating= true
 end
 
 function cons_player:all_options_mode()
@@ -136,6 +140,13 @@ function cons_player:all_options_mode()
 	self.flags.pct_column= true
 	self.flags.sum_column= true
 	self.flags.best_scores= true
+	self.pain_flags.taps= true
+	self.pain_flags.jumps= true
+	self.pain_flags.holds= true
+	self.pain_flags.rating= true
+	self.pain_flags.mines= true
+	self.pain_flags.hands= true
+	self.pain_flags.rolls= true
 end
 
 function cons_player:excessive_options_mode()
@@ -143,6 +154,9 @@ function cons_player:excessive_options_mode()
 	self.rating_cap= -1
 	for i, fname in ipairs(sorted_flag_names) do
 		self.flags[fname]= true
+	end
+	for i, fname in ipairs(sorted_pain_flag_names) do
+		self.pain_flags[fname]= true
 	end
 end
 
@@ -166,6 +180,9 @@ function cons_player:kyzentun_mode()
 	self.preferred_options:Distant(1.4)
 	for i, fname in ipairs(sorted_flag_names) do
 		self.flags[fname]= true
+	end
+	for i, fname in ipairs(sorted_pain_flag_names) do
+		self.pain_flags[fname]= true
 	end
 end
 
@@ -274,6 +291,40 @@ sorted_flag_names= {
 	"straight_floats",
 }
 
+pain_flag_defaults= {
+	bpm= true,
+	fakes= false,
+	hands= false,
+	holds= true,
+	jumps= true,
+	lifts= false,
+	machine_favor= true,
+	machine_score= true,
+	mines= true,
+	profile_favor= true,
+	profile_score= true,
+	rating= true,
+	rolls= false,
+	taps= true,
+}
+
+sorted_pain_flag_names= {
+	"machine_score",
+	"profile_score",
+	"machine_favor",
+	"profile_favor",
+	"rating",
+	"bpm",
+	"taps",
+	"jumps",
+	"holds",
+	"mines",
+	"rolls",
+	"hands",
+	"lifts",
+	"fakes",
+}
+
 function cons_player:flags_reset()
 	self.flags= {}
 	for k, v in ipairs(player_flag_defaults) do
@@ -281,6 +332,10 @@ function cons_player:flags_reset()
 	end
 	-- allow_toasty is set here so it will be affected if the preference is changed while the game is running.
 	self.flags.allow_toasty= PREFSMAN:GetPreference("EasterEggs")
+	self.pain_flags= {}
+	for k, v in pairs(pain_flag_defaults) do
+		self.pain_flags[k]= v
+	end
 end
 
 function cons_player:set_speed_info_from_poptions()
@@ -755,4 +810,100 @@ function SaveProfileCustom(profile, dir)
 			user_table.mine_effect= cp.mine_effect.name
 		end
 	end
+end
+
+song_favorites= {}
+
+local favs_changed= {}
+
+function load_favorites(prof_slot)
+	local favorites_file_name= PROFILEMAN:GetProfileDir(prof_slot)
+		.. "/favorites.lua"
+	if FILEMAN:DoesFileExist(favorites_file_name) then
+		song_favorites[prof_slot]= dofile(favorites_file_name)
+	else
+		song_favorites[prof_slot]= {}
+	end
+	favs_changed[prof_slot]= false
+end
+
+function save_favorites(prof_slot)
+	local prof_dir= PROFILEMAN:GetProfileDir(prof_slot)
+	if not prof_dir or prof_dir == "" then return end
+	local fav_fname= prof_dir .. "/favorites.lua"
+	local favstr= "return " .. lua_table_to_string(song_favorites[prof_slot]) .. "\n"
+	local file_handle= RageFileUtil.CreateRageFile()
+	if not file_handle:Open(fav_fname, 2) then
+		Trace("Could not open '" .. favorites_file_name .. "' to write favorites.")
+	else
+		file_handle:Write(favstr)
+		file_handle:Close()
+		file_handle:destroy()
+	end
+end
+
+function save_all_favorites()
+	for slot, favs in pairs(song_favorites) do
+		if favs_changed[slot] then
+			save_favorites(slot)
+		end
+	end
+end
+
+function change_favor(prof_slot, song, amount)
+	local prof_favor= song_favorites[prof_slot]
+	if prof_favor then
+		local song_dir= (song.GetSongDir and song:GetSongDir()) or
+			(song.GetCourseDir and song:GetCourseDir())
+		local curr_favor= prof_favor[song_dir]
+		prof_favor[song_dir]= (curr_favor or 0) + amount
+		favs_changed[prof_slot]= true
+	end
+end
+
+function get_favor(prof_slot, song)
+	local prof_favor= song_favorites[prof_slot]
+	if prof_favor then
+		local song_dir= (song.GetSongDir and song:GetSongDir()) or
+			(song.GetCourseDir and song:GetCourseDir())
+		return prof_favor[song_dir] or 0
+	end
+	return 0
+end
+
+censored_songs= {}
+
+local censor_list_changed= false
+local censor_file_name= "Save/censor_list.lua"
+
+function load_censored_list()
+	censor_list_changed= false
+	if FILEMAN:DoesFileExist(censor_file_name) then
+		censored_songs= dofile(censor_file_name)
+	end
+end
+
+function save_censored_list()
+	if not censor_list_changed then return end
+	local censor_str= "return " .. lua_table_to_string(censored_songs) .. "\n"
+	local file_handle= RageFileUtil.CreateRageFile()
+	if not file_handle:Open(censor_file_name, 2) then
+		Trace("Could not open '" .. censor_file_name .. "' to write censors.")
+	else
+		file_handle:Write(censor_str)
+		file_handle:Close()
+		file_handle:destroy()
+	end
+end
+
+function add_to_censor_list(song)
+	local song_dir= (song.GetSongDir and song:GetSongDir()) or
+		(song.GetCourseDir and song:GetCourseDir())
+	censored_songs[song_dir]= true
+end
+
+function check_censor_list(song)
+	local song_dir= (song.GetSongDir and song:GetSongDir()) or
+		(song.GetCourseDir and song:GetCourseDir())
+	return censored_songs[song_dir]
 end

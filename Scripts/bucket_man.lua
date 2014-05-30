@@ -57,6 +57,12 @@ local function difficulty_wrapper(difficulty)
 				 end
 end
 
+local function favor_wrapper(prof_slot)
+	return function(song, depth)
+		return get_favor(prof_slot, song)
+	end
+end
+
 local function highest_score(score_list)
 	if #score_list:GetHighScores() > 0 then
 		return math.round(score_list:GetHighScores()[1]:GetPercentDP() * 100000) * .001
@@ -292,6 +298,19 @@ local score_bucket= {
 																										 "Total", "Scores")},
 }}
 
+local favor_bucket= {
+	name= "Favor", contents= {
+		sort_info_wrapper{
+			name= "Machine Favor", depth= false, can_join= noop_false,
+			get_bucket= favor_wrapper("ProfileSlot_Machine"),},
+		sort_info_wrapper{
+			name= "P1 Favor", depth= false, can_join= noop_false,
+			get_bucket= favor_wrapper("ProfileSlot_Player1"),},
+		sort_info_wrapper{
+			name= "P2 Favor", depth= false, can_join= noop_false,
+			get_bucket= favor_wrapper("ProfileSlot_Player2"),}
+}}
+
 local global_sort_info= {}
 
 local function set_course_mode_sort_info()
@@ -301,6 +320,7 @@ local function set_course_mode_sort_info()
 		no_fallback_sort_info_wrapper{name= "Title", depth= true,
 																	get_bucket= main_title_info.get_bucket},
 		sort_info_wrapper{name= "Length", get_bucket= song_get_length},
+		favor_bucket,
 		meter_bucket,
 		score_bucket,
 		make_rival_bucket(),
@@ -320,6 +340,7 @@ local function set_song_mode_sort_info()
 		sort_info_wrapper{name= "Genre", depth= true,
 											get_bucket= generic_get_wrapper("GetGenre")},
 		sort_info_wrapper{name= "Length", get_bucket= song_get_length},
+		favor_bucket,
 		meter_bucket,
 		score_bucket,
 		make_rival_bucket(),
@@ -509,7 +530,6 @@ music_whale_interface_mt= { __index= music_whale_interface }
 function music_whale_interface:create_actors(x)
 	wheel_x= x
 	self.sick_wheel= setmetatable({}, sick_wheel_mt)
-	self.frame_helper= setmetatable({}, frame_helper_mt)
 	self.name= "MusicWheel"
 	self.current_sort_name= "Group"
 	if music_whale_state then
@@ -517,8 +537,6 @@ function music_whale_interface:create_actors(x)
 	end
 	local args= {
 		Name= self.name,
-		self.frame_helper:create_actors("cursor", 1, 0, 0, solar_colors.violet(),
-																		solar_colors.bg(), wheel_x, wheel_y),
 		self.sick_wheel:create_actors(
 			items_on_wheel, sick_wheel_item_interface_mt, wheel_x, wheel_y),
 	}
@@ -528,7 +546,6 @@ end
 
 function music_whale_interface:find_actors(container)
 	self.sick_wheel:find_actors(container:GetChild(self.sick_wheel.name))
-	self.frame_helper:find_actors(container:GetChild(self.frame_helper.name))
 	self.song_set= bucket_man.filtered_songs
 	self.cursor_song= gamestate_get_curr_song()
 	if music_whale_state then
@@ -837,12 +854,6 @@ function music_whale_interface:set_stuff_from_curr_element()
 	else
 		gamestate_set_curr_song(curr_element)
 	end
-	local curr_actor= self.sick_wheel:get_actor_item_at_focus_pos()
-	local xmn, xmx, ymn, ymx= rec_calc_actor_extent(curr_actor.container)
-	local ox= wheel_x
-	local oy= (self.focus_pos - 1) * (SCREEN_HEIGHT / items_on_wheel) + 12
-	self.frame_helper:move(ox + (xmn + xmx) / 2, oy + (ymn + ymx) / 2)
-	self.frame_helper:resize(xmx - xmn + 6, ymx - ymn + 6)
 end
 
 function music_whale_interface:interact_with_element()

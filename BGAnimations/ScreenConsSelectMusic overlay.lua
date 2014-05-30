@@ -7,6 +7,7 @@ local fast_auto_scroll= nil
 local fast_scroll_start_time= 0
 local time_before_fast_scroll= .8
 local time_between_fast_scroll= .02
+local special_menu_activate_time= .2
 local banner_x= SCREEN_LEFT + 132
 local banner_y= SCREEN_TOP + 44
 local banner_w= 256
@@ -17,18 +18,18 @@ local wheel_x= sort_text_x + (sort_width/2) + 32
 local title_x= 4
 local title_y= SCREEN_TOP + 108
 local title_width= (wheel_x - 40) - title_x
+local wheel_cursor_y= SCREEN_CENTER_Y - 24 - 1
 
 local pane_text_zoom= .625
 local pane_text_height= 16 * (pane_text_zoom / 0.5875)
 -- Height was originally 16 in default theme, zoom was originally 0.5875,
 --   so that is used as the base point.
 local pane_text_width= 8 * (pane_text_zoom / 0.5875)
-local pane_w= pane_text_width * 30
-local pane_rows= 6 -- One row is actually padding.
-local pane_h= pane_text_height * pane_rows
-local pane_yoff= -pane_h * .5 + pane_text_height * .5
-local pane_ltx= -pane_w * .25
-local pane_rtx= pane_w * .25
+local pane_w= ((wheel_x - 40) - (SCREEN_LEFT + 4)) / 2
+local pane_rows= 14
+local pane_h= pane_text_height * pane_rows + 4
+local pane_yoff= -pane_h * .5 + pane_text_height * .5 + 2
+local pane_ttx= 0
 local pad= 4
 
 local entering_song= false
@@ -131,9 +132,9 @@ function steps_display_interface:create_actors(name)
 	local cursors= {}
 	for i, v in ipairs(all_player_indices) do
 		local new_curs= {}
-		setmetatable(new_curs, frame_helper_mt)
+		setmetatable(new_curs, amv_cursor_mt)
 		args[#args+1]= new_curs:create_actors(
-			v .. "curs", .75, 80, 12, solar_colors[v](), solar_colors.bg(), -20, 0)
+			v .. "curs", -20, 0, 80, 12, .75, solar_colors[v]())
 		cursors[v]= new_curs
 	end
 	self.cursors= cursors
@@ -201,8 +202,7 @@ function steps_display_interface:update_cursors()
 					local tot, tw, nw= item.tani:get_widths()
 					local cx= nw - (tot / 2)
 					local cy= item.tani.y
-					cursor:set_width(tot + 2)
-					cursor:move(cx, cy)
+					cursor:refit(cx, cy, tot + 2, nil)
 					cursor:unhide()
 				else
 					cursor:hide()
@@ -212,15 +212,11 @@ function steps_display_interface:update_cursors()
 			end
 		end
 		if cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] then
-			self.cursors[PLAYER_1].inner:cropright(.5)
-			self.cursors[PLAYER_1].outer:cropright(.5)
-			self.cursors[PLAYER_2].inner:cropleft(.5)
-			self.cursors[PLAYER_2].outer:cropleft(.5)
+			self.cursors[PLAYER_1]:left_half()
+			self.cursors[PLAYER_2]:right_half()
 		else
-			self.cursors[PLAYER_1].inner:cropright(0)
-			self.cursors[PLAYER_1].outer:cropright(0)
-			self.cursors[PLAYER_2].inner:cropleft(0)
-			self.cursors[PLAYER_2].outer:cropleft(0)
+			self.cursors[PLAYER_1]:un_half()
+			self.cursors[PLAYER_2]:un_half()
 		end
 	end
 end
@@ -228,40 +224,74 @@ end
 local pain_display_interface= {}
 local pain_display_interface_mt= { __index= pain_display_interface }
 
-local radar_categories= {
-	"RadarCategory_TapsAndHolds", "RadarCategory_Jumps", "RadarCategory_Holds",
-	"RadarCategory_Mines", "RadarCategory_Hands", "RadarCategory_Rolls",
-	"RadarCategory_Lifts", "RadarCategory_Fakes"
-}
-local pane_element_switches= {
-	{Taps= false, Jumps= false, Holds= false, Mines= false, Rating= true,
-	 Hands= false, Rolls= false, Lifts= false, Fakes= false},
-	{Taps= true, Jumps= true, Holds= true, Mines= false, Rating= true,
-	 Hands= false, Rolls= false, Lifts= false, Fakes= false},
-	{Taps= true, Jumps= true, Holds= true, Mines= true, Rating= true,
-	 Hands= true, Rolls= true, Lifts= false, Fakes= false},
-	{Taps= true, Jumps= true, Holds= true, Mines= true, Rating= true,
-	 Hands= true, Rolls= true, Lifts= true, Fakes= true},
-}
+local function radar_pain_wrapper(short_name, value_name)
+	return function(tani, song, steps, radars)
+		tani:set_text(short_name)
+		tani:set_number(radars:GetValue(value_name))
+	end
+end
 
-local radar_poses= {
-	RadarCategory_TapsAndHolds= { short_name= "Taps", x= pane_ltx,
-																y= pane_yoff + pane_text_height * 2 },
-	RadarCategory_Jumps= { short_name= "Jumps", x= pane_ltx,
-												 y= pane_yoff + pane_text_height * 3 },
-	RadarCategory_Holds= { short_name= "Holds", x= pane_ltx,
-												 y= pane_yoff + pane_text_height * 4 },
-	RadarCategory_Mines= { short_name= "Mines", x= pane_ltx,
-												 y= pane_yoff + pane_text_height * 5 },
-	RadarCategory_Hands= { short_name= "Hands", x= pane_rtx,
-												 y= pane_yoff + pane_text_height * 2},
-	RadarCategory_Rolls= { short_name= "Rolls", x= pane_rtx,
-												 y= pane_yoff + pane_text_height * 3 },
-	RadarCategory_Lifts= { short_name= "Lifts", x= pane_rtx,
-												 y= pane_yoff + pane_text_height * 4 },
-	RadarCategory_Fakes= { short_name= "Fakes", x= pane_rtx,
-												 y= pane_yoff + pane_text_height * 5 }
-}
+local function favor_pain_wrapper(favor_name, prof_slot)
+	return function(tani, song, steps, radars)
+		tani:set_text(favor_name)
+		tani:set_number(get_favor(prof_slot, song))
+	end
+end
+
+local function score_pain_wrapper(prof)
+	return function(tani, song, steps, radars)
+		tani:set_text("")
+		tani:set_number("")
+		if prof then
+			local hs_list= prof:GetHighScoreListIfExists(song, steps)
+			if hs_list then
+				local highest_score= hs_list:GetHighScores()[1]
+				if highest_score then
+					local score= highest_score:GetPercentDP()
+					tani:set_number(("%.2f%%"):format(score * 100))
+					tani:set_text(highest_score:GetName())
+					local name_width= pane_w - tani.number:GetZoomedWidth() - 16
+					width_clip_text(tani.text, name_width)
+					tani.number:diffuse(color_for_score(score))
+					if score > .9999 then
+						if global_distortion_mode then
+							tani.number:undistort()
+						else
+							tani.number:distort(.5)
+						end
+					elseif not global_distortion_mode then
+						tani.number:undistort()
+					end
+				end
+			end
+		end
+	end
+end
+
+local function pain_functions(pn)
+	return {
+		bpm= function(tani, song, steps, radars)
+			tani:set_text("BPM")
+			tani:set_number(steps_get_bpms_as_text(steps))
+		end,
+		fakes= radar_pain_wrapper("Fakes", "RadarCategory_Fakes"),
+		hands= radar_pain_wrapper("Hands", "RadarCategory_Hands"),
+		holds= radar_pain_wrapper("Holds", "RadarCategory_Holds"),
+		jumps= radar_pain_wrapper("Jumps", "RadarCategory_Jumps"),
+		lifts= radar_pain_wrapper("Lifts", "RadarCategory_Lifts"),
+		machine_favor= favor_pain_wrapper("Machine Favor","ProfileSlot_Machine"),
+		machine_score= score_pain_wrapper(machine_profile),
+		mines= radar_pain_wrapper("Mines", "RadarCategory_Mines"),
+		profile_favor= favor_pain_wrapper("Player Favor",pn_to_profile_slot(pn)),
+		profile_score= score_pain_wrapper(player_profiles[pn]),
+		rating= function(tani, song, steps, radars)
+			tani:set_text(steps_to_string(steps))
+			tani:set_number(steps:GetMeter())
+		end,
+		rolls= radar_pain_wrapper("Rolls", "RadarCategory_Rolls"),
+		taps= radar_pain_wrapper("Taps", "RadarCategory_TapsAndHolds"),
+	}
+end
 
 function pain_display_interface:create_actors(player_number, x, y)
 	self.name= player_number .. "pain"
@@ -272,34 +302,31 @@ function pain_display_interface:create_actors(player_number, x, y)
 		solar_colors.bg(), 0, 0)
 	self.radars= {}
 	local column_pad= 4
-	local tani_args= {
-			tz= pane_text_zoom, nz= pane_text_zoom, text_section= "PaneDisplay",
-			tx= column_pad - pane_w * .25, nx= pane_w * .25 - column_pad,
-			ta= left, na= right, tf= "Common SemiBold", nf= "Common SemiBold"
+	for i= 2, pane_rows, 2 do
+		args[#args+1]= Def.Quad{
+			Name= "q"..i,
+			InitCommand= function(self)
+				self:diffuse(solar_colors.bg_shadow())
+				self:y(pane_yoff + ((i-1)*pane_text_height))
+				self:SetWidth(pane_w - 4)
+				self:SetHeight(pane_text_height)
+			end
 		}
-	for i, v in ipairs(radar_categories) do
-		tani_args.sx= radar_poses[v].x  tani_args.sy= radar_poses[v].y
-		tani_args.tt= radar_poses[v].short_name
-		local rad= setmetatable({}, text_and_number_interface_mt)
-		rad.short_name= radar_poses[v].short_name
-		rad.upper= false
-		self.radars[i]= rad
-		args[#args+1]= rad:create_actors(v, tani_args)
 	end
-	tani_args.tt= nil
-	self.machine_score= setmetatable({}, text_and_number_interface_mt)
-	tani_args.sx= pane_rtx  tani_args.sy= pane_yoff
-	args[#args+1]= self.machine_score:create_actors("MScore", tani_args)
-	self.player_score= setmetatable({}, text_and_number_interface_mt)
-	tani_args.sx= pane_ltx  tani_args.sy= pane_yoff
-	args[#args+1]= self.player_score:create_actors("PScore", tani_args)
-	self.rating= setmetatable({}, text_and_number_interface_mt)
-	tani_args.sx= pane_rtx  tani_args.sy= pane_yoff + pane_text_height
-	args[#args+1]= self.rating:create_actors("Rating", tani_args)
-	self.bpm_disp= setmetatable({}, text_and_number_interface_mt)
-	tani_args.sx= pane_ltx  tani_args.sy= pane_yoff + pane_text_height
-	tani_args.tt= "BPM"
-	args[#args+1]= self.bpm_disp:create_actors("BPM", tani_args)
+	local tani_args= {
+		tt= "", nt= "", sx= pane_ttx,
+		tz= pane_text_zoom, nz= pane_text_zoom, text_section= "PaneDisplay",
+		tx= column_pad - pane_w * .5, nx= pane_w * .5 - column_pad,
+		ta= left, na= right, tf= "Common SemiBold", nf= "Common SemiBold"
+	}
+	self.entries= {}
+	for i= 0, pane_rows-1 do
+		tani_args.sy= pane_yoff + pane_text_height * i
+		local ent= setmetatable({}, text_and_number_interface_mt)
+		self.entries[i+1]= ent
+		args[#args+1]= ent:create_actors("panini"..i, tani_args)
+	end
+	self.pains= pain_functions(player_number)
 	return Def.ActorFrame(args)
 end
 
@@ -312,14 +339,20 @@ function pain_display_interface:find_actors(container)
 	if not GAMESTATE:IsPlayerEnabled(self.player_number) then
 		container:visible(false)
 	end
-	for i, v in ipairs(self.radars) do
-		v:find_actors(container:GetChild(v.name))
+	for i, ent in ipairs(self.entries) do
+		ent:find_actors(container:GetChild(ent.name))
 	end
-	self.machine_score:find_actors(container:GetChild(self.machine_score.name))
-	self.player_score:find_actors(container:GetChild(self.player_score.name))
-	self.rating:find_actors(container:GetChild(self.rating.name))
-	self.bpm_disp:find_actors(container:GetChild(self.bpm_disp.name))
 	return true
+end
+
+function pain_display_interface:hide()
+	for i, ent in ipairs(self.entries) do
+		ent:hide()
+	end
+end
+
+function pain_display_interface:unhide()
+	self:update()
 end
 
 function pain_display_interface:update()
@@ -330,62 +363,23 @@ function pain_display_interface:update()
 			local song= gamestate_get_curr_song()
 			-- For hiding.
 			if song and strail then
+				local tani_index= 1
 				local radar_values= strail:GetRadarValues(self.player_number)
-				if radar_values then
-					local vis_table= pane_element_switches[cons_players[self.player_number].options_level]
-					for i, v in ipairs(self.radars) do
-						local value= radar_values:GetValue(radar_categories[i])
-						v:set_number(value)
-						if vis_table and vis_table[v.short_name] then
-							v:unhide()
-						else
-							v:hide()
-						end
+				for i, pain_name in ipairs(sorted_pain_flag_names) do
+					if cons_players[self.player_number].pain_flags[pain_name] then
+						self.pains[pain_name](
+							self.entries[tani_index], song, strail, radar_values)
+						self.entries[tani_index]:unhide()
+						tani_index= tani_index + 1
 					end
 				end
-				function set_score_tani_from_profile(pro, tani)
-					tani:hide()
-					if pro then
-						local hs_list= pro:GetHighScoreList(song, strail)
-						if hs_list then
-							local highest_score= hs_list:GetHighScores()[1]
-							if highest_score then
-								tani:set_text(highest_score:GetName())
-								width_clip_text(tani.text, pane_w * .25)
-								local score= highest_score:GetPercentDP()
-								tani:set_number(("%.2f%%"):format(score * 100))
-								tani.number:diffuse(color_for_score(score))
-								if score > .9999 then
-									if global_distortion_mode then
-										tani.number:undistort()
-									else
-										tani.number:distort(.5)
-									end
-								elseif not global_distortion_mode then
-									tani.number:undistort()
-								end
-								tani:unhide()
-							end
-						end
-					end
+				for i= tani_index, #self.entries do
+					self.entries[i]:hide()
 				end
-				set_score_tani_from_profile(
-					player_profiles[self.player_number], self.player_score)
-				set_score_tani_from_profile(machine_profile, self.machine_score)
-				self.rating:set_text(steps_to_string(strail))
-				self.rating:set_number(strail:GetMeter())
-				local bpm_text= steps_get_bpms_as_text(strail)
-				self.bpm_disp:set_number(bpm_text)
-				self.rating:unhide()
-				self.bpm_disp:unhide()
 			else
-				for i, v in ipairs(self.radars) do
+				for i, v in ipairs(self.entries) do
 					v:hide()
 				end
-				self.machine_score:hide()
-				self.player_score:hide()
-				self.rating:hide()
-				self.bpm_disp:hide()
 			end
 			self.container:diffusealpha(1)
 		else
@@ -400,6 +394,77 @@ local pain_displays= {
 	[PLAYER_2]= setmetatable({}, pain_display_interface_mt),
 }
 
+dofile(THEME:GetPathO("", "options_menu.lua"))
+
+options_sets.special_menu= {
+	__index= {
+		initialize= function(self, player_number)
+			self.player_number= player_number
+			self.info_set= {
+				{text= "Profile favorite+"}, {text= "Profile favorite-"},
+				{text= "Machine favorite+"}, {text= "Machine favorite-"},
+				{text= "Censor"}
+			}
+			self.cursor_pos= 1
+		end,
+		interpret_start= function(self)
+			local player_slot= pn_to_profile_slot(self.player_number)
+			if self.cursor_pos == 1 then
+				change_favor(player_slot, gamestate_get_curr_song(), 1)
+				return true, true
+			elseif self.cursor_pos == 2 then
+				change_favor(player_slot, gamestate_get_curr_song(), -1)
+				return true, true
+			elseif self.cursor_pos == 3 then
+				change_favor("ProfileSlot_Machine", gamestate_get_curr_song(), 1)
+				return true, true
+			elseif self.cursor_pos == 4 then
+				change_favor("ProfileSlot_Machine", gamestate_get_curr_song(), -1)
+				return true, true
+			elseif self.cursor_pos == 5 then
+				add_to_censor_list(gamestate_get_curr_song())
+				return true, true
+			end
+			return false
+		end,
+		update= function(self)
+			if GAMESTATE:IsPlayerEnabled(self.player_number) then
+				self.display:unhide()
+			else
+				self.display:hide()
+			end
+		end
+}}
+
+set_option_set_metatables()
+
+local special_menu_displays= {
+	[PLAYER_1]= setmetatable({}, option_display_mt),
+	[PLAYER_2]= setmetatable({}, option_display_mt),
+}
+
+local special_menus= {
+	[PLAYER_1]= setmetatable({}, options_sets.special_menu),
+	[PLAYER_2]= setmetatable({}, options_sets.special_menu),
+}
+
+local player_cursors= {
+	[PLAYER_1]= setmetatable({}, amv_cursor_mt),
+	[PLAYER_2]= setmetatable({}, amv_cursor_mt)
+}
+
+local select_press_times= {[PLAYER_1]= 0, [PLAYER_2]= 0}
+-- Set when select is pressed, so it can be used to determine whether the special menu should be brought up.
+local in_special_menu= {[PLAYER_1]= false, [PLAYER_2]= false}
+
+local function update_pain(pn)
+	if in_special_menu[pn] then
+		special_menus[pn]:update()
+	else
+		pain_displays[pn]:update()
+	end
+end
+
 local function start_auto_scrolling(dir)
 	local time_before_scroll= GetTimeSinceStart()
 	music_wheel:scroll_amount(dir)
@@ -408,6 +473,38 @@ local function start_auto_scrolling(dir)
 	local curr_time= get_screen_time() + (time_after_scroll - time_before_scroll)
 	next_auto_scroll_time= curr_time + time_before_auto_scroll
 	fast_scroll_start_time= curr_time + time_before_fast_scroll
+end
+
+local function update_player_cursors()
+	local num_enabled= 0
+	for i, pn in ipairs{PLAYER_1, PLAYER_2} do
+		if GAMESTATE:IsPlayerEnabled(pn) then
+			num_enabled= num_enabled + 1
+			local cursed_item= false
+			if in_special_menu[pn] then
+				cursed_item= special_menus[pn]:get_cursor_element()
+				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
+				local xp, yp= rec_calc_actor_pos(cursed_item.container)
+				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
+			else
+				cursed_item= music_wheel.sick_wheel:get_actor_item_at_focus_pos().text
+				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item)
+				local xp= wheel_x + ((xmx - xmn) / 2) + 4
+				player_cursors[pn]:refit(xp, wheel_cursor_y, xmx - xmn + 4, ymx - ymn + 4)
+			end
+			player_cursors[pn]:unhide()
+		else
+			player_cursors[pn]:hide()
+		end
+	end
+	if num_enabled == 2 and not in_special_menu[PLAYER_1]
+	and not in_special_menu[PLAYER_2] then
+		player_cursors[PLAYER_1]:left_half()
+		player_cursors[PLAYER_2]:right_half()
+	else
+		player_cursors[PLAYER_1]:un_half()
+		player_cursors[PLAYER_2]:un_half()
+	end
 end
 
 local function note_data_mod_test(note_data)
@@ -510,6 +607,63 @@ local function Update(self)
 	end
 end
 
+local options_message_frame_helper= setmetatable({}, frame_helper_mt)
+
+local input_functions= {
+	scroll_left= function() start_auto_scrolling(-1) end,
+	scroll_right= function() start_auto_scrolling(1) end,
+	stop_scroll= function() stop_auto_scrolling() end,
+	interact= function()
+							music_wheel:interact_with_element()
+							change_sort_text(music_wheel.current_sort_name)
+						end,
+	back= function()
+					stop_music()
+					SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
+					SCREENMAN:SetNewScreen("ScreenInitialMenu")
+				end
+}
+
+local input_maps= {
+	[input_mode_pad]= {
+		left= input_functions.scroll_left,
+		right= input_functions.scroll_right,
+		left_release= input_functions.stop_scroll,
+		right_release= input_functions.stop_scroll,
+		start= input_functions.interact,
+		back= input_functions.back
+	},
+	[input_mode_cabinet]= {
+		menu_left= input_functions.scroll_left,
+		menu_right= input_functions.scroll_right,
+		menu_left_release= input_functions.stop_scroll,
+		menu_right_release= input_functions.stop_scroll,
+		start= input_functions.interact,
+		back= input_functions.back
+	},
+}
+
+local curr_input_map= input_maps[get_input_mode()]
+
+local function adjust_difficulty(player, dir, sound)
+	local steps= gamestate_get_curr_steps(player)
+	if steps then
+		local steps_list= get_filtered_sorted_steps_list()
+		for i, v in ipairs(steps_list) do
+			if v == steps then
+				local picked_steps= steps_list[i+dir]
+				if picked_steps then
+					cons_set_current_steps(player, picked_steps)
+					SOUND:PlayOnce("Themes/_fallback/Sounds/_switch " .. sound)
+				else
+					SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
+				end
+				break
+			end
+		end
+	end
+end
+
 local codes= {
 	{ name= "sort_mode", ignore_release= true,
 		"up", "down", "up", "down" },
@@ -591,62 +745,70 @@ local function update_code_status(press, player)
 	return triggered
 end
 
-local function adjust_difficulty(player, dir, sound)
-	local steps= gamestate_get_curr_steps(player)
-	if steps then
-		local steps_list= get_filtered_sorted_steps_list()
-		for i, v in ipairs(steps_list) do
-			if v == steps then
-				local picked_steps= steps_list[i+dir]
-				if picked_steps then
-					cons_set_current_steps(player, picked_steps)
-					SOUND:PlayOnce("Themes/_fallback/Sounds/_switch " .. sound)
-				else
-					SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
-				end
-				break
+local function handle_triggered_codes(pn, code)
+	local triggered= update_code_status(code, pn)
+	for i, v in ipairs(triggered) do
+		local ctext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("code_text")
+		if ctext then
+			if convert_code_name_to_display_text[v] then
+				ctext:settext(convert_code_name_to_display_text[v])
+				ctext:DiffuseAndStroke(solar_colors.bg(0),solar_colors.f_text())
+				ctext:finishtweening()
+				local w= ctext:GetWidth()
+				local h= ctext:GetHeight()
+				local z= ctext:GetZoom()
+				ctext:x(SCREEN_LEFT+(w*z/2)+2)
+				ctext:y(SCREEN_TOP+(h*z/2)+4)
+				ctext:ease(.5,-100)
+				ctext:diffusealpha(1)
+				ctext:sleep(2)
+				ctext:ease(.5,100)
+				ctext:diffusealpha(0)
 			end
+		end
+		if v == "sort_mode" then
+			music_wheel:show_sort_list()
+			change_sort_text(music_wheel.current_sort_name)
+		elseif v == "diff_up" then
+			adjust_difficulty(pn, -1, "up.ogg")
+		elseif v == "diff_down" then
+			adjust_difficulty(pn, 1, "down.ogg")
+		elseif v == "unjoin" then
+			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Cancel.ogg")
+			if false then -- crashes
+				Trace("Master player: " .. GAMESTATE:GetMasterPlayerNumber())
+				Trace("Unjoining player: " .. pn)
+				GAMESTATE:UnjoinPlayer(other_player[pn])
+				Trace("NPE: " .. GAMESTATE:GetNumPlayersEnabled())
+				lua.Flush()
+				GAMESTATE:ApplyGameCommand("style,single", pn)
+				Trace("Master player after unjoin: " .. GAMESTATE:GetMasterPlayerNumber())
+				steps_display:update_steps_set()
+				update_pain(pn)
+			end
+		end
+		if cons_players[pn] and cons_players[pn][v] then
+			cons_players[pn][v](cons_players[pn])
+		end
+	end
+	if #triggered == 0 then
+		if curr_input_map[code] then
+			curr_input_map[code]()
 		end
 	end
 end
 
-local options_message_frame_helper= setmetatable({}, frame_helper_mt)
+local function activate_special_menu(pn)
+	pain_displays[pn]:hide()
+	special_menu_displays[pn]:unhide()
+	in_special_menu[pn]= true
+end
 
-local input_functions= {
-	scroll_left= function() start_auto_scrolling(-1) end,
-	scroll_right= function() start_auto_scrolling(1) end,
-	stop_scroll= function() stop_auto_scrolling() end,
-	interact= function()
-							music_wheel:interact_with_element()
-							change_sort_text(music_wheel.current_sort_name)
-						end,
-	back= function()
-					stop_music()
-					SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
-					SCREENMAN:SetNewScreen("ScreenInitialMenu")
-				end
-}
-
-local input_maps= {
-	[input_mode_pad]= {
-		left= input_functions.scroll_left,
-		right= input_functions.scroll_right,
-		left_release= input_functions.stop_scroll,
-		right_release= input_functions.stop_scroll,
-		start= input_functions.interact,
-		back= input_functions.back
-	},
-	[input_mode_cabinet]= {
-		menu_left= input_functions.scroll_left,
-		menu_right= input_functions.scroll_right,
-		menu_left_release= input_functions.stop_scroll,
-		menu_right_release= input_functions.stop_scroll,
-		start= input_functions.interact,
-		back= input_functions.back
-	},
-}
-
-local curr_input_map= input_maps[get_input_mode()]
+local function deactivate_special_menu(pn)
+	pain_displays[pn]:unhide()
+	special_menu_displays[pn]:hide()
+	in_special_menu[pn]= false
+end
 
 local function spew_song_specials(song)
 	local special_names= {
@@ -672,19 +834,25 @@ end
 
 return Def.ActorFrame {
 	InitCommand= function(self)
-								 self:SetUpdateFunction(Update)
-								 for k, v in pairs(pain_displays) do
-									 v:find_actors(self:GetChild(v.name))
-								 end
-								 steps_display:find_actors(self:GetChild(steps_display.name))
-								 music_wheel:find_actors(self:GetChild(music_wheel.name))
-								 -- Give everybody enough tokens to play, as a way of disabling the stage system.
-								 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-									 while GAMESTATE:GetNumStagesLeft(pn) < 3 do
-										 GAMESTATE:AddStageToPlayer(pn)
-									 end
-								 end
-							 end,
+		self:SetUpdateFunction(Update)
+		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
+			pain_displays[pn]:find_actors(self:GetChild(pain_displays[pn].name))
+			special_menu_displays[pn]:find_actors(self:GetChild(special_menu_displays[pn].name))
+			special_menus[pn]:initialize(pn)
+			special_menus[pn]:set_display(special_menu_displays[pn])
+			special_menu_displays[pn]:hide()
+			player_cursors[pn]:find_actors(self:GetChild(player_cursors[pn].name))
+		end
+		steps_display:find_actors(self:GetChild(steps_display.name))
+		music_wheel:find_actors(self:GetChild(music_wheel.name))
+		update_player_cursors()
+		-- Give everybody enough tokens to play, as a way of disabling the stage system.
+		for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+			while GAMESTATE:GetNumStagesLeft(pn) < 3 do
+				GAMESTATE:AddStageToPlayer(pn)
+			end
+		end
+	end,
 	OnCommand= function(self)
 							 local top_screen= SCREENMAN:GetTopScreen()
 							 if top_screen.SetAllowLateJoin then
@@ -698,6 +866,8 @@ return Def.ActorFrame {
 											om:accelerate(0.25)
 											om:diffusealpha(1)
 											entering_song= get_screen_time() + options_time
+											save_all_favorites()
+											save_censored_list()
 										end,
 	real_play_songCommand= function(self)
 													 if go_to_options then
@@ -721,16 +891,22 @@ return Def.ActorFrame {
 										self:playcommand("Set")
 									end,
 		SetCommand= function(self)
-									pain_displays[PLAYER_1]:update()
-									pain_displays[PLAYER_2]:update()
-									steps_display:update_cursors()
-								end,
+			update_pain(PLAYER_1)
+			update_pain(PLAYER_2)
+			steps_display:update_cursors()
+			update_player_cursors()
+		end,
 	},
 	pain_displays[PLAYER_1]:create_actors(
-		PLAYER_1, SCREEN_LEFT+(pane_w/2)+pad,
-		SCREEN_BOTTOM-pane_h-(pane_h/2)-(pad*2)),
+		PLAYER_1, SCREEN_LEFT+(pane_w/2)+pad, SCREEN_BOTTOM-(pane_h/2)-pad),
 	pain_displays[PLAYER_2]:create_actors(
-		PLAYER_2, SCREEN_LEFT+(pane_w/2)+pad, SCREEN_BOTTOM-(pane_h/2)-pad),
+		PLAYER_2, SCREEN_LEFT+(pane_w*1.5)+pad, SCREEN_BOTTOM-(pane_h/2)-pad),
+	special_menu_displays[PLAYER_1]:create_actors(
+		"P1_menu", SCREEN_LEFT+(pane_w/2)+pad, SCREEN_BOTTOM-(pane_h/2)-pad+pane_yoff,
+		pane_rows, pane_w - 16, pane_text_height, pane_text_zoom, true, true),
+	special_menu_displays[PLAYER_2]:create_actors(
+		"P2_menu", SCREEN_LEFT+(pane_w*1.5)+pad, SCREEN_BOTTOM-(pane_h/2)-pad+pane_yoff,
+		pane_rows, pane_w - 16, pane_text_height, pane_text_zoom, true, true),
 	steps_display:create_actors("StepsDisplay"),
 	Def.Sprite {
 		Name="CDTitle",
@@ -882,62 +1058,31 @@ return Def.ActorFrame {
 				local pn = param.PlayerNumber
 				if GAMESTATE:IsSideJoined(pn) then
 					if get_screen_time() > 0.25 then
-						local name = param.Name
+						local code = param.Name
 						if entering_song then
-							if name == "start" then
+							if code == "start" then
 								SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
 								entering_song= 0
 								go_to_options= true
 							end
 						else
-							local triggered= update_code_status(name, pn)
-							for i, v in ipairs(triggered) do
-								local ctext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("code_text")
-								if ctext then
-									if convert_code_name_to_display_text[v] then
-										ctext:settext(convert_code_name_to_display_text[v])
-										ctext:DiffuseAndStroke(solar_colors.bg(0),solar_colors.f_text())
-										ctext:finishtweening()
-										local w= ctext:GetWidth()
-										local h= ctext:GetHeight()
-										local z= ctext:GetZoom()
-										ctext:x(SCREEN_LEFT+(w*z/2)+2)
-										ctext:y(SCREEN_TOP+(h*z/2)+4)
-										ctext:ease(.5,-100)
-										ctext:diffusealpha(1)
-										ctext:sleep(2)
-										ctext:ease(.5,100)
-										ctext:diffusealpha(0)
+							if in_special_menu[pn] then
+								if code == "select" then
+									deactivate_special_menu(pn)
+								else
+									local handled, close= special_menus[pn]:interpret_code(code)
+									if close then
+										deactivate_special_menu(pn)
 									end
 								end
-								if v == "sort_mode" then
-									music_wheel:show_sort_list()
-									change_sort_text(music_wheel.current_sort_name)
-								elseif v == "diff_up" then
-									adjust_difficulty(pn, -1, "up.ogg")
-								elseif v == "diff_down" then
-									adjust_difficulty(pn, 1, "down.ogg")
-								elseif v == "unjoin" then
-									SOUND:PlayOnce("Themes/_fallback/Sounds/Common Cancel.ogg")
-									if false then -- crashes
-										Trace("Master player: " .. GAMESTATE:GetMasterPlayerNumber())
-										Trace("Unjoining player: " .. pn)
-										GAMESTATE:UnjoinPlayer(other_player[pn])
-										Trace("NPE: " .. GAMESTATE:GetNumPlayersEnabled())
-										lua.Flush()
-										GAMESTATE:ApplyGameCommand("style,single", pn)
-										Trace("Master player after unjoin: " .. GAMESTATE:GetMasterPlayerNumber())
-										steps_display:update_steps_set()
-										pain_displays[pn]:update()
-									end
+							else
+								if code == "select" then
+									select_press_times[pn]= get_screen_time()
 								end
-								if cons_players[pn] and cons_players[pn][v] then
-									cons_players[pn][v](cons_players[pn])
-								end
-							end
-							if #triggered == 0 then
-								if curr_input_map[name] then
-									curr_input_map[name]()
+								if code == "select_release" and get_screen_time() - select_press_times[pn] < special_menu_activate_time then
+									activate_special_menu(pn)
+								else
+									handle_triggered_codes(pn, code)
 								end
 							end
 						end
@@ -980,6 +1125,7 @@ return Def.ActorFrame {
 						end
 					end
 				end
+				update_player_cursors()
 			end
 	},
 	normal_text("code_text", "", solar_colors.f_text(0), 0, 0, .75),
@@ -1006,7 +1152,8 @@ return Def.ActorFrame {
 									end
 								end
 	}),
-	-- See change_sort_text for actual y position.
+	player_cursors[PLAYER_1]:create_actors("P1_cursor", 0, 0, 0, 0, 1, solar_colors[PLAYER_1]()),
+	player_cursors[PLAYER_2]:create_actors("P2_cursor", 0, 0, 0, 0, 1, solar_colors[PLAYER_2]()),
 	credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
 	Def.ActorFrame{
 		Name= "options message",

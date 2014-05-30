@@ -351,6 +351,88 @@ end
 
 frame_helper_mt= { __index= frame_helper }
 
+amv_cursor_mt= {
+	__index= {
+		create_actors= function(self, name, x, y, w, h, t, color)
+			x= x or 0
+			y= y or 0
+			w= w or 0
+			h= h or 0
+			t= t or 0
+			color= color or solar_colors.violet()
+			self.name= name
+			self.w= w
+			self.h= h
+			self.t= t
+			return Def.ActorMultiVertex{
+				Name= name,
+				InitCommand= function(self)
+					self:xy(x, y)
+					-- 6 verts, so the cursor can easily be cut in half.
+					self:SetVertices{
+						{{0, -h/2, 0}, color},
+						{{w/2, -h/2, 0}, color},
+						{{w/2, h/2, 0}, color},
+						{{0, h/2, 0}, color},
+						{{-w/2, h/2, 0}, color},
+						{{-w/2, -h/2, 0}, color},
+						{{0, -h/2, 0}, color},
+					}
+					self:SetLineWidth(t)
+					self:SetDrawState{Mode= "DrawMode_LineStrip"}
+				end
+			}
+		end,
+		find_actors= function(self, container)
+			self.container= container
+		end,
+		refit= function(self, nx, ny, nw, nh)
+			nx= nx or self.container:GetX()
+			ny= ny or self.container:GetY()
+			nw= nw or self.w
+			nh= nh or self.h
+			self.w= nw
+			self.h= nh
+			self.container:finishtweening()
+			self.container:linear(0.05)
+			self.container:xy(nx, ny)
+			self.container:SetVertices{
+				{{0, -nh/2, 0}},
+				{{nw/2, -nh/2, 0}},
+				{{nw/2, nh/2, 0}},
+				{{0, nh/2, 0}},
+				{{-nw/2, nh/2, 0}},
+				{{-nw/2, -nh/2, 0}},
+				{{0, -nh/2, 0}},
+			}
+		end,
+		recolor= function(self, color)
+			if color then
+				self:SetVertices{{color}, {color}, {color}, {color}, {color}}
+			end
+		end,
+		rethicken= function(self, thickness)
+			thickness= thickness or self.t
+			self.t= thickness
+			self.container:SetLineWidth(thickness)
+		end,
+		left_half= function(self)
+			self.container:SetDrawState{First= 4}
+		end,
+		right_half= function(self)
+			self.container:SetDrawState{First= 1, Num= 4}
+		end,
+		un_half= function(self)
+			self.container:SetDrawState{First= 1, Num= -1}
+		end,
+		hide= function(self)
+			self.container:visible(false)
+		end,
+		unhide= function(self)
+			self.container:visible(true)
+		end
+}}
+
 function credit_reporter(x, y, show_credits)
 	return normal_text(
 		"credit", "Credits", solar_colors.violet(), x, y, 1, center,

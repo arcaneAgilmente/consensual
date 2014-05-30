@@ -110,9 +110,7 @@ function bpm_displayer_interface:notify_of_rate_change()
 	end
 end
 
-local menu_path= THEME:GetPathO("", "options_menu.lua")
---Trace("Attempting loadfile of (" .. menu_path .. ")")
-dofile(menu_path)
+dofile(THEME:GetPathO("", "options_menu.lua"))
 
 local speed_inc_base= 25
 local speed_inc_base_recip= 1/speed_inc_base
@@ -601,15 +599,14 @@ local options_menu_mt= {
 					setmetatable({}, option_display_mt)}
 				local sep= sect_width / #self.displays
 				local off= sep / 2
-				self.cursor= setmetatable({}, frame_helper_mt)
-				args[#args+1]= self.cursor:create_actors(
-					"cursor", 1, 20, line_height, pcolor, solar_colors.bg(), sep,
-					line_height*2.5)
+				self.cursor= setmetatable({}, amv_cursor_mt)
 				for i, disp in ipairs(self.displays) do
 					args[#args+1]= disp:create_actors(
 						"disp" .. i, off+sep * (i-1), line_height * 2.5,
 						option_set_elements, disp_el_width_limit, line_height, 1)
 				end
+				args[#args+1]= self.cursor:create_actors(
+					"cursor", sep, line_height*2.5, 20, line_height, 1, pcolor)
 				return Def.ActorFrame(args)
 			end,
 		find_actors=
@@ -705,8 +702,7 @@ local options_menu_mt= {
 					local xp, yp= rec_calc_actor_pos(item.container)
 					xp= xp - self.container:GetX()
 					yp= yp - self.container:GetY()
-					self.cursor:resize(xmx - xmn + 4, ymx - ymn + 4)
-					self.cursor:move(xp, yp)
+					self.cursor:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
 				end
 			end,
 		can_exit_screen=

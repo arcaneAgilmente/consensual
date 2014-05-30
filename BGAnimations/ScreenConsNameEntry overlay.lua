@@ -54,9 +54,10 @@ local keyboard_mt= {
 				self.cursor_poses= {}
 				local enabled_players= GAMESTATE:GetEnabledPlayers()
 				for i, pn in ipairs(enabled_players) do
-					self.cursors[pn]= setmetatable({}, frame_helper_mt)
+					self.cursors[pn]= setmetatable({}, amv_cursor_mt)
 					self.cursor_poses[pn]= {1, 1}
-					args[#args+1]= self.cursors[pn]:create_actors("cursor"..pn, 1, 0, 0, solar_colors[pn](), solar_colors.bg())
+					args[#args+1]= self.cursors[pn]:create_actors(
+						"cursor"..pn, 0, 0, 0, 0, 1, solar_colors[pn]())
 				end
 				for i, r in ipairs(rows) do
 					local keyw= (SCREEN_WIDTH-key_spacing) / #r
@@ -107,19 +108,14 @@ local keyboard_mt= {
 					local curactor= self.key_actors[curpos[1]][curpos[2]]
 					local xmn, xmx, ymn, ymx= rec_calc_actor_extent(curactor)
 					local xp, yp= curactor:GetX(), curactor:GetY()
-					cur:resize(xmx - xmn + 4, ymx - ymn + 4)
-					cur:move(xp, yp)
+					cur:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
 					if other_cur then
 						if other_pos[1] == curpos[1] and other_pos[2] == curpos[2] then
-							self.cursors[PLAYER_1].inner:cropright(.5)
-							self.cursors[PLAYER_1].outer:cropright(.5)
-							self.cursors[PLAYER_2].inner:cropleft(.5)
-							self.cursors[PLAYER_2].outer:cropleft(.5)
+							self.cursors[PLAYER_1]:left_half()
+							self.cursors[PLAYER_2]:right_half()
 						else
-							self.cursors[PLAYER_1].inner:cropright(0)
-							self.cursors[PLAYER_1].outer:cropright(0)
-							self.cursors[PLAYER_2].inner:cropleft(0)
-							self.cursors[PLAYER_2].outer:cropleft(0)
+							self.cursors[PLAYER_1]:un_half()
+							self.cursors[PLAYER_2]:un_half()
 						end
 					else
 						other_cur= cur

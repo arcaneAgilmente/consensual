@@ -50,6 +50,7 @@ local option_item_mt= {
 				self.width= width
 				self.zoom= zoom
 				self.height= height
+				self.text:zoom(zoom)
 			end,
 		set_underline_color=
 			function(self, color)

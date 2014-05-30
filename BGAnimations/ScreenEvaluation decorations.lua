@@ -1131,14 +1131,19 @@ do
 end
 
 local function set_visible_score_data(pn, index)
-	local function size_frame_to_report(report_container)
+	local function size_frame_to_report(report_container, is_profile)
 		local pad= 16
 		local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(report_container)
 		local fw= fxmx - fxmn + pad
 		local fh= fymx - fymn + pad
 		local fx= fxmn + (fw / 2)
 		local fy= fymn + (fh / 2)
-		frame_helpers[pn]:move(fx-pad/2, fy-pad/2)
+		-- There's probably a bug in rec_calc_actor_extent....
+		if is_profile then
+			frame_helpers[pn]:move(fx-pad/2, fy+pad*1.75)
+		else
+			frame_helpers[pn]:move(fx-pad/2, fy-pad/2)
+		end
 		frame_helpers[pn]:resize(fw, fh)
 	end
 	if index == -3 then
@@ -1152,7 +1157,7 @@ local function set_visible_score_data(pn, index)
 	elseif index == -2 then
 		score_reports[pn].container:diffusealpha(0)
 		profile_reports[pn].container:diffusealpha(1)
-		size_frame_to_report(profile_reports[pn].container)
+		size_frame_to_report(profile_reports[pn].container, true)
 	else
 		score_reports[pn]:set(pn, index, score_datas[pn][index])
 		score_reports[pn].container:diffusealpha(1)
