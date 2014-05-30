@@ -311,6 +311,9 @@ local reward_time_mt= {
 				local reward_str= ""
 				local minutes= math.round_to_zero(reward_time / 60)
 				local seconds= math.round_to_zero(reward_time % 60)
+				if seconds < 10 and minutes > 0 and reward_time ~= 0 then
+					seconds= "0" .. seconds
+				end
 				if reward_time > 0 then
 					reward_str= "+" .. minutes .. ":" .. seconds
 				elseif reward_time < 0 then

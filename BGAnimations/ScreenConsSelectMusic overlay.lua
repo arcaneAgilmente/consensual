@@ -910,9 +910,10 @@ return Def.ActorFrame {
 	steps_display:create_actors("StepsDisplay"),
 	Def.Sprite {
 		Name="CDTitle",
-		InitCommand=cmd(x,SCREEN_CENTER_X-43;y,SCREEN_TOP+210),
-		OnCommand=cmd(draworder,106;shadowlength,1;zoom,0.75;diffusealpha,1;zoom,0;bounceend,0.35;zoom,0.75;),
-		CurrentSongChangedMessageCommand=
+		InitCommand=cmd(x,SCREEN_CENTER_X-50;y,SCREEN_TOP+180),
+		OnCommand= cmd(playcommand, "Set"),
+		CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
+		SetCommand=
 			function(self)
 				-- Courses can't have CDTitles, so gamestate_get_curr_song isn't used.
 				local song= GAMESTATE:GetCurrentSong()
