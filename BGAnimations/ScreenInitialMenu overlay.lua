@@ -10,6 +10,7 @@ for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do
 end
 
 load_favorites("ProfileSlot_Machine")
+load_censored_list()
 
 local num_songs= SONGMAN:GetNumSongs()
 local num_groups= SONGMAN:GetNumSongGroups()

@@ -37,7 +37,8 @@ local function generic_ndget_wrapper(func_name)
 end
 
 local main_title_info= {
-	get_bucket= generic_get_wrapper("GetDisplayMainTitle"), depth= true }
+	get_bucket= generic_get_wrapper("GetDisplayMainTitle"), depth= true,
+	can_join= noop_true}
 
 local function difficulty_wrapper(difficulty)
 	return function(song, depth)
@@ -184,8 +185,8 @@ local function sort_info_wrapper(info)
 		name= info.name, sort= {
 			name= info.name, main= {
 				get_bucket= info.get_bucket, depth= info.depth,
-				group_similar= info.group_similar}, fallback= main_title_info,
-			can_join= info.can_join, dont_clip= info.dont_clip,
+				group_similar= info.group_similar, can_join= info.can_join},
+			fallback= main_title_info, dont_clip= info.dont_clip,
 			pre_sort_func= info.pre_sort_func, pre_sort_arg= info.pre_sort_arg}}
 end
 
@@ -194,8 +195,8 @@ local function no_fallback_sort_info_wrapper(info)
 		name= info.name, sort= {
 			name= info.name, main= {
 				get_bucket= info.get_bucket, depth= info.depth,
-				group_similar= info.group_similar}, fallback= nil,
-			can_join= info.can_join, dont_clip= info.dont_clip,
+				group_similar= info.group_similar, can_join= info.can_join},
+			fallback= nil, dont_clip= info.dont_clip,
 			pre_sort_func= info.pre_sort_func, pre_sort_arg= info.pre_sort_arg}}
 end
 
@@ -229,7 +230,13 @@ local function bucket_name_to_type(bucket)
 end
 
 local function number_buckets_can_join(lbucket, rbucket)
-	return bucket_name_to_type(lbucket) == bucket_name_to_type(rbucket)
+	local ltype= bucket_name_to_type(lbucket)
+	local rtype= bucket_name_to_type(rbucket)
+	if ltype == "number" or ltype == "date" or ltype == "string" then
+		return ltype == rtype
+	else
+		return false
+	end
 end
 
 local function score_sub_bucket_maker(score_func, prename, postname)
@@ -315,7 +322,7 @@ local global_sort_info= {}
 
 local function set_course_mode_sort_info()
 	local course_sort_bucket= {
-		sort_info_wrapper{name= "Group", group_similar= true,
+		sort_info_wrapper{name= "Group", group_similar= true, can_join= noop_false,
 											get_bucket= generic_ndget_wrapper("GetGroupName")},
 		no_fallback_sort_info_wrapper{name= "Title", depth= true,
 																	get_bucket= main_title_info.get_bucket},
@@ -330,7 +337,7 @@ end
 
 local function set_song_mode_sort_info()
 	local song_sort_bucket= {
-		sort_info_wrapper{name= "Group", group_similar= true,
+		sort_info_wrapper{name= "Group", group_similar= true, can_join= noop_false,
 											get_bucket= generic_ndget_wrapper("GetGroupName")},
 		no_fallback_sort_info_wrapper{name= "Title", depth= true,
 																	get_bucket= main_title_info.get_bucket},
@@ -424,16 +431,9 @@ function bucket_man_interface:sort_songs(sort_info)
 	end
 	self.current_sort_name= sort_info.name
 	self.cur_sort_info= sort_info
-	local function can_join(lbucket, rbucket)
-		if ((lbucket.name and songman_does_group_exist(lbucket.name)) or
-			(rbucket.name and songman_does_group_exist(rbucket.name))) then
-			return false
-		end
-		return true
-	end
 	self.sorted_songs= bucket_sort{
 		set= self.filtered_songs, main= sort_info.main,
-		fallback= sort_info.fallback, can_join= sort_info.can_join or can_join,
+		fallback= sort_info.fallback,
 		dont_clip= sort_info.dont_clip}
 	return self.sorted_songs
 end

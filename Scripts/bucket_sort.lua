@@ -47,7 +47,7 @@ local function split_set(set, get_bucket, depth)
 	for i, v in ipairs(set) do
 		local bi= get_bucket(v, depth)
 		if not buckets[bi] then
-			buckets[bi]= {}
+			buckets[bi]= {name_source= get_bucket}
 		end
 		local new_index= #buckets[bi]+1
 		buckets[bi][new_index]= v
@@ -92,7 +92,7 @@ local function split_bucket(buckets, get_name)
 			end
 			sub_buckets[#sub_buckets+1]= {
 				name= sub_name, disp_name= sub_name, contents= sub,
-				combined_buckets= sub_combined }
+				combined_buckets= sub_combined, name_source= "split" }
 			if curr_fraction >= 1 then curr_fraction= curr_fraction - 1 end
 			curr_fraction= curr_fraction + size_fraction
 		end
@@ -140,10 +140,16 @@ function combine_buckets(a, b, main_name, final_name)
 end
 
 local function combine_too_small_buckets(buckets, can_join, main_name, final_name)
+	can_join= can_join or noop_true
 	local function agnostic_wrapper(a, b)
 		return agnostic_compare(a, b, main_name, final_name)
 	end
-	can_join= can_join or function() return true end
+	local function can_join_wrapper(left, right)
+		if left.name_source == main_name and right.name_source == main_name then
+			return can_join(left, right)
+		end
+		return false
+	end
 	local i= 1
 	while i <= #buckets do
 		local v= buckets[i]
@@ -157,9 +163,9 @@ local function combine_too_small_buckets(buckets, can_join, main_name, final_nam
 			local left_neighbor= buckets[i-1]
 			local right_neighbor= buckets[i+1]
 			local used_neighbor= 0
-			local can_use_left= left_neighbor and can_join(left_neighbor, v) and
+			local can_use_left= left_neighbor and can_join_wrapper(left_neighbor, v) and
 				#left_neighbor.contents + #v.contents < max_bucket_size
-			local can_use_right= right_neighbor and can_join(v, right_neighbor) and
+			local can_use_right= right_neighbor and can_join_wrapper(v, right_neighbor) and
 				#right_neighbor.contents + #v.contents < max_bucket_size
 			if can_use_left then
 				if can_use_right then
@@ -199,7 +205,6 @@ local function split_too_large_buckets(real_buckets, params)
 	params.depth= params.depth or 1
 	local main= params.main
 	local fallback= params.fallback
-	local can_join= params.can_join
 	local dont_clip= params.dont_clip
 	local main_depth= main.depth
 	local i= 1
@@ -209,11 +214,11 @@ local function split_too_large_buckets(real_buckets, params)
 			if main_depth and #real_buckets > 1 then
 				v.contents= bucket_sort{
 					set= v.contents, main= main, fallback= fallback,
-					can_join= can_join, dont_clip= dont_clip, depth= params.depth + 1}
+					dont_clip= dont_clip, depth= params.depth + 1}
 			elseif fallback then
 				v.contents= bucket_sort{
 					set= v.contents, main= fallback, fallback= nil,
-					can_join= can_join, dont_clip= dont_clip, depth= 1}
+					dont_clip= dont_clip, depth= 1}
 			else
 				local get_name= (fallback and fallback.get_bucket) or main.get_bucket
 				v.contents= split_bucket(v.contents, get_name)
@@ -270,7 +275,7 @@ local function group_similar_buckets(real_buckets, dont_clip)
 			else
 				local grouped_buckets= {
 					name= sim, disp_name= sim, is_grouped_buckets= true,
-					contents= {pre_buck, buck},
+					contents= {pre_buck, buck}, name_source= "similar",
 					combined_buckets= {pre_buck.name, buck.name}}
 				real_buckets[i-1]= grouped_buckets
 				table.remove(real_buckets, i)
@@ -291,27 +296,32 @@ end
 
 -- params example:
 -- { set= {},
---   main= { get_bucket= function, depth= bool, group_similar= bool },
---   fallback= { identical to main },
---   can_join= function, dont_clip= bool, depth= number
+--   main= sort_factor,
+--   fallback= sort_factor,
+--   dont_clip= bool, depth= number
 -- }
 -- If set is too small or nil, or main is nil, set is returned.
--- main.get_bucket is a function that takes an element or bucket and returns
---   what bucket that element belongs in.  If it uses the depth argument, it
---   must accept -1 to indicate the maximum depth.
--- main.depth is whether main.get_bucket actually uses the depth
--- main.group_similar is whether buckets with names that start with the
---   same sequence should be placed into a bucket together.
 -- fallback is an alternative to main, used when main doesn't seperate
 --   elements enough.  fallback may be nil.
--- can_join is a function that will be passed a pair of buckets to divine
---   whether those buckets can be combined.
--- can_join is treated as noop_true if nil.
 -- dont_clip is a boolean value for if bucket names can be clipped when being
 --   grouped by group_similar_buckets.
 -- TODO:  Should dont_clip be inside of main/fallback?  It controls the
 --   behavior of group_similar_buckets.
 -- depth is for internal use and is passed to the get_bucket functions
+--
+-- sort_factor example:
+-- { get_bucket= function, can_join= function, depth= bool,
+--   group_similar= bool }
+-- get_bucket is a function that takes an element or bucket and returns
+--   what bucket that element belongs in.  If it uses the depth argument, it
+--   must accept -1 to indicate the maximum depth.
+-- depth is whether main.get_bucket actually uses the depth
+-- group_similar is whether buckets with names that start with the
+--   same sequence should be placed into a bucket together.
+-- can_join is a function that will be passed a pair of buckets to divine
+--   whether those buckets can be combined.
+-- can_join is treated as noop_true if nil.
+--
 -- Limitations:
 --   Do not pass in anything with "name", "disp_name", or "contents" members.
 --   These are used to identify whether the thing being handled is a bucket.
@@ -320,12 +330,13 @@ function bucket_sort(params)
 	local set= params.set
 	local main= params.main
 	local fallback= params.fallback
-	local can_join= params.can_join
+	local can_join= params.main.can_join
 	if not set or not main then return set end
 	local buckets= split_set(set, main.get_bucket, params.depth)
 	local real_buckets= {}
 	for k, v in pairs(buckets) do
-		local new_bucket= { name= k, disp_name= k, contents= v }
+		local new_bucket= { name= k, disp_name= k, contents= v,
+												name_source= v.name_source }
 		real_buckets[#real_buckets+1]= new_bucket
 	end
 	local main_name= main.get_bucket
