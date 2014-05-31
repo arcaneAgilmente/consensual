@@ -563,6 +563,10 @@ function song_short_enough(s)
 	end
 end
 
+function song_short_and_uncensored(song)
+	return not check_censor_list(song) and song_short_enough(song)
+end
+
 function time_short_enough(t)
 	if GAMESTATE:IsEventMode() then
 		return true
@@ -572,7 +576,7 @@ function time_short_enough(t)
 end
 
 function filter_bucket_songs_by_time()
-	bucket_man:filter_and_resort_songs(song_short_enough)
+	bucket_man:filter_and_resort_songs(song_short_and_uncensored)
 end
 
 local last_song_time= 0
@@ -834,7 +838,7 @@ function save_favorites(prof_slot)
 	local favstr= "return " .. lua_table_to_string(song_favorites[prof_slot]) .. "\n"
 	local file_handle= RageFileUtil.CreateRageFile()
 	if not file_handle:Open(fav_fname, 2) then
-		Trace("Could not open '" .. favorites_file_name .. "' to write favorites.")
+		Warn("Could not open '" .. favorites_file_name .. "' to write favorites.")
 	else
 		file_handle:Write(favstr)
 		file_handle:Close()
@@ -888,7 +892,7 @@ function save_censored_list()
 	local censor_str= "return " .. lua_table_to_string(censored_songs) .. "\n"
 	local file_handle= RageFileUtil.CreateRageFile()
 	if not file_handle:Open(censor_file_name, 2) then
-		Trace("Could not open '" .. censor_file_name .. "' to write censors.")
+		Warn("Could not open '" .. censor_file_name .. "' to write censors.")
 	else
 		file_handle:Write(censor_str)
 		file_handle:Close()
@@ -897,6 +901,7 @@ function save_censored_list()
 end
 
 function add_to_censor_list(song)
+	censor_list_changed= true
 	local song_dir= (song.GetSongDir and song:GetSongDir()) or
 		(song.GetCourseDir and song:GetCourseDir())
 	censored_songs[song_dir]= true
