@@ -537,7 +537,7 @@ end
 
 local time_remaining= 0
 function set_time_remaining_to_default()
-	time_remaining= 60 * 6
+	time_remaining= default_credit_time
 end
 
 function reduce_time_remaining(amount)

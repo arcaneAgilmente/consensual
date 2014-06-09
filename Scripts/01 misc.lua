@@ -215,32 +215,13 @@ function lua_table_to_string(t, indent)
 		end
 	end
 	for k, v in pairs(t) do
-		local is_integer_key= (type(k) == "number") and (k == math.floor(k)) and k >= 0 and k < #t
+		local is_integer_key= (type(k) == "number") and (k == math.floor(k)) and k >= 0 and k <= #t
 		if not is_integer_key then
 			do_value_for_key(k, v)
 		end
 	end
 	ret= ret .. indent .. "}"
 	return ret
-end
-
-function generate_song_sort_test_data()
-	local song_table= {}
-	for i, song in ipairs(SONGMAN:GetAllSongs()) do
-		song_table[#song_table+1]=
-			{group= song:GetGroupName(), song= song:GetDisplayMainTitle()}
-	end
-	local file_handle= RageFileUtil.CreateRageFile()
-	local file_name= "test_song_sort_data.lua"
-	if not file_handle:Open(file_name, 2) then
-		Trace("Could not open '" .. file_name .. "' to write test song sort data.")
-	else
-		local output= "return " .. lua_table_to_string(song_table) .. "\n"
-		file_handle:Write(output)
-		file_handle:Close()
-		file_handle:destroy()
-		Trace("test song sort data written to '" .. file_name .. "'")
-	end
 end
 
 function get_string_wrapper(section, string)

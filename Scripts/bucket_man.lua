@@ -9,36 +9,20 @@ local difficulty_list= {
 }
 
 local function get_song_bpm(song)
-	return (song.GetDisplayBpms and math.round(song:GetDisplayBpms()[2])) or 0
+	return {(song.GetDisplayBpms and math.round(song:GetDisplayBpms()[2])) or 0}
 end
 
 local function generic_get_wrapper(func_name)
-	return function(song, depth)
+	return function(song)
 					 if song[func_name] then
-						 return song[func_name](song):sub(1, depth)
+						 return {song[func_name](song)}
 					 elseif song.name then
-						 return song.name:sub(1, depth)
+						 return {song.name}
 					 else
-						 return ""
+						 return {""}
 					 end
 				 end
 end
-
-local function generic_ndget_wrapper(func_name)
-	return function(song, depth)
-					 if song[func_name] then
-						 return song[func_name](song)
-					 elseif song.name then
-						 return song.name
-					 else
-						 return ""
-					 end
-				 end
-end
-
-local main_title_info= {
-	get_bucket= generic_get_wrapper("GetDisplayMainTitle"), depth= true,
-	can_join= noop_true}
 
 local function difficulty_wrapper(difficulty)
 	return function(song, depth)
@@ -48,49 +32,49 @@ local function difficulty_wrapper(difficulty)
 						 local all_steps= song:GetStepsByStepsType(filter_type)
 						 for i, v in ipairs(all_steps) do
 							 if v:GetDifficulty() == difficulty then
-								 return v:GetMeter()
+								 return {v:GetMeter()}
 							 end
 						 end
-						 return 0
+						 return {0}
 					 else
-						 return 0
+						 return {0}
 					 end
 				 end
 end
 
 local function favor_wrapper(prof_slot)
 	return function(song, depth)
-		return get_favor(prof_slot, song)
+		return {get_favor(prof_slot, song)}
 	end
 end
 
 local function highest_score(score_list)
 	if #score_list:GetHighScores() > 0 then
-		return math.round(score_list:GetHighScores()[1]:GetPercentDP() * 100000) * .001
+		return {math.round(score_list:GetHighScores()[1]:GetPercentDP() * 100000) * .001}
 	else
-		return 0
+		return {0}
 	end
 end
 
 local function newest_score(score_list)
 	if #score_list:GetHighScores() > 0 then
 		-- Date is clipped to YYYY-MM-DD
-		return score_list:GetHighScores()[1]:GetDate():sub(1, 10)
+		return {score_list:GetHighScores()[1]:GetDate():sub(1, 10)}
 	else
-		return ""
+		return {""}
 	end
 end
 
 local function open_score(score_list)
 	if #score_list:GetHighScores() > 0 then
-		return math.max(0, 10 - #score_list:GetHighScores())
+		return {math.max(0, 10 - #score_list:GetHighScores())}
 	else
-		return 10
+		return {10}
 	end
 end
 
 local function num_scores(score_list)
-	return #score_list:GetHighScores()
+	return {#score_list:GetHighScores()}
 end
 
 local active_rival= "Taisetsu"
@@ -101,9 +85,9 @@ local rival_functions= {
 	{ name= "Rank", func=
 		function(score_list)
 			if score_list.GetRankOfName then
-				return score_list:GetRankOfName(active_rival)
+				return {score_list:GetRankOfName(active_rival)}
 			else
-				return 0
+				return {0}
 			end
 		end,
 		name_func=
@@ -116,11 +100,11 @@ local rival_functions= {
 			if score_list.GetHighestScoreOfName then
 				local highest= score_list:GetHighestScoreOfName(active_rival)
 				if highest then
-					return math.round(highest:GetPercentDP() * 100000) * .001
+					return {math.round(highest:GetPercentDP() * 100000) * .001}
 				end
-				return 0
+				return {0}
 			else
-				return 0
+				return {0}
 			end
 		end,
 		name_func=
@@ -134,11 +118,11 @@ local rival_functions= {
 				local highest= score_list:GetHighestScoreOfName(active_rival)
 				if highest then
 					-- Date is clipped to YYYY-MM-DD
-					return highest:GetDate():sub(1, 10)
+					return {highest:GetDate():sub(1, 10)}
 				end
-				return "0"
+				return {"0"}
 			else
-				return "0"
+				return {"0"}
 			end
 		end,
 		name_func=
@@ -148,8 +132,10 @@ local rival_functions= {
 	},
 }
 
+local fake_high_score_list= {GetHighScores= function() return {} end}
+
 local function score_wrapper(score_func, difficulty)
-	local default_return= score_func({GetHighScores= function() return {} end})
+	local default_return= score_func(fake_high_score_list)
 	return function(song, depth)
 					 if not machine_profile then return default_return end
 					 if song.GetStepsByStepsType then
@@ -180,179 +166,174 @@ local function score_wrapper(score_func, difficulty)
 				 end
 end
 
-local function sort_info_wrapper(info)
-	return {
-		name= info.name, sort= {
-			name= info.name, main= {
-				get_bucket= info.get_bucket, depth= info.depth,
-				group_similar= info.group_similar, can_join= info.can_join},
-			fallback= main_title_info, dont_clip= info.dont_clip,
-			pre_sort_func= info.pre_sort_func, pre_sort_arg= info.pre_sort_arg}}
+local function single_ret_wrapper(func)
+	return function(...) return {func(...)} end
 end
 
-local function no_fallback_sort_info_wrapper(info)
-	return {
-		name= info.name, sort= {
-			name= info.name, main= {
-				get_bucket= info.get_bucket, depth= info.depth,
-				group_similar= info.group_similar, can_join= info.can_join},
-			fallback= nil, dont_clip= info.dont_clip,
-			pre_sort_func= info.pre_sort_func, pre_sort_arg= info.pre_sort_arg}}
-end
-
-local meter_bucket= {name= "Meter", contents= {}}
-for d, diff in ipairs(difficulty_list) do
-	meter_bucket.contents[#meter_bucket.contents+1]=
-		sort_info_wrapper{name= diff.name .. " Meter",
-											get_bucket= difficulty_wrapper(diff.diff)}
-end
-
-local function bucket_name_to_type(bucket)
-	if bucket.name then
-		if type(bucket.name) == "number" then
-			if bucket.name == math.floor(bucket.name) and bucket.name < 100 then
-				return "rank"
-			else
-				return "number"
-			end
-		else
-			if #bucket.name <= 2 and bucket.name:match("^%d%d?$") then
-				return "rank"
-			elseif bucket.name:match("^%d%d%d%d%-") then
-				return "date"
-			else
-				return "string"
-			end
-		end
-	else
-		return "nil"
+local function default_cant_join_wrapper(score_func, default_el)
+	local default_return= score_func(default_el)
+	return function(left, right)
+		return left.name.value ~= default_return[1] and
+			right.name.value ~= default_return[1]
 	end
 end
 
-local function number_buckets_can_join(lbucket, rbucket)
-	local ltype= bucket_name_to_type(lbucket)
-	local rtype= bucket_name_to_type(rbucket)
-	if ltype == "number" or ltype == "date" or ltype == "string" then
-		return ltype == rtype
-	else
-		return false
-	end
+local title_sort= {
+	name= "Title", get_names= generic_get_wrapper("GetDisplayMainTitle"),
+	uses_depth= true, can_join= noop_true}
+
+local shared_sort_factors= {
+	{ name= "Group", get_names= generic_get_wrapper("GetGroupName"),
+		can_join= noop_false, group_similar= true},
+	title_sort,
+}
+
+local song_sort_factors= {
+	{ name= "BPM", get_names= get_song_bpm},
+	{ name= "Artist", get_names= generic_get_wrapper("GetDisplayArtist"),
+		uses_depth= true},
+	{ name= "Genre", get_names= generic_get_wrapper("GetGenre"),
+		uses_depth= true},
+	{ name= "Length", get_names= single_ret_wrapper(song_get_length)},
+}
+
+local course_sort_factors= {
+}
+
+local favor_sort_factors= {}
+for i, slot in ipairs{
+	"ProfileSlot_Machine", "ProfileSlot_Player1", "ProfileSlot_Player2"} do
+	favor_sort_factors[#favor_sort_factors+1]= {
+		name= slot:sub(13) .. " Favor", get_names= favor_wrapper(slot),
+		can_join= noop_false}
 end
 
+local meter_sort_factors= {}
+for d, diff in pairs(difficulty_list) do
+	meter_sort_factors[#meter_sort_factors+1]= {
+		name= diff.name .. " Meter", get_names= difficulty_wrapper(diff.diff)}
+end
+
+local score_factor_source= {name= "score_factor_bucket"}
 local function score_sub_bucket_maker(score_func, prename, postname)
 	local contents= {}
+	name= prename or postname or "Report this bug"
 	prename= (prename and prename .. " ") or ""
 	postname= (postname and " " .. postname) or ""
 	for d, diff in ipairs(difficulty_list) do
-		contents[#contents+1]= sort_info_wrapper{
-			name= prename .. diff.name .. postname,
-			get_bucket= score_wrapper(score_func, diff.diff),
-			group_similar= true, can_join= number_buckets_can_join,
-			dont_clip= true}
+		contents[#contents+1]= {
+				name= prename .. diff.name .. postname,
+				get_names= score_wrapper(score_func, diff.diff), dont_clip= true,
+				group_similar= true,
+				can_join= default_cant_join_wrapper(score_func, fake_high_score_list)}
 	end
-	return contents
+	return {
+		name= {value= name, source= score_factor_source},
+		contents= contents}
 end
+local score_factor_bucket= {
+	name= {value= "Score", source= score_factor_source},
+	contents= {
+		 score_sub_bucket_maker(highest_score, "Highest", "Score"),
+		 score_sub_bucket_maker(newest_score, "Newest", "Score"),
+		 score_sub_bucket_maker(open_score, "Open", "Scores"),
+		 score_sub_bucket_maker(num_scores, "Total", "Scores"),
+}}
 
+local function make_bucket_from_factors(name, factors)
+	local source= {name= "make from " .. name}
+	local contents= {}
+	for i, factor in ipairs(factors) do
+		contents[#contents+1]= factor
+	end
+	return {name= {value= name, source= source}, contents= contents}
+end
 
 local function make_rival_bucket()
-	if machine_profile then
-		local all_names= machine_profile:GetAllUsedHighScoreNames()
-		-- Transform each name into a table so that after they're sorted, they
-		-- can be turned into buckets.
-		for i= 1, #all_names do
-			all_names[i]= {n= all_names[i]}
-		end
-		local function get_bucket_for_name(name, depth)
-			return name.n:sub(1, depth)
-		end
-		local sorted_names= bucket_sort{
-			set= all_names, main= {
-				get_bucket= get_bucket_for_name, depth= true, group_similar= false},
-			fallback= nil, can_join= noop_true}
-		local function per_name(name)
-			local contents= {}
-			for r, rival_element in ipairs(rival_functions) do
-				local sub_contents= {}
-				for d, diff in ipairs(difficulty_list) do
-					local elname= rival_element.name_func(name.n, diff.name)
-					sub_contents[#sub_contents+1]= sort_info_wrapper{
-						name= elname, pre_sort_func= set_rival, pre_sort_arg= name.n,
-						get_bucket= score_wrapper(rival_element.func, diff.diff),
-						group_similar= true, can_join= number_buckets_can_join,
-						dont_clip= true}
-				end
-				contents[#contents+1]= {
-					name= rival_element.name, contents= sub_contents}
-			end
-			return {name= name.n, contents= contents}
-		end
-		bucket_traverse{set= sorted_names, per_element= per_name}
-		return {name= "Rival", contents= sorted_names}
-	else
-		return {name= "No Machine Profile", contents= {}}
+	local source= {name= "make_rival_bucket"}
+	if not machine_profile then
+		return {name= {value= "No Machine Profile"}, contents= {}}
 	end
+	local all_names= machine_profile:GetAllUsedHighScoreNames()
+	local name_sort_factor= {
+		name= "Rival Name", get_names= function(n) return {n} end,
+		uses_depth= true, can_join= noop_false}
+	local sorted_names= bucket_sort(all_names, {name_sort_factor})
+	local function convert_name_to_bucket(item)
+		local name= item.el
+		local contents= {}
+		for r, rival_element in ipairs(rival_functions) do
+			local sub_contents= {}
+			for d, diff in ipairs(difficulty_list) do
+				local elname= rival_element.name_func(name, diff.name)
+				sub_contents[#sub_contents+1]= {
+					name= elname, pre_sort_func= set_rival, pre_sort_arg= name,
+					get_names= score_wrapper(rival_element.func, diff.diff),
+					can_join= default_cant_join_wrapper(
+						rival_element.func, fake_high_score_list),
+					dont_clip= true, from_rival= true}
+			end
+			contents[#contents+1]= {
+				name= {value= rival_element.name, source= source},
+				contents= sub_contents}
+		end
+		return {name= {value= name, source= source}, contents= contents}
+	end
+--	Trace("Made rival bucket:")
+--	rec_print_table(sorted_names)
+	bucket_traverse(sorted_names, nil, convert_name_to_bucket)
+--	Trace("Converted names to buckets:")
+--	rec_print_table(sorted_names)
+	return {name= {value= "Rival", source= source}, contents= sorted_names}
 end
-
-local score_bucket= {
-	name= "Score", contents= {
-		{name= "Highest", contents= score_sub_bucket_maker(highest_score,
-																											 "Highest", "Score")},
-		{name= "Newest", contents= score_sub_bucket_maker(newest_score,
-																											"Newest", "Score")},
-		{name= "Open", contents= score_sub_bucket_maker(open_score,
-																										"Open", "Scores")},
-		{name= "Total", contents= score_sub_bucket_maker(num_scores,
-																										 "Total", "Scores")},
-}}
-
-local favor_bucket= {
-	name= "Favor", contents= {
-		sort_info_wrapper{
-			name= "Machine Favor", depth= false, can_join= noop_false,
-			get_bucket= favor_wrapper("ProfileSlot_Machine"),},
-		sort_info_wrapper{
-			name= "P1 Favor", depth= false, can_join= noop_false,
-			get_bucket= favor_wrapper("ProfileSlot_Player1"),},
-		sort_info_wrapper{
-			name= "P2 Favor", depth= false, can_join= noop_false,
-			get_bucket= favor_wrapper("ProfileSlot_Player2"),}
-}}
 
 local global_sort_info= {}
 
+local function gen_test_sorts(contents)
+	local factor_list= {}
+	local function add_to_factor_list(item)
+		if not item.from_rival then
+			factor_list[#factor_list+1]= item.el or item
+		end
+	end
+	bucket_traverse(contents, nil, add_to_factor_list)
+	Warn("Generating test data with " .. #factor_list .. " factors.")
+	if #factor_list == 0 then
+		Warn("Bad factor_list, contents:")
+		rec_print_table(contents)
+	end
+	generate_song_sort_test_data(factor_list)
+end
+
 local function set_course_mode_sort_info()
-	local course_sort_bucket= {
-		sort_info_wrapper{name= "Group", group_similar= true, can_join= noop_false,
-											get_bucket= generic_ndget_wrapper("GetGroupName")},
-		no_fallback_sort_info_wrapper{name= "Title", depth= true,
-																	get_bucket= main_title_info.get_bucket},
-		sort_info_wrapper{name= "Length", get_bucket= song_get_length},
-		favor_bucket,
-		meter_bucket,
-		score_bucket,
-		make_rival_bucket(),
-	}
-	global_sort_info= course_sort_bucket
+	local contents= {}
+	for i, sf in ipairs(shared_sort_factors) do
+		contents[#contents+1]= sf
+	end
+	for i, sf in ipairs(course_sort_factors) do
+		contents[#contents+1]= sf
+	end
+	contents[#contents+1]= make_bucket_from_factors("Meter",meter_sort_factors)
+	contents[#contents+1]= make_bucket_from_factors("Favor",favor_sort_factors)
+	contents[#contents+1]= score_factor_bucket
+	contents[#contents+1]= make_rival_bucket()
+	global_sort_info= contents
 end
 
 local function set_song_mode_sort_info()
-	local song_sort_bucket= {
-		sort_info_wrapper{name= "Group", group_similar= true, can_join= noop_false,
-											get_bucket= generic_ndget_wrapper("GetGroupName")},
-		no_fallback_sort_info_wrapper{name= "Title", depth= true,
-																	get_bucket= main_title_info.get_bucket},
-		sort_info_wrapper{name= "BPM", get_bucket= get_song_bpm},
-		sort_info_wrapper{name= "Artist", depth= true,
-											get_bucket= generic_get_wrapper("GetDisplayArtist")},
-		sort_info_wrapper{name= "Genre", depth= true,
-											get_bucket= generic_get_wrapper("GetGenre")},
-		sort_info_wrapper{name= "Length", get_bucket= song_get_length},
-		favor_bucket,
-		meter_bucket,
-		score_bucket,
-		make_rival_bucket(),
-	}
-	global_sort_info= song_sort_bucket
+	local contents= {}
+	for i, sf in ipairs(shared_sort_factors) do
+		contents[#contents+1]= sf
+	end
+	for i, sf in ipairs(song_sort_factors) do
+		contents[#contents+1]= sf
+	end
+	contents[#contents+1]= make_bucket_from_factors("Meter",meter_sort_factors)
+	contents[#contents+1]= make_bucket_from_factors("Favor",favor_sort_factors)
+	contents[#contents+1]= score_factor_bucket
+	contents[#contents+1]= make_rival_bucket()
+--	gen_test_sorts(contents)
+	global_sort_info= contents
 end
 
 local bucket_man_interface= {}
@@ -431,10 +412,8 @@ function bucket_man_interface:sort_songs(sort_info)
 	end
 	self.current_sort_name= sort_info.name
 	self.cur_sort_info= sort_info
-	self.sorted_songs= bucket_sort{
-		set= self.filtered_songs, main= sort_info.main,
-		fallback= sort_info.fallback,
-		dont_clip= sort_info.dont_clip}
+	self.sorted_songs= bucket_sort(
+		self.filtered_songs, {sort_info, title_sort})
 	return self.sorted_songs
 end
 
@@ -479,34 +458,34 @@ function sick_wheel_item_interface:transform(item_index, num_items, is_focus)
 	local cxz= self.text:GetZoomX()
 	local width= (xmax - xmin) / cxz
 	width_limit_text(self.text, width_limit)
-	if self.info then
-		if self.info.is_current_group then
-			self.text:diffuse(solar_colors.blue())
-		elseif self.info.is_group then
-			self.text:diffuse(solar_colors.violet())
-		elseif self.info.is_random then
-			self.text:diffuse(solar_colors.red())
-			self.text:settext(self.info.disp_name)
-		else
-			self.text:diffuse(solar_colors.uf_text())
-		end
-	end
 end
 end
 
 function sick_wheel_item_interface:set(info)
 	self.info= info
 	if not info then return end
-	if info.disp_name then
+	self.number:settext("")
+	if info.bucket_info then
+		if self.info.is_current_group then
+			self.text:diffuse(solar_colors.blue())
+		else
+			self.text:diffuse(solar_colors.violet())
+		end
+		self.text:settext(bucket_disp_name(info.bucket_info))
+		self.number:settext(#info.bucket_info.contents)
+	elseif info.is_random then
 		self.text:settext(info.disp_name)
-	elseif info.name then
-		self.text:settext(info.name)
+		self.text:diffuse(solar_colors.red())
+--		self.number:settext(#info.candidate_set) -- sticks out too much.
+	elseif info.song_info then
+		self.text:settext(song_get_main_title(info.song_info))
+		self.text:diffuse(solar_colors.uf_text())
+	elseif info.sort_info then
+		self.text:settext(info.sort_info.name)
+		self.text:diffuse(solar_colors.cyan())
 	else
-		self.text:settext(song_get_main_title(info))
-	end
-	if info.num_inside then
-		self.number:settext(info.num_inside)
-	else
+		Warn("Tried to display bad element in display bucket.")
+		rec_print_table(info)
 		self.number:settext("")
 	end
 end
@@ -561,7 +540,7 @@ function music_whale_interface:find_actors(container)
 		end
 		self:sort_songs(music_whale_state.cur_sort_info)
 	else
-		self:sort_songs(global_sort_info[1].sort)
+		self:sort_songs(global_sort_info[1])
 	end
 end
 
@@ -576,10 +555,8 @@ function music_whale_interface:sort_songs(si)
 			local function final_compare(a, b)
 				return a == b
 			end
-			local search_args= {
-				set= self.sorted_songs, main= si.main, fallback= si.fallback,
-				final_compare= final_compare, match_element= self.cursor_song }
-			local search_path= { bucket_search(search_args) }
+			local search_path= {
+				bucket_search(self.sorted_songs, self.cursor_song, final_compare, true)}
 			if music_whale_state and music_whale_state.on_random then
 				--Trace("music_whale_state.on_random, truncating path. " .. music_whale_state.depth_to_random)
 				while #search_path > music_whale_state.depth_to_random+1 do
@@ -596,10 +573,10 @@ function music_whale_interface:sort_songs(si)
 					music_whale_state.on_random= nil
 				end
 			else
-				self:set_display_bucket({b= self.sorted_songs, p= 1})
+				self:set_display_bucket(self.sorted_songs, 1)
 			end
 		else
-			self:set_display_bucket({b= self.sorted_songs, p= 1})
+			self:set_display_bucket(self.sorted_songs, 1)
 		end
 	end
 	if false and si == self.cur_sort_info then
@@ -634,7 +611,8 @@ function music_whale_interface:add_player_randoms(disp_bucket, player_number)
 			local prev_same= {}
 			local prev_harder= {}
 			local prev_sbd= {}
-			local function candy_filter(song)
+			local function candy_filter(item)
+				local song= item.el
 				local steps_list= get_filtered_sorted_steps_list(song)
 				for i, v in ipairs(steps_list) do
 					local meter= v:GetMeter()
@@ -652,7 +630,8 @@ function music_whale_interface:add_player_randoms(disp_bucket, player_number)
 					end
 				end
 			end
-			bucket_traverse{ set= self.curr_bucket, per_element= candy_filter}
+			bucket_traverse(
+				self.curr_bucket.contents or self.curr_bucket, nil, candy_filter)
 			if #prev_easier > 0 then
 				disp_bucket[#disp_bucket+1]= {
 					name= sn .. "Random Easier", is_random= true,
@@ -688,9 +667,10 @@ end
 function music_whale_interface:add_randoms(bucket)
 	local candidates= {}
 	local function add_to_candidates(el)
-		candidates[#candidates+1]= el
+		candidates[#candidates+1]= el.el
 	end
-	bucket_traverse{ set= bucket, per_element= add_to_candidates}
+	bucket_traverse(
+		self.curr_bucket.contents or self.curr_bucket, nil, add_to_candidates)
 	bucket[#bucket+1]= {
 		name= "Random", disp_name= get_string_wrapper("MusicWheel", "Random"),
 		is_random= true, candidate_set= candidates }
@@ -731,33 +711,25 @@ function music_whale_interface:remove_special_items_from_bucket(bucket)
 	end
 end
 
-function music_whale_interface:set_display_bucket(bucket_info)
-	local bucket= bucket_info.b
-	local pos= bucket_info.p
+function music_whale_interface:set_display_bucket(bucket, pos)
 	self.curr_bucket= bucket
 	local disp_bucket= {}
-	local contents= bucket.contents or bucket
-	local function elname(el)
-		return el.disp_name or el.name or song_get_main_title(el) or ""
-	end
-	local function compare(a, b)
-		return elname(a) < elname(b)
-	end
-	for i, v in ipairs(contents) do
+	for i, v in ipairs(bucket.contents or bucket) do
 		if v.contents then
-			disp_bucket[#disp_bucket+1]= {
-				name= v.name, disp_name= v.disp_name, is_group= true,
-				num_inside= #v.contents, contents= v.contents }
-		elseif v.sort then
-			disp_bucket[#disp_bucket+1]= { name= v.name, sort= v.sort }
+			disp_bucket[#disp_bucket+1]= {bucket_info= v}
+		elseif v.el then
+			if v.el.GetBackgroundPath then
+				disp_bucket[#disp_bucket+1]= {song_info= v.el}
+			end
+		elseif v.get_names then
+			disp_bucket[#disp_bucket+1]= {sort_info= v}
 		else
-			disp_bucket[#disp_bucket+1]= v
+			Warn("Bad element in display bucket: " .. i)
+			rec_print_table(v)
 		end
 	end
 	if bucket.name then
-		disp_bucket[#disp_bucket+1]= {
-			name= bucket.name, disp_name= bucket.disp_name, is_group= true,
-			is_current_group= true, num_inside= #bucket.contents }
+		disp_bucket[#disp_bucket+1]= {bucket_info= bucket, is_current_group=true}
 	end
 	self:add_special_items_to_bucket(disp_bucket)
 	self.display_bucket= disp_bucket
@@ -771,7 +743,7 @@ function music_whale_interface:follow_search_path(path, path_index, set)
 	local sindex= path[path_index]
 	--Trace("follow_search_path: " .. path_index .. " out of " .. #path)
 	if sindex then
-		self:set_display_bucket{b= set, p= sindex}
+		self:set_display_bucket(set, sindex)
 		local sbuck= set[sindex] or (set.contents and set.contents[sindex])
 		if sbuck and path[path_index+1] then
 			if sbuck.contents then
@@ -848,34 +820,41 @@ function music_whale_interface:set_stuff_from_curr_element()
 		else
 			gamestate_set_curr_song(nil)
 		end
-	elseif curr_element.name then
+	elseif curr_element.bucket_info then
 		gamestate_set_curr_song(nil)
-		MESSAGEMAN:Broadcast("current_group_changed", { curr_element.name })
+		local group_name= curr_element.bucket_info.name.value
+		if curr_element.bucket_info.from_split then
+			group_name= bucket_disp_name(curr_element.bucket_info)
+		end
+		MESSAGEMAN:Broadcast("current_group_changed", {group_name})
+	elseif curr_element.song_info then
+		gamestate_set_curr_song(curr_element.song_info)
 	else
-		gamestate_set_curr_song(curr_element)
+		gamestate_set_curr_song(nil)
 	end
 end
 
 function music_whale_interface:interact_with_element()
 	local curr_element= self.sick_wheel:get_info_at_focus_pos()
-	if curr_element.is_group then
+	if curr_element.bucket_info then
 		if curr_element.is_current_group then
 			self:pop_from_disp_stack()
 		else
 			self:push_onto_disp_stack()
-			self:set_display_bucket({b= curr_element, p= 0})
+			self:set_display_bucket(curr_element.bucket_info, 0)
 			play_sample_music()
 		end
-	elseif curr_element.sort then
-		self:sort_songs(curr_element.sort)
-	elseif gamestate_get_curr_song() then
+	elseif curr_element.sort_info then
+		self:sort_songs(curr_element.sort_info)
+	elseif (curr_element.song_info or curr_element.is_random) and
+	gamestate_get_curr_song() then
 		local cur_song= gamestate_get_curr_song()
 		local alt_cursor_songs= {}
 		if not curr_element.is_random then
 			local function gather_adjacent_songs(s)
-				alt_cursor_songs[#alt_cursor_songs+1]= s
+				alt_cursor_songs[#alt_cursor_songs+1]= s.el
 			end
-			bucket_traverse{set= self.curr_bucket, per_element= gather_adjacent_songs}
+			bucket_traverse(self.curr_bucket, nil, gather_adjacent_songs)
 		end
 		music_whale_state= {
 			cur_sort_info= self.cur_sort_info,
@@ -888,6 +867,9 @@ function music_whale_interface:interact_with_element()
 			--Trace("music_whale_state.depth_to_random: " .. music_whale_state.depth_to_random)
 		end
 		SCREENMAN:GetTopScreen():queuecommand("play_song")
+	else
+		Warn("Interacted with bad element in display bucket:")
+		rec_print_table(curr_element)
 	end
 end
 
@@ -896,6 +878,6 @@ function music_whale_interface:show_sort_list()
 		self.current_sort_name= "Sort Menu"
 		self.cursor_song= gamestate_get_curr_song()
 		self:push_onto_disp_stack()
-		self:set_display_bucket({ b= global_sort_info, p= 1 })
+		self:set_display_bucket(global_sort_info, 1)
 	end
 end

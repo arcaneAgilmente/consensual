@@ -1139,7 +1139,9 @@ return Def.ActorFrame {
 									if song and music_wheel.current_sort_name ~= "Group" and
 										music_wheel.current_sort_name ~= "Title" and
 									music_wheel.current_sort_name ~= "Length" then
-										self:settext(music_wheel.cur_sort_info.main.get_bucket(song, -1))
+										-- TODO:  Extract the correct sort_factor from the current
+										-- bucket and use it instead?
+										self:settext(music_wheel.cur_sort_info.get_names(song)[1])
 										width_limit_text(self, sort_width)
 										self:visible(true)
 									else
