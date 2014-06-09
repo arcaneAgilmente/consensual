@@ -448,61 +448,7 @@ options_sets.special_menu= {
 		end
 }}
 
-options_sets.tags_menu= {
-	__index= {
-		initialize= function(self, player_number)
-			self.player_number= player_number
-			self:reset_info()
-			self.cursor_pos= 1
-		end,
-		reset_info= function(self)
-			self.real_info_set= {{text= "Reload tags"}}
-			self.tag_set=
-				usable_tags[pn_to_profile_slot(self.player_number)] or {}
-			for i, tag_name in ipairs(self.tag_set) do
-				self.real_info_set[#self.real_info_set+1]= {text= tag_name}
-			end
-			self.info_set= {}
-			for i, info in ipairs(self.real_info_set) do
-				self.info_set[i]= {text= info.text, underline= info.underline}
-			end
-			if self.display then
-				self.display:set_info_set(self.info_set)
-			end
-		end,
-		interpret_start= function(self)
-			if self.cursor_pos == 1 then
-				load_usable_tags(pn_to_profile_slot(self.player_number))
-				self:reset_info()
-				self:update()
-				return true
-			end
-			local tag_name= self.tag_set[self.cursor_pos-1]
-			if tag_name then
-				local prof_slot= pn_to_profile_slot(self.player_number)
-				local song= gamestate_get_curr_song()
-				if not song then return true end
-				local tag_value= toggle_tag_value(prof_slot, song, tag_name)
-				self.info_set[self.cursor_pos].underline= int_to_bool(tag_value)
-				self.display:set_element_info(
-					self.cursor_pos, self.info_set[self.cursor_pos])
-				return true
-			end
-			return false
-		end,
-		update= function(self)
-			local prof_slot= pn_to_profile_slot(self.player_number)
-			local song= gamestate_get_curr_song()
-			local song_tags= get_tags_for_song(prof_slot, song)
-			for i, el in ipairs(self.real_info_set) do
-				if i ~= 1 then
-					el.underline= string_in_table(self.tag_set[i-1], song_tags)
-					self.info_set[i].underline= el.underline
-					self.display:set_element_info(i, self.info_set[i])
-				end
-			end
-		end
-}}
+dofile(THEME:GetPathO("", "tags_menu.lua"))
 
 set_option_set_metatables()
 

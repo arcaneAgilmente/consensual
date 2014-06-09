@@ -565,6 +565,8 @@ options_sets.noteskins= {
 			end
 }}
 
+dofile(THEME:GetPathO("", "tags_menu.lua"))
+
 set_option_set_metatables()
 
 -- This exists to hand to menus that pass out of view but still exist.
@@ -1110,6 +1112,7 @@ local base_options= {
 		args= make_menu_of_float_set(perspective_mods) },
 	{ name= "Decorations", meta= options_sets.menu, args= decorations},
 	{ name= "Special", meta= options_sets.menu, args= special},
+	{ name= "Song tags", meta= options_sets.tags_menu, args= true},
 	{ name= "Chart mods", meta= options_sets.menu, args= chart_mods},
 	{ name= "Floaty mods", meta= options_sets.menu, args= floaty_mods},
 	--{ name= "Clear", meta= options_sets.special_functions,
