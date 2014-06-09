@@ -23,8 +23,10 @@ excessive:  left, up, right, up, left, down, right, down, left
 
 Special menu on Select Music:
 Press select to bring up the special menu.
-Currently contains options for adjusting the favor value of a song and marking
-a song for censoring.
+Currently contains options for adjusting the favor value of a song and marking a song for censoring.
+Press select a second time to bring up the tags menu.
+Holding select will not bring up the menu because of the bindings that use select plus another button to change something else.
+Pad codes cannot be used while in the special menu.
 
 
 The Music Wheel:
@@ -50,10 +52,17 @@ In addition, there are more complicated sort options:
 
 Song favoriting system:
 Each song has an adjustable "favor" value.  The default is 0 and it can be adjusted up or down to any integer value.  The favor value can be displayed in the pane display, and used for sorting songs.  Each profile has a separate favor value for each song, so one profile's favorites do not affect the machine favorites or the favorites of another profile.
+Favorites are saved in PROFILEDIR/favorites.lua.
 
 Song censoring system:
-Currently just adds songs to a list that is saved in Save/censor_list.lua
+Songs that are marked as censored are filtered out of the song list.
+The list of censored songs is saved in Save/censor_list.lua
 
+Song tagging system:
+Songs can have tags applied to them, and be sorted by tag.  Each profile has separate tag settings.
+The menu has the "Reload tags" option, and a list of usable tags.  Hit start on a tag to toggle its value for the current song.  "Reload tags" reloads the usable tags file, use it when adding new tags to be able to use them immediately.
+The list of tags that can be used is loaded from PROFILEDIR/usable_tags.lua.  It's a simple lua table of strings.
+Tag settings are saved in PROFILEDIR/song_tags.lua.
 
 
 Options screen:

@@ -301,6 +301,10 @@ local set_curr_steps= noop_nil
 local does_group_exist= noop_false
 local get_group_banner_path= noop_blank
 function song_get_length() return 0 end
+function song_get_dir(song)
+	return (song.GetSongDir and song:GetSongDir()) or
+		(song.GetCourseDir and song:GetCourseDir())
+end
 
 function set_course_mode()
 	get_all_steps= "GetAllTrails"
@@ -616,6 +620,36 @@ function secs_to_str(secs)
 		return minutes .. ":" .. "0" .. seconds
 	end
 	return minutes .. ":" .. seconds
+end
+
+function toggle_int_as_bool(b)
+	if b and b ~= 0 then
+		return 0
+	end
+	return 1
+end
+
+function int_to_bool(i)
+	if i ~= 0 then return true end
+	return false
+end
+
+function string_in_table(str, tab)
+	for i, s in ipairs(tab) do
+		if s == str then return true end
+	end
+	return false
+end
+
+function write_str_to_file(str, fname, str_name)
+	local file_handle= RageFileUtil.CreateRageFile()
+	if not file_handle:Open(fname, 2) then
+		Warn("Could not open '" .. fname .. "' to write " .. str_name .. ".")
+	else
+		file_handle:Write(str)
+		file_handle:Close()
+		file_handle:destroy()
+	end
 end
 
 music_wheel_width= SCREEN_WIDTH*.3125

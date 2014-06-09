@@ -10,6 +10,7 @@ for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do
 end
 
 load_favorites("ProfileSlot_Machine")
+load_tags("ProfileSlot_Machine")
 load_censored_list()
 
 local num_songs= SONGMAN:GetNumSongs()
@@ -294,6 +295,7 @@ local function interpret_code(pn, code)
 					if prof ~= PROFILEMAN:GetMachineProfile() then
 						cons_players[rpn]:set_ops_from_profile(prof)
 						load_favorites(pn_to_profile_slot(rpn))
+						load_tags(pn_to_profile_slot(rpn))
 					end
 				end
 			end

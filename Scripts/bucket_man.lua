@@ -25,7 +25,7 @@ local function generic_get_wrapper(func_name)
 end
 
 local function difficulty_wrapper(difficulty)
-	return function(song, depth)
+	return function(song)
 					 if song.GetStepsByStepsType then
 						 local curr_style= GAMESTATE:GetCurrentStyle()
 						 local filter_type= curr_style:GetStepsType()
@@ -43,8 +43,16 @@ local function difficulty_wrapper(difficulty)
 end
 
 local function favor_wrapper(prof_slot)
-	return function(song, depth)
+	return function(song)
 		return {get_favor(prof_slot, song)}
+	end
+end
+
+local function tag_wrapper(prof_slot)
+	return function(song)
+		local tags= get_tags_for_song(prof_slot, song)
+		if #tags > 0 then return tags end
+		return {"Untagged"}
 	end
 end
 
@@ -136,7 +144,7 @@ local fake_high_score_list= {GetHighScores= function() return {} end}
 
 local function score_wrapper(score_func, difficulty)
 	local default_return= score_func(fake_high_score_list)
-	return function(song, depth)
+	return function(song)
 					 if not machine_profile then return default_return end
 					 if song.GetStepsByStepsType then
 						 local curr_style= GAMESTATE:GetCurrentStyle()
@@ -201,12 +209,17 @@ local course_sort_factors= {
 }
 
 local favor_sort_factors= {}
+local tag_sort_factors= {}
 for i, slot in ipairs{
 	"ProfileSlot_Machine", "ProfileSlot_Player1", "ProfileSlot_Player2"} do
 	favor_sort_factors[#favor_sort_factors+1]= {
 		name= slot:sub(13) .. " Favor", get_names= favor_wrapper(slot),
 		can_join= noop_false}
+	tag_sort_factors[#tag_sort_factors+1]= {
+		name= slot:sub(13) .. " Tag", get_names= tag_wrapper(slot),
+		can_join= noop_false}
 end
+
 
 local meter_sort_factors= {}
 for d, diff in pairs(difficulty_list) do
@@ -315,6 +328,7 @@ local function set_course_mode_sort_info()
 	end
 	contents[#contents+1]= make_bucket_from_factors("Meter",meter_sort_factors)
 	contents[#contents+1]= make_bucket_from_factors("Favor",favor_sort_factors)
+	contents[#contents+1]= make_bucket_from_factors("Tag",tag_sort_factors)
 	contents[#contents+1]= score_factor_bucket
 	contents[#contents+1]= make_rival_bucket()
 	global_sort_info= contents
@@ -330,6 +344,7 @@ local function set_song_mode_sort_info()
 	end
 	contents[#contents+1]= make_bucket_from_factors("Meter",meter_sort_factors)
 	contents[#contents+1]= make_bucket_from_factors("Favor",favor_sort_factors)
+	contents[#contents+1]= make_bucket_from_factors("Tag",tag_sort_factors)
 	contents[#contents+1]= score_factor_bucket
 	contents[#contents+1]= make_rival_bucket()
 --	gen_test_sorts(contents)

@@ -25,7 +25,7 @@ local line_height= 24
 local option_item_mt= {
 	__index= {
 		create_actors=
-			function(self, name)
+			function(self, name, height)
 				self.name= name
 				self.zoom= 1
 				self.width= SCREEN_WIDTH
@@ -51,6 +51,7 @@ local option_item_mt= {
 				self.zoom= zoom
 				self.height= height
 				self.text:zoom(zoom)
+				self.underline:y(height/2)
 			end,
 		set_underline_color=
 			function(self, color)

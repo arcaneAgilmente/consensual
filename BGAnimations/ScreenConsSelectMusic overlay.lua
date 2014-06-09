@@ -400,29 +400,41 @@ options_sets.special_menu= {
 	__index= {
 		initialize= function(self, player_number)
 			self.player_number= player_number
-			self.info_set= {
+			self.cursor_pos= 1
+			self:reset_info()
+		end,
+		reset_info= function(self)
+			self.real_info_set= {
 				{text= "Profile favorite+"}, {text= "Profile favorite-"},
 				{text= "Machine favorite+"}, {text= "Machine favorite-"},
 				{text= "Censor"}
 			}
-			self.cursor_pos= 1
+			self.info_set= {}
+			for i, info in ipairs(self.real_info_set) do
+				self.info_set[i]= {text= info.text, underline= info.underline}
+			end
+			if self.display then
+				self.display:set_info_set(self.info_set)
+			end
 		end,
 		interpret_start= function(self)
 			local player_slot= pn_to_profile_slot(self.player_number)
+			local song= gamestate_get_curr_song()
+			if not song then return true, true end
 			if self.cursor_pos == 1 then
-				change_favor(player_slot, gamestate_get_curr_song(), 1)
+				change_favor(player_slot, song, 1)
 				return true, true
 			elseif self.cursor_pos == 2 then
-				change_favor(player_slot, gamestate_get_curr_song(), -1)
+				change_favor(player_slot, song, -1)
 				return true, true
 			elseif self.cursor_pos == 3 then
-				change_favor("ProfileSlot_Machine", gamestate_get_curr_song(), 1)
+				change_favor("ProfileSlot_Machine", song, 1)
 				return true, true
 			elseif self.cursor_pos == 4 then
-				change_favor("ProfileSlot_Machine", gamestate_get_curr_song(), -1)
+				change_favor("ProfileSlot_Machine", song, -1)
 				return true, true
 			elseif self.cursor_pos == 5 then
-				add_to_censor_list(gamestate_get_curr_song())
+				add_to_censor_list(song)
 				return true, true
 			end
 			return false
@@ -432,6 +444,62 @@ options_sets.special_menu= {
 				self.display:unhide()
 			else
 				self.display:hide()
+			end
+		end
+}}
+
+options_sets.tags_menu= {
+	__index= {
+		initialize= function(self, player_number)
+			self.player_number= player_number
+			self:reset_info()
+			self.cursor_pos= 1
+		end,
+		reset_info= function(self)
+			self.real_info_set= {{text= "Reload tags"}}
+			self.tag_set=
+				usable_tags[pn_to_profile_slot(self.player_number)] or {}
+			for i, tag_name in ipairs(self.tag_set) do
+				self.real_info_set[#self.real_info_set+1]= {text= tag_name}
+			end
+			self.info_set= {}
+			for i, info in ipairs(self.real_info_set) do
+				self.info_set[i]= {text= info.text, underline= info.underline}
+			end
+			if self.display then
+				self.display:set_info_set(self.info_set)
+			end
+		end,
+		interpret_start= function(self)
+			if self.cursor_pos == 1 then
+				load_usable_tags(pn_to_profile_slot(self.player_number))
+				self:reset_info()
+				self:update()
+				return true
+			end
+			local tag_name= self.tag_set[self.cursor_pos-1]
+			if tag_name then
+				local prof_slot= pn_to_profile_slot(self.player_number)
+				local song= gamestate_get_curr_song()
+				if not song then return true end
+				local tag_value= toggle_tag_value(prof_slot, song, tag_name)
+				self.info_set[self.cursor_pos].underline= int_to_bool(tag_value)
+				self.display:set_element_info(
+					self.cursor_pos, self.info_set[self.cursor_pos])
+				return true
+			end
+			return false
+		end,
+		update= function(self)
+			local prof_slot= pn_to_profile_slot(self.player_number)
+			local song= gamestate_get_curr_song()
+			local song_tags= get_tags_for_song(prof_slot, song)
+			for i, el in ipairs(self.real_info_set) do
+				if i ~= 1 then
+					el.underline= string_in_table(self.tag_set[i-1], song_tags)
+					self.info_set[i].underline= el.underline
+					self.display:set_element_info(i, self.info_set[i])
+				end
 			end
 		end
 }}
@@ -448,6 +516,11 @@ local special_menus= {
 	[PLAYER_2]= setmetatable({}, options_sets.special_menu),
 }
 
+local tag_menus= {
+	[PLAYER_1]= setmetatable({}, options_sets.tags_menu),
+	[PLAYER_2]= setmetatable({}, options_sets.tags_menu),
+}
+
 local player_cursors= {
 	[PLAYER_1]= setmetatable({}, amv_cursor_mt),
 	[PLAYER_2]= setmetatable({}, amv_cursor_mt)
@@ -455,13 +528,15 @@ local player_cursors= {
 
 local select_press_times= {[PLAYER_1]= 0, [PLAYER_2]= 0}
 -- Set when select is pressed, so it can be used to determine whether the special menu should be brought up.
-local in_special_menu= {[PLAYER_1]= false, [PLAYER_2]= false}
+local in_special_menu= {[PLAYER_1]= 0, [PLAYER_2]= 0}
 
 local function update_pain(pn)
-	if in_special_menu[pn] then
-		special_menus[pn]:update()
-	else
+	if in_special_menu[pn] == 0 then
 		pain_displays[pn]:update()
+	elseif in_special_menu[pn] == 1 then
+		special_menus[pn]:update()
+	elseif in_special_menu[pn] == 2 then
+		tag_menus[pn]:update()
 	end
 end
 
@@ -481,24 +556,29 @@ local function update_player_cursors()
 		if GAMESTATE:IsPlayerEnabled(pn) then
 			num_enabled= num_enabled + 1
 			local cursed_item= false
-			if in_special_menu[pn] then
-				cursed_item= special_menus[pn]:get_cursor_element()
-				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
-				local xp, yp= rec_calc_actor_pos(cursed_item.container)
-				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
-			else
+			if in_special_menu[pn] == 0 then
 				cursed_item= music_wheel.sick_wheel:get_actor_item_at_focus_pos().text
 				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item)
 				local xp= wheel_x + ((xmx - xmn) / 2) + 4
 				player_cursors[pn]:refit(xp, wheel_cursor_y, xmx - xmn + 4, ymx - ymn + 4)
+			elseif in_special_menu[pn] == 1 then
+				cursed_item= special_menus[pn]:get_cursor_element()
+				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
+				local xp, yp= rec_calc_actor_pos(cursed_item.container)
+				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
+			elseif in_special_menu[pn] == 2 then
+				cursed_item= tag_menus[pn]:get_cursor_element()
+				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
+				local xp, yp= rec_calc_actor_pos(cursed_item.container)
+				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
 			end
 			player_cursors[pn]:unhide()
 		else
 			player_cursors[pn]:hide()
 		end
 	end
-	if num_enabled == 2 and not in_special_menu[PLAYER_1]
-	and not in_special_menu[PLAYER_2] then
+	if num_enabled == 2 and in_special_menu[PLAYER_1] ~= 0
+	and in_special_menu[PLAYER_2] ~= 0 then
 		player_cursors[PLAYER_1]:left_half()
 		player_cursors[PLAYER_2]:right_half()
 	else
@@ -798,16 +878,28 @@ local function handle_triggered_codes(pn, code)
 	end
 end
 
-local function activate_special_menu(pn)
-	pain_displays[pn]:hide()
-	special_menu_displays[pn]:unhide()
-	in_special_menu[pn]= true
+local function set_special_menu(pn, value)
+	if value < 0 then value = 2 end
+	if value > 2 then value = 0 end
+	in_special_menu[pn]= value
+	if in_special_menu[pn] == 0 then
+		pain_displays[pn]:unhide()
+		special_menu_displays[pn]:hide()
+	else
+		pain_displays[pn]:hide()
+		special_menu_displays[pn]:unhide()
+		if in_special_menu[pn] == 1 then
+			special_menus[pn]:reset_info()
+			special_menus[pn]:update()
+		else
+			tag_menus[pn]:reset_info()
+			tag_menus[pn]:update()
+		end
+	end
 end
 
-local function deactivate_special_menu(pn)
-	pain_displays[pn]:unhide()
-	special_menu_displays[pn]:hide()
-	in_special_menu[pn]= false
+local function cycle_special_menu(pn)
+	set_special_menu(pn, in_special_menu[pn] + 1)
 end
 
 local function spew_song_specials(song)
@@ -840,6 +932,9 @@ return Def.ActorFrame {
 			special_menu_displays[pn]:find_actors(self:GetChild(special_menu_displays[pn].name))
 			special_menus[pn]:initialize(pn)
 			special_menus[pn]:set_display(special_menu_displays[pn])
+			tag_menus[pn]:initialize(pn)
+			tag_menus[pn]:set_display(special_menu_displays[pn])
+			special_menu_displays[pn]:set_underline_color(solar_colors[pn]())
 			special_menu_displays[pn]:hide()
 			player_cursors[pn]:find_actors(self:GetChild(player_cursors[pn].name))
 		end
@@ -867,6 +962,7 @@ return Def.ActorFrame {
 											om:diffusealpha(1)
 											entering_song= get_screen_time() + options_time
 											save_all_favorites()
+											save_all_tags()
 											save_censored_list()
 										end,
 	real_play_songCommand= function(self)
@@ -1061,23 +1157,30 @@ return Def.ActorFrame {
 								go_to_options= true
 							end
 						else
-							if in_special_menu[pn] then
-								if code == "select" then
-									deactivate_special_menu(pn)
-								else
-									local handled, close= special_menus[pn]:interpret_code(code)
-									if close then
-										deactivate_special_menu(pn)
-									end
-								end
-							else
+							if in_special_menu[pn] == 0 then
 								if code == "select" then
 									select_press_times[pn]= get_screen_time()
 								end
 								if code == "select_release" and get_screen_time() - select_press_times[pn] < special_menu_activate_time then
-									activate_special_menu(pn)
+									cycle_special_menu(pn)
 								else
 									handle_triggered_codes(pn, code)
+								end
+							else
+								if code == "select" then
+									cycle_special_menu(pn)
+								else
+									if in_special_menu[pn] == 1 then
+										local handled, close= special_menus[pn]:interpret_code(code)
+										if close then
+											set_special_menu(pn, 0)
+										end
+									else
+										local handled, close= tag_menus[pn]:interpret_code(code)
+										if close then
+											set_special_menu(pn, 0)
+										end
+									end
 								end
 							end
 						end
