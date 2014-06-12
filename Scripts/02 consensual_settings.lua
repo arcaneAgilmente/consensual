@@ -709,9 +709,9 @@ function convert_score_to_time(score)
 	local score_factor= score - min_score_for_reward
 	local reward_factor_high= 1-min_score_for_reward
 	if reward_time_by_pct then
-		return scale(score_factor, min_score_for_reward, reward_factor_high, min_reward_pct, max_reward_pct) * last_song_time
+		return scale(score_factor, 0, reward_factor_high, min_reward_pct, max_reward_pct) * last_song_time
 	else
-		return scale(score_factor, min_score_for_reward, reward_factor_high, min_reward_time, max_reward_time)
+		return scale(score_factor, 0, reward_factor_high, min_reward_time, max_reward_time)
 	end
 end
 
