@@ -23,11 +23,21 @@ excessive:  left, up, right, up, left, down, right, down, left
 
 Special menu on Select Music:
 Press select to bring up the special menu.
-Currently contains options for adjusting the favor value of a song and marking a song for censoring.
+Current options:
+  Machine Favor +1/-1:  Adjusts the machine favor value for the song.
+  Player Favor +1/-1:  Adjusts the player's favor value for the song.
+  Censor:  Marks the song as censored.
+  Edit Pane Settings:  Switches the pane display to edit mode.
 Press select a second time to bring up the tags menu.
 Holding select will not bring up the menu because of the bindings that use select plus another button to change something else.
 Pad codes cannot be used while in the special menu.
 
+Pane display on Select Music:
+The pane display on Select Music can be customized.
+Press select at any time to exit pane edit mode.
+Select an item with the cursor and hit start to set what that item should display.  Choices are chart info (bpm, rating, author, radar values), favor (machine/player), score (machine/player and slot), tag (machine/player and slot).
+Some settings require a number to be set, move the menu cursor to the number and hit start to edit the number, then left/right to change the number value.
+Items can be made wide or narrow.  Wide items take up the full pane width.
 
 The Music Wheel:
 A custom music wheel is used.  This music wheel is recursively bucket sorted to make navigating huge song lists easier.  Pad code for changing to select sort is up, down, up, down.
