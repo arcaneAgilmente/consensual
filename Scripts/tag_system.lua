@@ -3,8 +3,8 @@ local tag_to_songs= {}
 local tags_changed= {}
 usable_tags= {}
 
-local song_tags_fname= "/song_tags.lua"
-local usable_tags_fname= "/usable_tags.lua"
+local song_tags_fname= "/consensual_settings/song_tags.lua"
+local usable_tags_fname= "/consensual_settings/usable_tags.lua"
 
 function load_usable_tags(prof_slot)
 	if not prof_slot then return end

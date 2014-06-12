@@ -1,9 +1,10 @@
 local song_favorites= {}
 local favs_changed= {}
 
+local fav_fname= "/consensual_settings/favorites.lua"
+
 function load_favorites(prof_slot)
-	local favorites_file_name= PROFILEMAN:GetProfileDir(prof_slot)
-		.. "/favorites.lua"
+	local favorites_file_name= PROFILEMAN:GetProfileDir(prof_slot) .. fav_fname
 	if FILEMAN:DoesFileExist(favorites_file_name) then
 		song_favorites[prof_slot]= dofile(favorites_file_name)
 	else
@@ -25,7 +26,7 @@ function save_favorites(prof_slot)
 	clear_empty_favor(prof_slot)
 	local prof_dir= PROFILEMAN:GetProfileDir(prof_slot)
 	if not prof_dir or prof_dir == "" then return end
-	local fav_fname= prof_dir .. "/favorites.lua"
+	local fav_fname= prof_dir .. fav_fname
 	local favstr= "return " .. lua_table_to_string(song_favorites[prof_slot]) .. "\n"
 	write_str_to_file(favstr, fav_fname, "favorites")
 end

@@ -191,7 +191,7 @@ function up_element()
 	return {text= "<--"}
 end
 
-local option_set_general_mt= {
+option_set_general_mt= {
 	__index= {
 		set_player_info=
 			function(self, player_number)
@@ -245,13 +245,13 @@ local option_set_general_mt= {
 										 return false
 									 end
 									 if self.interpret_start then
-										 local hand, extra= self:interpret_start()
+										 local menu_ret= {self:interpret_start()}
 										 if self.scroll_to_move_on_start then
 											 local pos_diff= 1 - self.cursor_pos
 											 self.cursor_pos= 1
 											 self.display:scroll(self.cursor_pos)
 										 end
-										 return hand, extra
+										 return unpack(menu_ret)
 									 else
 										 return false
 									 end

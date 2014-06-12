@@ -196,6 +196,17 @@ function width_clip_text(text, limit)
 	end
 end
 
+function width_clip_limit_text(text, limit, natural_zoom)
+	natural_zoom= natural_zoom or text:GetZoomY()
+	local text_width= text:GetWidth() * natural_zoom
+	if text_width > limit * 2 then
+		text:zoomx(natural_zoom * .5)
+		width_clip_text(text, limit)
+	else
+		width_limit_text(text, limit, natural_zoom)
+	end
+end
+
 function split_string_to_words(s)
 	local words= {}
 	local cur_word_start= 1

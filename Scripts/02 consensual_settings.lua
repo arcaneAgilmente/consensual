@@ -62,7 +62,7 @@ mine_effects= {
 }
 
 local things_to_put_in_user_table= {
-	"flags", "pain_flags", "options_level", "speed_info", "sigil_data", "dspeed"
+	"flags", "options_level", "speed_info", "sigil_data", "dspeed"
 }
 
 local dspeed_default_min= 0
@@ -99,6 +99,7 @@ function cons_player:clear_init(player_number)
 	self:set_speed_info_from_poptions()
 	self.dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false}
 	self:flags_reset()
+	self:pain_config_reset()
 	self:combo_qual_reset()
 	self:stage_stats_reset()
 	self:session_stats_reset()
@@ -127,10 +128,38 @@ function cons_player:simple_options_mode()
 	self.rating_cap= -1
 	self.flags.pct_column= true
 	self.flags.best_scores= true
-	self.pain_flags.taps= true
-	self.pain_flags.jumps= true
-	self.pain_flags.holds= true
-	self.pain_flags.rating= true
+	self.pain_config= {
+		{
+			{bpm= true},
+			{rating= true},
+			{radar_category= "RadarCategory_TapsAndHolds"},
+			{radar_category= "RadarCategory_Holds"},
+			{radar_category= "RadarCategory_Jumps"},
+			{radar_category= "RadarCategory_Mines"},
+			{is_wide= true, score= {machine= true, slot= 1}},
+			{is_wide= true, score= {slot= 1}},
+			{},
+			{},
+			{},
+			{},
+			{},
+			{},
+		},{
+			{favor= "machine"},
+			{favor= "player"},
+			{tag= {machine= true, slot= 1}},
+			{tag= {machine= true, slot= 2}},
+			{tag= {slot= 1}},
+			{tag= {slot= 2}},
+			{},
+			{},
+			{},
+			{},
+			{},
+			{},
+			{},
+			{},
+	}}
 end
 
 function cons_player:all_options_mode()
@@ -140,13 +169,38 @@ function cons_player:all_options_mode()
 	self.flags.pct_column= true
 	self.flags.sum_column= true
 	self.flags.best_scores= true
-	self.pain_flags.taps= true
-	self.pain_flags.jumps= true
-	self.pain_flags.holds= true
-	self.pain_flags.rating= true
-	self.pain_flags.mines= true
-	self.pain_flags.hands= true
-	self.pain_flags.rolls= true
+	self.pain_config= {
+		{
+			{bpm= true},
+			{rating= true},
+			{radar_category= "RadarCategory_TapsAndHolds"},
+			{radar_category= "RadarCategory_Holds"},
+			{radar_category= "RadarCategory_Jumps"},
+			{radar_category= "RadarCategory_Mines"},
+			{radar_category= "RadarCategory_Hands"},
+			{radar_category= "RadarCategory_Rolls"},
+			{},
+			{is_wide= true, score= {machine= true, slot= 1}},
+			{is_wide= true, score= {machine= true, slot= 2}},
+			{is_wide= true, score= {slot= 1}},
+			{is_wide= true, score= {slot= 2}},
+			{},
+		},{
+			{author= true},
+			{favor= "machine"},
+			{favor= "player"},
+			{tag= {machine= true, slot= 1}},
+			{tag= {machine= true, slot= 2}},
+			{tag= {machine= true, slot= 3}},
+			{tag= {slot= 1}},
+			{tag= {slot= 2}},
+			{tag= {slot= 3}},
+			{},
+			{},
+			{},
+			{},
+			{},
+	}}
 end
 
 function cons_player:excessive_options_mode()
@@ -155,9 +209,38 @@ function cons_player:excessive_options_mode()
 	for i, fname in ipairs(sorted_flag_names) do
 		self.flags[fname]= true
 	end
-	for i, fname in ipairs(sorted_pain_flag_names) do
-		self.pain_flags[fname]= true
-	end
+	self.pain_config= {
+		{
+			{radar_category= "RadarCategory_TapsAndHolds"},
+			{radar_category= "RadarCategory_Holds"},
+			{radar_category= "RadarCategory_Jumps"},
+			{radar_category= "RadarCategory_Mines"},
+			{radar_category= "RadarCategory_Hands"},
+			{radar_category= "RadarCategory_Rolls"},
+			{score= {machine= true, slot= 1}},
+			{score= {machine= true, slot= 2}},
+			{score= {machine= true, slot= 3}},
+			{score= {machine= true, slot= 4}},
+			{score= {slot= 1}},
+			{score= {slot= 2}},
+			{score= {slot= 3}},
+			{score= {slot= 4}},
+		},{
+			{author= true},
+			{bpm= true},
+			{rating= true},
+			{favor= "machine"},
+			{favor= "player"},
+			{tag= {machine= true, slot= 1}},
+			{tag= {machine= true, slot= 2}},
+			{tag= {machine= true, slot= 3}},
+			{tag= {machine= true, slot= 4}},
+			{tag= {slot= 1}},
+			{tag= {slot= 2}},
+			{tag= {slot= 3}},
+			{tag= {slot= 4}},
+			{},
+	}}
 end
 
 function cons_player:kyzentun_mode()
@@ -181,9 +264,38 @@ function cons_player:kyzentun_mode()
 	for i, fname in ipairs(sorted_flag_names) do
 		self.flags[fname]= true
 	end
-	for i, fname in ipairs(sorted_pain_flag_names) do
-		self.pain_flags[fname]= true
-	end
+	self.pain_config= {
+		{
+			{radar_category= "RadarCategory_TapsAndHolds"},
+			{radar_category= "RadarCategory_Holds"},
+			{radar_category= "RadarCategory_Jumps"},
+			{radar_category= "RadarCategory_Mines"},
+			{radar_category= "RadarCategory_Hands"},
+			{radar_category= "RadarCategory_Rolls"},
+			{score= {machine= true, slot= 1}},
+			{score= {machine= true, slot= 2}},
+			{score= {machine= true, slot= 3}},
+			{score= {machine= true, slot= 4}},
+			{score= {slot= 1}},
+			{score= {slot= 2}},
+			{score= {slot= 3}},
+			{score= {slot= 4}},
+		},{
+			{author= true},
+			{bpm= true},
+			{rating= true},
+			{favor= "machine"},
+			{favor= "player"},
+			{tag= {machine= true, slot= 1}},
+			{tag= {machine= true, slot= 2}},
+			{tag= {machine= true, slot= 3}},
+			{tag= {machine= true, slot= 4}},
+			{tag= {slot= 1}},
+			{tag= {slot= 2}},
+			{tag= {slot= 3}},
+			{tag= {slot= 4}},
+			{},
+	}}
 end
 
 -- If the rating cap is less than or equal to 0, it has the special meaning of "no cap".
@@ -291,40 +403,6 @@ sorted_flag_names= {
 	"straight_floats",
 }
 
-pain_flag_defaults= {
-	bpm= true,
-	fakes= false,
-	hands= false,
-	holds= true,
-	jumps= true,
-	lifts= false,
-	machine_favor= true,
-	machine_score= true,
-	mines= true,
-	profile_favor= true,
-	profile_score= true,
-	rating= true,
-	rolls= false,
-	taps= true,
-}
-
-sorted_pain_flag_names= {
-	"machine_score",
-	"profile_score",
-	"machine_favor",
-	"profile_favor",
-	"rating",
-	"bpm",
-	"taps",
-	"jumps",
-	"holds",
-	"mines",
-	"rolls",
-	"hands",
-	"lifts",
-	"fakes",
-}
-
 function cons_player:flags_reset()
 	self.flags= {}
 	for k, v in ipairs(player_flag_defaults) do
@@ -332,9 +410,38 @@ function cons_player:flags_reset()
 	end
 	-- allow_toasty is set here so it will be affected if the preference is changed while the game is running.
 	self.flags.allow_toasty= PREFSMAN:GetPreference("EasterEggs")
-	self.pain_flags= {}
-	for k, v in pairs(pain_flag_defaults) do
-		self.pain_flags[k]= v
+end
+
+pain_rows= 14
+
+local pain_config_defaults= {
+	{
+		{is_wide= true, score= {machine= true, slot= 1}},
+		{is_wide= true, score= {slot= 1}},
+		{bpm= true},
+		{rating= true},
+		{radar_category= "RadarCategory_TapsAndHolds"},
+		{radar_category= "RadarCategory_Holds"},
+		{radar_category= "RadarCategory_Jumps"},
+		{radar_category= "RadarCategory_Mines"},
+	},{
+		{},
+		{},
+		{favor= "machine"},
+		{favor= "player"},
+		{tag= {machine= true, slot= 1}},
+		{tag= {machine= true, slot= 2}},
+		{tag= {slot= 1}},
+		{tag= {slot= 2}},
+}}
+
+local pain_fname= "/consensual_settings/pain_config.lua"
+
+function cons_player:pain_config_reset()
+	self.pain_config= {{}, {}}
+	for i= 1, pain_rows do
+		self.pain_config[1][i]= DeepCopy(pain_config_defaults[1][i] or {})
+		self.pain_config[2][i]= DeepCopy(pain_config_defaults[2][i] or {})
 	end
 end
 
@@ -366,6 +473,15 @@ function cons_player:set_ops_from_profile(profile)
 	self.user_table= ut
 	self.proguid= profile:GetGUID()
 	--Trace("Setting options from user table for " .. profile:GetDisplayName())
+	local profdir= PROFILEMAN:GetProfileDir(
+		pn_to_profile_slot(self.player_number))
+	if profdir then
+		local pain_conf_fname= profdir .. pain_fname
+		if FILEMAN:DoesFileExist(pain_conf_fname) then
+			self.pain_config= dofile(pain_conf_fname)
+			loaded_from_profile= true
+		end
+	end
 	if ut then
 		--rec_print_table(ut)
 		-- Thanks for converting the numbers I stored into strings, stepmania.
@@ -803,6 +919,9 @@ function SaveProfileCustom(profile, dir)
 		end
 	end
 	if cp and user_table then
+		local pain_conf_fname= dir .. pain_fname
+		local pain_conf_str= "return " .. lua_table_to_string(cp.pain_config)
+		write_str_to_file(pain_conf_str, pain_conf_fname, "pain config")
 		--Trace("Putting theme stuff in user table.")
 		for i, k in ipairs(things_to_put_in_user_table) do
 			--Trace(k)

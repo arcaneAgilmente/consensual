@@ -1,6 +1,6 @@
 local censored_songs= {}
 local censor_list_changed= false
-local censor_file_name= "Save/censor_list.lua"
+local censor_file_name= "Save/consensual_settings/censor_list.lua"
 
 function load_censored_list()
 	censor_list_changed= false
