@@ -76,7 +76,7 @@ Songs can have tags applied to them, and be sorted by tag.  Each profile has sep
 The menu has the "Reload tags" option, "Edit Machine Tags", and a list of usable tags.  Hit start on a tag to toggle its value for the current song.
 "Reload tags" reloads the usable tags file, use it when adding new tags to be able to use them immediately.
 "Edit Machine Tags" switches the menu to editing the machine profile's tags for the song.  When in machine tag editing mode, the "Edit Machine Tags" option becomes "Edit Player Tags", which switches back to player tag editing mode.
-The list of tags that can be used is loaded from PROFILEDIR/usable_tags.lua.  It's a simple lua table of strings.
+The list of tags that can be used is loaded from PROFILEDIR/usable_tags.lua.  It's a simple lua table of strings.  Other/usable_tags_example.lua is an example.
 Tag settings are saved in PROFILEDIR/song_tags.lua.
 
 
