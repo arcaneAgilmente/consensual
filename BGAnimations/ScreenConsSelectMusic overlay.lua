@@ -252,61 +252,7 @@ local pain_displays= {
 	[PLAYER_2]= setmetatable({}, pain_display_mt),
 }
 
-options_sets.special_menu= {
-	__index= {
-		initialize= function(self, player_number)
-			self.player_number= player_number
-			self.cursor_pos= 1
-			self:reset_info()
-		end,
-		reset_info= function(self)
-			self.real_info_set= {
-				{text= "Profile favorite+"}, {text= "Profile favorite-"},
-				{text= "Machine favorite+"}, {text= "Machine favorite-"},
-				{text= "Censor"}, {text= "Edit pane settings"}
-			}
-			self.info_set= {}
-			for i, info in ipairs(self.real_info_set) do
-				self.info_set[i]= {text= info.text, underline= info.underline}
-			end
-			if self.display then
-				self.display:set_info_set(self.info_set)
-			end
-		end,
-		interpret_start= function(self)
-			if self.cursor_pos == 6 then
-				return true, true, true
-			end
-			local player_slot= pn_to_profile_slot(self.player_number)
-			local song= gamestate_get_curr_song()
-			if not song then return true, true end
-			if self.cursor_pos == 1 then
-				change_favor(player_slot, song, 1)
-				return true, true
-			elseif self.cursor_pos == 2 then
-				change_favor(player_slot, song, -1)
-				return true, true
-			elseif self.cursor_pos == 3 then
-				change_favor("ProfileSlot_Machine", song, 1)
-				return true, true
-			elseif self.cursor_pos == 4 then
-				change_favor("ProfileSlot_Machine", song, -1)
-				return true, true
-			elseif self.cursor_pos == 5 then
-				add_to_censor_list(song)
-				return true, true
-			end
-			return false
-		end,
-		update= function(self)
-			if GAMESTATE:IsPlayerEnabled(self.player_number) then
-				self.display:unhide()
-			else
-				self.display:hide()
-			end
-		end
-}}
-
+dofile(THEME:GetPathO("", "song_props_menu.lua"))
 dofile(THEME:GetPathO("", "tags_menu.lua"))
 
 set_option_set_metatables()
@@ -316,9 +262,9 @@ local special_menu_displays= {
 	[PLAYER_2]= setmetatable({}, option_display_mt),
 }
 
-local special_menus= {
-	[PLAYER_1]= setmetatable({}, options_sets.special_menu),
-	[PLAYER_2]= setmetatable({}, options_sets.special_menu),
+local song_props_menus= {
+	[PLAYER_1]= setmetatable({}, options_sets.song_props_menu),
+	[PLAYER_2]= setmetatable({}, options_sets.song_props_menu),
 }
 
 local tag_menus= {
@@ -345,7 +291,7 @@ local function update_pain(pn)
 		pain_displays[pn]:update_all_items()
 		pain_displays[pn]:unhide()
 	elseif in_special_menu[pn] == 2 then
-		special_menus[pn]:update()
+		song_props_menus[pn]:update()
 	elseif in_special_menu[pn] == 3 then
 		tag_menus[pn]:update()
 	end
@@ -373,7 +319,7 @@ local function update_player_cursors()
 				local xp= wheel_x + ((xmx - xmn) / 2) + 4
 				player_cursors[pn]:refit(xp, wheel_cursor_y, xmx - xmn + 4, ymx - ymn + 4)
 			elseif in_special_menu[pn] == 2 then
-				cursed_item= special_menus[pn]:get_cursor_element()
+				cursed_item= song_props_menus[pn]:get_cursor_element()
 				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
 				local xp, yp= rec_calc_actor_pos(cursed_item.container)
 				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
@@ -709,8 +655,8 @@ local function set_special_menu(pn, value)
 		pain_displays[pn]:hide()
 		special_menu_displays[pn]:unhide()
 		if in_special_menu[pn] == 2 then
-			special_menus[pn]:reset_info()
-			special_menus[pn]:update()
+			song_props_menus[pn]:reset_info()
+			song_props_menus[pn]:update()
 		else
 			tag_menus[pn]:reset_info()
 			tag_menus[pn]:update()
@@ -748,8 +694,8 @@ return Def.ActorFrame {
 			pain_frames[pn]:visible(false)
 			pain_displays[pn]:find_actors(self:GetChild(pain_displays[pn].name))
 			special_menu_displays[pn]:find_actors(self:GetChild(special_menu_displays[pn].name))
-			special_menus[pn]:initialize(pn)
-			special_menus[pn]:set_display(special_menu_displays[pn])
+			song_props_menus[pn]:initialize(pn, true)
+			song_props_menus[pn]:set_display(special_menu_displays[pn])
 			tag_menus[pn]:initialize(pn)
 			tag_menus[pn]:set_display(special_menu_displays[pn])
 			special_menu_displays[pn]:set_underline_color(solar_colors[pn]())
@@ -995,7 +941,7 @@ return Def.ActorFrame {
 										return
 									end
 									local handled, close, edit_pain=
-										special_menus[pn]:interpret_code(code)
+										song_props_menus[pn]:interpret_code(code)
 									if close then
 										if edit_pain then
 											pain_displays[pn]:enter_edit_mode()

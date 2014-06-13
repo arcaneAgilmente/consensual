@@ -1,5 +1,5 @@
-local keyboard_special_names= { "down", "up", "shift", "backspace",
-																"sc_left", "sc_right", "enter" }
+local keyboard_special_names= {"down", "up", "shift", "backspace",
+															 "sc_left", "sc_right", "screenshot", "enter"}
 local keyboard_num_rows= 4
 local keyboard_mt= {
 	__index={
@@ -11,7 +11,7 @@ local keyboard_mt= {
 		create_actors=
 			function(self, name)
 				self.name= name
-				local key_spacing= 24
+				self.key_spacing= 24
 				local row_height= 24
 				local key_names= THEME:GetStringNamesInGroup("NameEntryKeyboard")
 				local ur_keys_per_row= #key_names / keyboard_num_rows
@@ -60,7 +60,7 @@ local keyboard_mt= {
 						"cursor"..pn, 0, 0, 0, 0, 1, solar_colors[pn]())
 				end
 				for i, r in ipairs(rows) do
-					local keyw= (SCREEN_WIDTH-key_spacing) / #r
+					local keyw= (SCREEN_WIDTH-self.key_spacing) / #r
 					local xmin= 0
 					if #r % 2 == 0 then
 						xmin= -(keyw * ((#r / 2) - .5))
@@ -92,6 +92,12 @@ local keyboard_mt= {
 							self.key_actors[r]= {}
 						end
 						self.key_actors[r][c]= child
+					end
+				end
+				for r, row in ipairs(self.key_actors) do
+					local keyw= (SCREEN_WIDTH-self.key_spacing) / #row
+					for c, key in ipairs(row) do
+						width_limit_text(key, keyw, 1)
 					end
 				end
 				for k, cur in pairs(self.cursors) do
@@ -476,38 +482,40 @@ local args= {
 								 end,
 		CodeMessageCommand=
 			function(self, param)
+				local pn= param.PlayerNumber
+				local code= param.Name
 				if self:GetSecsIntoEffect() < 0.25 then return end
-				if not name_displays[param.PlayerNumber] then return end
-				if param.Name == "left" or param.Name == "menu_left" then
-					keyboard:move_cursor_x(param.PlayerNumber, -1)
-				elseif param.Name == "right" or param.Name == "menu_right" then
-					keyboard:move_cursor_x(param.PlayerNumber, 1)
-				elseif param.Name == "up" or param.Name == "select" then
-					keyboard:move_cursor_y(param.PlayerNumber, -1)
-				elseif param.Name == "down" then
-					keyboard:move_cursor_y(param.PlayerNumber, 1)
-				elseif param.Name == "start" then
-					local key_ret= keyboard:interact(param.PlayerNumber)
+				if not name_displays[pn] then return end
+				if code == "left" or code == "menu_left" then
+					keyboard:move_cursor_x(pn, -1)
+				elseif code == "right" or code == "menu_right" then
+					keyboard:move_cursor_x(pn, 1)
+				elseif code == "up" or code == "select" then
+					keyboard:move_cursor_y(pn, -1)
+				elseif code == "down" then
+					keyboard:move_cursor_y(pn, 1)
+				elseif code == "start" then
+					local key_ret= keyboard:interact(pn)
 					if key_ret == "up" then
-						keyboard:move_cursor_y(param.PlayerNumber, -1)
+						keyboard:move_cursor_y(pn, -1)
 					elseif key_ret == "down" then
-						keyboard:move_cursor_y(param.PlayerNumber, 1)
+						keyboard:move_cursor_y(pn, 1)
 					elseif key_ret == "shift" then
-						name_displays[param.PlayerNumber]:toggle_shift()
+						name_displays[pn]:toggle_shift()
 					elseif key_ret == "backspace" then
-						if unfinished_players[param.PlayerNumber] then
-							name_displays[param.PlayerNumber]:remove_text()
+						if unfinished_players[pn] then
+							name_displays[pn]:remove_text()
 						end
 					elseif key_ret == "enter" then
 						local screen= SCREENMAN:GetTopScreen()
 						SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
-						local player_name= name_displays[param.PlayerNumber]:get_text()
-						local profile= PROFILEMAN:GetProfile(param.PlayerNumber)
+						local player_name= name_displays[pn]:get_text()
+						local profile= PROFILEMAN:GetProfile(pn)
 						if profile then
 							profile:SetLastUsedHighScoreName(player_name)
 						end
-						GAMESTATE:StoreRankingName(param.PlayerNumber, player_name)
-						unfinished_players[param.PlayerNumber]= false
+						GAMESTATE:StoreRankingName(pn, player_name)
+						unfinished_players[pn]= false
 						maybe_finish()
 					elseif key_ret == "sc_left" then
 						if disps_on_screen < #combined_play_history then
@@ -517,11 +525,24 @@ local args= {
 						if disps_on_screen < #combined_play_history then
 							score_wheel:scroll_by_amount(1)
 						end
+					elseif key_ret == "screenshot" then
+						local prefix= "name_entry_"
+						local saved, screenshotname= SaveScreenshot(pn, true, false, prefix, "")
+						local stats= SCREENMAN:GetTopScreen():GetStageStats()
+						if saved then
+							local prof= PROFILEMAN:GetProfile(pn)
+							local hs= stats:GetPlayerStageStats(pn):GetHighScore()
+							if prof then
+								prof:AddScreenshot(hs, screenshotname)
+							end
+						else
+							Trace("Failed to save a screenshot?")
+						end
 					elseif key_ret then
-						if unfinished_players[param.PlayerNumber] then
-							local full= name_displays[param.PlayerNumber]:add_text(key_ret)
+						if unfinished_players[pn] then
+							local full= name_displays[pn]:add_text(key_ret)
 							if full then
-								keyboard:move_to_exit(param.PlayerNumber)
+								keyboard:move_to_exit(pn)
 							end
 						end
 					end

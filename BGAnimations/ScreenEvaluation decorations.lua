@@ -754,8 +754,17 @@ function profile_report_interface:create_actors(player_number)
 				name= "This song played",
 				number= pro:GetSongNumTimesPlayed(GAMESTATE:GetCurrentSong()) }
 		end
-		things_in_list[#things_in_list+1]= {
-			name= "Toasties", number= pro:GetNumToasties() }
+		do
+			local toasts= pro:GetNumToasties()
+			local songs= pro:GetNumTotalSongsPlayed()
+			local toast_pct= toasts / songs
+			local color= solar_colors.f_text()
+			if toast_pct > .75 then
+				color= convert_percent_to_color((toast_pct-.75)*4)
+			end
+			things_in_list[#things_in_list+1]= {
+				name= "Toasties", number= pro:GetNumToasties(), color= color}
+		end
 		things_in_list[#things_in_list+1]= {
 			name= "Taps and holds", number= pro:GetTotalTapsAndHolds() }
 		things_in_list[#things_in_list+1]= {
@@ -787,15 +796,156 @@ end
 
 local cg_centers= { [PLAYER_1]= {SCREEN_LEFT + cg_thickness/2, 0},
 	[PLAYER_2]= {SCREEN_RIGHT - cg_thickness/2, 0}}
-local lg_centers= { [PLAYER_1]= { SCREEN_LEFT + lg_thickness/2 + cg_thickness,
-                                  SCREEN_CENTER_Y },
-                    [PLAYER_2]= { SCREEN_RIGHT - lg_thickness/2 - cg_thickness,
-                                  SCREEN_CENTER_Y }}
+local lg_centers= {
+	[PLAYER_1]= {
+		SCREEN_LEFT + lg_thickness/2 + cg_thickness, SCREEN_CENTER_Y },
+	[PLAYER_2]= {
+		SCREEN_RIGHT - lg_thickness/2 - cg_thickness, SCREEN_CENTER_Y }}
 
 local combo_graphs= {
 	[PLAYER_1]= setmetatable({}, combo_graph_mt),
 	[PLAYER_2]= setmetatable({}, combo_graph_mt)
 }
+
+dofile(THEME:GetPathO("", "options_menu.lua"))
+dofile(THEME:GetPathO("", "song_props_menu.lua"))
+dofile(THEME:GetPathO("", "tags_menu.lua"))
+
+set_option_set_metatables()
+
+local special_menu_displays= {
+	[PLAYER_1]= setmetatable({}, option_display_mt),
+	[PLAYER_2]= setmetatable({}, option_display_mt),
+}
+
+local special_menus= {
+	{
+		[PLAYER_1]= setmetatable({}, options_sets.song_props_menu),
+		[PLAYER_2]= setmetatable({}, options_sets.song_props_menu),
+	},{
+		[PLAYER_1]= setmetatable({}, options_sets.tags_menu),
+		[PLAYER_2]= setmetatable({}, options_sets.tags_menu),
+}}
+
+local player_cursors= {
+	[PLAYER_1]= setmetatable({}, amv_cursor_mt),
+	[PLAYER_2]= setmetatable({}, amv_cursor_mt)
+}
+
+local score_reports= { [PLAYER_1]= {}, [PLAYER_2]= {}}
+setmetatable(score_reports[PLAYER_1], score_report_mt)
+setmetatable(score_reports[PLAYER_2], score_report_mt)
+
+local profile_reports= { [PLAYER_1]= {}, [PLAYER_2]= {}}
+setmetatable(profile_reports[PLAYER_1], profile_report_interface_mt)
+setmetatable(profile_reports[PLAYER_2], profile_report_interface_mt)
+
+local frame_helpers= { [PLAYER_1]= {}, [PLAYER_2]= {}}
+setmetatable(frame_helpers[PLAYER_1], frame_helper_mt)
+setmetatable(frame_helpers[PLAYER_2], frame_helper_mt)
+
+local special_menu_activate_time= .3
+local select_press_times= {[PLAYER_1]= 0, [PLAYER_2]= 0}
+-- Set when select is pressed, so it can be used to determine whether the special menu should be brought up.
+local special_menu_states= {[PLAYER_1]= 0, [PLAYER_2]= 0}
+local showing_profile_on_other_side= false
+
+local function init_player_cursor_pos(pn)
+	local cursed_item=
+		special_menus[1][pn]:get_cursor_element()
+	local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
+	local xp, yp= rec_calc_actor_pos(cursed_item.container)
+	player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
+	player_cursors[pn]:hide()
+end
+
+local function update_player_cursor(pn)
+	if special_menu_states[pn] ~= 0 then
+		local cursed_item=
+			special_menus[special_menu_states[pn]][pn]:get_cursor_element()
+		local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
+		local xp, yp= rec_calc_actor_pos(cursed_item.container)
+		player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
+	else
+		player_cursors[pn]:hide()
+	end
+end
+
+local function set_special_menu(pn, spid)
+	special_menu_states[pn]= spid
+	if spid == 0 then
+		special_menu_displays[pn]:hide()
+		player_cursors[pn]:hide()
+		if showing_profile_on_other_side then
+			profile_reports[pn].container:diffusealpha(1)
+		else
+			set_visible_score_data(pn, score_data_viewing_indices[pn])
+		end
+	else
+		if showing_profile_on_other_side then
+			profile_reports[pn].container:diffusealpha(0)
+		else
+			score_reports[pn].container:diffusealpha(0)
+			profile_reports[pn].container:diffusealpha(0)
+		end
+		special_menus[spid][pn]:reset_info()
+		special_menus[spid][pn]:update()
+		special_menu_displays[pn]:unhide()
+		update_player_cursor(pn)
+		player_cursors[pn]:unhide()
+	end
+end
+
+local function filter_input_for_menus(pn, code)
+	local handled, close= false, false
+	local spid= special_menu_states[pn]
+	if spid == 0 then
+		if code == "select" then
+			select_press_times[pn]= GetTimeSinceStart()
+		elseif code == "select_release" then
+			if GetTimeSinceStart() - select_press_times[pn] <
+			special_menu_activate_time then
+				set_special_menu(pn, 1)
+				handled= true
+			else
+				local song_name=
+					song_get_dir(gamestate_get_curr_song()):sub(2):gsub("/", "_")
+				local steps= gamestate_get_curr_steps(pn)
+				local prefix= song_name .. steps_to_string(steps) .. "_"
+				local saved, screenshotname= SaveScreenshot(pn, true, false, prefix, "")
+				local stats= SCREENMAN:GetTopScreen():GetStageStats()
+				if saved then
+					local prof= PROFILEMAN:GetProfile(pn)
+					local hs= stats:GetPlayerStageStats(pn):GetHighScore()
+					if prof then
+						prof:AddScreenshot(hs, screenshotname)
+					end
+				else
+					Trace("Failed to save a screenshot?")
+				end
+				handled= true
+			end
+		elseif code == "start" then
+			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+			SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
+		end
+	else
+		if code == "select_release" then
+			local next_sp= spid + 1
+			if next_sp > #special_menus then next_sp= 0 end
+			set_special_menu(pn, next_sp)
+		else
+			handled, close= special_menus[spid][pn]:interpret_code(code)
+			if handled then
+				update_player_cursor(pn)
+				if close then
+					set_special_menu(pn, 0)
+				end
+			end
+		end
+	end
+	return handled
+end
 
 local function make_graph_actors()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
@@ -817,18 +967,6 @@ local function make_graph_actors()
 	end
 	return Def.ActorFrame(outer_args)
 end
-
-local score_reports= { [PLAYER_1]= {}, [PLAYER_2]= {}}
-setmetatable(score_reports[PLAYER_1], score_report_mt)
-setmetatable(score_reports[PLAYER_2], score_report_mt)
-
-local profile_reports= { [PLAYER_1]= {}, [PLAYER_2]= {}}
-setmetatable(profile_reports[PLAYER_1], profile_report_interface_mt)
-setmetatable(profile_reports[PLAYER_2], profile_report_interface_mt)
-
-local frame_helpers= { [PLAYER_1]= {}, [PLAYER_2]= {}}
-setmetatable(frame_helpers[PLAYER_1], frame_helper_mt)
-setmetatable(frame_helpers[PLAYER_2], frame_helper_mt)
 
 local player_xs= { [PLAYER_1]= SCREEN_RIGHT * .25,
                    [PLAYER_2]= SCREEN_RIGHT * .75 }
@@ -852,6 +990,8 @@ local function make_player_specific_actors()
 		args[#args+1]= score_reports[v]:create_actors(v)
 		if #enabled_players > 1 then
 			args[#args+1]= profile_reports[v]:create_actors(v)
+			args[#args+1]= special_menu_displays[v]:create_actors(
+				"menu", 0, 0, 10, 120, 24, 1, true, true)
 		end
 		args[#args+1]= dance_pads[v]:create_actors("dance_pad", 0, -34, 10)
 		args[#args+1]= besties[v].machine:create_actors("mbest", 0, -114, 1,
@@ -867,7 +1007,14 @@ local function make_player_specific_actors()
 		args[#args+1]= frame_helpers[other]:create_actors(
 			"frame", 2, 0, 0, solar_colors[this](), solar_colors.bg(), 0, 0)
 		args[#args+1]= profile_reports[this]:create_actors(this)
+		args[#args+1]= special_menu_displays[this]:create_actors(
+			"menu", 0, 16, 10, 160, 24, 1, true, true)
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
+	end
+	-- In its own loop to make sure they're above all other actors.
+	for i, pn in ipairs(enabled_players) do
+		all_actors[#all_actors+1]= player_cursors[pn]:create_actors(
+			pn .."_cursor", 0, 0, 0, 0, 1, solar_colors[pn]())
 	end
 	return Def.ActorFrame(all_actors)
 end
@@ -904,7 +1051,8 @@ end
 
 local score_datas= {}
 local score_data_viewing_indices= {}
-local showing_profile_on_other_side= false
+
+local menu_states= {[PLAYER_1]= 0, [PLAYER_2]= 0}
 
 local function find_actors(self)
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
@@ -974,6 +1122,7 @@ local function find_actors(self)
 			local other= other_player[v]
 			local opcont= players_container:GetChild(other)
 			profile_reports[v]:find_actors(opcont:GetChild(profile_reports[v].name), width)
+			special_menu_displays[v]:find_actors(opcont:GetChild(special_menu_displays[v].name))
 			frame_helpers[other]:find_actors(opcont:GetChild(frame_helpers[other].name))
 			local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(opcont)
 			local fw= fxmx - fxmn + pad
@@ -984,7 +1133,19 @@ local function find_actors(self)
 			frame_helpers[other]:resize(fw, fh)
 		else
 			profile_reports[v]:find_actors(pcont:GetChild(profile_reports[v].name), width)
+			special_menu_displays[v]:find_actors(pcont:GetChild(special_menu_displays[v].name))
 		end
+		for i, menu_set in ipairs(special_menus) do
+			-- Funny trick:  For the tags_menu, "false" means "don't have an up
+			-- element".  For the song_props_menu, "false" means "don't have a pane
+			-- edit option".
+			menu_set[v]:initialize(v, false)
+			menu_set[v]:set_display(special_menu_displays[v])
+		end
+		special_menu_displays[v]:set_underline_color(solar_colors[v]())
+		special_menu_displays[v]:hide()
+		player_cursors[v]:find_actors(players_container:GetChild(player_cursors[v].name))
+		init_player_cursor_pos(v)
 	end
 end
 
@@ -1206,6 +1367,7 @@ return Def.ActorFrame{
 			local code_name= param.Name
 			local pn= param.PlayerNumber
 			if not score_data_viewing_indices[pn] then return end
+			if filter_input_for_menus(pn, code_name) then return end
 			local view_changers= { left= true, menu_left= true,
 														 right= true, menu_right= true}
 			if view_changers[code_name] then
