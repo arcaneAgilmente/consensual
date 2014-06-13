@@ -22,7 +22,7 @@ all:  right, down, left, right, down, left
 excessive:  left, up, right, up, left, down, right, down, left
 
 Special menu on Select Music:
-Press select to bring up the special menu.
+Press select to bring up the song properties menu.
 Current options:
   Machine Favor +1/-1:  Adjusts the machine favor value for the song.
   Player Favor +1/-1:  Adjusts the player's favor value for the song.
@@ -31,6 +31,9 @@ Current options:
 Press select a second time to bring up the tags menu.
 Holding select will not bring up the menu because of the bindings that use select plus another button to change something else.
 Pad codes cannot be used while in the special menu.
+
+Special menu on Evaluation:
+The song properties and tags menus can also be accessed on the Evaluation screen, by tapping select.
 
 Pane display on Select Music:
 The pane display on Select Music can be customized.
