@@ -528,14 +528,7 @@ local args= {
 					elseif key_ret == "screenshot" then
 						local prefix= "name_entry_"
 						local saved, screenshotname= SaveScreenshot(pn, true, false, prefix, "")
-						local stats= SCREENMAN:GetTopScreen():GetStageStats()
-						if saved then
-							local prof= PROFILEMAN:GetProfile(pn)
-							local hs= stats:GetPlayerStageStats(pn):GetHighScore()
-							if prof then
-								prof:AddScreenshot(hs, screenshotname)
-							end
-						else
+						if not saved then
 							Trace("Failed to save a screenshot?")
 						end
 					elseif key_ret then
