@@ -872,6 +872,22 @@ local function extra_for_sigil_size()
 	}
 end
 
+local function extra_for_sideswap()
+	return {
+		name= "Side Swap",
+		min_scale= -2,
+		scale= 0,
+		max_scale= 0,
+		initial_value= function(player_number)
+			return cons_players[player_number].side_swap or 0
+		end,
+		validator= noop_true,
+		set= function(player_number, value)
+			cons_players[player_number].side_swap= value
+		end
+	}
+end
+
 local function extra_for_lives()
 	return {
 		name= "Battery Lives",
@@ -1025,6 +1041,8 @@ local floaty_mods= {
 		args= make_menu_of_float_set(target_mods) },
 	{ name= "Visibility", meta= options_sets.menu,
 		args= make_menu_of_float_set(visibility_mods) },
+	{ name= "Side Swap", meta= options_sets.adjustable_float,
+		args= extra_for_sideswap() },
 }
 
 local chart_mods= {

@@ -438,7 +438,7 @@ local function recursive_sort(items, sort_factors, sort_depth, name_depth)
 			end
 		end
 		return buckets
-	else
+	elseif #items > 0 then
 		if items[1].contents then
 			process_sub_buckets(items)
 			return items

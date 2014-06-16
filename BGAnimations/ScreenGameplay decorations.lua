@@ -24,6 +24,19 @@ local judge_centers= {
 	[PLAYER_2]= { SCREEN_CENTER_X + (SCREEN_CENTER_X / 2), judge_y}
 }
 
+local player_sides= {
+	[PLAYER_1]=
+		THEME:GetMetric("ScreenGameplay", "PlayerP1OnePlayerOneSideX"),
+	[PLAYER_2]=
+		THEME:GetMetric("ScreenGameplay", "PlayerP2OnePlayerOneSideX")}
+local side_diffs= {
+	[PLAYER_1]= player_sides[PLAYER_2] - player_sides[PLAYER_1],
+	[PLAYER_2]= player_sides[PLAYER_1] - player_sides[PLAYER_2]}
+local side_swap_vals= {}
+local swap_on_xs= {}
+local side_toggles= {}
+local side_actors= {}
+
 local judge_feedback_interface= {}
 function judge_feedback_interface:create_actors(name, fx, fy, player_number)
 	if not name then return nil end
@@ -652,6 +665,14 @@ local function Update(self)
 				end
 			end
 		end
+		if (side_swap_vals[v] or 0) > 1 then
+			if side_toggles[v] then
+				side_actors[v]:x(player_sides[v])
+			else
+				side_actors[v]:x(swap_on_xs[v])
+			end
+			side_toggles[v]= not side_toggles[v]
+		end
 		local pstats= curstats:GetPlayerStageStats(v)
 		if not pstats then
 			Trace("SGbg.Update:  pstats for " .. v .. " is nil.")
@@ -914,6 +935,8 @@ return Def.ActorFrame {
 				end
 				local enabled_players= GAMESTATE:GetEnabledPlayers()
 				prev_song_start_timestamp= hms_timestamp()
+				local force_swap= (cons_players[PLAYER_1].side_swap or 0) > 1 or
+					(cons_players[PLAYER_2].side_swap or 0) > 1
 				for k, v in pairs(enabled_players) do
 					cons_players[v].prev_steps= gamestate_get_curr_steps(v)
 					cons_players[v]:stage_stats_reset()
@@ -924,6 +947,17 @@ return Def.ActorFrame {
 						speed_info.prev_bps= nil
 					end
 					set_speed_from_speed_info(cons_players[v])
+					if cons_players[v].side_swap or force_swap then
+						side_swap_vals[v]= cons_players[v].side_swap or
+							cons_players[other_player[v]].side_swap
+						local mod_res= side_swap_vals[v] % 1
+						if mod_res == 0 then mod_res= 1 end
+						swap_on_xs[v]= player_sides[v] + (side_diffs[v] * mod_res)
+						side_actors[v]=
+							screen_gameplay:GetChild("Player" .. ToEnumShortString(v))
+						side_actors[v]:x(swap_on_xs[v])
+						side_toggles[v]= true
+					end
 
 					--local ps= GAMESTATE:GetPlayerState(v)
 					--local ops= ps:GetPlayerOptionsString("ModsLevel_Song")
