@@ -61,6 +61,62 @@ function circle_amv(name, x, y, r, chords, color)
 	end}
 end
 
+function star_amv(name, x, y, r, a, points, point_step, color)
+	x= x or 0
+	y= y or 0
+	r= r or 24
+	a= a or 0
+	points= points or 5
+	local step_set= {point_step}
+	if not point_step then
+		local factors= {}
+		step_set[1]= 1
+		for i= 2, points do
+			if points % i == 0 then
+				factors[#factors+1]= i
+			else
+				local passed_factors= true
+				for f, fact in ipairs(factors) do
+					if i % fact == 0 then
+						passed_factors= false
+						break
+					end
+				end
+				if passed_factors then
+					step_set[#step_set+1]= i
+				end
+			end
+		end
+	end
+	color= color or solar_colors.f_text()
+	local point_poses= calc_circle_verts(r, points, a, a)
+	local curr_step= wrapped_index(1, math.round(GetTimeSinceStart()/8), #step_set)
+	return Def.ActorMultiVertex{
+		Name= name,
+		InitCommand= function(self)
+			self:xy(x, y)
+			self:queuecommand("change")
+		end,
+		changeCommand= function(self)
+			local step= step_set[curr_step]
+			local curr_point= 1
+			local verts= {}
+			repeat
+				local curr_pos= point_poses[curr_point]
+				verts[#verts+1]= {curr_pos[1], color}
+				curr_point= wrapped_index(curr_point, step, points)
+			until curr_point == 1
+			verts[#verts+1]= {point_poses[1][1], color}
+			self:SetDrawState{Mode="DrawMode_LineStrip"}
+			self:SetVertices(verts)
+			self:SetLineWidth(.5)
+			curr_step= wrapped_index(curr_step, 1, #step_set)
+			self:queuecommand("change")
+			self:linear(8)
+		end
+	}
+end
+
 function dance_arrow_amv(name, x, y, r, size, color)
 	x= x or 0
 	y= y or 0

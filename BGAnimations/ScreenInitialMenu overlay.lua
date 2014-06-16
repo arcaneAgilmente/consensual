@@ -23,6 +23,7 @@ local profile_choices= {}
 
 dofile(THEME:GetPathO("", "consensual_conf.lua"))
 dofile(THEME:GetPathO("", "options_menu.lua"))
+dofile(THEME:GetPathO("", "art_helpers.lua"))
 
 local function check_one_player()
 	return num_players == 1
@@ -429,6 +430,12 @@ local args= {
 				end
 			end
 	},
+	star_amv(
+		"lstar", SCREEN_WIDTH * .25, SCREEN_HEIGHT*.5, SCREEN_HEIGHT*.25,
+		0, 243, nil, solar_colors[PLAYER_1]()),
+	star_amv(
+		"rstar", SCREEN_WIDTH* .75, SCREEN_HEIGHT*.5, SCREEN_HEIGHT*.25,
+		math.pi, 243, nil, solar_colors[PLAYER_2]()),
 	create_actors(),
 	Def.ActorFrame{
 		Name= "song report",
