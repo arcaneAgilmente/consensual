@@ -89,8 +89,9 @@ function star_amv(name, x, y, r, a, points, point_step, color)
 		end
 	end
 	color= color or solar_colors.f_text()
+	local shift_time= 8
 	local point_poses= calc_circle_verts(r, points, a, a)
-	local curr_step= wrapped_index(1, math.round(GetTimeSinceStart()/8), #step_set)
+	local curr_step= wrapped_index(1, math.round(GetTimeSinceStart()/shift_time), #step_set)
 	return Def.ActorMultiVertex{
 		Name= name,
 		InitCommand= function(self)
@@ -109,10 +110,10 @@ function star_amv(name, x, y, r, a, points, point_step, color)
 			verts[#verts+1]= {point_poses[1][1], color}
 			self:SetDrawState{Mode="DrawMode_LineStrip"}
 			self:SetVertices(verts)
-			self:SetLineWidth(.5)
+			self:SetLineWidth(.125)
 			curr_step= wrapped_index(curr_step, 1, #step_set)
 			self:queuecommand("change")
-			self:linear(8)
+			self:linear(shift_time)
 		end
 	}
 end

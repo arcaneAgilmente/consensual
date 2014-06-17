@@ -42,6 +42,24 @@ local function difficulty_wrapper(difficulty)
 				 end
 end
 
+local function any_meter(song)
+	if song.GetStepsByStepsType then
+		local curr_style= GAMESTATE:GetCurrentStyle()
+		local filter_type= curr_style:GetStepsType()
+		local all_steps= song:GetStepsByStepsType(filter_type)
+		local meters= {}
+		for i, v in ipairs(all_steps) do
+			meters[#meters+1]= v:GetMeter()
+		end
+		if #meters > 0 then
+			return meters
+		end
+		return {0}
+	else
+		return {0}
+	end
+end
+
 local function favor_wrapper(prof_slot)
 	return function(song)
 		return {get_favor(prof_slot, song)}
@@ -222,6 +240,8 @@ end
 
 
 local meter_sort_factors= {}
+meter_sort_factors[1]= {
+	name= "Any Meter", get_names= any_meter, returns_multiple= true}
 for d, diff in pairs(difficulty_list) do
 	meter_sort_factors[#meter_sort_factors+1]= {
 		name= diff.name .. " Meter", get_names= difficulty_wrapper(diff.diff)}

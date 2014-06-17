@@ -411,6 +411,15 @@ local function update_cursor_pos()
 	end
 end
 
+local star_rad= SCREEN_HEIGHT*.25
+local star_points= 511
+local star_y= SCREEN_HEIGHT*.5
+do
+	local scale_factor= DISPLAY:GetDisplayHeight() / SCREEN_HEIGHT
+	local circ= star_rad * math.pi * 2
+	star_points= math.round(circ * scale_factor * 1)
+end
+
 local args= {
 	InitCommand= function(self)
 								 find_actors(self)
@@ -431,11 +440,11 @@ local args= {
 			end
 	},
 	star_amv(
-		"lstar", SCREEN_WIDTH * .25, SCREEN_HEIGHT*.5, SCREEN_HEIGHT*.25,
-		0, 243, nil, solar_colors[PLAYER_1]()),
+		"lstar", SCREEN_WIDTH * .25, star_y, star_rad, 0, star_points, nil,
+		solar_colors[PLAYER_1]()),
 	star_amv(
-		"rstar", SCREEN_WIDTH* .75, SCREEN_HEIGHT*.5, SCREEN_HEIGHT*.25,
-		math.pi, 243, nil, solar_colors[PLAYER_2]()),
+		"rstar", SCREEN_WIDTH* .75, star_y, star_rad, math.pi, star_points, nil,
+		solar_colors[PLAYER_2]()),
 	create_actors(),
 	Def.ActorFrame{
 		Name= "song report",
