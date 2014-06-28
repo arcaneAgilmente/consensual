@@ -267,9 +267,11 @@ local function play_will_succeed(pns)
 	if needed > 0 and credits < #pns then
 		return false
 	end
-	for i, pn in ipairs(pns) do
-		if not profile_choices[pn] then
-			return false
+	if #profile_list > 0 then
+		for i, pn in ipairs(pns) do
+			if not profile_choices[pn] then
+				return false
+			end
 		end
 	end
 	return true
@@ -342,10 +344,10 @@ local function interpret_code(pn, code)
 						if play_will_succeed{PLAYER_1, PLAYER_2} then
 							for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
 								cons_join_player(rpn)
+								GAMESTATE:ApplyGameCommand("style,versus")
 								GAMESTATE:ApplyGameCommand("playmode,"..playmode, rpn)
 								set_profile_index_for_player(rpn)
 							end
-							GAMESTATE:ApplyGameCommand("style,versus")
 							maybe_finalize_and_exit{PLAYER_1, PLAYER_2}
 						else
 							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
@@ -376,6 +378,7 @@ local function interpret_code(pn, code)
 			choosing_states[pn]= choosing_menu
 		end
 	end
+	return handled
 end
 
 local function update_cursor_pos()
@@ -420,6 +423,33 @@ do
 	star_points= math.round(circ * scale_factor * 1)
 end
 
+local evbutton_to_code= {
+	Left= "left",
+	Right= "right",
+	Up= "up",
+	Down= "down",
+	MenuLeft= "left",
+	MenuRight= "right",
+	MenuUp= "up",
+	MenuDown= "down",
+	Start= "start"
+}
+
+local function input(event)
+	Trace("Received input")
+	rec_print_table(event)
+	if event.PlayerNumber and evbutton_to_code[event.button] and
+	event.type ~= "InputEventType_Release" then
+		interpret_code(event.PlayerNumber, evbutton_to_code[event.button])
+		update_cursor_pos()
+		return true
+	end
+	if event.DeviceInput.button == "DeviceButton_z" then
+		SCREENMAN:GetTopScreen():RemoveInputCallback(input)
+	end
+	return false
+end
+
 local args= {
 	InitCommand= function(self)
 								 find_actors(self)
@@ -431,6 +461,10 @@ local args= {
 									 self:effectperiod(2^16)
 									 timer_actor= self
 								 end,
+		OnCommand= function(self)
+			--Trace("Adding input callback.")
+			--SCREENMAN:GetTopScreen():AddInputCallback(input)
+		end,
 		CodeMessageCommand=
 			function(self, param)
 				if self:GetSecsIntoEffect() > 0.25 then

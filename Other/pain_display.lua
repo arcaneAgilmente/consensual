@@ -701,8 +701,8 @@ pain_display_mt= {
 				self:hide()
 				return
 			end
-			local steps= gamestate_get_curr_steps(self.player_number)
 			local song= gamestate_get_curr_song()
+			local steps= gamestate_get_curr_steps(self.player_number)
 			local radars= steps and steps:GetRadarValues(self.player_number)
 			local mhs_list= self:get_hs_list(true)
 			local phs_list= self:get_hs_list(false)
@@ -710,7 +710,7 @@ pain_display_mt= {
 			local ptag_list= self:get_tag_list(false)
 			local function update_half(half_items, half_config, left)
 				for i, item in ipairs(half_items) do
-					if song and steps then
+					if song then
 						local item_config= half_config[i]
 						if not item_config then
 							Trace("No config for item " .. i .. " on " .. tostring(left))

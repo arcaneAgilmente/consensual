@@ -305,8 +305,6 @@ function bpm_feedback_interface:update()
 		local pstate= GAMESTATE:GetPlayerState(self.player_number)
 		if pstate and screen_gameplay.GetTrueBPS then
 			local bpm= screen_gameplay:GetTrueBPS(self.player_number) * 60
-			--local bpm= pstate:GetSongPosition():GetCurBPS()
-			--bpm= bpm * 60 * rate_coordinator:get_current_rate()
 			self.tani:set_number(("%.0f"):format(bpm))
 		end
 	end
@@ -624,13 +622,11 @@ local function Update(self)
 		local speed_info= cons_players[v]:get_speed_info()
 		if speed_info.mode == "CX" and screen_gameplay.GetTrueBPS then
 			local this_bps= screen_gameplay:GetTrueBPS(v)
-			--local this_bps= GAMESTATE:GetPlayerState(v):GetSongPosition():GetCurBPS()
 			if speed_info.prev_bps ~= this_bps and this_bps > 0 then
 				speed_info.prev_bps= this_bps
 				local xmod= (speed_info.speed) / (this_bps * 60)
-				--local xmod= (speed_info.speed) / (this_bps * rate_coordinator:get_current_rate() * 60)
-				local poptions= cons_players[v].song_options
-				poptions:XMod(xmod, xmod*100) -- use a high approach speed  so the xmod changes in .01 seconds.
+				cons_players[v].song_options:XMod(xmod)
+				cons_players[v].current_options:XMod(xmod)
 			end
 		end
 		if speed_info.mode == "D" then
@@ -823,15 +819,19 @@ local function set_speed_from_speed_info(player)
 	local mode_functions= {
 		x= function(speed)
 				 player.song_options:XMod(speed)
+				 player.current_options:XMod(speed)
 			 end,
 		C= function(speed)
-				 local real_speed= speed / rate_coordinator:get_current_rate()
-				 player.song_options:CMod(real_speed)
+				 player.song_options:CMod(speed)
+				 player.current_options:CMod(speed)
 			 end,
 		m= function(speed)
 				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
 				 local real_speed= (speed / read_bpm) / rate_coordinator:get_current_rate()
 				 player.song_options:XMod(real_speed)
+				 player.current_options:XMod(real_speed)
+				 --player.song_options:MMod(speed)
+				 --player.current_options:MMod(speed)
 			 end,
 		D= function(speed)
 				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
@@ -863,6 +863,9 @@ end
 local function cleanup(self)
 	prev_song_end_timestamp= hms_timestamp()
 	local time_spent= gameplay_end_time - gameplay_start_time
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		cons_players[pn].credit_time= (cons_players[pn].credit_time or 0) + time_spent
+	end
 	reduce_time_remaining(time_spent)
 	set_last_song_time(time_spent)
 end

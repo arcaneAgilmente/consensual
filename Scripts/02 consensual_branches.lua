@@ -3,7 +3,7 @@ cons_branches= {
 		function()
 			if GAMESTATE:IsEventMode() then
 				return "ScreenProfileSave"
-			elseif get_time_remaining() < 50 or #bucket_man.filtered_songs < 1 then
+			elseif get_time_remaining() < min_remaining_time or #bucket_man.filtered_songs < 1 then
 				return "ScreenConsNameEntry"
 			else
 				return SelectMusicOrCourse()

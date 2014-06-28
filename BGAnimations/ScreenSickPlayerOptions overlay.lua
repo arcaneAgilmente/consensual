@@ -121,8 +121,9 @@ options_sets.speed= {
 			function(self, player_number)
 				self.info_set= {
 					up_element(), {text= ""}, {text= ""}, {text= ""}, {text= ""},
-					{text= "Xmod"}, {text= "Cmod"}, {text= "Mmod"}, {text= "CXmod"},
-					{text= "Driven"}, {text= "Alt Driven"}}
+					{text= "Xmod"}, {text= "Cmod"}, {text= "Mmod"},
+					{text= "CXmod"}, {text= "Driven"}, {text= "Alt Driven"}
+				}
 				local speed_info= cons_players[player_number]:get_speed_info()
 				self.current_speed= speed_info.speed
 				self:set_mode_data_work(speed_info.mode)
@@ -956,9 +957,21 @@ local function pops_get(pn)
 end
 
 local function player_enum(name, enum, func_name)
+	-- We need to inform GameState if we set the fail type so it doesn't
+	-- override it with the beginner/easy preferences.
+	local function set_wrapper(obj, val)
+		if GAMESTATE.SetFailTypeExplicitlySet then
+			GAMESTATE:SetFailTypeExplicitlySet()
+		end
+		PlayerOptions[func_name](obj, val)
+	end
+	local set= PlayerOptions[func_name]
+	if func_name == "FailSetting" then
+		set= set_wrapper
+	end
 	return {
 		name= name, meta= options_sets.enum_option, args= {
-			get= PlayerOptions[func_name], set= PlayerOptions[func_name],
+			get= PlayerOptions[func_name], set= set,
 			enum= enum, obj_get= pops_get }}
 end
 

@@ -674,7 +674,8 @@ function song_short_enough(s)
 			local len= s:GetLastSecond() - s:GetFirstSecond()
 			return len <= time_remaining + song_length_grace and len > 0
 		else
-			return s:GetTotalSeconds() <= time_remaining
+			local steps_type= GAMESTATE:GetCurrentStyle():GetStepsType()
+			return (s:GetTotalSeconds(steps_type) or 0) <= time_remaining
 		end
 	end
 end

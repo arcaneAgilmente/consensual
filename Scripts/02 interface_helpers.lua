@@ -493,3 +493,27 @@ function scale_to_fit(actor, width, height)
 	local yscale= height / actor:GetHeight()
 	actor:zoom(math.min(xscale, yscale))
 end
+
+-- Until my fix of the engine side version is merged.
+-- usage:  clip_scale(some_actor, width, height)
+function clip_scale(self, zw, zh)
+	local uzw= self:GetWidth()
+	local uzh= self:GetHeight()
+	local xz= zw / uzw
+	local yz= zh / uzh
+	self:cropleft(0)
+	self:cropright(0)
+	self:croptop(0)
+	self:cropbottom(0)
+	local function handle_dim(dimz, dim, dimdest, cropa, cropb)
+		self:zoom(dimz)
+		local clip_amount= (1 - (dimdest / dim)) / 2
+		cropa(self, clip_amount)
+		cropb(self, clip_amount)
+	end
+	if xz > yz then
+		handle_dim(xz, self:GetZoomedHeight(), zh, self.croptop, self.cropbottom)
+	else
+		handle_dim(yz, self:GetZoomedWidth(), zw, self.cropleft, self.cropright)
+	end
+end

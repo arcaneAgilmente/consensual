@@ -193,6 +193,9 @@ local best_score_mt= {
 			self.fh:find_actors(container:GetChild(self.fh.name))
 			self.score:find_actors(container:GetChild(self.score.name))
 			self.rank= container:GetChild("rank")
+			self.rank:visible(false)
+			self.best_text= container:GetChild("best_text")
+			self.best_text:visible(false)
 		end,
 		set= function(self, profile_pn, rank_pn)
 			local profile= false
@@ -210,6 +213,7 @@ local best_score_mt= {
 					hs_list= hs_list:GetHighScores()
 					local highest_score= hs_list[1]
 					if highest_score then
+						self.best_text:visible(true)
 						local pn_to_filler= {[PLAYER_1]= "#P1#", [PLAYER_2]= "#P2#"}
 						local rank= 0
 						local pstats=
@@ -1197,7 +1201,9 @@ local function crunch_combo_data_for_column(col)
 			end
 		end
 	end
-	end_combo(step_timings[#step_timings].time)
+	if #step_timings > 0 then
+		end_combo(step_timings[#step_timings].time)
+	end
 	col.max_combo= max_combo
 	col.combo_data= combo_data
 end

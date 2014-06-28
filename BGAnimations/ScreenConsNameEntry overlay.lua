@@ -198,7 +198,14 @@ local name_display_mt= {
 				local profile= PROFILEMAN:GetProfile(player_number)
 				local player_name= profile:GetLastUsedHighScoreName()
 				local args= { Name= name, InitCommand= cmd(xy, x, y) }
+				local time_x= 160
+				if player_number == PLAYER_2 then
+					time_x= time_x * -1
+				end
 				args[#args+1]= normal_text("text", player_name, color, 0, 0, 1)
+				args[#args+1]= normal_text(
+					"time", secs_to_str(cons_players[player_number].credit_time),
+					color, time_x, 0, 1)
 				args[#args+1]= Def.Quad{
 					Name= "cursor", InitCommand= cmd(xy, 0, 12; diffuse, color;
 																					 setsize, 12, 2)}
