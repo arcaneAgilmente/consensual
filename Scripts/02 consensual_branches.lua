@@ -1,4 +1,18 @@
 cons_branches= {
+	after_gameplay= function()
+		local go_to_heart= false
+		for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+			local profile= PROFILEMAN:GetProfile(pn)
+			if profile and profile.GetIgnoreStepCountCalories and
+			profile:GetIgnoreStepCountCalories() then
+				go_to_heart= true
+			end
+		end
+		if go_to_heart then
+			return "ScreenHeartEntry"
+		end
+		return Branch.AfterGameplay()
+	end,
 	after_evaluation=
 		function()
 			if GAMESTATE:IsEventMode() then
@@ -18,9 +32,6 @@ cons_branches= {
 	end,
 }
 
--- Note that if I set [ScreenEvaluation] NextScreen to this value, it does not work.  So instead I have to do this.
--- Why?  Well, I don't want the normal stage system, where one credit buys some number of songs.  Instead, one credit buys some amount of song time, and playing songs uses up that time.
-Branch.AfterEvaluation= cons_branches.after_evaluation
 Branch.AfterProfileSave= cons_branches.after_profile_save
 -- Because I had to name my ScreenSelectMusic something different to get away
 --   from all the crap normal SSM does that I don't need, want, or use.

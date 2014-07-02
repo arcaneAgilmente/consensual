@@ -382,6 +382,33 @@ options_sets.mutually_exclusive_special_functions= {
 			end
 }}
 
+options_sets.boolean_option= {
+	__index= {
+		initialize= function(self, pn, extra)
+			self.name= extra.name
+			self.player_number= pn
+			self.cursor_pos= 1
+			self.get= extra.get
+			self.set= extra.set
+			local curr= extra.get(pn)
+			self.info_set= {
+				up_element(),
+				{text= extra.true_text, underline= curr},
+				{text= extra.false_text, underline= not curr}}
+		end,
+		set_status= function(self) self.display:set_heading(self.name) end,
+		interpret_start= function(self)
+			if self.cursor_pos == 1 then return false end
+			local curr= self.cursor_pos == 2
+			self.set(self.player_number, curr)
+			self.info_set[2].underline= curr
+			self.info_set[3].underline= not curr
+			self.display:set_element_info(2, self.info_set[2])
+			self.display:set_element_info(3, self.info_set[3])
+			return true
+		end
+}}
+
 local function find_scale_for_number(num, min_scale)
 	local cv= math.round(num /10^min_scale) * 10^min_scale
 	local prec= math.max(0, -min_scale)

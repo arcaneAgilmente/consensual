@@ -1,6 +1,6 @@
 Some theme elements might overlap with each other if the aspect ratio isn't 16:10.  If they do, report your aspect ratio, resolution, and the elements to Kyzentun so they can be fixed.
 
-This theme is only tested on the tip of the github repository.  If you're not building from up to date source, some things that rely on recently added features might not work.  If there are any open pull requests from me, assume that they are necessary to run this theme.
+This theme is only tested on the tip of the github repository.  If you're not building from up to date source, some things that rely on recently added features might not work.
 
 Initial screen:
 2 player mode is under Style->Versus.
@@ -140,6 +140,9 @@ Mine Effects:
 	The chosen mine effect is saved to the profile.
 Distortion:
 	Toggle text distortion.
+
+Profile options:
+	Some of the editable profile options can be edited through the options screen in the Profile Options menu.  Consensual has support for calculating calories burned from heart rate, song duration, and profile data.
 
 Gameplay screen:
 The bar inward from the life meter is a score meter that fills based on your current dance point percentage.  It is colored by the worst judgement picked up yet.

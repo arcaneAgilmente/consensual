@@ -57,6 +57,11 @@ local function mod_player(pn, mod_name, value)
 	end
 end
 
+local profiles= {}
+for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+	profiles[pn]= PROFILEMAN:GetProfile(pn)
+end
+
 local bpm_displayer_interface= {}
 local bpm_displayer_interface_mt= { __index= bpm_displayer_interface }
 function bpm_displayer_interface:create_actors(name, player_number, x, y)
@@ -931,6 +936,46 @@ local function extra_for_haste()
 	}
 end
 
+local function make_profile_float_extra(func_name)
+	return {
+		name= func_name,
+		min_scale= 0,
+		scale= 0,
+		max_scale= 3,
+		initial_value= function(pn)
+			if profiles[pn] then
+				return profiles[pn]["Get"..func_name](profiles[pn])
+			end
+			return 0
+		end,
+		set= function(pn, val)
+			if profiles[pn] then
+				profiles[pn]["Set"..func_name](profiles[pn], val)
+			end
+		end,
+		validator= function(val)
+			return val >= 0
+		end
+	}
+end
+
+local function make_profile_bool_extra(name, true_text, false_text, func_name)
+	return {
+		true_text= true_text, false_text= false_text,
+		get= function(pn)
+			if profiles[pn] then
+				return profiles[pn]["Get"..func_name](profiles[pn])
+			end
+			return false
+		end,
+		set= function(pn, val)
+			if profiles[pn] then
+				profiles[pn]["Set"..func_name](profiles[pn], val)
+			end
+		end
+	}
+end
+
 local function make_menu_of_float_set(float_set, is_angle)
 	local margs= {}
 	for i, fl in ipairs(float_set) do
@@ -1134,6 +1179,20 @@ local decorations= {
 	{ name= "Noteskin", meta= options_sets.noteskins},
 }
 
+local profile_options= {
+	{ name= "Weight", meta= options_sets.adjustable_float,
+	  args= make_profile_float_extra("WeightPounds")},
+	{ name= "Voomax", meta= options_sets.adjustable_float,
+	  args= make_profile_float_extra("Voomax")},
+	{ name= "Birth Year", meta= options_sets.adjustable_float,
+	  args= make_profile_float_extra("BirthYear")},
+	{ name= "Calorie Method", meta= options_sets.boolean_option,
+		args= make_profile_bool_extra(
+			"Calorie Method","Heart Rate","Step Count","IgnoreStepCountCalories")},
+	{ name= "Gender", meta= options_sets.boolean_option,
+		args= make_profile_bool_extra("Gender", "Male", "Female", "IsMale")},
+}
+
 local base_options= {
 	{ name= "Speed", meta= options_sets.speed},
 	{ name= "Rate", meta= options_sets.rate_mod,
@@ -1143,6 +1202,7 @@ local base_options= {
 		args= make_menu_of_float_set(perspective_mods) },
 	{ name= "Decorations", meta= options_sets.menu, args= decorations},
 	{ name= "Special", meta= options_sets.menu, args= special},
+	{ name= "Profile Options", meta= options_sets.menu, args= profile_options},
 	{ name= "Song tags", meta= options_sets.tags_menu, args= true},
 	{ name= "Chart mods", meta= options_sets.menu, args= chart_mods},
 	{ name= "Floaty mods", meta= options_sets.menu, args= floaty_mods},

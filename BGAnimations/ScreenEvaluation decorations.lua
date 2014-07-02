@@ -292,6 +292,8 @@ local reward_time_mt= {
 			local args= {Name= name, InitCommand= cmd(xy, x, y)}
 			self.frame= setmetatable({}, frame_helper_mt)
 			args[#args+1]= self.frame:create_actors("frame", .5, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
+			args[#args+1]= normal_text("used_text", "", solar_colors.uf_text(), 0, 0, .5)
+			args[#args+1]= normal_text("used_amount", "", solar_colors.f_text(), 0, 0, 1)
 			args[#args+1]= normal_text("reward_text", "", solar_colors.uf_text(), 0, 0, .5)
 			args[#args+1]= normal_text("reward_amount", "", solar_colors.f_text(), 0, 0, 1)
 			args[#args+1]= normal_text("remain_text", "", solar_colors.uf_text(), 0, 0, .5)
@@ -301,6 +303,8 @@ local reward_time_mt= {
 		find_actors= function(self, container)
 			self.container= container
 			self.frame:find_actors(container:GetChild(self.frame.name))
+			self.used_text= container:GetChild("used_text")
+			self.used_amount= container:GetChild("used_amount")
 			self.reward_text= container:GetChild("reward_text")
 			self.reward_amount= container:GetChild("reward_amount")
 			self.remain_text= container:GetChild("remain_text")
@@ -308,9 +312,18 @@ local reward_time_mt= {
 		end,
 		set= function(self, width, reward_time)
 			local next_y= 0
+			self.used_text:settext(get_string_wrapper("ScreenEvaluation", "Used"))
+			width_limit_text(self.used_text, width, .5)
+			self.used_text:y(next_y)
+			next_y= next_y + (24 * .75)
+			self.used_amount:settext(secs_to_str(get_last_song_time()))
+			width_limit_text(self.used_amount, width, 1)
+			self.used_amount:y(next_y)
+			next_y= next_y + (24 * .75)
 			if reward_time ~= 0 then
 				self.reward_text:settext(get_string_wrapper("ScreenEvaluation", "Reward"))
 				width_limit_text(self.reward_text, width, .5)
+				self.reward_text:y(next_y)
 				next_y= next_y + (24 * .75)
 				local reward_str= secs_to_str(reward_time)
 				if reward_time > 0 then
@@ -732,10 +745,18 @@ function profile_report_interface:create_actors(player_number)
 			local total_calories= pro:GetTotalCaloriesBurned()
 			local goal_pct= (today_calories/goal_calories)*100
 			local pstats= STATSMAN:GetCurStageStats():GetPlayerStageStats(player_number)
+			local song_calories= pstats:GetCaloriesBurned()
+			things_in_list[#things_in_list+1]= {
+				name= "Weight", number= num:format(pro:GetWeightPounds())}
+			if pro:GetIgnoreStepCountCalories() then
+				song_calories= cons_players[player_number].last_song_calories
+				things_in_list[#things_in_list+1]= {
+					name= "Heart Rate", number= cons_players[player_number].last_song_heart_rate}
+			end
+			things_in_list[#things_in_list+1]= {
+				name= "Calories Song", number= num:format(song_calories)}
 			things_in_list[#things_in_list+1]= {
 				name= "Calories Today", number= num:format(today_calories)}
-			things_in_list[#things_in_list+1]= {
-				name= "Calories Song", number= num:format(pstats:GetCaloriesBurned())}
 			if goal_calories > 0 then
 				things_in_list[#things_in_list+1]= {
 					name= "Goal Calories", number= num:format(goal_calories)}
@@ -1029,7 +1050,7 @@ local judge_name_data= {}
 local function make_judge_name_actors()
 	local args= {
 		Name= "judge_names",
-		InitCommand= cmd(xy, SCREEN_CENTER_X, SCREEN_TOP + 226) }
+		InitCommand= cmd(xy, SCREEN_CENTER_X, SCREEN_TOP + 240) }
 	local frame_pad= .5
 	if SCREEN_WIDTH == 640 then
 		frame_pad= 1
@@ -1336,7 +1357,7 @@ return Def.ActorFrame{
 	end,
 	make_banner_actor(),
 	make_player_specific_actors(),
-	reward_indicator:create_actors("reward", SCREEN_CENTER_X, SCREEN_TOP+150),
+	reward_indicator:create_actors("reward", SCREEN_CENTER_X, SCREEN_TOP+120),
 	make_judge_name_actors(),
 	make_graph_actors(),
 	Def.Actor{

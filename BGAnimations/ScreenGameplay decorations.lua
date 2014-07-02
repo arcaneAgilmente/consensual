@@ -302,8 +302,7 @@ end
 
 function bpm_feedback_interface:update()
 	if self.container then
-		local pstate= GAMESTATE:GetPlayerState(self.player_number)
-		if pstate and screen_gameplay.GetTrueBPS then
+		if screen_gameplay.GetTrueBPS then
 			local bpm= screen_gameplay:GetTrueBPS(self.player_number) * 60
 			self.tani:set_number(("%.0f"):format(bpm))
 		end
