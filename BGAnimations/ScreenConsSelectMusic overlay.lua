@@ -463,26 +463,18 @@ local input_functions= {
 				end
 }
 
-local input_maps= {
-	[input_mode_pad]= {
-		left= input_functions.scroll_left,
-		right= input_functions.scroll_right,
-		left_release= input_functions.stop_scroll,
-		right_release= input_functions.stop_scroll,
-		start= input_functions.interact,
-		back= input_functions.back
+local input_functions= {
+	InputEventType_FirstPress= {
+		MenuLeft= input_functions.scroll_left,
+		MenuRight= input_functions.scroll_right,
+		Start= input_functions.interact,
+		Back= input_functions.back
 	},
-	[input_mode_cabinet]= {
-		menu_left= input_functions.scroll_left,
-		menu_right= input_functions.scroll_right,
-		menu_left_release= input_functions.stop_scroll,
-		menu_right_release= input_functions.stop_scroll,
-		start= input_functions.interact,
-		back= input_functions.back
-	},
+	InputEventType_Release= {
+		MenuLeft= input_functions.stop_scroll,
+		MenuRight= input_functions.stop_scroll,
+	}
 }
-
-local curr_input_map= input_maps[get_input_mode()]
 
 local function adjust_difficulty(player, dir, sound)
 	local steps= gamestate_get_curr_steps(player)
@@ -505,87 +497,86 @@ end
 
 local codes= {
 	{ name= "sort_mode", ignore_release= true,
-		"up", "down", "up", "down" },
+		"Up", "Down", "Up", "Down" },
+	{ name= "sort_mode", ignore_release= true,
+		"UpLeft", "UpRight", "UpLeft", "UpRight" },
 	{ name= "sort_mode", ignore_release= false,
-		"menu_left", "menu_right" },
+		"MenuLeft", "MenuRight" },
 	{ name= "sort_mode", ignore_release= false,
-		ignore_press_list= {"menu_left", "menu_right", "start"},
-		ignore_release_list= {"menu_left_release", "menu_right_release"},
-		"select", "start" },
+		ignore_press_list= {"MenuLeft", "MenuRight", "Start"},
+		ignore_release_list= {"MenuLeft", "MenuRight"},
+		"Select", "Start" },
 	{ name= "diff_up", ignore_release= true,
-		"up", "up" },
+		"Up", "Up" },
+	{ name= "diff_up", ignore_release= true,
+		"UpLeft", "UpLeft" },
 	{ name= "diff_down", ignore_release= true,
-		"down", "down" },
+		"Down", "Down" },
+	{ name= "diff_down", ignore_release= true,
+		"UpRight", "UpRight" },
 	{ name= "diff_up", ignore_release= false, repeat_first_on_end= true,
-		ignore_press_list= {"menu_right", "start"},
+		ignore_press_list= {"MenuRight", "Start"},
 		ignore_release_list= {
-			"menu_left_release", "menu_right_release", "start_release"},
-		"select", "menu_left"},
+			"MenuLeft", "MenuRight", "Start"},
+		"Select", "MenuLeft"},
 	{ name= "diff_down", ignore_release= false, repeat_first_on_end= true,
-		ignore_press_list= {"menu_left", "start"},
+		ignore_press_list= {"MenuLeft", "Start"},
 		ignore_release_list= {
-			"menu_left_release", "menu_right_release", "start_release"},
-		"select", "menu_right"},
-	--{ name= "noob_mode", ignore_release= true,
-	--"left", "left", "left", "right", "right", "right", "up", "up",
-	--"up", "down", "down", "down" },
+			"MenuLeft", "MenuRight", "Start"},
+		"Select", "MenuRight"},
+	{ name= "noob_mode", ignore_release= true,
+		"Up", "Up", "Down", "Down", "Left", "Right", "Left", "Right"},
 	{ name= "simple_options_mode", ignore_release= true,
-	"left", "down", "right", "left", "down", "right" },
+	"Left", "Down", "Right", "Left", "Down", "Right" },
 	{ name= "all_options_mode", ignore_release= true,
-	"right", "down", "left", "right", "down", "left" },
+	"Right", "Down", "Left", "Right", "Down", "Left" },
 	{ name= "excessive_options_mode", ignore_release= true,
-		"left", "up", "right", "up", "left", "down", "right", "down", "left" },
+		"Left", "Up", "Right", "Up", "Left", "Down", "Right", "Down", "Left"},
 	{ name= "kyzentun_mode", ignore_release= true,
-		"right", "up", "left", "right", "up", "left" },
+		"Right", "Up", "Left", "Right", "Up", "Left" },
 	{ name= "unjoin", ignore_release= true,
-		"down", "left", "up", "down", "left", "up", "down", "left", "up" },
+		"Down", "Left", "Up", "Down", "Left", "Up", "Down", "Left", "Up"},
 }
 for i, v in ipairs(codes) do
 	v.curr_pos= { [PLAYER_1]= 1, [PLAYER_2]= 1}
 end
 
-local function key_on_list(key, list)
-	if list then
-		for i, entry in ipairs(list) do
-			if entry == key then
-				return true
-			end
-		end
-	end
-	return false
-end
-
-local function update_code_status(press, player)
+local function update_code_status(pn, code, press)
 	local triggered= {}
-	for i, v in ipairs(codes) do
-		if press == v[v.curr_pos[player]] then
-			v.curr_pos[player]= v.curr_pos[player] + 1
-			if v.curr_pos[player] > #v then
-				triggered[#triggered+1]= v.name
-				v.curr_pos[player]= 1
-				if v.repeat_first_on_end then
-					v.curr_pos[player]= 2
-				end
-			end
-		else
-			if press:find("release") then
-				local on_ignore= key_on_list(press, v.ignore_release_list)
-				if not v.ignore_release and not on_ignore then
-					v.curr_pos[player]= 1
+	local press_handlers= {
+		InputEventType_FirstPress= function(to_check)
+			if code == to_check[to_check.curr_pos[pn]] then
+				to_check.curr_pos[pn]= to_check.curr_pos[pn] + 1
+				if to_check.curr_pos[pn] > #to_check then
+					triggered[#triggered+1]= to_check.name
+					to_check.curr_pos[pn]= 1
+					if to_check.repeat_first_on_end then
+						to_check.curr_pos[pn]= 2
+					end
 				end
 			else
-				local on_ignore= key_on_list(press, v.ignore_press_list)
-				if not on_ignore then
-					v.curr_pos[player]= 1
+				if not string_in_table(code, to_check.ignore_press_list) then
+					to_check.curr_pos[pn]= 1
 				end
 			end
+		end,
+		InputEventType_Release= function(to_check)
+			if not to_check.ignore_release and
+			not string_in_table(code, to_check.ignore_release_list) then
+				to_check.curr_pos[pn]= 1
+			end
 		end
+	}
+	local handler= press_handlers[press]
+	if not handler then return triggered end
+	for i, v in ipairs(codes) do
+		handler(v)
 	end
 	return triggered
 end
 
-local function handle_triggered_codes(pn, code)
-	local triggered= update_code_status(code, pn)
+local function handle_triggered_codes(pn, code, button, press)
+	local triggered= update_code_status(pn, code, press)
 	for i, v in ipairs(triggered) do
 		local ctext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("code_text")
 		if ctext then
@@ -633,8 +624,8 @@ local function handle_triggered_codes(pn, code)
 		end
 	end
 	if #triggered == 0 then
-		if curr_input_map[code] then
-			curr_input_map[code]()
+		if input_functions[press] and input_functions[press][button] then
+			input_functions[press][button]()
 		end
 	end
 end
@@ -662,6 +653,113 @@ local function set_special_menu(pn, value)
 			tag_menus[pn]:update()
 		end
 	end
+end
+
+local function input(event)
+	local pn= event.PlayerNumber
+	local code= event.GameButton
+	local press= event.type
+	if not pn then return end
+	if GAMESTATE:IsSideJoined(pn) then
+		if entering_song then
+			if code == "Start" and press == "InputEventType_FirstPress" then
+				SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+				entering_song= 0
+				go_to_options= true
+			end
+		else
+			local menu_func= {
+				function()
+					if code == "Select" then
+						if press == "InputEventType_FirstPress" then
+							select_press_times[pn]= get_screen_time()
+						elseif press == "InputEventType_Release" then
+							if get_screen_time() - select_press_times[pn] <
+							special_menu_activate_time then
+								set_special_menu(pn, 2)
+							end
+						end
+					end
+					handle_triggered_codes(pn, event.button, code, press)
+				end,
+				function()
+					if code == "Select" and press == "InputEventType_FirstPress" then
+						set_special_menu(pn, 3)
+						return
+					end
+					if press == "InputEventType_Release" then return end
+					local handled, close, edit_pain=
+						song_props_menus[pn]:interpret_code(code)
+					if close then
+						if edit_pain then
+							pain_displays[pn]:enter_edit_mode()
+							set_special_menu(pn, 4)
+						else
+							set_special_menu(pn, 1)
+						end
+					end
+				end,
+				function()
+					if code == "Select" and press == "InputEventType_FirstPress" then
+						set_special_menu(pn, 1)
+						return
+					end
+					if press == "InputEventType_Release" then return end
+					local handled, close= tag_menus[pn]:interpret_code(code)
+					if close then
+						set_special_menu(pn, 1)
+					end
+				end,
+				function()
+					if press == "InputEventType_Release" then return end
+					local handled, close=pain_displays[pn]:interpret_code(code)
+					if close then
+						set_special_menu(pn, 1)
+					end
+				end
+			}
+			menu_func[in_special_menu[pn]]()
+		end
+	else
+		if param.Name == "Start" then
+			local curr_style_type= GAMESTATE:GetCurrentStyle():GetStyleType()
+			if curr_style_type == "StyleType_OnePlayerOneSide" then
+				if cons_join_player(pn) then
+					-- Give everybody enough tokens to play, as a way of disabling the stage system.
+					for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+						while GAMESTATE:GetNumStagesLeft(pn) < 3 do
+							GAMESTATE:AddStageToPlayer(pn)
+						end
+					end
+					SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+					cons_players[pn]:clear_init(pn)
+					pain_displays[pn]:fetch_config()
+					local cpm= GAMESTATE:GetPlayMode()
+					GAMESTATE:ApplyGameCommand(
+						"playmode," .. playmode_to_command[cpm], pn)
+					GAMESTATE:ApplyGameCommand("style,versus")
+					steps_display:update_steps_set()
+					-- Loading the profile for the joining player is not
+					-- possible without exposing several PROFILEMAN and GAMESTATE
+					-- functions.
+					local pref_diff= (GAMESTATE:GetPreferredDifficulty(pn) or
+															"Difficulty_Beginner")
+					local steps_list= get_filtered_sorted_steps_list()
+					local set_steps= false
+					for i, v in ipairs(steps_list) do
+						if v:GetDifficulty() == pref_diff then
+							set_steps= true
+							cons_set_current_steps(pn, v)
+						end
+					end
+					if not set_steps and steps_list[1] then
+						cons_set_current_steps(pn, steps_list[1])
+					end
+				end
+			end
+		end
+	end
+	update_player_cursors()
 end
 
 local function spew_song_specials(song)
@@ -714,9 +812,8 @@ return Def.ActorFrame {
 	end,
 	OnCommand= function(self)
 							 local top_screen= SCREENMAN:GetTopScreen()
-							 if top_screen.SetAllowLateJoin then
-								 top_screen:SetAllowLateJoin(true)
-							 end
+							 top_screen:SetAllowLateJoin(true)
+							 top_screen:AddInputCallback(input)
 							 change_sort_text(music_wheel.current_sort_name)
 						 end,
 	play_songCommand= function(self)
@@ -910,108 +1007,6 @@ return Def.ActorFrame {
 					end
 				end
 			end,
-		CodeMessageCommand=
-			function(self, param)
-				local pn = param.PlayerNumber
-				if GAMESTATE:IsSideJoined(pn) then
-					if get_screen_time() > 0.25 then
-						local code = param.Name
-						if entering_song then
-							if code == "start" then
-								SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
-								entering_song= 0
-								go_to_options= true
-							end
-						else
-							local menu_func= {
-								function()
-									if code == "select" then
-										select_press_times[pn]= get_screen_time()
-									end
-									if code == "select_release" and get_screen_time() -
-									select_press_times[pn] < special_menu_activate_time then
-										set_special_menu(pn, 2)
-									else
-										handle_triggered_codes(pn, code)
-									end
-								end,
-								function()
-									if code == "select" then
-										set_special_menu(pn, 3)
-										return
-									end
-									local handled, close, edit_pain=
-										song_props_menus[pn]:interpret_code(code)
-									if close then
-										if edit_pain then
-											pain_displays[pn]:enter_edit_mode()
-											set_special_menu(pn, 4)
-										else
-											set_special_menu(pn, 1)
-										end
-									end
-								end,
-								function()
-									if code == "select" then
-										set_special_menu(pn, 1)
-										return
-									end
-									local handled, close= tag_menus[pn]:interpret_code(code)
-									if close then
-										set_special_menu(pn, 1)
-									end
-								end,
-								function()
-									local handled, close=pain_displays[pn]:interpret_code(code)
-									if close then
-										set_special_menu(pn, 1)
-									end
-								end
-							}
-							menu_func[in_special_menu[pn]]()
-						end
-					end
-				else
-					if param.Name == "start" then
-						local curr_style_type= GAMESTATE:GetCurrentStyle():GetStyleType()
-						if curr_style_type == "StyleType_OnePlayerOneSide" then
-							if cons_join_player(pn) then
-								-- Give everybody enough tokens to play, as a way of disabling the stage system.
-								for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-									while GAMESTATE:GetNumStagesLeft(pn) < 3 do
-										GAMESTATE:AddStageToPlayer(pn)
-									end
-								end
-								SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
-								cons_players[pn]:clear_init(pn)
-								pain_displays[pn]:fetch_config()
-								local cpm= GAMESTATE:GetPlayMode()
-								GAMESTATE:ApplyGameCommand(
-									"playmode," .. playmode_to_command[cpm], pn)
-								GAMESTATE:ApplyGameCommand("style,versus")
-								steps_display:update_steps_set()
-								-- Loading the profile for the joining player is not
-								-- possible without exposing several PROFILEMAN and GAMESTATE
-								-- functions.
-								local pref_diff= (GAMESTATE:GetPreferredDifficulty(pn) or
-																"Difficulty_Beginner")
-								local steps_list= get_filtered_sorted_steps_list()
-								local set_steps= false
-								for i, v in ipairs(steps_list) do
-									if v:GetDifficulty() == pref_diff then
-										set_steps= true
-										cons_set_current_steps(pn, v)
-									end
-								end
-								if not set_steps and steps_list[1] then
-									cons_set_current_steps(pn, steps_list[1])
-								end
-							end
-						end
-					end
-				end
-				update_player_cursors()
-			end
 	},
 	normal_text("code_text", "", solar_colors.f_text(0), 0, 0, .75),
 	normal_text("sort", "Sort", solar_colors.uf_text(), sort_text_x,

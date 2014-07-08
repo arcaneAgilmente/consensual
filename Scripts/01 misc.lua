@@ -616,6 +616,9 @@ end
 function secs_to_str(secs)
 	local minutes= math.round_to_zero(secs / 60)
 	local seconds= math.round_to_zero(secs % 60)
+	if secs < 0 then
+		seconds= math.abs(math.round_to_zero(secs % -60))
+	end
 	if seconds < 10 then
 		return minutes .. ":" .. "0" .. seconds
 	end

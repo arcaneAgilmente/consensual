@@ -370,7 +370,7 @@ local function interpret_code(pn, code)
 			end
 		end
 	else
-		if code == "start" then
+		if code == "Start" then
 			if current_menu ~= main_menu then
 				current_menu.display:hide()
 			end
@@ -423,29 +423,36 @@ do
 	star_points= math.round(circ * scale_factor * 1)
 end
 
-local evbutton_to_code= {
-	Left= "left",
-	Right= "right",
-	Up= "up",
-	Down= "down",
-	MenuLeft= "left",
-	MenuRight= "right",
-	MenuUp= "up",
-	MenuDown= "down",
-	Start= "start"
-}
-
 local function input(event)
-	Trace("Received input")
-	rec_print_table(event)
-	if event.PlayerNumber and evbutton_to_code[event.button] and
-	event.type ~= "InputEventType_Release" then
-		interpret_code(event.PlayerNumber, evbutton_to_code[event.button])
+	if event.type == "InputEventType_Release" then return false end
+	if event.DeviceInput.button == "DeviceButton_z" then
+		SCREENMAN:AddNewScreenToTop("ScreenTextEntry")
+		local text_entry_settings= {
+			Question= "Pantsu?",
+			InitialAnswer= "Shimapan",
+			MaxInputLength= 32,
+			Validate=function(str, err)
+				return true, ""
+			end,
+			OnOK= function(str)
+				Trace("TEOK: " .. str)
+			end,
+			OnCancel= function()
+				Trace("TECancel:")
+			end,
+			ValidateAppend= function(str)
+				return false
+			end
+		}
+		SCREENMAN:GetTopScreen():Load(text_entry_settings)
+	end
+	if event.DeviceInput.button == "DeviceButton_x" then
+		SCREENMAN:SetNewScreen("ScreenActorScrollerDemo")
+	end
+	if event.PlayerNumber and event.GameButton then
+		interpret_code(event.PlayerNumber, event.GameButton)
 		update_cursor_pos()
 		return true
-	end
-	if event.DeviceInput.button == "DeviceButton_z" then
-		SCREENMAN:GetTopScreen():RemoveInputCallback(input)
 	end
 	return false
 end
@@ -457,21 +464,9 @@ local args= {
 							 end,
 	Def.Actor{
 		Name= "code_interpreter",
-		InitCommand= function(self)
-									 self:effectperiod(2^16)
-									 timer_actor= self
-								 end,
 		OnCommand= function(self)
-			--Trace("Adding input callback.")
-			--SCREENMAN:GetTopScreen():AddInputCallback(input)
+			SCREENMAN:GetTopScreen():AddInputCallback(input)
 		end,
-		CodeMessageCommand=
-			function(self, param)
-				if self:GetSecsIntoEffect() > 0.25 then
-					interpret_code(param.PlayerNumber, param.Name)
-					update_cursor_pos()
-				end
-			end
 	},
 	star_amv(
 		"lstar", SCREEN_WIDTH * .25, star_y, star_rad, 0, star_points, nil,

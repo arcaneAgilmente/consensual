@@ -113,6 +113,7 @@ options_sets.pain_menu= {
 			self.container:visible(true)
 			self.inc_arrow:visible(false)
 			self.dec_arrow:visible(false)
+			self:update_cursor()
 		end,
 		deactivate= function(self)
 			self.container:visible(false)
@@ -147,17 +148,17 @@ options_sets.pain_menu= {
 				return unpack(sub_ret)
 			end
 			local num_limit= self:get_limit()
-			if code == "left" then
+			if code == "MenuLeft" or code == "MenuUp" then
 				self.number_val= self.number_val - 1
 				if self.number_val < 1 then self.number_val= num_limit end
 				self:update_number()
 				return true, true, false
-			elseif code == "right" then
+			elseif code == "MenuRight" or code == "MenuDown" then
 				self.number_val= self.number_val + 1
 				if self.number_val > num_limit then self.number_val= 1 end
 				self:update_number()
 				return true, true, false
-			elseif code == "start" then
+			elseif code == "Start" then
 				return true, false, true
 			end
 			return false, false, false
@@ -328,10 +329,8 @@ options_sets.pain_menu= {
 		update_cursor= function(self)
 			local item= self:get_cursor_element()
 			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(item.container)
-			local xp, yp= rec_calc_actor_pos(item.container)
-			local cx, cy= rec_calc_actor_pos(self.container)
-			xp= xp - cx
-			yp= yp - cy
+			local xp= item.container:GetDestX()
+			local yp= item.container:GetDestY()
 			local w, h= xmx - xmn + 2, ymx - ymn + 2
 			self.cursor:refit(xp, yp, w, h)
 		end
@@ -416,50 +415,48 @@ pain_display_mt= {
 		end,
 		interpret_code= function(self, code)
 			-- return code: handled, close
-			if code == "select" then
+			if code == "Select" then
 				self.menu:deactivate()
 				self.cursor:hide()
 				self.mode= 1
 				self:update_all_items()
 				return true, true
 			end
-			if use_cabinet_input() then
-				if code == "menu_left" then
-					code= "up"
-				elseif code == "menu_right" then
-					code= "down"
-				elseif code ~= "start" then
-					return false, false
-				else
-					code= ""
+			local two_menu_directions=
+				PREFSMAN:GetPreference("ArcadeOptionsNavigation")
+			if two_menu_directions then
+				if code == "MenuLeft" then
+					code= "MenuUp"
+				elseif code == "MenuRight" then
+					code= "MenuDown"
 				end
 			end
 			if self.mode == 2 then
-				if code == "up" then
+				if code == "MenuUp" then
 					self.cursor_pos= self.cursor_pos - 1
 					if self.cursor_pos < 1 then self.cursor_pos= pain_rows * 2 end
 					self:update_cursor()
 					return true, false
-				elseif code == "down" then
+				elseif code == "MenuDown" then
 					self.cursor_pos= self.cursor_pos + 1
 					if self.cursor_pos > pain_rows * 2 then self.cursor_pos= 1 end
 					self:update_cursor()
 					return true, false
-				elseif code == "left" then
+				elseif code == "MenuLeft" then
 					self.cursor_pos= self.cursor_pos - pain_rows
 					if self.cursor_pos < 1 then
 						self.cursor_pos= self.cursor_pos + (pain_rows * 2)
 					end
 					self:update_cursor()
 					return true, false
-				elseif code == "right" then
+				elseif code == "MenuRight" then
 					self.cursor_pos= self.cursor_pos + pain_rows
 					if self.cursor_pos > pain_rows * 2 then
 						self.cursor_pos= self.cursor_pos - (pain_rows * 2)
 					end
 					self:update_cursor()
 					return true, false
-				elseif code == "start" then
+				elseif code == "Start" then
 					local menu_x
 					local item_config
 					if self.cursor_pos <= pain_rows then

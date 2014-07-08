@@ -472,6 +472,68 @@ local function maybe_finish()
 	SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
 end
 
+local function input(event)
+	local pn= event.PlayerNumber
+	local code= event.GameButton
+	local press= event.type
+	if not name_displays[pn] then return end
+	if press == "InputEventType_Release" then return end
+	if code == "MenuLeft" then
+		keyboard:move_cursor_x(pn, -1)
+	elseif code == "MenuRight" then
+		keyboard:move_cursor_x(pn, 1)
+	elseif code == "MenuUp" then
+		keyboard:move_cursor_y(pn, -1)
+	elseif code == "MenuDown" or code == "Select" then
+		keyboard:move_cursor_y(pn, 1)
+	elseif code == "Start" then
+		local key_ret= keyboard:interact(pn)
+		if key_ret == "up" then
+			keyboard:move_cursor_y(pn, -1)
+		elseif key_ret == "down" then
+			keyboard:move_cursor_y(pn, 1)
+		elseif key_ret == "shift" then
+			name_displays[pn]:toggle_shift()
+		elseif key_ret == "backspace" then
+			if unfinished_players[pn] then
+				name_displays[pn]:remove_text()
+			end
+		elseif key_ret == "enter" then
+			local screen= SCREENMAN:GetTopScreen()
+			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+			local player_name= name_displays[pn]:get_text()
+			local profile= PROFILEMAN:GetProfile(pn)
+			if profile then
+				profile:SetLastUsedHighScoreName(player_name)
+			end
+			GAMESTATE:StoreRankingName(pn, player_name)
+			unfinished_players[pn]= false
+			maybe_finish()
+		elseif key_ret == "sc_left" then
+			if disps_on_screen < #combined_play_history then
+				score_wheel:scroll_by_amount(-1)
+			end
+		elseif key_ret == "sc_right" then
+			if disps_on_screen < #combined_play_history then
+				score_wheel:scroll_by_amount(1)
+			end
+		elseif key_ret == "screenshot" then
+			local prefix= "name_entry_"
+			local saved, screenshotname= SaveScreenshot(pn, true, false, prefix, "")
+			if not saved then
+				Trace("Failed to save a screenshot?")
+			end
+		elseif key_ret then
+			if unfinished_players[pn] then
+				local full= name_displays[pn]:add_text(key_ret)
+				if full then
+					keyboard:move_to_exit(pn)
+				end
+			end
+		end
+	end
+end
+
 local args= {
 	InitCommand= function(self)
 								 keyboard:find_actors(self:GetChild(keyboard.name))
@@ -484,70 +546,9 @@ local args= {
 	keyboard:create_actors("keyboard"),
 	Def.ActorFrame{
 		Name= "code_interpreter",
-		InitCommand= function(self)
-									 self:effectperiod(2^16)
-								 end,
-		CodeMessageCommand=
-			function(self, param)
-				local pn= param.PlayerNumber
-				local code= param.Name
-				if self:GetSecsIntoEffect() < 0.25 then return end
-				if not name_displays[pn] then return end
-				if code == "left" or code == "menu_left" then
-					keyboard:move_cursor_x(pn, -1)
-				elseif code == "right" or code == "menu_right" then
-					keyboard:move_cursor_x(pn, 1)
-				elseif code == "up" or code == "select" then
-					keyboard:move_cursor_y(pn, -1)
-				elseif code == "down" then
-					keyboard:move_cursor_y(pn, 1)
-				elseif code == "start" then
-					local key_ret= keyboard:interact(pn)
-					if key_ret == "up" then
-						keyboard:move_cursor_y(pn, -1)
-					elseif key_ret == "down" then
-						keyboard:move_cursor_y(pn, 1)
-					elseif key_ret == "shift" then
-						name_displays[pn]:toggle_shift()
-					elseif key_ret == "backspace" then
-						if unfinished_players[pn] then
-							name_displays[pn]:remove_text()
-						end
-					elseif key_ret == "enter" then
-						local screen= SCREENMAN:GetTopScreen()
-						SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
-						local player_name= name_displays[pn]:get_text()
-						local profile= PROFILEMAN:GetProfile(pn)
-						if profile then
-							profile:SetLastUsedHighScoreName(player_name)
-						end
-						GAMESTATE:StoreRankingName(pn, player_name)
-						unfinished_players[pn]= false
-						maybe_finish()
-					elseif key_ret == "sc_left" then
-						if disps_on_screen < #combined_play_history then
-							score_wheel:scroll_by_amount(-1)
-						end
-					elseif key_ret == "sc_right" then
-						if disps_on_screen < #combined_play_history then
-							score_wheel:scroll_by_amount(1)
-						end
-					elseif key_ret == "screenshot" then
-						local prefix= "name_entry_"
-						local saved, screenshotname= SaveScreenshot(pn, true, false, prefix, "")
-						if not saved then
-							Trace("Failed to save a screenshot?")
-						end
-					elseif key_ret then
-						if unfinished_players[pn] then
-							local full= name_displays[pn]:add_text(key_ret)
-							if full then
-								keyboard:move_to_exit(pn)
-							end
-						end
-					end
-				end
-			end
+		OnCommand= function(self)
+			SCREENMAN:GetTopScreen():AddInputCallback(input)
+		end,
 	}
 }
 

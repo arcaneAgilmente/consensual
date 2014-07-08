@@ -80,8 +80,11 @@ local non_mine_tnses= {
 	TapNoteScore_W4= true,
 	TapNoteScore_W5= true,
 	TapNoteScore_Miss= true,
+	TapNoteScore_CheckpointHit= true,
+	TapNoteScore_CheckpointMiss= true,
 }
 
+--[[
 local tns_values= {
 	TapNoteScore_CheckpointHit=
 		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightCheckpointHit"),
@@ -110,6 +113,20 @@ local tns_values= {
 	HoldNoteScore_MissedHold=
 		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightLetGo"),
 }
+]]
+local tns_values= {}
+local function add_value_set(enum_table)
+	for i, tns in ipairs(enum_table) do
+		local metric_name= "PercentScoreWeight" .. ToEnumShortString(tns)
+		if metric_name ~= "PercentScoreWeightNone" then
+			local value= THEME:GetMetric("ScoreKeeperNormal", metric_name)
+			Trace("Fetching value for " .. tns .. ": " .. metric_name .. ": " .. tostring(value))
+			tns_values[tns]= value
+		end
+	end
+end
+add_value_set(TapNoteScore)
+add_value_set(HoldNoteScore)
 
 local tns_reverse= TapNoteScore:Reverse()
 local tns_cont_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToContinueCombo")]

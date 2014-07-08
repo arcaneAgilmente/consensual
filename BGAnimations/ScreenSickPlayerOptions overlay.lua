@@ -1,4 +1,3 @@
-local timer_actor
 local line_height= 24
 local option_set_elements= (SCREEN_HEIGHT / line_height) - 5
 local sect_width= SCREEN_WIDTH/2
@@ -37,14 +36,6 @@ if GAMESTATE:GetCoinMode() ~= "CoinMode_Home" then
 		new_rate= math.round(new_rate * 100) / 100
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(new_rate)
 		rate_coordinator:notify(new_rate, true)
-	end
-end
-
-local function get_screen_time()
-	if timer_actor then
-		return timer_actor:GetSecsIntoEffect()
-	else
-		return 0
 	end
 end
 
@@ -676,7 +667,7 @@ local options_menu_mt= {
 				local oss= self.options_set_stack
 				local top_set= oss[#oss]
 				local funs= {
-					left=
+					MenuLeft=
 						function(self)
 							if top_set:can_exit() then
 								self:pop_options_set_stack()
@@ -684,7 +675,7 @@ local options_menu_mt= {
 							end
 						end,
 				}
-				if not use_cabinet_input() then
+				if PREFSMAN:GetPreference("ArcadeOptionsNavigation") then
 					if funs[code] then funs[code](self) return true end
 				end
 				local handled, new_set_data= top_set:interpret_code(code)
@@ -693,7 +684,7 @@ local options_menu_mt= {
 						self:push_options_set_stack(new_set_data.meta, new_set_data.args)
 					end
 				else
-					if code == "start" and #oss > 1 then
+					if code == "Start" and #oss > 1 then
 						handled= true
 						self:pop_options_set_stack()
 					end
@@ -1223,32 +1214,32 @@ function args:ExitOptionsCommand()
 	SCREENMAN:SetNewScreen("ScreenStageInformation")
 end
 
-args[#args+1]= Def.Actor{
-	Name= "code_interpreter",
-	InitCommand= function(self)
-								 self:effectperiod(2^16)
-								 timer_actor= self
-							 end,
-	CodeMessageCommand=
-		function(self, param)
-			if self:GetSecsIntoEffect() > 0.25 then
-				if menus[param.PlayerNumber] then
-					if not menus[param.PlayerNumber]:interpret_code(param.Name) then
-						if param.Name == "start" then
-							local all_on_exit= true
-							for k, m in pairs(menus) do
-								if not m:can_exit_screen() then
-									all_on_exit= false
-								end
-							end
-							if all_on_exit then
-								SCREENMAN:GetTopScreen():queuecommand("ExitOptions")
-							end
-						end
+local function input(event)
+	if event.type == "InputEventType_Release" then return end
+	local pn= event.PlayerNumber
+	local code= event.GameButton
+	if menus[pn] then
+		if not menus[pn]:interpret_code(code) then
+			if code == "Start" then
+				local all_on_exit= true
+				for k, m in pairs(menus) do
+					if not m:can_exit_screen() then
+						all_on_exit= false
 					end
+				end
+				if all_on_exit then
+					SCREENMAN:GetTopScreen():queuecommand("ExitOptions")
 				end
 			end
 		end
+	end
+end
+
+args[#args+1]= Def.Actor{
+	Name= "code_interpreter",
+	OnCommand= function(self)
+		SCREENMAN:GetTopScreen():AddInputCallback(input)
+	end,
 }
 
 return Def.ActorFrame(args)

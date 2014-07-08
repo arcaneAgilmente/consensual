@@ -748,7 +748,7 @@ function profile_report_interface:create_actors(player_number)
 			local song_calories= pstats:GetCaloriesBurned()
 			things_in_list[#things_in_list+1]= {
 				name= "Weight", number= num:format(pro:GetWeightPounds())}
-			if pro:GetIgnoreStepCountCalories() then
+			if pro.GetIgnoreStepCountCalories and pro:GetIgnoreStepCountCalories() then
 				song_calories= cons_players[player_number].last_song_calories
 				things_in_list[#things_in_list+1]= {
 					name= "Heart Rate", number= cons_players[player_number].last_song_heart_rate}
@@ -921,45 +921,47 @@ local function set_special_menu(pn, spid)
 	end
 end
 
-local function filter_input_for_menus(pn, code)
+local function filter_input_for_menus(pn, code, press)
 	local handled, close= false, false
 	local spid= special_menu_states[pn]
 	if spid == 0 then
-		if code == "select" then
-			select_press_times[pn]= GetTimeSinceStart()
-		elseif code == "select_release" then
-			if GetTimeSinceStart() - select_press_times[pn] <
-			special_menu_activate_time then
-				set_special_menu(pn, 1)
-				handled= true
-			else
-				local song_name=
-					song_get_dir(gamestate_get_curr_song()):sub(2):gsub("/", "_")
-				local steps= gamestate_get_curr_steps(pn)
-				local prefix= song_name .. steps_to_string(steps) .. "_"
-				local saved, screenshotname= SaveScreenshot(pn, true, false, prefix, "")
-				local stats= SCREENMAN:GetTopScreen():GetStageStats()
-				if saved then
-					local prof= PROFILEMAN:GetProfile(pn)
-					local hs= stats:GetPlayerStageStats(pn):GetHighScore()
-					if prof then
-						prof:AddScreenshot(hs, screenshotname)
-					end
+		if code == "Select" then
+			if press == "InputEventType_FirstPress" then
+				select_press_times[pn]= GetTimeSinceStart()
+			elseif press == "InputEventType_Release" then
+				if GetTimeSinceStart() - select_press_times[pn] <
+				special_menu_activate_time then
+					set_special_menu(pn, 1)
+					handled= true
 				else
-					Trace("Failed to save a screenshot?")
+					local song_name=
+						song_get_dir(gamestate_get_curr_song()):sub(2):gsub("/", "_")
+					local steps= gamestate_get_curr_steps(pn)
+					local prefix= song_name .. steps_to_string(steps) .. "_"
+					local saved, screenshotname= SaveScreenshot(pn, true, false, prefix, "")
+					local stats= SCREENMAN:GetTopScreen():GetStageStats()
+					if saved then
+						local prof= PROFILEMAN:GetProfile(pn)
+						local hs= stats:GetPlayerStageStats(pn):GetHighScore()
+						if prof then
+							prof:AddScreenshot(hs, screenshotname)
+						end
+					else
+						Trace("Failed to save a screenshot?")
+					end
+					handled= true
 				end
-				handled= true
 			end
-		elseif code == "start" then
+		elseif code == "Start" and press == "InputEventType_FirstPress" then
 			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
 			SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
 		end
 	else
-		if code == "select_release" then
+		if code == "Select" and press == "InputEventType_Release" then
 			local next_sp= spid + 1
 			if next_sp > #special_menus then next_sp= 0 end
 			set_special_menu(pn, next_sp)
-		else
+		elseif press ~= "InputEventType_Release" then
 			handled, close= special_menus[spid][pn]:interpret_code(code)
 			if handled then
 				update_player_cursor(pn)
@@ -1350,6 +1352,38 @@ local function set_visible_score_data(pn, index)
 	end
 end
 
+local function input(event)
+	local pn= event.PlayerNumber
+	local code= event.GameButton
+	local press= event.type
+	if not score_data_viewing_indices[pn] then return end
+	if filter_input_for_menus(pn, code, press) then return end
+	if press == "InputEventType_Release" then return end
+	local view_changers= {MenuLeft= true, MenuRight= true}
+	if view_changers[code] then
+		toggle_visible_indicator(pn, dance_pads[pn], score_data_viewing_indices[pn])
+		if code == "MenuLeft" then
+			score_data_viewing_indices[pn]= score_data_viewing_indices[pn] - 1
+		elseif code == "MenuRight" then
+			score_data_viewing_indices[pn]= score_data_viewing_indices[pn] + 1
+		end
+		if score_data_viewing_indices[pn] < -2 then
+			score_data_viewing_indices[pn]= #score_datas[pn]
+		elseif (score_data_viewing_indices[pn] == -2 and
+						showing_profile_on_other_side) then
+			score_data_viewing_indices[pn]= #score_datas[pn]
+		elseif score_data_viewing_indices[pn] > #score_datas[pn] then
+			if showing_profile_on_other_side then
+				score_data_viewing_indices[pn]= -1
+			else
+				score_data_viewing_indices[pn]= -2
+			end
+		end
+		toggle_visible_indicator(pn, dance_pads[pn], score_data_viewing_indices[pn])
+		set_visible_score_data(pn, score_data_viewing_indices[pn])
+	end
+end
+
 return Def.ActorFrame{
 	Name= "SEd",
 	InitCommand= function(self)
@@ -1363,6 +1397,7 @@ return Def.ActorFrame{
 	Def.Actor{
 		Name= "Honmono dayo",
 		OnCommand= function(self)
+			SCREENMAN:GetTopScreen():AddInputCallback(input)
 			for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 				if cons_players[pn].fake_judge then
 					set_visible_score_data(pn, -3)
@@ -1385,41 +1420,6 @@ return Def.ActorFrame{
 	},
 	Def.Actor{
 		Name= "Vacuum Cleaner D27",
-		InitCommand= function(self)
-			self:effectperiod(2^16)
-			timer_actor= self
-		end,
-		CodeMessageCommand= function(self, param)
-			if self:GetSecsIntoEffect() < 0.25 then return end
-			local code_name= param.Name
-			local pn= param.PlayerNumber
-			if not score_data_viewing_indices[pn] then return end
-			if filter_input_for_menus(pn, code_name) then return end
-			local view_changers= { left= true, menu_left= true,
-														 right= true, menu_right= true}
-			if view_changers[code_name] then
-				toggle_visible_indicator(pn, dance_pads[pn], score_data_viewing_indices[pn])
-				if code_name == "left" or code_name == "menu_left" then
-					score_data_viewing_indices[pn]= score_data_viewing_indices[pn] - 1
-				elseif code_name == "right" or code_name == "menu_right" then
-					score_data_viewing_indices[pn]= score_data_viewing_indices[pn] + 1
-				end
-				if score_data_viewing_indices[pn] < -2 then
-					score_data_viewing_indices[pn]= #score_datas[pn]
-				elseif (score_data_viewing_indices[pn] == -2 and
-								showing_profile_on_other_side) then
-					score_data_viewing_indices[pn]= #score_datas[pn]
-				elseif score_data_viewing_indices[pn] > #score_datas[pn] then
-					if showing_profile_on_other_side then
-						score_data_viewing_indices[pn]= -1
-					else
-						score_data_viewing_indices[pn]= -2
-					end
-				end
-				toggle_visible_indicator(pn, dance_pads[pn], score_data_viewing_indices[pn])
-				set_visible_score_data(pn, score_data_viewing_indices[pn])
-			end
-		end,
 		OffCommand= function(self)
 			filter_bucket_songs_by_time()
 		end

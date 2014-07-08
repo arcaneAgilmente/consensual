@@ -206,7 +206,7 @@ option_set_general_mt= {
 		set_status= function() end, -- This is meant to be overridden.
 		can_exit=
 			function(self)
-				return self.cursor_pos == 1
+				return self.info_set[self.cursor_pos].text == up_element().text
 			end,
 		get_cursor_element=
 			function(self)
@@ -219,7 +219,7 @@ option_set_general_mt= {
 		interpret_code=
 			function(self, code)
 				local funs= {
-					up= function(self)
+					MenuUp= function(self)
 								if self.cursor_pos > 1 then
 									self.cursor_pos= self.cursor_pos - 1
 								else
@@ -228,7 +228,7 @@ option_set_general_mt= {
 								self.display:scroll(self.cursor_pos)
 								return true
 							end,
-					down= function(self)
+					MenuDown= function(self)
 									if self.cursor_pos < #self.info_set then
 										self.cursor_pos= self.cursor_pos + 1
 									else
@@ -237,7 +237,7 @@ option_set_general_mt= {
 									self.display:scroll(self.cursor_pos)
 									return true
 								end,
-					start= function(self)
+					Start= function(self)
 									 if self.info_set[self.cursor_pos].text ==
 										 up_element().text then
 										 -- This position is the "up" element that moves the
@@ -257,14 +257,11 @@ option_set_general_mt= {
 									 end
 								 end
 				}
-				local cabinet_funs= {
-					menu_left= funs.up, menu_right= funs.down, start= funs.start
-				}
-				local use_funs= funs
-				if use_cabinet_input() then
-					use_funs= cabinet_funs
-				end
-				if use_funs[code] then return use_funs[code](self) end
+				-- This breaks the feature of left being usable as back on the up
+				-- element, but I don't think that's important.
+				funs.MenuLeft= funs.MenuUp
+				funs.MenuRight= funs.MenuDown
+				if funs[code] then return funs[code](self) end
 				return false
 			end
 }}

@@ -1,14 +1,5 @@
 ops_level_none, ops_level_simple, ops_level_all, ops_level_excessive= 1, 2, 3, 4
 
-input_mode_pad, input_mode_cabinet= 1, 2
-function use_cabinet_input()
-	return PREFSMAN:GetPreference("OnlyDedicatedMenuButtons")
-end
-
-function get_input_mode()
-	return (use_cabinet_input() and input_mode_cabinet) or input_mode_pad
-end
-
 mine_effects= {
 	{ name= "stealth",
 		apply=
@@ -315,19 +306,14 @@ function cons_player:combo_qual_reset()
 end
 
 local function empty_judge_count_set()
-	return {
-		TapNoteScore_W1= 0,
-		TapNoteScore_W2= 0,
-		TapNoteScore_W3= 0,
-		TapNoteScore_W4= 0,
-		TapNoteScore_W5= 0,
-		TapNoteScore_Miss= 0,
-		TapNoteScore_HitMine= 0,
-		TapNoteScore_AvoidMine= 0,
-		HoldNoteScore_Held= 0,
-		HoldNoteScore_LetGo= 0,
-		HoldNoteScore_MissedHold= 0,
-	}
+	local ret= {}
+	for i, tns in ipairs(TapNoteScore) do
+		ret[tns]= 0
+	end
+	for i, tns in ipairs(HoldNoteScore) do
+		ret[tns]= 0
+	end
+	return ret
 end
 
 function cons_player:stage_stats_reset()
@@ -670,12 +656,13 @@ function song_short_enough(s)
 	if GAMESTATE:IsEventMode() then
 		return true
 	else
+		local maxlen= time_remaining + song_length_grace
 		if s.GetLastSecond then
 			local len= s:GetLastSecond() - s:GetFirstSecond()
-			return len <= time_remaining + song_length_grace and len > 0
+			return len <= maxlen and len > 0
 		else
 			local steps_type= GAMESTATE:GetCurrentStyle():GetStepsType()
-			return (s:GetTotalSeconds(steps_type) or 0) <= time_remaining
+			return (s:GetTotalSeconds(steps_type) or 0) <= maxlen
 		end
 	end
 end
