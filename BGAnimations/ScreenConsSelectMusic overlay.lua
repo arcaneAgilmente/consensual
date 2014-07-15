@@ -721,7 +721,7 @@ local function input(event)
 			menu_func[in_special_menu[pn]]()
 		end
 	else
-		if param.Name == "Start" then
+		if code == "Start" then
 			local curr_style_type= GAMESTATE:GetCurrentStyle():GetStyleType()
 			if curr_style_type == "StyleType_OnePlayerOneSide" then
 				if cons_join_player(pn) then

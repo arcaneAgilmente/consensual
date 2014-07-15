@@ -425,30 +425,6 @@ end
 
 local function input(event)
 	if event.type == "InputEventType_Release" then return false end
-	if event.DeviceInput.button == "DeviceButton_z" then
-		SCREENMAN:AddNewScreenToTop("ScreenTextEntry")
-		local text_entry_settings= {
-			Question= "Pantsu?",
-			InitialAnswer= "Shimapan",
-			MaxInputLength= 32,
-			Validate=function(str, err)
-				return true, ""
-			end,
-			OnOK= function(str)
-				Trace("TEOK: " .. str)
-			end,
-			OnCancel= function()
-				Trace("TECancel:")
-			end,
-			ValidateAppend= function(str)
-				return false
-			end
-		}
-		SCREENMAN:GetTopScreen():Load(text_entry_settings)
-	end
-	if event.DeviceInput.button == "DeviceButton_x" then
-		SCREENMAN:SetNewScreen("ScreenActorScrollerDemo")
-	end
 	if event.PlayerNumber and event.GameButton then
 		interpret_code(event.PlayerNumber, event.GameButton)
 		update_cursor_pos()

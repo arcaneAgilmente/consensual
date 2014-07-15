@@ -288,6 +288,7 @@ local function make_rival_bucket()
 		return {name= {value= "No Machine Profile"}, contents= {}}
 	end
 	local all_names= machine_profile:GetAllUsedHighScoreNames()
+	if #all_names < 1 then return nil end
 	local name_sort_factor= {
 		name= "Rival Name", get_names= function(n) return {n} end,
 		uses_depth= true, can_join= noop_false}
