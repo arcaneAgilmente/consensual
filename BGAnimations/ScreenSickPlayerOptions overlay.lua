@@ -550,6 +550,7 @@ options_sets.noteskins= {
 					end
 					info.underline= true
 					self.display:set_element_info(self.cursor_pos, info)
+					self:set_status()
 					return true
 				else
 					return false
@@ -558,7 +559,7 @@ options_sets.noteskins= {
 		set_status=
 			function(self)
 				self.display:set_heading("Noteskin")
-				self.display:set_display(self.ops[self.selected_skin])
+				self.display:set_display(mod_player(self.player_number, "NoteSkin"))
 			end
 }}
 

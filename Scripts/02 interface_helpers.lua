@@ -266,8 +266,8 @@ end
 function rec_calc_actor_pos(actor)
 	-- This doesn't handle zooming.
 	if not actor then return 0, 0 end
-	local x= actor:GetX()
-	local y= actor:GetY()
+	local x= actor:GetDestX()
+	local y= actor:GetDestY()
 	local px, py= rec_calc_actor_pos(actor:GetParent())
 	return x+px, y+py
 end
