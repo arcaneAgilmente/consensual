@@ -3,11 +3,6 @@ options_sets.tags_menu= {
 		initialize= function(self, player_number, have_up_el)
 			self.player_number= player_number
 			self.have_up_el= have_up_el
-			if self.have_up_el then
-				self.tags_offset= 3
-			else
-				self.tags_offset= 2
-			end
 			self.in_machine_tag_mode= false
 			self:reset_info()
 			self:update()
@@ -17,6 +12,8 @@ options_sets.tags_menu= {
 			self.real_info_set= {}
 			if self.have_up_el then
 				self.real_info_set[1]= up_element()
+			else
+				self.real_info_set[#self.real_info_set+1]= {text="Exit Tags menu"}
 			end
 			self.real_info_set[#self.real_info_set+1]= {text= "Reload tags"}
 			if self.in_machine_tag_mode then
@@ -26,6 +23,7 @@ options_sets.tags_menu= {
 				self.prof_slot= pn_to_profile_slot(self.player_number)
 				self.real_info_set[#self.real_info_set+1]= {text="Edit Machine tags"}
 			end
+			self.tags_offset= #self.real_info_set
 			self.tag_set= usable_tags[self.prof_slot] or {}
 			for i, tag_name in ipairs(self.tag_set) do
 				self.real_info_set[#self.real_info_set+1]= {text= tag_name}
@@ -41,6 +39,9 @@ options_sets.tags_menu= {
 		interpret_start= function(self)
 			if self.cursor_pos == 1 and self.have_up_el then return false end
 			local menu_pos= self.cursor_pos - self.tags_offset
+			if menu_pos == -2 then
+				return true, true
+			end
 			if menu_pos == -1 then
 				load_usable_tags(self.prof_slot)
 				self:reset_info()

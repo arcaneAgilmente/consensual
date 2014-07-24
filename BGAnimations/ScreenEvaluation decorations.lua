@@ -921,11 +921,36 @@ local function set_special_menu(pn, spid)
 	end
 end
 
+local keys_down= {}
+local down_map= {
+	InputEventType_FirstPress= true, InputEventType_Repeat= true,
+	InputEventType_Release= false}
+
+local function perform_screenshot(pn)
+	local song_name=
+		song_get_dir(gamestate_get_curr_song()):sub(2):gsub("/", "_")
+	local steps= gamestate_get_curr_steps(pn)
+	local prefix= song_name .. steps_to_string(steps) .. "_"
+	local saved, screenshotname= SaveScreenshot(pn, true, false, prefix, "")
+	local stats= SCREENMAN:GetTopScreen():GetStageStats()
+	if saved then
+		local prof= PROFILEMAN:GetProfile(pn)
+		local hs= stats:GetPlayerStageStats(pn):GetHighScore()
+		if prof then
+			prof:AddScreenshot(hs, screenshotname)
+		end
+	else
+		Trace("Failed to save a screenshot?")
+	end
+end
+
 local function filter_input_for_menus(pn, code, press)
 	local handled, close= false, false
 	local spid= special_menu_states[pn]
 	if spid == 0 then
-		if code == "Select" then
+		if code == "MenuLeft" or code == "MenuRight"then
+			keys_down[code]= down_map[press]
+		elseif code == "Select" then
 			if press == "InputEventType_FirstPress" then
 				select_press_times[pn]= GetTimeSinceStart()
 			elseif press == "InputEventType_Release" then
@@ -934,42 +959,40 @@ local function filter_input_for_menus(pn, code, press)
 					set_special_menu(pn, 1)
 					handled= true
 				else
-					local song_name=
-						song_get_dir(gamestate_get_curr_song()):sub(2):gsub("/", "_")
-					local steps= gamestate_get_curr_steps(pn)
-					local prefix= song_name .. steps_to_string(steps) .. "_"
-					local saved, screenshotname= SaveScreenshot(pn, true, false, prefix, "")
-					local stats= SCREENMAN:GetTopScreen():GetStageStats()
-					if saved then
-						local prof= PROFILEMAN:GetProfile(pn)
-						local hs= stats:GetPlayerStageStats(pn):GetHighScore()
-						if prof then
-							prof:AddScreenshot(hs, screenshotname)
-						end
-					else
-						Trace("Failed to save a screenshot?")
-					end
+					perform_screenshot(pn)
 					handled= true
 				end
 			end
 		elseif code == "Start" and press == "InputEventType_FirstPress" then
-			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
-			SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
+			if keys_down.MenuLeft then
+				set_special_menu(pn, 1)
+				handled= true
+			elseif keys_down.MenuRight then
+				perform_screenshot(pn)
+			else
+				SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+				SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
+			end
 		end
 	else
+		local next_sp= spid + 1
+		if next_sp > #special_menus then next_sp= 0 end
 		if code == "Select" and press == "InputEventType_Release" then
-			local next_sp= spid + 1
-			if next_sp > #special_menus then next_sp= 0 end
 			set_special_menu(pn, next_sp)
 		elseif press ~= "InputEventType_Release" then
-			handled, close= special_menus[spid][pn]:interpret_code(code)
+			handled, close, edit_tags= special_menus[spid][pn]:interpret_code(code)
 			if handled then
 				update_player_cursor(pn)
-				if close then
-					set_special_menu(pn, 0)
+				if edit_tags then
+					set_special_menu(pn, next_sp)
+				else
+					if close then
+						set_special_menu(pn, 0)
+					end
 				end
 			end
 		end
+		if press == "InputEventType_Release" then handled= true end
 	end
 	return handled
 end
@@ -1358,7 +1381,7 @@ local function input(event)
 	local press= event.type
 	if not score_data_viewing_indices[pn] then return end
 	if filter_input_for_menus(pn, code, press) then return end
-	if press == "InputEventType_Release" then return end
+	if press ~= "InputEventType_Release" then return end
 	local view_changers= {MenuLeft= true, MenuRight= true}
 	if view_changers[code] then
 		toggle_visible_indicator(pn, dance_pads[pn], score_data_viewing_indices[pn])

@@ -676,7 +676,7 @@ local options_menu_mt= {
 							end
 						end,
 				}
-				if PREFSMAN:GetPreference("ArcadeOptionsNavigation") then
+				if PREFSMAN:GetPreference("ArcadeOptionsNavigation") == 0 then
 					if funs[code] then funs[code](self) return true end
 				end
 				local handled, new_set_data= top_set:interpret_code(code)

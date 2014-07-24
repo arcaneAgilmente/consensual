@@ -188,7 +188,7 @@ option_display_mt= {
 }}
 
 function up_element()
-	return {text= "<--"}
+	return {text= "&leftarrow;"}
 end
 
 option_set_general_mt= {

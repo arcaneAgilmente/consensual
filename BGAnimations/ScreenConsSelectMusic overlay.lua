@@ -495,6 +495,31 @@ local function adjust_difficulty(player, dir, sound)
 	end
 end
 
+local function set_special_menu(pn, value)
+	in_special_menu[pn]= value
+	if in_special_menu[pn] == 1 or in_special_menu[pn] == 4 then
+		pain_displays[pn]:unhide()
+		pain_displays[pn]:update_all_items()
+		special_menu_displays[pn]:hide()
+		if in_special_menu[pn] == 4 then
+			player_cursors[pn]:hide()
+		else
+			player_cursors[pn]:unhide()
+			update_player_cursors()
+		end
+	else
+		pain_displays[pn]:hide()
+		special_menu_displays[pn]:unhide()
+		if in_special_menu[pn] == 2 then
+			song_props_menus[pn]:reset_info()
+			song_props_menus[pn]:update()
+		else
+			tag_menus[pn]:reset_info()
+			tag_menus[pn]:update()
+		end
+	end
+end
+
 local codes= {
 	{ name= "sort_mode", ignore_release= true,
 		"Up", "Down", "Up", "Down" },
@@ -506,6 +531,8 @@ local codes= {
 		ignore_press_list= {"MenuLeft", "MenuRight", "Start"},
 		ignore_release_list= {"MenuLeft", "MenuRight"},
 		"Select", "Start" },
+	{ name= "open_special", ignore_release= false,
+		"MenuLeft", "Start" },
 	{ name= "diff_up", ignore_release= true,
 		"Up", "Up" },
 	{ name= "diff_up", ignore_release= true,
@@ -603,6 +630,9 @@ local function handle_triggered_codes(pn, code, button, press)
 			adjust_difficulty(pn, -1, "up.ogg")
 		elseif v == "diff_down" then
 			adjust_difficulty(pn, 1, "down.ogg")
+		elseif v == "open_special" then
+			stop_auto_scrolling()
+			set_special_menu(pn, 2)
 		elseif v == "unjoin" then
 			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Cancel.ogg")
 			if false then -- crashes
@@ -626,31 +656,6 @@ local function handle_triggered_codes(pn, code, button, press)
 	if #triggered == 0 then
 		if input_functions[press] and input_functions[press][button] then
 			input_functions[press][button]()
-		end
-	end
-end
-
-local function set_special_menu(pn, value)
-	in_special_menu[pn]= value
-	if in_special_menu[pn] == 1 or in_special_menu[pn] == 4 then
-		pain_displays[pn]:unhide()
-		pain_displays[pn]:update_all_items()
-		special_menu_displays[pn]:hide()
-		if in_special_menu[pn] == 4 then
-			player_cursors[pn]:hide()
-		else
-			player_cursors[pn]:unhide()
-			update_player_cursors()
-		end
-	else
-		pain_displays[pn]:hide()
-		special_menu_displays[pn]:unhide()
-		if in_special_menu[pn] == 2 then
-			song_props_menus[pn]:reset_info()
-			song_props_menus[pn]:update()
-		else
-			tag_menus[pn]:reset_info()
-			tag_menus[pn]:update()
 		end
 	end
 end
@@ -692,8 +697,12 @@ local function input(event)
 						song_props_menus[pn]:interpret_code(code)
 					if close then
 						if edit_pain then
-							pain_displays[pn]:enter_edit_mode()
-							set_special_menu(pn, 4)
+							if edit_pain == "pain" then
+								pain_displays[pn]:enter_edit_mode()
+								set_special_menu(pn, 4)
+							else
+								set_special_menu(pn, 3)
+							end
 						else
 							set_special_menu(pn, 1)
 						end

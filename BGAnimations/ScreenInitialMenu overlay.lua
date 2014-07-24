@@ -58,7 +58,7 @@ local function check_play_nonstop()
 	return playmode == "nonstop"
 end
 local function set_play_nonstop()
-	playmode= "nonstop"
+	playmode= "regular" -- Disabled until course mode is worth supporting.
 end
 
 local playmode_menu_init= {

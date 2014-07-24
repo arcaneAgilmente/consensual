@@ -160,6 +160,18 @@ function color_for_score(score)
 	end
 end
 
+function adjust_luma(from_color, adjustment)
+	local res_color= {}
+	for i, v in pairs(from_color) do
+		if i == 4 then
+			res_color[i]= v
+		else
+			res_color[i]= (v^2.2 * adjustment)^(1/2.2)
+		end
+	end
+	return res_color
+end
+
 function solar_report()
    for k, v in pairs(solar_colors) do
       Trace("solar_colors." .. k .. " is a " .. type(v))

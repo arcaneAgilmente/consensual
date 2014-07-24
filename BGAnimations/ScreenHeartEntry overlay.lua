@@ -54,7 +54,7 @@ local heart_entry_mt= {
 			self.rate= container:GetChild("rate")
 		end,
 		interpret_code= function(self, code)
-			if code == "start" then
+			if code == "Start" then
 				local num= self.numpad_nums[self.cursor_pos]
 				local as_num= tonumber(num)
 				if as_num then
@@ -73,14 +73,14 @@ local heart_entry_mt= {
 				end
 			else
 				local adds= {
-					left= {2, -1, -1},
-					right= {1, 1, -2},
-					up= {9, -3, -3, -3},
-					down= {3, 3, 3, -9}
+					Left= {2, -1, -1},
+					Right= {1, 1, -2},
+					Up= {9, -3, -3, -3},
+					Down= {3, 3, 3, -9}
 				}
 				if adds[code] then
 					local ind= 0
-					if code == "left" or code == "right" then
+					if code == "Left" or code == "Right" then
 						ind= ((self.cursor_pos-1)%3)+1
 					else
 						ind= math.ceil(self.cursor_pos / 3)
@@ -103,6 +103,36 @@ local heart_xs= {
 }
 local should_be_here= false
 
+local function input(event)
+	if not should_be_here then
+		SCREENMAN:SetNewScreen(Branch.AfterGameplay())
+	end
+	local pn= event.PlayerNumber
+	if not pn then return false end
+	if event.type == "InputEventType_Release" then return false end
+	if not heart_entries[pn] then return false end
+	local handled, done= heart_entries[pn]:interpret_code(event.button)
+	if handled and done then
+		local all_done= true
+		for i, en in pairs(heart_entries) do
+			if not en.entry_done then all_done= false break end
+		end
+		if all_done then
+			for pn, en in pairs(heart_entries) do
+				local profile= PROFILEMAN:GetProfile(pn)
+				if profile and profile:GetIgnoreStepCountCalories() then
+					local calories= profile:CalculateCaloriesFromHeartRate(
+						en.value, get_last_song_time())
+					profile:AddCaloriesToDailyTotal(calories)
+					cons_players[pn].last_song_calories= calories
+					cons_players[pn].last_song_heart_rate= en.value
+				end
+			end
+			SCREENMAN:SetNewScreen(Branch.AfterGameplay())
+		end
+	end
+end
+
 local args= {
 	InitCommand= function(self)
 		for pn, hen in pairs(heart_entries) do
@@ -116,33 +146,8 @@ local args= {
 			timer_text= self:GetChild("timer_text")
 			self:SetUpdateFunction(timer_update)
 		end,
-		CodeMessageCommand= function(self, param)
-			if not should_be_here then
-				SCREENMAN:SetNewScreen(Branch.AfterGameplay())
-			end
-			if self:GetSecsIntoEffect() < 0.25 then return end
-			local pn= param.PlayerNumber
-			if not heart_entries[pn] then return end
-			local handled, done= heart_entries[pn]:interpret_code(param.Name)
-			if handled and done then
-				local all_done= true
-				for i, en in pairs(heart_entries) do
-					if not en.entry_done then all_done= false break end
-				end
-				if all_done then
-					for pn, en in pairs(heart_entries) do
-						local profile= PROFILEMAN:GetProfile(pn)
-						if profile and profile:GetIgnoreStepCountCalories() then
-							local calories= profile:CalculateCaloriesFromHeartRate(
-								en.value, get_last_song_time())
-							profile:AddCaloriesToDailyTotal(calories)
-							cons_players[pn].last_song_calories= calories
-							cons_players[pn].last_song_heart_rate= en.value
-						end
-					end
-					SCREENMAN:SetNewScreen(Branch.AfterGameplay())
-				end
-			end
+		OnCommand= function(self)
+			SCREENMAN:GetTopScreen():AddInputCallback(input)
 		end,
 		normal_text("timer_text", "00", nil, SCREEN_CENTER_X, SCREEN_CENTER_Y)
 	},

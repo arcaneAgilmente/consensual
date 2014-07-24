@@ -1,12 +1,12 @@
 Some theme elements might overlap with each other if the aspect ratio isn't 16:10.  If they do, report your aspect ratio, resolution, and the elements to Kyzentun so they can be fixed.
 
-This theme is only tested on the tip of the github repository.  If you're not building from up to date source, some things that rely on recently added features might not work.
+This theme is only tested on the tip of the github repository.  It should work on the latest nightly build.  It will not work on SM5 beta 3.
 
 Initial screen:
 2 player mode is under Style->Versus.
 Double mode doesn't have a specific menu option because this theme supports changing style on SelectMusic.
 Course or marathon mode is under Playmode->Nonstop.
-Course mode is under half-hearted support.
+Course mode is disabled because it causes problems.
 Each player that is joined must select a profile if enough profiles exist.
 Some per-player theme specific settings are stored in the profile, so making one is useful.
 Use some other theme to make a profile if you don't already have a local profile.  Loading profiles from USB is supported but not forced.
@@ -23,6 +23,7 @@ excessive:  left, up, right, up, left, down, right, down, left
 
 Special menu on Select Music:
 Press select to bring up the song properties menu.
+Alternatively, hold MenuLeft and press Start to bring up the song properties menu.
 Current options:
   Machine Favor +1/-1:  Adjusts the machine favor value for the song.
   Player Favor +1/-1:  Adjusts the player's favor value for the song.
@@ -33,7 +34,8 @@ Holding select will not bring up the menu because of the bindings that use selec
 Pad codes cannot be used while in the special menu.
 
 Special menu on Evaluation:
-The song properties and tags menus can also be accessed on the Evaluation screen, by tapping select.
+The song properties and tags menus can also be accessed on the Evaluation screen, by tapping select, or by holding MenuLeft and tapping Start.
+Hold MenuRight and tap Start to take a screenshot on Evaluation if you don't have a Select button.
 
 Pane display on Select Music:
 The pane display on Select Music can be customized.
