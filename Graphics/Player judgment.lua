@@ -199,7 +199,6 @@ local args= {
 	InitCommand= function(self)
 								 Judgment= self:GetChild("Judgment")
 								 OffsetQuad= self:GetChild("offset")
-								 tani:find_actors(self:GetChild(tani.name))
 								 Judgment:visible(false)
 								 tani:hide()
 							 end,

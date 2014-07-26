@@ -207,12 +207,6 @@ end
 
 local function find_actors(container)
 	container= container:GetChild("Displays")
-	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
-		cursors[rpn]:find_actors(container:GetChild(cursors[rpn].name))
-	end
-	for k, disp in ipairs(all_displays) do
-		disp:find_actors(container:GetChild(disp.name))
-	end
 	main_menu:set_display(menu_display)
 	style_display:set_underline_color(solar_colors.violet())
 	style_menu:set_display(style_display)
@@ -228,7 +222,6 @@ local function find_actors(container)
 	for i, frame in ipairs(display_frames) do
 		all_displays[i]:scroll(1)
 		local disp_cont= all_displays[i].container
-		frame:find_actors(container:GetChild(frame.name))
 		frame:resize_to_outline(disp_cont, 8)
 		frame:move(disp_cont:GetX(), disp_cont:GetY() + frame.outer:GetHeight()/2-18)
 		frame:hide()

@@ -157,6 +157,15 @@ local function calc_sigil_verts_alt(detail, max_detail, length)
 	local max_verts= calc_max_verts_alt(max_detail)
 	verts[#verts+1]= {{0, 0, 0}}
 	local layers= calc_sigil_layers(detail)
+	local fraction_pervert= (max_verts / calc_max_verts_alt(detail)) - 1
+	local fractional_vert= 0
+	local function add_fraction(curr_pos, laycol)
+		fractional_vert= fractional_vert + fraction_pervert
+		while fractional_vert >= 1 do
+			verts[#verts+1]= {{curr_pos[1], curr_pos[2], 0}, laycol}
+			fractional_vert= fractional_vert - 1
+		end
+	end
 	for l= 1, layers do
 		--local laycol= convert_wrapping_number_to_color(l)
 		local next_layer_begin_vert= {}
@@ -167,12 +176,14 @@ local function calc_sigil_verts_alt(detail, max_detail, length)
 			curr_pos[1]= curr_pos[1] + out_adv[1]
 			curr_pos[2]= curr_pos[2] + out_adv[2]
 			verts[#verts+1]= {{curr_pos[1], curr_pos[2], 0}, laycol}
+			add_fraction(curr_pos, laycol)
 			if v == 1 then
 				next_layer_begin_vert= {curr_pos[1], curr_pos[2]}
 			end
 			curr_pos[1]= curr_pos[1] - back_adv[1]
 			curr_pos[2]= curr_pos[2] - back_adv[2]
 			verts[#verts+1]= {{curr_pos[1], curr_pos[2], 0}, laycol}
+			add_fraction(curr_pos, laycol)
 		end
 		if l < layers then
 			verts[#verts+1]= {{next_layer_begin_vert[1], next_layer_begin_vert[2], 0}, laycol}
@@ -181,7 +192,7 @@ local function calc_sigil_verts_alt(detail, max_detail, length)
 	local verts_used= #verts
 	local end_vert= verts[#verts]
 	for n= verts_used+1, max_verts do
-		verts[#verts+1]= {{0, 0, 0}}
+		verts[#verts+1]= end_vert
 	end
 	return verts, verts_used
 end
@@ -214,17 +225,15 @@ sigil_controller_mt= {
 				return Def.ActorMultiVertex{
 					Name= name,
 					InitCommand=
-						function(self)
-							self:xy(x, y)
-							self:SetDrawState{Mode="DrawMode_LineStrip"}
-							self:SetVertices(verts)
+						function(subself)
+							self.container= subself
+							self.sigil= subself
+							subself:xy(x, y)
+							subself:SetDrawState{Mode="DrawMode_LineStrip"}
+							subself:SetVertices(verts)
+							self:redetail(max_detail)
 						end
 				}
-			end,
-		find_actors=
-			function(self, container)
-				self.container= container
-				self.sigil= container
 			end,
 		redetail=
 			function(self, new_detail)
@@ -232,7 +241,7 @@ sigil_controller_mt= {
 				if self.detail == new_detail then return end
 				if self.sigil then
 					local new_verts, used_verts= calc_sigil_verts_alt(new_detail, self.max_detail, self.length)
-					self.sigil:SetDrawState{Num= used_verts}
+--					self.sigil:SetDrawState{Num= used_verts}
 					self.sigil:linear(.5)
 					self.sigil:SetVertices(new_verts)
 				end

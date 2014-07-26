@@ -288,23 +288,23 @@ dance_pad_mt= {
 			end
 			return Def.ActorFrame{
 				Name= name,
-				InitCommand= cmd(xy, x, y),
+				InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					self.indicators= {}
+					self.arrows= {}
+					local function load_half(frame)
+						for p= 1, 9 do
+							self.indicators[#self.indicators+1]= frame:GetChild("dai"..p)
+							self.arrows[#self.arrows+1]= frame:GetChild("daa"..p)
+						end
+					end
+					load_half(subself:GetChild("halfa"))
+					load_half(subself:GetChild("halfb"))
+				end,
 				pad_half("halfa", panel_width * -1.5, 0),
 				pad_half("halfb", panel_width * 1.5, 0)
 			}
-		end,
-		find_actors= function(self, container)
-			self.container= container
-			self.indicators= {}
-			self.arrows= {}
-			local function load_half(frame)
-				for p= 1, 9 do
-					self.indicators[#self.indicators+1]= frame:GetChild("dai"..p)
-					self.arrows[#self.arrows+1]= frame:GetChild("daa"..p)
-				end
-			end
-			load_half(container:GetChild("halfa"))
-			load_half(container:GetChild("halfb"))
 		end,
 		color_arrow= function(self, aid, color)
 			if self.arrows[aid] then

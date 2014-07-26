@@ -68,7 +68,20 @@ local player_hs_limit= PREFSMAN:GetPreference("MaxHighScoresPerListForPlayer")
 options_sets.pain_menu= {
 	__index= {
 		create_actors= function(self, name, player_number)
-			local args= {Name= name}
+			local args= {
+				Name= name,
+				InitCommand= function(subself)
+					self.container= subself
+					self.dec_arrow= subself:GetChild("dec_arrow")
+					self.inc_arrow= subself:GetChild("inc_arrow")
+					self.dec_arrow:visible(false)
+					self.inc_arrow:visible(false)
+					self.container:visible(false)
+					self.info_set= {}
+					self:set_display(self.own_display)
+					self.display:set_underline_color(solar_colors[self.player_number]())
+				end
+			}
 			self.name= name
 			self.player_number= player_number
 			self.frame= setmetatable({}, frame_helper_mt)
@@ -88,19 +101,6 @@ options_sets.pain_menu= {
 			self.depth= 1
 			self.mode= 1
 			return Def.ActorFrame(args)
-		end,
-		find_actors= function(self, container)
-			self.container= container
-			self.own_display:find_actors(container:GetChild(self.own_display.name))
-			self.dec_arrow= container:GetChild("dec_arrow")
-			self.inc_arrow= container:GetChild("inc_arrow")
-			self.dec_arrow:visible(false)
-			self.inc_arrow:visible(false)
-			self.cursor:find_actors(container:GetChild("cursor"))
-			self.container:visible(false)
-			self.info_set= {}
-			self:set_display(self.own_display)
-			self.display:set_underline_color(solar_colors[self.player_number]())
 		end,
 		activate= function(self, x, y, item_config)
 			self.item_config= item_config
@@ -339,7 +339,13 @@ options_sets.pain_menu= {
 pain_display_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, player_number, el_w, el_z)
-			local args= {Name= name, InitCommand= cmd(xy, x, y)}
+			local args= {
+				Name= name, InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					self.cursor:hide()
+				end
+			}
 			self.player_number= player_number
 			self:fetch_config()
 			self.name= name
@@ -379,24 +385,6 @@ pain_display_mt= {
 			self.menu= setmetatable({}, options_sets.pain_menu)
 			args[#args+1]= self.menu:create_actors("menu", player_number)
 			return Def.ActorFrame(args)
-		end,
-		find_actors= function(self, container)
-			self.container= container
-			for i, item in ipairs(self.left_items) do
-				item:find_actors(container:GetChild(item.name))
-				if not item.container or not item.text or not item.number then
-					Trace("Failed to find actors for item " .. item.name)
-				end
-			end
-			for i, item in ipairs(self.right_items) do
-				item:find_actors(container:GetChild(item.name))
-				if not item.container or not item.text or not item.number then
-					Trace("Failed to find actors for item " .. item.name)
-				end
-			end
-			self.cursor:find_actors(container:GetChild(self.cursor.name))
-			self.menu:find_actors(container:GetChild(self.menu.name))
-			self.cursor:hide()
 		end,
 		fetch_config= function(self)
 			self.config= cons_players[self.player_number].pain_config

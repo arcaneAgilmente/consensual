@@ -45,7 +45,13 @@ function judge_feedback_interface:create_actors(name, fx, fy, player_number)
 	if not fx then fx= 0 end
 	if not fy then fy= 0 end
 	self.elements= {}
-	local args= { Name= name, InitCommand= cmd(x,fx;y,fy) }
+	local args= {
+		Name= name,
+		InitCommand= function(subself)
+			self.container= subself
+			subself:xy(fx, fy)
+		end
+	}
 	local tx= -10
 	local nx= 10
 	local start_y= 0
@@ -62,19 +68,6 @@ function judge_feedback_interface:create_actors(name, fx, fy, player_number)
 		self.elements[#self.elements+1]= new_element
 	end
 	return Def.ActorFrame(args)
-end
-
-function judge_feedback_interface:find_actors(container)
-	if not container then return nil end
-	self.container= container
-	for n= 1, #self.elements do
-		local ele= self.elements[n]
-		local ele_con= container:GetChild(ele.name)
-		if not ele:find_actors(ele_con) then
-			Trace("Judge feedback element " .. n .. " " .. ele.name .. " could not find its actors.")
-		end
-	end
-	return true
 end
 
 function judge_feedback_interface:update(player_stage_stats)
@@ -98,7 +91,6 @@ local sigil_centers= {
 	[PLAYER_1]= { SCREEN_CENTER_X - (SCREEN_CENTER_X / 2), SCREEN_BOTTOM*.375},
 	[PLAYER_2]= { SCREEN_CENTER_X + (SCREEN_CENTER_X / 2), SCREEN_BOTTOM*.375}
 }
-local prev_sigil_states= {}
 
 dofile(THEME:GetPathO("", "sigil.lua"))
 
@@ -116,15 +108,6 @@ function sigil_feedback_interface:create_actors(name, fx, fy, player_number)
 	return self.sigil:create_actors(name, fx, fy, solar_colors[player_number](), player_data.detail, player_data.size)
 end
 
-function sigil_feedback_interface:find_actors(container)
-	if not container then return nil end
-	self.container= container
-	self.sigil:find_actors(container)
-	self.actor_set= {}
-	self.sigil:redetail(self.prev_state.detail)
-	return true
-end
-
 function sigil_feedback_interface:update(player_stage_stats)
 	local pstats= player_stage_stats
 	local life= pstats:GetCurrentLife()
@@ -140,13 +123,12 @@ function sigil_feedback_interface:update(player_stage_stats)
 	--Trace("SGBG.Update:  Current life:  " .. life .. "\n  ADP:  " .. adp ..
 	--   "\n  pdp:  " .. pdp .. "\n  score:  " .. score)
 	local new_detail= math.max(1, math.round(self.sigil.max_detail * ((score - .5) * 2)))
+	-- Don't adjust the detail by more than one.
+	new_detail= math.max(new_detail, self.prev_state.detail - 1)
+	new_detail= math.min(new_detail, self.prev_state.detail + 1)
 	self.sigil:redetail(new_detail)
 	self.prev_state.detail= new_detail
 	self.prev_state.fill_amount= life
-end
-
-function sigil_feedback_interface:draw_sigil(detail)
-	draw_sigil_with_actors(detail, self.actor_set, sigil_line_len, 0, 0)
 end
 
 local sigil_feedback_interface_mt= { __index= sigil_feedback_interface }
@@ -163,23 +145,20 @@ function score_feedback_interface:create_actors(name, fx, fy, player_number)
 	if not fx then fx= 0 end
 	if not fy then fy= 0 end
 	return Def.ActorFrame{
-		Name= name, InitCommand= cmd(x,fx;y,fy),
+		Name= name,
+		InitCommand= function(subself)
+			subself:xy(fx, fy)
+			self.container= subself
+			self.meter= subself:GetChild("meter")
+		end,
 		Def.Quad{ Name= "meter",
 							InitCommand= function(self)
-														 self:SetWidth(16)
-														 self:SetHeight(SCREEN_BOTTOM)
-														 self:vertalign(bottom)
-													 end
-						}
+								self:SetWidth(16)
+								self:SetHeight(SCREEN_BOTTOM)
+								self:vertalign(bottom)
+							end
+		}
 	}
-end
-
-function score_feedback_interface:find_actors(container)
-	if not container then return nil end
-	self.container= container
-	self.meter= container:GetChild("meter")
-	if not self.meter then return nil end
-	return true
 end
 
 function score_feedback_interface:update(player_stage_stats)
@@ -226,19 +205,17 @@ function dance_points_feedback_interface:create_actors(name, fx, fy, player_numb
 	if not fx then fx= 0 end
 	if not fy then fy= 0 end
 	return Def.ActorFrame{
-		Name= name, InitCommand= cmd(x,fx;y,fy),
+		Name= name,
+		InitCommand= function(subself)
+			subself:xy(fx, fy)
+			self.container= subself
+			self.curr_text= subself:GetChild("curr_dp")
+			self.max_text= subself:GetChild("max_dp")
+		end,
 		normal_text("curr_dp", "0", solar_colors.f_text(), -10, 0, 1, right),
 		normal_text("slash", "/", solar_colors.f_text(), 0, 0, 1),
 		normal_text("max_dp", "0", solar_colors.f_text(), 10, 0, 1, left),
 	}
-end
-
-function dance_points_feedback_interface:find_actors(container)
-	if not container then return nil end
-	self.container= container
-	self.curr_text= container:GetChild("curr_dp")
-	self.max_text= container:GetChild("max_dp")
-	return true
 end
 
 function dance_points_feedback_interface:update(player_stage_stats)
@@ -286,27 +263,19 @@ function bpm_feedback_interface:create_actors(name, fx, fy, player_number)
 	self.tani= setmetatable({}, text_and_number_interface_mt)
 	self.player_number= player_number
 	return Def.ActorFrame{
-		Name= self.name, InitCommand= cmd(xy, fx, fy),
+		Name= self.name, InitCommand= function(subself)
+			subself:xy(fx, fy)
+			self.container= subself
+		end,
 		self.tani:create_actors(
 			"tani", { tx= -4, nx= 4, tt= "BPM: ", text_section= "ScreenGameplay"
 							})
 	}
 end
 
-function bpm_feedback_interface:find_actors(container)
-	if not container then return nil end
-	self.container= container
-	self.tani:find_actors(container:GetChild(self.tani.name))
-	return true
-end
-
 function bpm_feedback_interface:update()
-	if self.container then
-		if screen_gameplay.GetTrueBPS then
-			local bpm= screen_gameplay:GetTrueBPS(self.player_number) * 60
-			self.tani:set_number(("%.0f"):format(bpm))
-		end
-	end
+	local bpm= screen_gameplay:GetTrueBPS(self.player_number) * 60
+	self.tani:set_number(("%.0f"):format(bpm))
 end
 
 local feedback_things= { [PLAYER_1]= {}, [PLAYER_2]= {}}
@@ -323,7 +292,13 @@ local song_progress_bar_interface_mt= { __index= song_progress_bar_interface }
 function song_progress_bar_interface:create_actors()
 	self.name= "song_progress"
 	return Def.ActorFrame{
-		Name= self.name, InitCommand= cmd(xy, spb_x, spb_y),
+		Name= self.name, InitCommand= function(subself)
+			subself:xy(spb_x, spb_y)
+			self.container= subself
+			self.filler= subself:GetChild("filler")
+			self.song_first_second= 0
+			self.song_len= 1
+		end,
 		create_frame_quads("frame", .5, spb_width, spb_height,
 											 solar_colors.f_text(.5), solar_colors.bg(.5), 0, 0),
 		Def.Quad{
@@ -338,16 +313,6 @@ function song_progress_bar_interface:create_actors()
 				end
 		}
 	}
-end
-
-function song_progress_bar_interface:find_actors(container)
-	if not container then return nil end
-	Trace("spbi:fa")
-	self.container= container
-	self.filler= container:GetChild("filler")
-	if not self.filler then Trace("nil filler.") end
-	self.song_first_second= 0
-	self.song_len= 1
 end
 
 function song_progress_bar_interface:set_from_song()
@@ -379,23 +344,6 @@ do
 	end
 end
 local song_progress_bar= setmetatable({}, song_progress_bar_interface_mt)
-
-local function find_special_actors(self)
-	local spec_acts= self:GetChild("special_actors")
-	if not spec_acts then return end
-	song_progress_bar:find_actors(spec_acts:GetChild(song_progress_bar.name))
-	for k, v in pairs(feedback_things) do
-		local pcon= spec_acts:GetChild(k)
-		if pcon then
-			for fk, fv in pairs(v) do
-				if not fv:find_actors(pcon:GetChild(fv.name)) then
-					Trace("Feedback thing " .. tostring(fv.name) .. " for player " .. tostring(k) ..
-						" could not find its actors.")
-				end
-			end
-		end
-	end
-end
 
 local half_scrw= (SCREEN_WIDTH / 2)
 local half_scrh= (SCREEN_HEIGHT / 2)
@@ -900,11 +848,6 @@ end
 
 return Def.ActorFrame {
 	Name= "SGPbgf",
-	InitCommand=
-		function(self)
-			--Trace("SGPD OnCommand.")
-			find_special_actors(self)
-		end,
 	--Def.Quad{InitCommand=cmd(FullScreen;diffuse,solar_colors.yellow())},
 	make_special_actors_for_players(),
 	Def.Actor{

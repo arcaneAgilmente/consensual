@@ -42,6 +42,27 @@ local function difficulty_wrapper(difficulty)
 				 end
 end
 
+local function step_artist(song)
+	if song.GetStepsByStepsType then
+		local curr_style= GAMESTATE:GetCurrentStyle()
+		local filter_type= curr_style:GetStepsType()
+		local all_steps= song:GetStepsByStepsType(filter_type)
+		local artists= {}
+		for i, v in ipairs(all_steps) do
+			local author= steps_get_author(v)
+			if not string_in_table(author, artists) then
+				artists[#artists+1]= steps_get_author(v)
+			end
+		end
+		if #artists > 0 then
+			return artists
+		end
+		return {""}
+	else
+		return {""}
+	end
+end
+
 local function any_meter(song)
 	if song.GetStepsByStepsType then
 		local curr_style= GAMESTATE:GetCurrentStyle()
@@ -221,6 +242,8 @@ local song_sort_factors= {
 	{ name= "Genre", get_names= generic_get_wrapper("GetGenre"),
 		uses_depth= true},
 	{ name= "Length", get_names= single_ret_wrapper(song_get_length)},
+	-- Disabled, causes stepmania to eat all ram and hang.
+--	{ name= "Step Artist", get_names= step_artist, returns_multiple= true},
 }
 
 local course_sort_factors= {
@@ -465,16 +488,14 @@ function sick_wheel_item_interface:create_actors(name)
 	self.name= name
 	return Def.ActorFrame{
 		Name= name,
+		InitCommand= function(subself)
+			self.container= subself
+			self.text= subself:GetChild("text")
+			self.number= subself:GetChild("number")
+		end,
 		normal_text("text", "", solar_colors.uf_text(), 4, 0, 1, left),
 		normal_text("number", "", solar_colors.uf_text(), -4, 0, 1, right),
 	}
-end
-
-function sick_wheel_item_interface:find_actors(container)
-	assert(container)
-	self.container= container
-	self.text= container:GetChild("text")
-	self.number= container:GetChild("number")
 end
 
 do
@@ -560,7 +581,6 @@ function music_whale_interface:create_actors(x)
 end
 
 function music_whale_interface:find_actors(container)
-	self.sick_wheel:find_actors(container:GetChild(self.sick_wheel.name))
 	self.song_set= bucket_man.filtered_songs
 	self.cursor_song= gamestate_get_curr_song()
 	if music_whale_state then

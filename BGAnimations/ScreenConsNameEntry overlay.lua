@@ -49,7 +49,33 @@ local keyboard_mt= {
 				end
 				local x= SCREEN_CENTER_X
 				local y= SCREEN_BOTTOM - (#rows * row_height)
-				local args= { Name= name, InitCommand= cmd(xy, x, y) }
+				local args= {
+					Name= name,
+					InitCommand= function(subself)
+						subself:xy(x, y)
+						self.container= subself
+						local enabled_players= GAMESTATE:GetEnabledPlayers()
+						self.key_actors= {}
+						for name, child in pairs(subself:GetChildren()) do
+							local r, c= name:match("key(%d+)c(%d+)")
+							if r and c then
+								r= tonumber(r)
+								c= tonumber(c)
+								if not self.key_actors[r] then
+									self.key_actors[r]= {}
+								end
+								self.key_actors[r][c]= child
+							end
+						end
+						for r, row in ipairs(self.key_actors) do
+							local keyw= (SCREEN_WIDTH-self.key_spacing) / #row
+							for c, key in ipairs(row) do
+								width_limit_text(key, keyw, 1)
+							end
+						end
+						self:update_cursors()
+					end
+				}
 				self.cursors= {}
 				self.cursor_poses= {}
 				local enabled_players= GAMESTATE:GetEnabledPlayers()
@@ -74,36 +100,6 @@ local keyboard_mt= {
 					end
 				end
 				return Def.ActorFrame(args)
-			end,
-		find_actors=
-			function(self, container)
-				self.container= container
-				local enabled_players= GAMESTATE:GetEnabledPlayers()
-				for i, pn in ipairs(enabled_players) do
-					self.cursors[pn]:find_actors(container:GetChild(self.cursors[pn].name))
-				end
-				self.key_actors= {}
-				for name, child in pairs(container:GetChildren()) do
-					local r, c= name:match("key(%d+)c(%d+)")
-					if r and c then
-						r= tonumber(r)
-						c= tonumber(c)
-						if not self.key_actors[r] then
-							self.key_actors[r]= {}
-						end
-						self.key_actors[r][c]= child
-					end
-				end
-				for r, row in ipairs(self.key_actors) do
-					local keyw= (SCREEN_WIDTH-self.key_spacing) / #row
-					for c, key in ipairs(row) do
-						width_limit_text(key, keyw, 1)
-					end
-				end
-				for k, cur in pairs(self.cursors) do
-					cur:find_actors(container:GetChild(cur.name))
-				end
-				self:update_cursors()
 			end,
 		update_cursors=
 			function(self)
@@ -197,7 +193,16 @@ local name_display_mt= {
 				self.max_len= 10
 				local profile= PROFILEMAN:GetProfile(player_number)
 				local player_name= profile:GetLastUsedHighScoreName()
-				local args= { Name= name, InitCommand= cmd(xy, x, y) }
+				local args= {
+					Name= name,
+					InitCommand= function(subself)
+						subself:xy(x, y)
+						self.container= subself
+						self.cursor= subself:GetChild("cursor")
+						self.text= subself:GetChild("text")
+						self:update_cursor()
+					end
+				}
 				local time_x= 160
 				if player_number == PLAYER_2 then
 					time_x= time_x * -1
@@ -210,13 +215,6 @@ local name_display_mt= {
 					Name= "cursor", InitCommand= cmd(xy, 0, 12; diffuse, color;
 																					 setsize, 12, 2)}
 				return Def.ActorFrame(args)
-			end,
-		find_actors=
-			function(self, container)
-				self.container= container
-				self.cursor= container:GetChild("cursor")
-				self.text= container:GetChild("text")
-				self:update_cursor()
 			end,
 		add_text=
 			function(self, new_text)
@@ -326,7 +324,20 @@ local score_display_mt= {
 				self.name= name
 				local tz= .75
 				local line_height= 24 * tz
-				local args= { Name= name }
+				local args= {
+					Name= name,
+					InitCommand= function(subself)
+						self.container= subself
+						self.banner= subself:GetChild("banner")
+						self.title= subself:GetChild("title")
+						self.timeframe= subself:GetChild("timeframe")
+						self.chart_info= subself:GetChild("chart_info")
+						self.shadows= {}
+						for s, tani in ipairs(self.tanis) do
+							self.shadows[s]= subself:GetChild("shadow" .. s)
+						end
+					end
+				}
 				local next_y= line_height / 2
 				args[#args+1]= normal_text("timeframe", "", nil, 0, next_y, tz)
 				next_y= next_y + banner_height + line_height
@@ -360,19 +371,6 @@ local score_display_mt= {
 					args[#args+1]= self.tanis[s]:create_actors("entry"..s, tani_params)
 				end
 				return Def.ActorFrame(args)
-			end,
-		find_actors=
-			function(self, container)
-				self.container= container
-				self.banner= container:GetChild("banner")
-				self.title= container:GetChild("title")
-				self.timeframe= container:GetChild("timeframe")
-				self.chart_info= container:GetChild("chart_info")
-				self.shadows= {}
-				for s, tani in ipairs(self.tanis) do
-					tani:find_actors(container:GetChild(tani.name))
-					self.shadows[s]= container:GetChild("shadow" .. s)
-				end
 			end,
 		transform=
 			function(self, item_index, num_items, is_focus)
@@ -536,13 +534,8 @@ end
 
 local args= {
 	InitCommand= function(self)
-								 keyboard:find_actors(self:GetChild(keyboard.name))
-								 score_wheel:find_actors(self:GetChild(score_wheel.name))
-								 score_wheel:set_info_set(combined_play_history, 1)
-								 for pn, nd in pairs(name_displays) do
-									 nd:find_actors(self:GetChild(nd.name))
-								 end
-							 end,
+		score_wheel:set_info_set(combined_play_history, 1)
+	end,
 	keyboard:create_actors("keyboard"),
 	Def.ActorFrame{
 		Name= "code_interpreter",

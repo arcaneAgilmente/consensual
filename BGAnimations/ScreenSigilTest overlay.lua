@@ -15,10 +15,6 @@ end
 
 local args= {
 	sigil:create_actors("sigil", SCREEN_CENTER_X, SCREEN_CENTER_Y, solar_colors.cyan(), 64),
-	InitCommand=
-		function(self)
-			sigil:find_actors(self:GetChild(sigil.name))
-		end,
 	CodeMessageCommand=
 		function(self, param)
 			if param.Name == "left" then

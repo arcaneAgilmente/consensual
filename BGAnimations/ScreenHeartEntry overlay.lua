@@ -13,7 +13,14 @@ local heart_entry_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, pn)
 			self.name= name
-			local args= {Name= name, InitCommand= cmd(xy, x, y)}
+			local args= {
+				Name= name,
+				InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					self.rate= subself:GetChild("rate")
+				end
+			}
 			args[#args+1]= normal_text(
 				"rate_label", get_string_wrapper("ScreenHeartEntry", "Heart Rate"),
 				nil, 0, -72)
@@ -47,11 +54,6 @@ local heart_entry_mt= {
 				"cursor", 0, 0, 16, 24, 1, solar_colors[pn]())
 			self.cursor_pos= 5
 			return Def.ActorFrame(args)
-		end,
-		find_actors= function(self, container)
-			self.container= container
-			self.cursor:find_actors(container:GetChild(self.cursor.name))
-			self.rate= container:GetChild("rate")
 		end,
 		interpret_code= function(self, code)
 			if code == "Start" then
@@ -134,11 +136,6 @@ local function input(event)
 end
 
 local args= {
-	InitCommand= function(self)
-		for pn, hen in pairs(heart_entries) do
-			hen:find_actors(self:GetChild(hen.name))
-		end
-	end,
 	Def.ActorFrame{
 		Name= "timer",
 		InitCommand= function(self)

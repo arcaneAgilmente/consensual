@@ -96,9 +96,6 @@ local std_items_mt= {
 					text_section= "",
 					nx= 4, nz= .5, nc= solar_colors.f_text()})
 		end,
-		find_actors= function(self, container)
-			self.tani:find_actors(container)
-		end,
 		transform=
 			function(self, item_index, num_items, is_focus)
 				local changing_edge=
@@ -129,7 +126,18 @@ local std_items_mt= {
 local steps_display_elements= 5
 function steps_display_interface:create_actors(name)
 	self.name= name
-	local args= { Name= name, InitCommand= cmd(xy, banner_x, title_y + 66) }
+	local args= {
+		Name= name,
+		InitCommand= function(subself)
+			self.container= subself
+			subself:xy(banner_x, title_y + 66)
+			for k, v in pairs(self.cursors) do
+				if not GAMESTATE:IsPlayerEnabled(k) then
+					v:hide()
+				end
+			end
+		end
+	}
 	local cursors= {}
 	for i, v in ipairs(all_player_indices) do
 		local new_curs= {}
@@ -142,22 +150,6 @@ function steps_display_interface:create_actors(name)
 	self.sick_wheel= setmetatable({disable_wrapping= true}, sick_wheel_mt)
 	args[#args+1]= self.sick_wheel:create_actors(steps_display_elements, std_items_mt, 0, 0)
 	return Def.ActorFrame(args)
-end
-
-function steps_display_interface:find_actors(container)
-	self.container= container
-	if not self.container then
-		Trace("steps_display_interface:find_actors passed nil container.")
-		return nil
-	end
-	for k, v in pairs(self.cursors) do
-		v:find_actors(container:GetChild(v.name))
-		if not GAMESTATE:IsPlayerEnabled(k) then
-			v:hide()
-		end
-	end
-	self.sick_wheel:find_actors(container:GetChild(self.sick_wheel.name))
-	return true
 end
 
 function steps_display_interface:update_steps_set()
@@ -212,7 +204,7 @@ function steps_display_interface:update_cursors()
 				cursor:hide()
 			end
 		end
-		if cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] then
+		if cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] and #enabled_players > 1 then
 			self.cursors[PLAYER_1]:left_half()
 			self.cursors[PLAYER_2]:right_half()
 		else
@@ -799,17 +791,13 @@ return Def.ActorFrame {
 		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
 			pain_frames[pn]= self:GetChild(ToEnumShortString(pn).."_pain_frame")
 			pain_frames[pn]:visible(false)
-			pain_displays[pn]:find_actors(self:GetChild(pain_displays[pn].name))
-			special_menu_displays[pn]:find_actors(self:GetChild(special_menu_displays[pn].name))
 			song_props_menus[pn]:initialize(pn, true)
 			song_props_menus[pn]:set_display(special_menu_displays[pn])
 			tag_menus[pn]:initialize(pn)
 			tag_menus[pn]:set_display(special_menu_displays[pn])
 			special_menu_displays[pn]:set_underline_color(solar_colors[pn]())
 			special_menu_displays[pn]:hide()
-			player_cursors[pn]:find_actors(self:GetChild(player_cursors[pn].name))
 		end
-		steps_display:find_actors(self:GetChild(steps_display.name))
 		music_wheel:find_actors(self:GetChild(music_wheel.name))
 		update_player_cursors()
 		-- Give everybody enough tokens to play, as a way of disabling the stage system.
@@ -1051,8 +1039,6 @@ return Def.ActorFrame {
 		InitCommand= function(self)
 									 self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
 									 self:diffusealpha(0)
-									 options_message_frame_helper:find_actors(
-										 self:GetChild(options_message_frame_helper.name))
 								 end,
 		OnCommand= function(self)
 								 local xmn, xmx, ymn, ymx= rec_calc_actor_extent(self)

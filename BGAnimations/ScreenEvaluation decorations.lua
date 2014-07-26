@@ -127,7 +127,15 @@ local number_set_mt= {
 			elc= elc or 10
 			elw= elw or 80
 			self.name= name
-			local args= {Name= name, InitCommand= cmd(xy, x, y)}
+			local args= {
+				Name= name, InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					for i= 1, #self.els do
+						self.els[i]= subself:GetChild(self.els[i])
+					end
+				end,
+			}
 			self.els= {}
 			self.elzooms= {}
 			self.elz= elz
@@ -139,12 +147,6 @@ local number_set_mt= {
 					self.els[i], "", nil, sx + (dx * im), sy + (dy * im), elz, ela)
 			end
 			return Def.ActorFrame(args)
-		end,
-		find_actors= function(self, container)
-			self.container= container
-			for i= 1, #self.els do
-				self.els[i]= container:GetChild(self.els[i])
-			end
 		end,
 		set= function(self, number_data)
 			-- Each entry in number_data is {number= n, color= c, zoom= z}
@@ -175,7 +177,16 @@ local best_score_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, z, score_name)
 			self.name= name
-			local args= {Name= name, InitCommand= cmd(xy, x, y)}
+			local args= {
+				Name= name, InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					self.rank= subself:GetChild("rank")
+					self.rank:visible(false)
+					self.best_text= subself:GetChild("best_text")
+					self.best_text:visible(false)
+				end
+			}
 			self.fh= setmetatable({}, frame_helper_mt)
 			args[#args+1]= self.fh:create_actors(
 				"frame", .5, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
@@ -187,15 +198,6 @@ local best_score_mt= {
 				"score", {sy= 24*.5*z, tx= -40, nx= 40, tz= .5*z, nz= .5*z, ta= left,
 									na= right, tt= "", nt= ""})
 			return Def.ActorFrame(args)
-		end,
-		find_actors= function(self, container)
-			self.container= container
-			self.fh:find_actors(container:GetChild(self.fh.name))
-			self.score:find_actors(container:GetChild(self.score.name))
-			self.rank= container:GetChild("rank")
-			self.rank:visible(false)
-			self.best_text= container:GetChild("best_text")
-			self.best_text:visible(false)
 		end,
 		set= function(self, profile_pn, rank_pn)
 			local profile= false
@@ -289,7 +291,18 @@ local reward_time_mt= {
 	__index= {
 		create_actors= function(self, name, x, y)
 			self.name= name
-			local args= {Name= name, InitCommand= cmd(xy, x, y)}
+			local args= {
+				Name= name, InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					self.used_text= subself:GetChild("used_text")
+					self.used_amount= subself:GetChild("used_amount")
+					self.reward_text= subself:GetChild("reward_text")
+					self.reward_amount= subself:GetChild("reward_amount")
+					self.remain_text= subself:GetChild("remain_text")
+					self.remain_time= subself:GetChild("remain_time")
+				end
+			}
 			self.frame= setmetatable({}, frame_helper_mt)
 			args[#args+1]= self.frame:create_actors("frame", .5, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
 			args[#args+1]= normal_text("used_text", "", solar_colors.uf_text(), 0, 0, .5)
@@ -299,16 +312,6 @@ local reward_time_mt= {
 			args[#args+1]= normal_text("remain_text", "", solar_colors.uf_text(), 0, 0, .5)
 			args[#args+1]= normal_text("remain_time", "", solar_colors.f_text(), 0, 0, 1)
 			return Def.ActorFrame(args)
-		end,
-		find_actors= function(self, container)
-			self.container= container
-			self.frame:find_actors(container:GetChild(self.frame.name))
-			self.used_text= container:GetChild("used_text")
-			self.used_amount= container:GetChild("used_amount")
-			self.reward_text= container:GetChild("reward_text")
-			self.reward_amount= container:GetChild("reward_amount")
-			self.remain_text= container:GetChild("remain_text")
-			self.remain_time= container:GetChild("remain_time")
 		end,
 		set= function(self, width, reward_time)
 			local next_y= 0
@@ -423,14 +426,12 @@ local combo_graph_mt= {
 			self.h= h or SCREEN_HEIGHT
 			return Def.ActorMultiVertex{
 				Name= name,
-				InitCommand= function(self)
-					self:xy(x, y)
-					self:SetDrawState{Mode="DrawMode_QuadStrip"}
+				InitCommand= function(subself)
+					self.container= subself
+					subself:xy(x, y)
+					subself:SetDrawState{Mode="DrawMode_QuadStrip"}
 				end
 			}
-		end,
-		find_actors= function(self, container)
-			self.container= container
 		end,
 		set= function(self, step_timings)
 			local length= gameplay_end_time - gameplay_start_time
@@ -468,6 +469,14 @@ local score_report_mt= {
 			self.sum_col= setmetatable({}, number_set_mt)
 			local args= {
 				Name= name,
+				InitCommand= function(subself)
+					self.container= subself
+					self.chart_info= subself:GetChild("chart_info")
+					self.score= subself:GetChild("score")
+					self.dp= subself:GetChild("dp")
+					self.offavgms= subself:GetChild("offavgms")
+					self.offms= subself:GetChild("offms")
+				end,
 				-- Create actors assuming all stats will be displayed.
 				-- The set function will fill in/position the ones that are enabled.
 				-- This will allow us to toggle the visibility flags on this screen.
@@ -486,18 +495,6 @@ local score_report_mt= {
 					"sum", 0, 0, 0, 0, 0, self.spacing, self.scale, center, 10),
 			}
 			return Def.ActorFrame(args)
-		end,
-		find_actors= function(self, container)
-			self.container= container
-			self.chart_info= container:GetChild("chart_info")
-			self.score= container:GetChild("score")
-			self.dp= container:GetChild("dp")
-			self.offavgms= container:GetChild("offavgms")
-			self.offms= container:GetChild("offms")
-			self.pct_col:find_actors(container:GetChild(self.pct_col.name))
-			self.song_col:find_actors(container:GetChild(self.song_col.name))
-			self.session_col:find_actors(container:GetChild(self.session_col.name))
-			self.sum_col:find_actors(container:GetChild(self.sum_col.name))
 		end,
 		set= function(self, player_number, col_id, score_data, allowed_width)
 			if allowed_width then
@@ -721,7 +718,13 @@ function profile_report_interface:create_actors(player_number)
 	if #GAMESTATE:GetEnabledPlayers() == 1 then
 		difa= 1
 	end
-	local args= { Name= self.name, InitCommand=cmd(y, 36; diffusealpha, difa) }
+	local args= {
+		Name= self.name, InitCommand= function(subself)
+			subself:y(36)
+			subself:diffusealpha(difa)
+			self.container= subself
+		end
+	}
 	local pro= PROFILEMAN:GetProfile(player_number)
 	if pro then
 		args[#args+1]= normal_text(
@@ -813,10 +816,6 @@ function profile_report_interface:create_actors(player_number)
 		end
 	end
 	return Def.ActorFrame(args)
-end
-
-function profile_report_interface:find_actors(container)
-	self.container= container
 end
 
 local cg_centers= { [PLAYER_1]= {SCREEN_LEFT + cg_thickness/2, 0},
@@ -1111,9 +1110,7 @@ local function find_actors(self)
 	local judge_left= SCREEN_CENTER_X
 	local judge_right= SCREEN_CENTER_X
 	if judge_names then
-		judge_name_set:find_actors(judge_names:GetChild(judge_name_set.name))
 		judge_name_set:set(judge_name_data)
-		judge_frame_helper:find_actors(judge_names:GetChild(judge_frame_helper.name))
 		local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(judge_names)
 		local fw= fxmx - fxmn + 8
 		local fh= fymx - fymn + 8
@@ -1124,7 +1121,6 @@ local function find_actors(self)
 		judge_frame_helper:move(fx-4, fy-4)
 		judge_frame_helper:resize(fw, fh)
 	end
-	reward_indicator:find_actors(self:GetChild(reward_indicator.name))
 	reward_indicator:set(judge_right - judge_left, reward_time)
 	local graphs= self:GetChild("graphs")
 	local left_graph_edge= SCREEN_LEFT
@@ -1157,23 +1153,14 @@ local function find_actors(self)
 		pcont:x(cpos)
 		local pad= 16
 		width= width - (pad * 2)
-		combo_graphs[v]:find_actors(self:GetChild("graphs"):GetChild(v.."_graphs"):GetChild(combo_graphs[v].name))
-		score_reports[v]:find_actors(pcont:GetChild(score_reports[v].name))
-		frame_helpers[v]:find_actors(pcont:GetChild(frame_helpers[v].name))
 		score_reports[v].allowed_width= width
-		dance_pads[v]:find_actors(pcont:GetChild(dance_pads[v].name))
 		color_dance_pad_by_score(v, dance_pads[v])
-		besties[v].machine:find_actors(pcont:GetChild(besties[v].machine.name))
 		besties[v].machine:set(nil, v)
-		besties[v].player:find_actors(pcont:GetChild(besties[v].player.name))
 		besties[v].player:set(v, v)
 		if #GAMESTATE:GetEnabledPlayers() == 1 then
 			showing_profile_on_other_side= true
 			local other= other_player[v]
 			local opcont= players_container:GetChild(other)
-			profile_reports[v]:find_actors(opcont:GetChild(profile_reports[v].name), width)
-			special_menu_displays[v]:find_actors(opcont:GetChild(special_menu_displays[v].name))
-			frame_helpers[other]:find_actors(opcont:GetChild(frame_helpers[other].name))
 			local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(opcont)
 			local fw= fxmx - fxmn + pad
 			local fh= fymx - fymn + pad
@@ -1181,9 +1168,6 @@ local function find_actors(self)
 			local fy= fymn + (fh / 2)
 			frame_helpers[other]:move(fx-pad/2, fy)
 			frame_helpers[other]:resize(fw, fh)
-		else
-			profile_reports[v]:find_actors(pcont:GetChild(profile_reports[v].name), width)
-			special_menu_displays[v]:find_actors(pcont:GetChild(special_menu_displays[v].name))
 		end
 		for i, menu_set in ipairs(special_menus) do
 			-- Funny trick:  For the tags_menu, "false" means "don't have an up
@@ -1194,7 +1178,6 @@ local function find_actors(self)
 		end
 		special_menu_displays[v]:set_underline_color(solar_colors[v]())
 		special_menu_displays[v]:hide()
-		player_cursors[v]:find_actors(players_container:GetChild(player_cursors[v].name))
 		init_player_cursor_pos(v)
 	end
 end

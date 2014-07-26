@@ -8,8 +8,8 @@
 -- After declaring the specialized menus, call set_option_set_metatables().
 -- Create a table with option_display_mt as the metatable.
 -- option_display_mt follows my convention for actor wrappers of having
---   create_actors, find_actors, and name.
--- After calling option_display_mt.find_actors, call
+--   create_actors, and name.
+-- After the display's Initcommand runs, call
 --   option_display_mt.set_underline_color if you are going to use the
 --   underline feature.
 -- option_display_mt is not meant to be controlled directly, instead it is
@@ -31,19 +31,17 @@ local option_item_mt= {
 				self.width= SCREEN_WIDTH
 				return Def.ActorFrame{
 					Name= name,
+					InitCommand= function(subself)
+						self.container= subself
+						self.text= subself:GetChild("text")
+						self.underline= subself:GetChild("underline")
+						self.underline:horizalign(center)
+					end,
 					normal_text("text", "", nil, nil, nil, self.zoom),
 					Def.Quad{
 						Name= "underline", InitCommand= cmd(y,underline_offset;horizalign,left;SetHeight,underline_thickness)
 					}
 				}
-			end,
-		find_actors=
-			function(self, container)
-				self.container= container
-				self.text= container:GetChild("text")
-				self.underline= container:GetChild("underline")
-				self.underline:horizalign(center)
-				return true
 			end,
 		set_geo=
 			function(self, width, height, zoom)
@@ -112,7 +110,22 @@ option_display_mt= {
 				self.el_zoom= el_zoom or 1
 				self.no_heading= no_heading
 				self.no_display= no_display
-				local args= { Name= name, InitCommand= cmd(xy, x, y) }
+				local args= {
+					Name= name,
+					InitCommand= function(subself)
+						subself:xy(x, y)
+						self.container= subself
+						if not self.no_heading then
+							self.heading= subself:GetChild("heading")
+						end
+						if not self.no_display then
+							self.display= subself:GetChild("display")
+						end
+						for i, item in ipairs(self.sick_wheel.items) do
+							item:set_geo(self.el_width, self.el_height, self.el_zoom)
+						end
+					end
+				}
 				local next_y= 0
 				if not no_heading then
 					args[#args+1]= normal_text("heading", "")
@@ -129,20 +142,6 @@ option_display_mt= {
 				args[#args+1]= self.sick_wheel:create_actors(
 					el_count, option_item_mt, 0, next_y)
 				return Def.ActorFrame(args)
-			end,
-		find_actors=
-			function(self, container)
-				self.container= container
-				if not self.no_heading then
-					self.heading= container:GetChild("heading")
-				end
-				if not self.no_display then
-					self.display= container:GetChild("display")
-				end
-				self.sick_wheel:find_actors(container:GetChild(self.sick_wheel.name))
-				for i, item in ipairs(self.sick_wheel.items) do
-					item:set_geo(self.el_width, self.el_height, self.el_zoom)
-				end
 			end,
 		set_underline_color=
 			function(self, color)

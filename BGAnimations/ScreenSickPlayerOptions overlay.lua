@@ -60,16 +60,17 @@ function bpm_displayer_interface:create_actors(name, player_number, x, y)
 	self.player_number= player_number
 	rate_coordinator:add_to_notify(self)
 	local bpm_text= self:bpm_text()
-	local args= { Name=name, InitCommand= cmd(xy, x, y) }
+	local args= {
+		Name=name,
+		InitCommand= function(subself)
+			self.container= subself
+			subself:xy(x, y)
+		end
+	}
 	self.tani= setmetatable({}, text_and_number_interface_mt)
 	args[#args+1]= self.tani:create_actors(
 		"itani", { tx= -4, nx= 4, tt= "BPM", nt= bpm_text })
 	return Def.ActorFrame(args)
-end
-
-function bpm_displayer_interface:find_actors(container)
-	self.container= container
-	self.tani:find_actors(container:GetChild(self.tani.name))
 end
 
 function bpm_displayer_interface:bpm_text()
@@ -581,7 +582,16 @@ local options_menu_mt= {
 				self.player_number= player_number
 				self.options_set_stack= {}
 				local pcolor= solar_colors[player_number]()
-				local args= { Name= name, InitCommand= cmd(xy, x, y) }
+				local args= {
+					Name= name,
+					InitCommand= function(subself)
+						subself:xy(x, y)
+						self.container= subself
+						for i, disp in ipairs(self.displays) do
+							disp:set_underline_color(solar_colors[self.player_number]())
+						end
+					end
+				}
 				args[#args+1]= create_frame_quads(
 					"frame", 2, sect_width, sect_height, pcolor, solar_colors.bg())
 				local pname= player_number
@@ -608,16 +618,6 @@ local options_menu_mt= {
 				args[#args+1]= self.cursor:create_actors(
 					"cursor", sep, line_height*2.5, 20, line_height, 1, pcolor)
 				return Def.ActorFrame(args)
-			end,
-		find_actors=
-			function(self, container)
-				self.container= container
-				self.bpm_disp:find_actors(container:GetChild(self.bpm_disp.name))
-				self.cursor:find_actors(container:GetChild(self.cursor.name))
-				for i, disp in ipairs(self.displays) do
-					disp:find_actors(container:GetChild(disp.name))
-					disp:set_underline_color(solar_colors[self.player_number]())
-				end
 			end,
 		push_options_set_stack=
 			function(self, new_set_meta, new_set_initializer_args)
@@ -667,18 +667,6 @@ local options_menu_mt= {
 			function(self, code)
 				local oss= self.options_set_stack
 				local top_set= oss[#oss]
-				local funs= {
-					MenuLeft=
-						function(self)
-							if top_set:can_exit() then
-								self:pop_options_set_stack()
-								self:update_cursor_pos()
-							end
-						end,
-				}
-				if PREFSMAN:GetPreference("ArcadeOptionsNavigation") == 0 then
-					if funs[code] then funs[code](self) return true end
-				end
 				local handled, new_set_data= top_set:interpret_code(code)
 				if handled then
 					if new_set_data then
@@ -1205,7 +1193,6 @@ local base_options= {
 
 function args:InitCommand()
 	for pn, menu in pairs(menus) do
-		menu:find_actors(self:GetChild(menu.name))
 		menu:push_options_set_stack(options_sets.menu, base_options)
 		menu:update_cursor_pos()
 	end

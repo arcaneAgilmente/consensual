@@ -47,7 +47,12 @@ do
 		self.text_section= params.text_section
 		return Def.ActorFrame{
 			Name= name,
-			InitCommand= cmd(x,params.sx;y,params.sy),
+			InitCommand= function(subself)
+				subself:xy(params.sx, params.sy)
+				self.container= subself
+				self.text= subself:GetChild("text")
+				self.number= subself:GetChild("number")
+			end,
 			LoadFont(params.tf) .. {
 				Name= "text",
 				Text= self:get_string(params.tt),
@@ -81,25 +86,6 @@ function text_and_number_interface:get_string(text)
 		t= t:upper()
 	end
 	return t
-end
-
-function text_and_number_interface:find_actors(container)
-	if not container then
-		Trace("tani:fa passed nil container.")
-		return nil
-	end
-	self.container= container
-	self.text= container:GetChild("text")
-	if not self.text then
-		Trace("tani:fa " .. self.name .. " could not find text actor in container.")
-		return nil
-	end
-	self.number= container:GetChild("number")
-	if not self.number then
-		Trace("tani:fa " .. self.name .. " could not find number actor in container.")
-		return nil
-	end
-	return true
 end
 
 function text_and_number_interface:set_text(text)
@@ -301,27 +287,28 @@ function frame_helper:create_actors(label, pad, fw, fh, outer_color, inner_color
 	self.pad= pad
 	self.x= fx
 	self.y= fy
-	return create_frame_quads(label, pad, fw, fh, outer_color, inner_color, fx, fy)
-end
-
-function frame_helper:find_actors(container)
-	self.container= container
-	if not self.container then return nil end
-	self.outer= container:GetChild("outer")
-	self.inner= container:GetChild("inner")
-	if self.outer and self.inner then
-		self.pad= (self.outer:GetWidth() - self.inner:GetWidth()) / 2
-	end
-	return self.outer and self.inner
+	return Def.ActorFrame{
+		Name= label,
+		InitCommand= function(subself)
+			self.container= subself
+			subself:xy(fx, fy)
+			self.outer= subself:GetChild("outer")
+			self.inner= subself:GetChild("inner")
+		end,
+		Def.Quad{
+			Name= "outer",
+			InitCommand= cmd(xy, 0, 0; diffuse, outer_color; setsize, fw, fh)
+		},
+		Def.Quad{
+			Name= "inner",
+			InitCommand= cmd(xy, 0, 0; diffuse, inner_color; setsize, fw-(pad*2), fh-(pad*2))
+		}
+	}
 end
 
 function frame_helper:resize(now, noh)
-	if self.container then
-		self.outer:SetWidth(now)
-		self.outer:SetHeight(noh)
-		self.inner:SetWidth(now-(self.pad*2))
-		self.inner:SetHeight(noh-(self.pad*2))
-	end
+	self.outer:setsize(now, noh)
+	self.inner:setsize(now-(self.pad*2), noh-(self.pad*2))
 end
 
 function frame_helper:resize_to_outline(frame, pad)
@@ -377,10 +364,11 @@ amv_cursor_mt= {
 			self.t= t
 			return Def.ActorMultiVertex{
 				Name= name,
-				InitCommand= function(self)
-					self:xy(x, y)
+				InitCommand= function(subself)
+					self.container= subself
+					subself:xy(x, y)
 					-- 6 verts, so the cursor can easily be cut in half.
-					self:SetVertices{
+					subself:SetVertices{
 						{{0, -h/2, 0}, color},
 						{{w/2, -h/2, 0}, color},
 						{{w/2, h/2, 0}, color},
@@ -389,13 +377,10 @@ amv_cursor_mt= {
 						{{-w/2, -h/2, 0}, color},
 						{{0, -h/2, 0}, color},
 					}
-					self:SetLineWidth(t)
-					self:SetDrawState{Mode= "DrawMode_LineStrip"}
+					subself:SetLineWidth(t)
+					subself:SetDrawState{Mode= "DrawMode_LineStrip"}
 				end
 			}
-		end,
-		find_actors= function(self, container)
-			self.container= container
 		end,
 		refit= function(self, nx, ny, nw, nh)
 			nx= nx or self.container:GetX()

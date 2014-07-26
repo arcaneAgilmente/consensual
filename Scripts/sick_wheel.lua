@@ -36,7 +36,6 @@ sick_wheel_mt= { __index= sick_wheel }
 
 local function check_metatable(item_metatable)
 	assert(item_metatable.__index.create_actors, "The metatable must have a create_actors function.  This should return a Def.ActorFrame containing whatever actors will be needed for display.")
-	assert(item_metatable.__index.find_actors, "The metatable must have a find_actors function.  This should take an ActorFrame which contains the actors the instance will be manipulating.")
 	assert(item_metatable.__index.transform, "The metatable must have a transform function.  The transform function must take 3 arguments:  position in list (1 to num_items), number of items in list, boolean indicating whether item has focus.")
 	assert(item_metatable.__index.set, "The metatable must have a set function.  The set function must take an instance of info, which it should use to set its actors to display the info.")
 end
@@ -51,7 +50,13 @@ function sick_wheel:create_actors(num_items, item_metatable, mx, my)
 	my= my or SCREEN_TOP
 	self.items= {}
 	self.name= "Wheel"
-	local args= { Name= self.name, InitCommand=cmd(xy, mx, my) }
+	local args= {
+		Name= self.name,
+		InitCommand= function(subself)
+			subself:xy(mx, my)
+			self.container= subself
+		end
+	}
 	for n= 1, num_items do
 		local item= setmetatable({}, item_metatable)
 		local actor_frame= item:create_actors("item" .. n)
@@ -59,16 +64,6 @@ function sick_wheel:create_actors(num_items, item_metatable, mx, my)
 		args[#args+1]= actor_frame
 	end
 	return Def.ActorFrame(args)
-end
-
-function sick_wheel:find_actors(container)
-	self.container= container
-	if not container then return end
-	for i, v in ipairs(self.items) do
-		if v.find_actors then
-			v:find_actors(container:GetChild(v.name))
-		end
-	end
 end
 
 function sick_wheel:maybe_wrap_index(ipos, n, info)
