@@ -291,6 +291,7 @@ local song_progress_bar_interface= {}
 local song_progress_bar_interface_mt= { __index= song_progress_bar_interface }
 function song_progress_bar_interface:create_actors()
 	self.name= "song_progress"
+	self.frame= setmetatable({}, frame_helper_mt)
 	return Def.ActorFrame{
 		Name= self.name, InitCommand= function(subself)
 			subself:xy(spb_x, spb_y)
@@ -299,8 +300,9 @@ function song_progress_bar_interface:create_actors()
 			self.song_first_second= 0
 			self.song_len= 1
 		end,
-		create_frame_quads("frame", .5, spb_width, spb_height,
-											 solar_colors.f_text(.5), solar_colors.bg(.5), 0, 0),
+		self.frame:create_actors(
+			"frame", .5, spb_width, spb_height, solar_colors.f_text(.5),
+			solar_colors.bg(.5), 0, 0),
 		Def.Quad{
 			Name= "filler", InitCommand=
 				function(self)

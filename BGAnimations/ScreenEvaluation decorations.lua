@@ -1,5 +1,7 @@
 local cg_thickness= 24
 local lg_thickness= 40
+local banner_container= false
+local banner_image= false
 local reward_time= 0
 do
 	local conversions= {
@@ -177,6 +179,8 @@ local best_score_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, z, score_name)
 			self.name= name
+			self.x= x
+			self.y= y
 			local args= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
@@ -249,6 +253,17 @@ local best_score_mt= {
 						local fy= fymn + (fh / 2)
 						self.fh:move(fx, fy-2)
 						self.fh:resize(fw, fh)
+						self.real_x= rec_calc_actor_pos(self.container)
+						local center_dist= math.abs(SCREEN_CENTER_X - self.real_x) - fw/2
+						local banner_hwidth= banner_image:GetZoomedWidth() / 2
+						local intrusion= (banner_hwidth - center_dist) + 2
+						if intrusion > 0 then
+							if self.real_x > SCREEN_CENTER_X then
+								self.container:x(self.x + intrusion)
+							else
+								self.container:x(self.x - intrusion)
+							end
+						end
 					end
 				end
 			end
@@ -262,15 +277,18 @@ local function make_banner_actor()
 		return Def.ActorFrame{
 			Name= "song_stuff",
 			InitCommand= function(self)
+				banner_container= self
 				self:xy(SCREEN_CENTER_X, SCREEN_TOP + 12)
 			end,
 			Def.Sprite{
 				Name= "banner",
 				InitCommand= function(self)
+					banner_image= self
 					self:xy(0, 56)
 					if cur_song then
 						self:LoadFromSongBanner(cur_song)
 						scale_to_fit(self, 256, 80)
+						Trace("Banner dimensions: " .. self:GetZoomedWidth() .. ", " .. self:GetZoomedHeight())
 					else
 						self:visible(false)
 					end
@@ -1043,10 +1061,10 @@ local function make_player_specific_actors()
 				"menu", 0, 0, 10, 120, 24, 1, true, true)
 		end
 		args[#args+1]= dance_pads[v]:create_actors("dance_pad", 0, -34, 10)
-		args[#args+1]= besties[v].machine:create_actors("mbest", 0, -114, 1,
-																										"Machine Best")
-		args[#args+1]= besties[v].player:create_actors("pbest", 0, -72, 1,
-																										"Player Best")
+		args[#args+1]= besties[v].machine:create_actors(
+			"mbest", 0, -114, 1, "Machine Best")
+		args[#args+1]= besties[v].player:create_actors(
+			"pbest", 0, -72, 1, "Player Best")
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
 	end
 	if #enabled_players == 1 then
@@ -1129,14 +1147,10 @@ local function find_actors(self)
 		local lgraph= graphs:GetChild(PLAYER_1 .. "_graphs")
 		local rgraph= graphs:GetChild(PLAYER_2 .. "_graphs")
 		if lgraph then
-			lgraph= lgraph:GetChild("GraphDisplay")
-			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(lgraph)
-			left_graph_edge= xmx + lgraph:GetX()
+			left_graph_edge= (cg_thickness + lg_thickness)
 		end
 		if rgraph then
-			rgraph= rgraph:GetChild("GraphDisplay")
-			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(rgraph)
-			right_graph_edge= xmn + rgraph:GetX()
+			right_graph_edge= SCREEN_RIGHT - (cg_thickness + lg_thickness)
 		end
 	end
 	for k, v in pairs(enabled_players) do

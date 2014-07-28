@@ -281,74 +281,6 @@ function create_frame_quads(label, pad, fw, fh, outer_color, inner_color, fx, fy
 	}
 end
 
-local frame_helper= {}
-function frame_helper:create_actors(label, pad, fw, fh, outer_color, inner_color, fx, fy)
-	self.name= label
-	self.pad= pad
-	self.x= fx
-	self.y= fy
-	return Def.ActorFrame{
-		Name= label,
-		InitCommand= function(subself)
-			self.container= subself
-			subself:xy(fx, fy)
-			self.outer= subself:GetChild("outer")
-			self.inner= subself:GetChild("inner")
-		end,
-		Def.Quad{
-			Name= "outer",
-			InitCommand= cmd(xy, 0, 0; diffuse, outer_color; setsize, fw, fh)
-		},
-		Def.Quad{
-			Name= "inner",
-			InitCommand= cmd(xy, 0, 0; diffuse, inner_color; setsize, fw-(pad*2), fh-(pad*2))
-		}
-	}
-end
-
-function frame_helper:resize(now, noh)
-	self.outer:setsize(now, noh)
-	self.inner:setsize(now-(self.pad*2), noh-(self.pad*2))
-end
-
-function frame_helper:resize_to_outline(frame, pad)
-	local xmn, xmx, ymn, ymx= rec_calc_actor_extent(frame)
-	self:move((xmx+xmn)/2, (ymx+ymn)/2)
-	self:resize((xmx-xmn)+(pad*2), (ymx-ymn)+(pad*2))
-end
-
-function frame_helper:set_width(w)
-	if self.container then
-		self.outer:SetWidth(w)
-		self.inner:SetWidth(w - (self.pad * 2))
-	end
-end
-
-function frame_helper:move(x, y)
-	if self.container then
-		x= x or self.x
-		y= y or self.y
-		self.container:stoptweening()
-		self.container:linear(0.1)
-		self.container:xy(x, y)
-		self.x, self.y= x, y
-	end
-end
-
-function frame_helper:hide()
-	if self.container then
-		self.container:diffusealpha(0)
-	end
-end
-
-function frame_helper:unhide()
-	if self.container then
-		self.container:diffusealpha(1)
-	end
-end
-
-frame_helper_mt= { __index= frame_helper }
-
 amv_cursor_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, w, h, t, color)
@@ -404,7 +336,7 @@ amv_cursor_mt= {
 		end,
 		recolor= function(self, color)
 			if color then
-				self:SetVertices{{color}, {color}, {color}, {color}, {color}}
+				self:SetVertices{{color}, {color}, {color}, {color}, {color}, {color}, {color}}
 			end
 		end,
 		rethicken= function(self, thickness)
@@ -429,24 +361,74 @@ amv_cursor_mt= {
 		end
 }}
 
+frame_helper_mt= {
+	__index= {
+		create_actors= function(self, name, pad, fw, fh, outer_color, inner_color, fx, fy)
+			self.name= name
+			self.pad= pad
+			self.x= fx
+			self.y= fy
+			self.w= fw
+			self.h= fh
+			self.outer= setmetatable({}, amv_cursor_mt)
+			return Def.ActorFrame{
+				Name= name,
+				InitCommand= function(subself)
+					self.container= subself
+					subself:xy(fx, fy)
+					self.inner= subself:GetChild("inner")
+				end,
+				Def.Quad{
+					Name= "inner",
+					InitCommand= cmd(xy, 0, 0; diffuse, inner_color; setsize, fw, fh)
+				},
+				self.outer:create_actors("outer", 0, 0, fw-pad, fh-pad, pad, outer_color)
+			}
+		end,
+		resize= function(self, now, noh)
+			self.w= now
+			self.h= noh
+			self.outer:refit(0, 0, now, noh)
+			self.inner:setsize(now, noh)
+		end,
+		resize_to_outline= function(self, frame, pad)
+			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(frame)
+			self:move((xmx+xmn)/2, (ymx+ymn)/2)
+			self:resize((xmx-xmn)+(pad*2), (ymx-ymn)+(pad*2))
+		end,
+		move= function(self, x, y)
+			x= x or self.x
+			y= y or self.y
+			self.container:stoptweening()
+			self.container:linear(0.1)
+			self.container:xy(x, y)
+			self.x, self.y= x, y
+		end,
+		hide= function(self)
+			self.container:visible(false)
+		end,
+		unhide= function(self)
+			self.container:visible(true)
+		end
+}}
+
 function credit_reporter(x, y, show_credits)
 	return normal_text(
 		"credit", "Credits", solar_colors.violet(), x, y, 1, center,
 		{ OnCommand= cmd(playcommand, "set"),
 			CoinsChangedMessageCommand= cmd(playcommand, "set"),
-			setCommand=
-				function(self)
-					local credits, coins, needed= get_coin_info()
-					local text= credits .. " : " .. coins .. " / " .. needed
-					if show_credits then
-						text= "Credits: " .. text
-					end
-					if needed == 0 then
-						text= ""
-					end
-					self:settext(text)
+			setCommand= function(self)
+				local credits, coins, needed= get_coin_info()
+				local text= credits .. " : " .. coins .. " / " .. needed
+				if show_credits then
+					text= "Credits: " .. text
 				end
-		})
+				if needed == 0 then
+					text= ""
+				end
+				self:settext(text)
+			end
+	})
 end
 
 function chart_info_text(steps)

@@ -592,8 +592,9 @@ local options_menu_mt= {
 						end
 					end
 				}
-				args[#args+1]= create_frame_quads(
-					"frame", 2, sect_width, sect_height, pcolor, solar_colors.bg())
+				self.frame= setmetatable({}, frame_helper_mt)
+				args[#args+1]= self.frame:create_actors(
+					"frame", 2, sect_width, sect_height, pcolor, solar_colors.bg(), sect_width/2, sect_height/2)
 				local pname= player_number
 				local pro= PROFILEMAN:GetProfile(player_number)
 				if pro and pro:GetDisplayName() ~= "" then

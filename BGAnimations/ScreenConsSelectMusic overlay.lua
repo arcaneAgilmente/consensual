@@ -866,7 +866,7 @@ return Def.ActorFrame {
 	steps_display:create_actors("StepsDisplay"),
 	Def.Sprite {
 		Name="CDTitle",
-		InitCommand=cmd(x,SCREEN_CENTER_X-50;y,SCREEN_TOP+180),
+		InitCommand=cmd(x,280;y,SCREEN_TOP+180),
 		OnCommand= cmd(playcommand, "Set"),
 		CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
 		SetCommand=

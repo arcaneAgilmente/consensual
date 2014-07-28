@@ -223,7 +223,7 @@ local function find_actors(container)
 		all_displays[i]:scroll(1)
 		local disp_cont= all_displays[i].container
 		frame:resize_to_outline(disp_cont, 8)
-		frame:move(disp_cont:GetX(), disp_cont:GetY() + frame.outer:GetHeight()/2-18)
+		frame:move(disp_cont:GetX(), disp_cont:GetY() + frame.h/2-18)
 		frame:hide()
 	end
 end
@@ -408,16 +408,48 @@ local function update_cursor_pos()
 end
 
 local star_rad= SCREEN_HEIGHT*.25
+local star_rot= 45
+if april_fools then star_rot= 720 end
 local star_points= 511
 local star_y= SCREEN_HEIGHT*.5
-do
+local stars= {setmetatable({}, star_amv_mt), setmetatable({}, star_amv_mt)}
+local function rescale_stars()
+	local pad= 16
+	local radius= ((SCREEN_WIDTH - display_frames[1].w) / 4) - pad
 	local scale_factor= DISPLAY:GetDisplayHeight() / SCREEN_HEIGHT
-	local circ= star_rad * math.pi * 2
+	local circ= radius * math.pi * 2
 	star_points= math.round(circ * scale_factor * 1)
+	local apmul= 1
+	if april_fools then apmul= 4 end
+	stars[1]:repoint(star_points, radius * apmul)
+	stars[2]:repoint(star_points, radius * apmul)
+	stars[1]:move(radius+pad)
+	stars[2]:move(SCREEN_WIDTH - (radius+pad))
+end
+
+local function mess()
+	local message= {}
+	--[[
+	local lines= math.random(1, 5)
+	for l= 1, lines do
+		message[#message+1]= string.rep("s", math.random(32, 256))
+	end
+	]]
+	message= {
+		"Error playing command: /Themes/DDR 2013/BGAnimations/ScreenSelectMusic overlay/default.lua:332: attempt to index a nil value",
+		"/Themes/DDR 2013/BGAnimations/ScreenSelectMusic overlay/default.lua:332: GetProfileHighScores(pn = PlayerNumber_P2,profile = (null),song = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = 1,(*temporary) = 0,(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = attempt to index a nil value)",
+		"/Themes/DDR 2013/BGAnimations/ScreenSelectMusic overlay/default.lua:779: unknown(self = (null),song = (null))"
+	}
+
+	local mess= table.concat(message, "\n")
+	MESSAGEMAN:Broadcast("FakeError", {message= mess})
 end
 
 local function input(event)
 	if event.type == "InputEventType_Release" then return false end
+	if event.DeviceInput.button == "DeviceButton_n" then
+		for n= 1, 10 do mess() end
+	end
 	if event.PlayerNumber and event.GameButton then
 		interpret_code(event.PlayerNumber, event.GameButton)
 		update_cursor_pos()
@@ -429,6 +461,7 @@ end
 local args= {
 	InitCommand= function(self)
 								 find_actors(self)
+								 rescale_stars()
 								 update_cursor_pos()
 							 end,
 	Def.Actor{
@@ -437,12 +470,12 @@ local args= {
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
 		end,
 	},
-	star_amv(
-		"lstar", SCREEN_WIDTH * .25, star_y, star_rad, 0, star_points, nil,
-		solar_colors[PLAYER_1]()),
-	star_amv(
-		"rstar", SCREEN_WIDTH* .75, star_y, star_rad, math.pi, star_points, nil,
-		solar_colors[PLAYER_2]()),
+	stars[1]:create_actors(
+		"lstar", SCREEN_WIDTH * .25, star_y, star_rad, 0, star_points,
+		solar_colors[PLAYER_1](), 8, star_rot),
+	stars[2]:create_actors(
+		"rstar", SCREEN_WIDTH * .75, star_y, star_rad, math.pi, star_points,
+		solar_colors[PLAYER_2](), 8, -star_rot),
 	create_actors(),
 	Def.ActorFrame{
 		Name= "song report",
@@ -453,6 +486,11 @@ local args= {
 		normal_text("groups", num_groups .. " Groups", solar_colors.uf_text(), 0, 36),
 	},
 	credit_reporter(SCREEN_CENTER_X, SCREEN_TOP+60, true),
+}
+
+args[#args+1]= Def.LogDisplay{
+	Name= "FakeError",
+	ReplaceLinesWhenHidden= true,
 }
 
 return Def.ActorFrame(args)
