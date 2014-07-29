@@ -157,15 +157,18 @@ local function calc_sigil_verts_alt(detail, max_detail, length)
 	local max_verts= calc_max_verts_alt(max_detail)
 	verts[#verts+1]= {{0, 0, 0}}
 	local layers= calc_sigil_layers(detail)
-	local fraction_pervert= (max_verts / calc_max_verts_alt(detail)) - 1
+	local extra_per_layer= (max_detail * 2 + 1) - (detail * 2 + 1)
+	local fraction_pervert= extra_per_layer / (detail * 2 + 1)
 	local fractional_vert= 0
+	local threshold= 1
 	local function add_fraction(curr_pos, laycol)
-		fractional_vert= fractional_vert + fraction_pervert
-		while fractional_vert >= 1 do
+		fractional_vert= fractional_vert + (fraction_pervert * 2)
+		while fractional_vert >= threshold do
 			verts[#verts+1]= {{curr_pos[1], curr_pos[2], 0}, laycol}
 			fractional_vert= fractional_vert - 1
 		end
 	end
+	local last_layer_verts= {}
 	for l= 1, layers do
 		--local laycol= convert_wrapping_number_to_color(l)
 		local next_layer_begin_vert= {}
@@ -183,10 +186,21 @@ local function calc_sigil_verts_alt(detail, max_detail, length)
 			curr_pos[1]= curr_pos[1] - back_adv[1]
 			curr_pos[2]= curr_pos[2] - back_adv[2]
 			verts[#verts+1]= {{curr_pos[1], curr_pos[2], 0}, laycol}
-			add_fraction(curr_pos, laycol)
+			if l == layers then
+				last_layer_verts[#last_layer_verts+1]= verts[#verts-1]
+				last_layer_verts[#last_layer_verts+1]= verts[#verts]
+			end
 		end
 		if l < layers then
 			verts[#verts+1]= {{next_layer_begin_vert[1], next_layer_begin_vert[2], 0}, laycol}
+		end
+	end
+	local extra_layers= calc_sigil_layers(max_detail) - layers
+	local per_extra_layer= (max_detail * 2) + 1
+	for l= 1, extra_layers do
+		for v= 1, per_extra_layer do
+			local ind= math.floor(v * (#last_layer_verts / per_extra_layer))
+			verts[#verts+1]= last_layer_verts[ind]
 		end
 	end
 	local verts_used= #verts
@@ -203,6 +217,8 @@ sigil_controller_mt= {
 			function(self, name, x, y, color, max_detail, size)
 				self.name= name
 				self.max_detail= max_detail
+				self.shift_time= .5
+				self.detail_queue= {}
 				do
 					local layers= calc_sigil_layers(max_detail)
 					local width= 0
@@ -223,26 +239,57 @@ sigil_controller_mt= {
 					verts[n]= {{0, 0, 0}, color}
 				end
 				return Def.ActorMultiVertex{
-					Name= name,
-					InitCommand=
-						function(subself)
-							self.container= subself
-							self.sigil= subself
-							subself:xy(x, y)
-							subself:SetDrawState{Mode="DrawMode_LineStrip"}
-							subself:SetVertices(verts)
-							self:redetail(max_detail)
+					Name= name, InitCommand= function(subself)
+						self.container= subself
+						self.sigil= subself
+						subself:xy(x, y)
+						subself:SetDrawState{Mode="DrawMode_LineStrip"}
+						subself:SetVertices(verts)
+						self:internal_redetail(max_detail)
+					end,
+					queued_redetailCommand= function(subself)
+						if self.detail_queue[1] then
+							self:internal_redetail(self.detail_queue[1])
+							table.remove(self.detail_queue, 1)
+							subself:queuecommand("queued_redetail")
 						end
+					end,
+					goaled_redetailCommand= function(subself)
+						if self.detail < self.goal_detail then
+							self:internal_redetail(self.detail + 1)
+							subself:queuecommand("goaled_redetail")
+						elseif self.detail > self.goal_detail then
+							self:internal_redetail(self.detail - 1)
+							subself:queuecommand("goaled_redetail")
+						else
+							self.moving_to_goal= false
+						end
+					end
 				}
 			end,
-		redetail=
+		redetail= function(self, new_detail)
+			self.detail_queue[#self.detail_queue+1]= new_detail
+			if #self.detail_queue == 1 then
+				self.sigil:queuecommand("queued_redetail")
+			end
+		end,
+		set_goal_detail= function(self, new_goal)
+			if new_goal > 0 and new_goal <= self.max_detail then
+				self.goal_detail= new_goal
+				if not self.moving_to_goal then
+					self.moving_to_goal= true
+					self.sigil:queuecommand("goaled_redetail")
+				end
+			end
+		end,
+		internal_redetail=
 			function(self, new_detail)
 				new_detail= math.max(math.min(new_detail, self.max_detail), 1)
 				if self.detail == new_detail then return end
 				if self.sigil then
 					local new_verts, used_verts= calc_sigil_verts_alt(new_detail, self.max_detail, self.length)
 --					self.sigil:SetDrawState{Num= used_verts}
-					self.sigil:linear(.5)
+					self.sigil:linear(self.shift_time)
 					self.sigil:SetVertices(new_verts)
 				end
 				self.detail= new_detail

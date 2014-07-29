@@ -123,10 +123,7 @@ function sigil_feedback_interface:update(player_stage_stats)
 	--Trace("SGBG.Update:  Current life:  " .. life .. "\n  ADP:  " .. adp ..
 	--   "\n  pdp:  " .. pdp .. "\n  score:  " .. score)
 	local new_detail= math.max(1, math.round(self.sigil.max_detail * ((score - .5) * 2)))
-	-- Don't adjust the detail by more than one.
-	new_detail= math.max(new_detail, self.prev_state.detail - 1)
-	new_detail= math.min(new_detail, self.prev_state.detail + 1)
-	self.sigil:redetail(new_detail)
+	self.sigil:set_goal_detail(new_detail)
 	self.prev_state.detail= new_detail
 	self.prev_state.fill_amount= life
 end

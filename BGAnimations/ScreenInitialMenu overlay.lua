@@ -450,6 +450,9 @@ local function input(event)
 	if event.DeviceInput.button == "DeviceButton_n" then
 		for n= 1, 10 do mess() end
 	end
+	if event.DeviceInput.button == "DeviceButton_s" then
+		SCREENMAN:SetNewScreen("ScreenSigilTest")
+	end
 	if event.PlayerNumber and event.GameButton then
 		interpret_code(event.PlayerNumber, event.GameButton)
 		update_cursor_pos()
