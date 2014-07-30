@@ -548,11 +548,11 @@ local args= {
 local score_wheel_y= SCREEN_TOP+4
 if all_scores_on_screen then
 	args[#args+1]= score_wheel:create_actors(
-		#combined_play_history, score_display_mt, SCREEN_CENTER_X,
+		"wheel", #combined_play_history, score_display_mt, SCREEN_CENTER_X,
 		score_wheel_y)
 else
 	args[#args+1]= score_wheel:create_actors(
-		disps_on_screen+2, score_display_mt, SCREEN_CENTER_X, score_wheel_y)
+		"wheel", disps_on_screen+2, score_display_mt, SCREEN_CENTER_X, score_wheel_y)
 	local arrow_y= score_wheel_y+score_display_mt.__index.banner_center_y()
 	args[#args+1]= arrow_amv(
 		"left_arrow", SCREEN_LEFT + arrow_width + arrow_pad,

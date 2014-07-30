@@ -574,7 +574,7 @@ function music_whale_interface:create_actors(x)
 	local args= {
 		Name= self.name,
 		self.sick_wheel:create_actors(
-			items_on_wheel, sick_wheel_item_interface_mt, wheel_x, wheel_y),
+			"wheel", items_on_wheel, sick_wheel_item_interface_mt, wheel_x, wheel_y),
 	}
 	self.focus_pos= self.sick_wheel.focus_pos
 	return Def.ActorFrame(args)

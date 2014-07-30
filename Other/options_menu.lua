@@ -140,7 +140,7 @@ option_display_mt= {
 				end
 				self.sick_wheel= setmetatable({disable_wrapping= true}, sick_wheel_mt)
 				args[#args+1]= self.sick_wheel:create_actors(
-					el_count, option_item_mt, 0, next_y)
+					"wheel", el_count, option_item_mt, 0, next_y)
 				return Def.ActorFrame(args)
 			end,
 		set_underline_color=

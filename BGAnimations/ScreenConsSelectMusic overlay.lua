@@ -148,7 +148,7 @@ function steps_display_interface:create_actors(name)
 	end
 	self.cursors= cursors
 	self.sick_wheel= setmetatable({disable_wrapping= true}, sick_wheel_mt)
-	args[#args+1]= self.sick_wheel:create_actors(steps_display_elements, std_items_mt, 0, 0)
+	args[#args+1]= self.sick_wheel:create_actors("wheel", steps_display_elements, std_items_mt, 0, 0)
 	return Def.ActorFrame(args)
 end
 
