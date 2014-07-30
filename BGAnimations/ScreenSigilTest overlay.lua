@@ -43,7 +43,24 @@ local args= {
 			sigil_status= self
 			self:diffuse(solar_colors.f_text())
 		end
-	}
+	},
+	Def.BitmapText{
+		Name= "game chars test",
+		Font= "Common Normal",
+		InitCommand= function(self)
+			self:xy(SCREEN_CENTER_X, 40)
+			self:settext("&left; &down; &up; &right; &downleft; &upleft; &upright; &downright; &center; &start; &select; &back; &menuleft; &menudown; &menuup; &menuright;")
+		end
+	},
+	Def.BitmapText{
+		Name= "game chars stroke test",
+		Font= "Common Normal",
+		InitCommand= function(self)
+			self:xy(SCREEN_CENTER_X, 40)
+			self:settext("&left; &down; &up; &right; &downleft; &upleft; &upright; &downright; &center; &start; &select; &back; &menuleft; &menudown; &menuup; &menuright;")
+			self:strokecolor(solar_colors.magenta())
+		end
+	},
 }
 
 return Def.ActorFrame(args)
