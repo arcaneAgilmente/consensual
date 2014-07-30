@@ -447,10 +447,10 @@ end
 
 local function input(event)
 	if event.type == "InputEventType_Release" then return false end
-	if event.DeviceInput.button == "DeviceButton_n" then
+	if false and event.DeviceInput.button == "DeviceButton_n" then
 		for n= 1, 10 do mess() end
 	end
-	if event.DeviceInput.button == "DeviceButton_s" then
+	if false and event.DeviceInput.button == "DeviceButton_s" then
 		SCREENMAN:SetNewScreen("ScreenSigilTest")
 	end
 	if event.PlayerNumber and event.GameButton then

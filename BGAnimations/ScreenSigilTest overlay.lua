@@ -37,7 +37,7 @@ local args= {
 	sigil:create_actors("sigil", SCREEN_CENTER_X, SCREEN_CENTER_Y, solar_colors.cyan(), 64, 300),
 	Def.BitmapText{
 		Name= "sigil_status",
-		Font= "Common Shimapan",
+		Font= "Common Normal",
 		InitCommand= function(self)
 			self:xy(SCREEN_CENTER_X, 16)
 			sigil_status= self

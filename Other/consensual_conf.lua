@@ -12,3 +12,6 @@ max_reward_pct= .25
 -- Reward by time, rewards the player with a fixed amount of time, ignoring song length.  The reward value is added to the remaining time.
 min_reward_time= 0
 max_reward_time= 30
+
+-- Whether to show automatic help on Select Music.
+screen_cons_select_music_help= true

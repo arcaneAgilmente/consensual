@@ -246,6 +246,7 @@ local pain_displays= {
 
 dofile(THEME:GetPathO("", "song_props_menu.lua"))
 dofile(THEME:GetPathO("", "tags_menu.lua"))
+dofile(THEME:GetPathO("", "auto_hider.lua"))
 
 set_option_set_metatables()
 
@@ -513,9 +514,9 @@ local function set_special_menu(pn, value)
 end
 
 local codes= {
-	{ name= "sort_mode", ignore_release= true,
+	{ name= "sort_mode", ignore_release= true, games= {"dance", "techno"},
 		"Up", "Down", "Up", "Down" },
-	{ name= "sort_mode", ignore_release= true,
+	{ name= "sort_mode", ignore_release= true, games= {"pump", "techno"},
 		"UpLeft", "UpRight", "UpLeft", "UpRight" },
 	{ name= "sort_mode", ignore_release= false,
 		"MenuLeft", "MenuRight" },
@@ -525,13 +526,13 @@ local codes= {
 		"Select", "Start" },
 	{ name= "open_special", ignore_release= false,
 		"MenuLeft", "Start" },
-	{ name= "diff_up", ignore_release= true,
+	{ name= "diff_up", ignore_release= true, games= {"dance", "techno"},
 		"Up", "Up" },
-	{ name= "diff_up", ignore_release= true,
+	{ name= "diff_up", ignore_release= true, games= {"pump", "techno"},
 		"UpLeft", "UpLeft" },
-	{ name= "diff_down", ignore_release= true,
+	{ name= "diff_down", ignore_release= true, games= {"dance", "techno"},
 		"Down", "Down" },
-	{ name= "diff_down", ignore_release= true,
+	{ name= "diff_down", ignore_release= true, games= {"pump", "techno"},
 		"UpRight", "UpRight" },
 	{ name= "diff_up", ignore_release= false, repeat_first_on_end= true,
 		ignore_press_list= {"MenuRight", "Start"},
@@ -543,17 +544,17 @@ local codes= {
 		ignore_release_list= {
 			"MenuLeft", "MenuRight", "Start"},
 		"Select", "MenuRight"},
-	{ name= "noob_mode", ignore_release= true,
+	{ name= "noob_mode", ignore_release= true, games= {"dance", "techno"},
 		"Up", "Up", "Down", "Down", "Left", "Right", "Left", "Right"},
-	{ name= "simple_options_mode", ignore_release= true,
+	{ name= "simple_options_mode", ignore_release= true, games= {"dance", "techno"},
 	"Left", "Down", "Right", "Left", "Down", "Right" },
-	{ name= "all_options_mode", ignore_release= true,
+	{ name= "all_options_mode", ignore_release= true, games= {"dance", "techno"},
 	"Right", "Down", "Left", "Right", "Down", "Left" },
-	{ name= "excessive_options_mode", ignore_release= true,
+	{ name= "excessive_options_mode", ignore_release= true, games= {"dance", "techno"},
 		"Left", "Up", "Right", "Up", "Left", "Down", "Right", "Down", "Left"},
-	{ name= "kyzentun_mode", ignore_release= true,
+	{ name= "kyzentun_mode", ignore_release= true, games= {"none"},
 		"Right", "Up", "Left", "Right", "Up", "Left" },
-	{ name= "unjoin", ignore_release= true,
+	{ name= "unjoin", ignore_release= true, games= {"none"},
 		"Down", "Left", "Up", "Down", "Left", "Up", "Down", "Left", "Up"},
 }
 for i, v in ipairs(codes) do
@@ -783,6 +784,67 @@ local function spew_song_specials(song)
 		print(type(bpm))
 	end
 	Trace("Done.")
+end
+
+local function code_to_text(code)
+	if code.ignore_release then
+		return "&" .. table.concat(code, ";&") .. ";"
+	else
+		return "&" .. table.concat(code, ";+&") .. ";"
+	end
+end
+
+local function get_code_texts_for_game()
+	local game= GAMESTATE:GetCurrentGame():GetName():lower()
+	local ret= {}
+	for i, code in ipairs(codes) do
+		local in_game= (not code.games) or (string_in_table(game, code.games))
+		if in_game then
+			if not ret[code.name] then ret[code.name]= {} end
+			ret[code.name][#ret[code.name]+1]= code_to_text(code)
+		end
+	end
+	return ret
+end
+
+local help_args= {
+	HideTime= 5,
+	Def.Quad{
+		InitCommand= function(self)
+			self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
+			self:setsize(SCREEN_WIDTH, SCREEN_HEIGHT)
+			self:diffuse(solar_colors.bg(.5))
+		end
+	},
+	normal_text("wheel_help", THEME:GetString("SelectMusic", "wheel_help"),
+							nil, wheel_x, 24, .75, left),
+}
+do
+	local code_positions= {
+		sort_mode= {wheel_x, 96},
+		diff_up= {8, 168},
+		diff_down= {8, 192},
+		open_special= {8, SCREEN_CENTER_Y},
+		noob_mode= {8, SCREEN_CENTER_Y+48},
+		simple_options_mode= {8, SCREEN_CENTER_Y+72},
+		all_options_mode= {8, SCREEN_CENTER_Y+96},
+		excessive_options_mode= {8, SCREEN_CENTER_Y+120},
+	}
+	local game_codes= get_code_texts_for_game()
+	for code_name, code_set in pairs(game_codes) do
+		local pos= code_positions[code_name]
+		local help= THEME:GetString("SelectMusic", code_name)
+		local or_word= " "..THEME:GetString("Common", "or").." "
+		local code_text= table.concat(code_set, or_word)
+		help_args[#help_args+1]= normal_text(
+			code_name .. "_help", help .. " " .. code_text, nil, pos[1], pos[2], .75, left)
+	end
+end
+
+local function maybe_help()
+	if screen_cons_select_music_help then
+		return Def.AutoHider(help_args)
+	end
 end
 
 return Def.ActorFrame {
@@ -1049,4 +1111,5 @@ return Def.ActorFrame {
 			"omf", 2, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0),
 		normal_text("omm", "Press start for options.", solar_colors.green(), 0, 0, 2),
 	},
+	maybe_help(),
 }
