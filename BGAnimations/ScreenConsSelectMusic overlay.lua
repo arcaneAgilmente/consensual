@@ -874,7 +874,7 @@ return Def.ActorFrame {
 				-- Courses can't have CDTitles, so gamestate_get_curr_song isn't used.
 				local song= GAMESTATE:GetCurrentSong()
 				if song and song:HasCDTitle()then
-					self:Load(song:GetCDTitlePath())
+					self:LoadBanner(song:GetCDTitlePath())
 					self:visible(true)
 					-- Jousway suggests fucking people with fucking huge cdtitles.
 					local height= self:GetHeight()
@@ -895,7 +895,7 @@ return Def.ActorFrame {
 			function(self)
 				local song= gamestate_get_curr_song()
 				if song and song:HasBanner()then
-					self:Load(song:GetBannerPath())
+					self:LoadBanner(song:GetBannerPath())
 					scale_to_fit(self, banner_w, banner_h)
 					self:visible(true)
 				else
@@ -908,7 +908,7 @@ return Def.ActorFrame {
 				if songman_does_group_exist(name) then
 					local path= songman_get_group_banner_path(name)
 					if path and path ~= "" then
-						self:Load(path)
+						self:LoadBanner(path)
 						scale_to_fit(self, banner_w, banner_h)
 						self:visible(true)
 					else

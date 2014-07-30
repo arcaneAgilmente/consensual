@@ -288,7 +288,6 @@ local function make_banner_actor()
 					if cur_song then
 						self:LoadFromSongBanner(cur_song)
 						scale_to_fit(self, 256, 80)
-						Trace("Banner dimensions: " .. self:GetZoomedWidth() .. ", " .. self:GetZoomedHeight())
 					else
 						self:visible(false)
 					end
