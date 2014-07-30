@@ -7,7 +7,9 @@ function Def.AutoHider(params)
 		end,
 		OnCommand= function(self)
 			local function input(event)
-				self:hibernate(params.HideTime)
+				if event.PlayerNumber then
+					self:hibernate(params.HideTime)
+				end
 			end
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
 			if params.OnCommand then params.OnCommand(self) end

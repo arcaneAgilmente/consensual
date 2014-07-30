@@ -556,6 +556,10 @@ local codes= {
 		"Right", "Up", "Left", "Right", "Up", "Left" },
 	{ name= "unjoin", ignore_release= true, games= {"none"},
 		"Down", "Left", "Up", "Down", "Left", "Up", "Down", "Left", "Up"},
+	{ name= "change_song", fake= true, "Left" },
+	{ name= "change_song", fake= true, "Right" },
+	{ name= "play_song", fake= true, "Start" },
+	{ name= "open_special", fakes= true, "Select" },
 }
 for i, v in ipairs(codes) do
 	v.curr_pos= { [PLAYER_1]= 1, [PLAYER_2]= 1}
@@ -590,7 +594,9 @@ local function update_code_status(pn, code, press)
 	local handler= press_handlers[press]
 	if not handler then return triggered end
 	for i, v in ipairs(codes) do
-		handler(v)
+		if not v.fake then
+			handler(v)
+		end
 	end
 	return triggered
 end
@@ -813,14 +819,14 @@ local help_args= {
 		InitCommand= function(self)
 			self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
 			self:setsize(SCREEN_WIDTH, SCREEN_HEIGHT)
-			self:diffuse(solar_colors.bg(.5))
+			self:diffuse(solar_colors.bg(.75))
 		end
 	},
-	normal_text("wheel_help", THEME:GetString("SelectMusic", "wheel_help"),
-							nil, wheel_x, 24, .75, left),
 }
 do
 	local code_positions= {
+		change_song= {wheel_x, 24},
+		play_song= {wheel_x, 48},
 		sort_mode= {wheel_x, 96},
 		diff_up= {8, 168},
 		diff_down= {8, 192},
