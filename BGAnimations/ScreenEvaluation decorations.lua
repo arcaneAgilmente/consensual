@@ -86,6 +86,9 @@ local column_to_pad_arrow_map= {
 		StepsType_Techno_Double8= {[0]= 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
 }}
 
+local score_datas= {}
+local score_data_viewing_indices= {}
+
 local function get_pad_arrow_for_col(pn, col)
 	-- -1 is the index for the combined stats of all panels
 	if col == -1 then return -1 end
@@ -810,6 +813,19 @@ function profile_report_interface:create_actors(player_number)
 			things_in_list[#things_in_list+1]= {
 				name= "Toasties", number= pro:GetNumToasties(), color= color}
 		end
+		do
+			local taps= pro:GetTotalTapsAndHolds()
+			local level= 0
+			local calc_taps= 0
+			repeat
+				level= level + 1
+				calc_taps= (level * (level + 1) * (level + 2)) * 500
+			until calc_taps > taps
+			things_in_list[#things_in_list+1]= {
+				name= "Experience Level", number= level }
+			things_in_list[#things_in_list+1]= {
+				name= "Next level at", number= calc_taps }
+		end
 		things_in_list[#things_in_list+1]= {
 			name= "Taps and holds", number= pro:GetTotalTapsAndHolds() }
 		things_in_list[#things_in_list+1]= {
@@ -1057,7 +1073,7 @@ local function make_player_specific_actors()
 		if #enabled_players > 1 then
 			args[#args+1]= profile_reports[v]:create_actors(v)
 			args[#args+1]= special_menu_displays[v]:create_actors(
-				"menu", 0, 0, 10, 120, 24, 1, true, true)
+				"menu", 0, 0, 11, 120, 24, 1, true, true)
 		end
 		args[#args+1]= dance_pads[v]:create_actors("dance_pad", 0, -34, 10)
 		args[#args+1]= besties[v].machine:create_actors(
@@ -1074,7 +1090,7 @@ local function make_player_specific_actors()
 			"frame", 2, 0, 0, solar_colors[this](), solar_colors.bg(), 0, 0)
 		args[#args+1]= profile_reports[this]:create_actors(this)
 		args[#args+1]= special_menu_displays[this]:create_actors(
-			"menu", 0, 16, 10, 160, 24, 1, true, true)
+			"menu", 0, 16, 11, 160, 24, 1, true, true)
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
 	end
 	-- In its own loop to make sure they're above all other actors.
@@ -1114,9 +1130,6 @@ local function make_judge_name_actors()
 		"names", 0, 0, 0, 0, 0, 24, 1, center, #judge_name_data)
 	return Def.ActorFrame(args)
 end
-
-local score_datas= {}
-local score_data_viewing_indices= {}
 
 local menu_states= {[PLAYER_1]= 0, [PLAYER_2]= 0}
 

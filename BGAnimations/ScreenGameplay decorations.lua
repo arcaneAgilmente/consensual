@@ -760,6 +760,7 @@ local function set_speed_from_speed_info(player)
 	-- the middle of the song, it'll null out.  This means that if you
 	-- use PlayerState:SetPlayerOptions, it'll ruin whatever mmod the
 	-- player has set.  So this code is here to remove that mask.
+	if not player.player_number or not GAMESTATE:IsPlayerEnabled(player.player_number) then return end
 	local speed_info= player:get_speed_info()
 	speed_info.prev_bps= nil
 	local mode_functions= {

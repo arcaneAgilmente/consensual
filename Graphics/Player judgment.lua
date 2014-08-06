@@ -120,7 +120,6 @@ local function add_value_set(enum_table)
 		local metric_name= "PercentScoreWeight" .. ToEnumShortString(tns)
 		if metric_name ~= "PercentScoreWeightNone" then
 			local value= THEME:GetMetric("ScoreKeeperNormal", metric_name)
-			Trace("Fetching value for " .. tns .. ": " .. metric_name .. ": " .. tostring(value))
 			tns_values[tns]= value
 		end
 	end

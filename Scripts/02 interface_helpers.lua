@@ -382,14 +382,14 @@ frame_helper_mt= {
 					Name= "inner",
 					InitCommand= cmd(xy, 0, 0; diffuse, inner_color; setsize, fw, fh)
 				},
-				self.outer:create_actors("outer", 0, 0, fw-pad, fh-pad, pad, outer_color)
+				self.outer:create_actors("outer", 0, 0, fw-pad/2, fh-pad/2, pad, outer_color)
 			}
 		end,
 		resize= function(self, now, noh)
-			self.w= now
-			self.h= noh
+			self.w= now or self.w
+			self.h= noh or self.h
 			self.outer:refit(0, 0, now, noh)
-			self.inner:setsize(now, noh)
+			self.inner:setsize(self.w, self.h)
 		end,
 		resize_to_outline= function(self, frame, pad)
 			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(frame)

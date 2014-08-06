@@ -282,7 +282,7 @@ local function interpret_code(pn, code)
 	current_menu.cursor_pos= cursor_poses[pn]
 	local handled, extra= current_menu:interpret_code(code)
 	cursor_poses[pn]= current_menu.cursor_pos
-	function maybe_finalize_and_exit(pns)
+	local function maybe_finalize_and_exit(pns)
 		if SCREENMAN:GetTopScreen():Finish() then
 			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
 			for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
@@ -461,6 +461,16 @@ local function input(event)
 	return false
 end
 
+local star_args= {
+	Name= "Star frame",
+	stars[1]:create_actors(
+		"lstar", SCREEN_WIDTH * .25, star_y, star_rad, 0, star_points,
+		solar_colors[PLAYER_1](), 8, star_rot),
+	stars[2]:create_actors(
+		"rstar", SCREEN_WIDTH * .75, star_y, star_rad, math.pi, star_points,
+		solar_colors[PLAYER_2](), 8, -star_rot),
+}
+
 local args= {
 	InitCommand= function(self)
 								 find_actors(self)
@@ -473,12 +483,7 @@ local args= {
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
 		end,
 	},
-	stars[1]:create_actors(
-		"lstar", SCREEN_WIDTH * .25, star_y, star_rad, 0, star_points,
-		solar_colors[PLAYER_1](), 8, star_rot),
-	stars[2]:create_actors(
-		"rstar", SCREEN_WIDTH * .75, star_y, star_rad, math.pi, star_points,
-		solar_colors[PLAYER_2](), 8, -star_rot),
+	Def.ActorFrame(star_args),
 	create_actors(),
 	Def.ActorFrame{
 		Name= "song report",

@@ -28,6 +28,7 @@ options_sets.song_props_menu= {
 			if self.cursor_pos == 7 then
 				return true, true, "tags"
 			elseif self.cursor_pos == 8 then
+				profile_pain_setting:set_dirty(pn_to_profile_slot(self.player_number))
 				return true, true, "pain"
 			end
 			local player_slot= pn_to_profile_slot(self.player_number)

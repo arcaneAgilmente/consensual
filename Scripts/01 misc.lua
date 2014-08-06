@@ -606,11 +606,10 @@ function ymdhms_timestamp()
 	return ymd_timestamp() .. " " .. hms_timestamp()
 end
 
+local slot_conversion= {
+	[PLAYER_1]= "ProfileSlot_Player1", [PLAYER_2]= "ProfileSlot_Player2",}
 function pn_to_profile_slot(pn)
-	if pn == PLAYER_1 then
-		return "ProfileSlot_Player1"
-	end
-	return "ProfileSlot_Player2"
+	return slot_conversion[pn] or "ProfileSlot_Invalid"
 end
 
 function secs_to_str(secs)
@@ -643,17 +642,6 @@ function string_in_table(str, tab)
 		if s == str then return true end
 	end
 	return false
-end
-
-function write_str_to_file(str, fname, str_name)
-	local file_handle= RageFileUtil.CreateRageFile()
-	if not file_handle:Open(fname, 2) then
-		Warn("Could not open '" .. fname .. "' to write " .. str_name .. ".")
-	else
-		file_handle:Write(str)
-		file_handle:Close()
-		file_handle:destroy()
-	end
 end
 
 music_wheel_width= SCREEN_WIDTH*.3125

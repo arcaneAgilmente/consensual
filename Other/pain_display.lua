@@ -26,6 +26,7 @@ end
 --   bpm= bool, -- optional
 --   rating= bool, -- optional
 --   author= bool, -- optional
+--   nps= bool, --optional
 --   radar_category= string, -- optional
 --   favor= string, -- "machine" or "player", optional
 --   score= {machine= bool, slot= number}, -- optional
@@ -33,13 +34,28 @@ end
 -- }
 
 local function clear_pain_item_config(item_config)
-	item_config.bpm= nil
-	item_config.rating= nil
-	item_config.author= nil
-	item_config.radar_category= nil
-	item_config.favor= nil
-	item_config.score= nil
-	item_config.tag= nil
+	for k in pairs(item_config) do
+		if k ~= "is_wide" then
+			item_config[k]= nil
+		end
+	end
+end
+
+local function clear_unused_half_tail(config_half)
+	if #config_half > 0 then
+		repeat
+			local has_item= false
+			for k, v in pairs(config_half[#config_half]) do
+				if k ~= "is_wide" then
+					has_item= true
+					break
+				end
+			end
+			if not has_item then
+				config_half[#config_half]= nil
+			end
+		until has_item or #config_half < 1
+	end
 end
 
 local function set_pain_item_field(item_config, field_name, value)
@@ -176,6 +192,10 @@ options_sets.pain_menu= {
 				function()
 					set_pain_item_field(self.item_config, "author", true)
 					return true, true, true
+				end,
+				function()
+					set_pain_item_field(self.item_config, "nps", true)
+					return true, true, true
 				end
 			}
 			for i, cat in ipairs(RadarCategory) do
@@ -208,6 +228,8 @@ options_sets.pain_menu= {
 						elseif self.cursor_pos == 7 then
 							set_pain_item_field(self.item_config, "tag", {slot= 1})
 							self.number_val= self.item_config.tag.slot
+						else
+							set_pain_item_field(self.item_config, "chart_info", true)
 						end
 						self:change_mode()
 						return true, true, false
@@ -282,7 +304,7 @@ options_sets.pain_menu= {
 				if self.mode == 1 then
 					self.info_set= {
 						back_element(), done_element(), {text= "bpm"}, {text= "meter"},
-						{text= "author"}}
+						{text= "author"}, {text= "nps"}}
 					for i, cat in ipairs(RadarCategory) do
 						self.info_set[#self.info_set+1]= {text= cat}
 					end
@@ -344,8 +366,10 @@ pain_display_mt= {
 					subself:xy(x, y)
 					self.container= subself
 					self.cursor:hide()
-				end
+					self:hide()
+				end,
 			}
+			self.original_y= y
 			self.player_number= player_number
 			self:fetch_config()
 			self.name= name
@@ -361,6 +385,35 @@ pain_display_mt= {
 			self.text_height= 16 * (el_z / 0.5875)
 			-- Height was originally 16 in default theme, zoom was originally
 			--   0.5875, so that is used as the base point.
+			local frame_height= self.text_height * max_pain_rows + 4
+			local frame_y= (frame_height / 2) - (self.text_height/2)
+			local shadow_args= {
+				Name= "shadows", InitCommand= function(subself)
+					self.shadow_container= subself
+				end,
+			}
+			self.frame_main= setmetatable({}, frame_helper_mt)
+			shadow_args[#shadow_args+1]= self.frame_main:create_actors(
+				"frame", 2, el_w, frame_height, solar_colors[player_number](),
+				solar_colors.bg(), 0, 0)
+			self.shadows= {}
+			for i= 2, max_pain_rows, 2 do
+				shadow_args[#shadow_args+1]= Def.Quad{
+					Name= "q"..i, InitCommand= function(subself)
+						self.shadows[#self.shadows+1]= subself
+						subself:visible(false)
+						subself:xy(0, (i-1)*self.text_height)
+						subself:setsize(el_w - 4, self.text_height)
+						subself:diffuse(solar_colors.bg_shadow())
+					end
+				}
+			end
+			args[#args+1]= Def.ActorFrame(shadow_args)
+			local el_args= {
+				Name= "elements", InitCommand= function(subself)
+					self.element_container= subself
+				end
+			}
 			local tani_args= {
 				tt= "", nt= "", tx= -self.half_sep, nx= self.half_sep,
 				tz= self.el_z, nz= self.el_z, ta= left, na= right,
@@ -368,22 +421,23 @@ pain_display_mt= {
 				text_section= "PaneDisplay"}
 			self.left_items= {}
 			self.right_items= {}
-			for r= 1, pain_rows do
+			for r= 1, max_pain_rows do
 				tani_args.sy= (r - 1) * self.text_height
 				tani_args.sx= self.left_x
 				self.left_items[r]= setmetatable({}, text_and_number_interface_mt)
-				args[#args+1]= self.left_items[r]:create_actors("litem"..r,tani_args)
+				el_args[#el_args+1]= self.left_items[r]:create_actors("litem"..r,tani_args)
 				tani_args.sx= self.right_x
 				self.right_items[r]= setmetatable({}, text_and_number_interface_mt)
-				args[#args+1]=self.right_items[r]:create_actors("ritem"..r,tani_args)
+				el_args[#el_args+1]=self.right_items[r]:create_actors("ritem"..r,tani_args)
 			end
 			self.cursor= setmetatable({}, amv_cursor_mt)
-			args[#args+1]= self.cursor:create_actors(
+			el_args[#el_args+1]= self.cursor:create_actors(
 				"cursor", 0, 0, 0, 12, .5, solar_colors[player_number]())
-			self.cursor_pos= 1
+			self.cursor_pos= {1, 1}
 			self.mode= 1
 			self.menu= setmetatable({}, options_sets.pain_menu)
-			args[#args+1]= self.menu:create_actors("menu", player_number)
+			el_args[#el_args+1]= self.menu:create_actors("menu", player_number)
+			args[#args+1]= Def.ActorFrame(el_args)
 			return Def.ActorFrame(args)
 		end,
 		fetch_config= function(self)
@@ -391,13 +445,36 @@ pain_display_mt= {
 		end,
 		hide= function(self)
 			self.container:visible(false)
+			self.shadow_container:visible(false)
+			self.element_container:visible(false)
+			self.frame_main.outer:hide()
 		end,
 		unhide= function(self)
 			self.container:visible(true)
+			self.shadow_container:visible(true)
+			self.element_container:visible(true)
+			self.frame_main.outer:unhide()
+		end,
+		show_frame= function(self, rows)
+			rows= rows or max_pain_rows
+			self.container:visible(true)
+			self.shadow_container:visible(true)
+			self.frame_main.outer:unhide()
+			for i, shadow in ipairs(self.shadows) do
+				shadow:visible(i <= rows/2)
+			end
+			local revealed_height= rows * self.text_height + 4
+			local hidden_height= (max_pain_rows - rows) * self.text_height
+			local center_y= revealed_height/2 - (self.text_height/2)
+			self.frame_main:resize(self.el_w, revealed_height)
+			self.frame_main:move(nil, center_y-2)
+			self.container:linear(.1)
+			self.container:y(self.original_y+hidden_height)
 		end,
 		enter_edit_mode= function(self)
 			self.mode= 2
 			self:update_all_items()
+			self.cursor_pos= {1, 1}
 			self.cursor:unhide()
 			self:update_cursor()
 		end,
@@ -406,12 +483,15 @@ pain_display_mt= {
 			if code == "Select" then
 				self.menu:deactivate()
 				self.cursor:hide()
+				for ch, config_half in ipairs(self.config) do
+					clear_unused_half_tail(config_half)
+				end
 				self.mode= 1
 				self:update_all_items()
 				return true, true
 			end
 			local two_menu_directions=
-				PREFSMAN:GetPreference("ArcadeOptionsNavigation")
+				PREFSMAN:GetPreference("ThreeKeyNavigation")
 			if two_menu_directions then
 				if code == "MenuLeft" then
 					code= "MenuUp"
@@ -420,43 +500,50 @@ pain_display_mt= {
 				end
 			end
 			if self.mode == 2 then
+				local config_half= self.config[self.cursor_pos[1]]
+				local other_side= ({2, 1})[self.cursor_pos[1]]
+				local max_row= math.min(self.used_rows+1, max_pain_rows)
 				if code == "MenuUp" then
-					self.cursor_pos= self.cursor_pos - 1
-					if self.cursor_pos < 1 then self.cursor_pos= pain_rows * 2 end
+					self.cursor_pos[2]= self.cursor_pos[2] - 1
+					if self.cursor_pos[2] < 1 then
+						if two_menu_directions then
+							self.cursor_pos[1]= other_side
+						end
+						self.cursor_pos[2]= max_row
+					end
 					self:update_cursor()
 					return true, false
 				elseif code == "MenuDown" then
-					self.cursor_pos= self.cursor_pos + 1
-					if self.cursor_pos > pain_rows * 2 then self.cursor_pos= 1 end
+					self.cursor_pos[2]= self.cursor_pos[2] + 1
+					if self.cursor_pos[2] > max_row then
+						if two_menu_directions then
+							self.cursor_pos[1]= other_side
+						end
+						self.cursor_pos[2]= 1
+					end
 					self:update_cursor()
 					return true, false
 				elseif code == "MenuLeft" then
-					self.cursor_pos= self.cursor_pos - pain_rows
-					if self.cursor_pos < 1 then
-						self.cursor_pos= self.cursor_pos + (pain_rows * 2)
-					end
+					self.cursor_pos[1]= other_side
 					self:update_cursor()
 					return true, false
 				elseif code == "MenuRight" then
-					self.cursor_pos= self.cursor_pos + pain_rows
-					if self.cursor_pos > pain_rows * 2 then
-						self.cursor_pos= self.cursor_pos - (pain_rows * 2)
-					end
+					self.cursor_pos[1]= other_side
 					self:update_cursor()
 					return true, false
 				elseif code == "Start" then
-					local menu_x
-					local item_config
-					if self.cursor_pos <= pain_rows then
-						menu_x= self.right_x
-						item_config= self.config[1][self.cursor_pos]
-					else
-						menu_x= self.left_x
-						item_config= self.config[2][self.cursor_pos - pain_rows]
+					local menu_x= ({self.right_x, self.left_x})[self.cursor_pos[1]]
+					local config_pos= self.cursor_pos[2]
+					local item_config= config_half[config_pos]
+					if not item_config then
+						for i= #config_half+1, config_pos do
+							config_half[i]= {}
+						end
+						item_config= config_half[config_pos]
 					end
-					local itemy= ((self.cursor_pos - 1) % pain_rows) + 1
+					local itemy= self.cursor_pos[2]
 					local menu_y= self.left_items[itemy].container:GetY() - 24
-					local maxy= (pain_rows * self.text_height) - (12 * 5.5)
+					local maxy= (max_row * self.text_height) - (12 * 5.5)
 					menu_y= force_to_range(1, menu_y, maxy)
 					self.menu:activate(menu_x, menu_y, item_config)
 					self.mode= 3
@@ -466,7 +553,8 @@ pain_display_mt= {
 				local handled, config_changed, close= self.menu:interpret_code(code)
 				if handled then
 					if config_changed then
-						self:update_cursor_item()
+						clear_unused_half_tail(self.config[self.cursor_pos[1]])
+						self:update_all_items()
 					end
 					if close then
 						self.menu:deactivate()
@@ -479,13 +567,8 @@ pain_display_mt= {
 			return false, false
 		end,
 		update_cursor= function(self)
-			local cursy= (self.cursor_pos - 1) % pain_rows
-			local xp
-			if self.cursor_pos <= pain_rows then
-				xp= self.left_x
-			else
-				xp= self.right_x
-			end
+			local cursy= self.cursor_pos[2] - 1
+			local xp= ({self.left_x, self.right_x})[self.cursor_pos[1]]
 			local yp= cursy * self.text_height
 			self.cursor:refit(xp, yp, self.narrow_el_w + 4, self.text_height)
 		end,
@@ -510,6 +593,18 @@ pain_display_mt= {
 			item.container:x(0)
 			item.text:x(-self.full_sep)
 			item.number:x(self.full_sep)
+		end,
+		make_item_semi_wide= function(self, item, left)
+			local avg_sep= (self.full_sep + self.half_sep) / 2
+			if left then
+				item.container:x(self.left_x)
+				item.text:x(-self.half_sep)
+				item.number:x(avg_sep)
+			else
+				item.container:x(self.right_x)
+				item.text:x(-avg_sep)
+				item.number:x(self.half_sep)
+			end
 		end,
 		get_prof= function(self, machine)
 			if machine then
@@ -569,22 +664,24 @@ pain_display_mt= {
 		end,
 		set_favor_item= function(self, item, ftype, is_wide)
 			local song= gamestate_get_curr_song()
+			local favor_val= 0
 			if ftype == "machine" then
 				if is_wide then
 					item:set_text("Machine Favor")
 				else
 					item:set_text("MFav")
 				end
-				item:set_number(get_favor("ProfileSlot_Machine", song))
+				favor_val= get_favor("ProfileSlot_Machine", song)
 			else
 				if is_wide then
 					item:set_text("Player Favor")
 				else
 					item:set_text("PFav")
 				end
-				item:set_number(
-					get_favor(pn_to_profile_slot(self.player_number), song))
+				favor_val= get_favor(pn_to_profile_slot(self.player_number), song)
 			end
+			item:set_number(favor_val)
+			item.number:diffuse(color_percent_above(favor_val / 16, 0))
 		end,
 		set_chart_info_item= function(self, item, item_config, radars)
 			local steps= gamestate_get_curr_steps(self.player_number)
@@ -597,9 +694,11 @@ pain_display_mt= {
 			if item_config.bpm then
 				item:set_text("BPM")
 				item:set_number(steps_get_bpms_as_text(steps))
-			elseif item_config.rating then
+				item.number:diffuse(solar_colors.f_text())
+			elseif item_config.meter then
 				item:set_text(steps_to_string(steps))
 				item:set_number(steps:GetMeter())
+				item.number:diffuse(color_percent_above(steps:GetMeter()/20, .6))
 			elseif item_config.author then
 				item:set_text(steps_get_author(steps))
 				local width= self.narrow_el_w
@@ -608,7 +707,23 @@ pain_display_mt= {
 				item:set_number("")
 			elseif item_config.radar_category then
 				item:set_text(item_config.radar_category)
-				item:set_number(radars:GetValue(item_config.radar_category))
+				local rval= radars:GetValue(item_config.radar_category)
+				if rval == math.floor(rval) then
+					item:set_number(rval)
+					item.number:diffuse(solar_colors.f_text())
+				else
+					item:set_number(("%.2f"):format(rval))
+					item.number:diffuse(color_percent_above(rval, .5))
+				end
+			elseif item_config.nps then
+				item:set_text("NPS")
+				local taps= radars:GetValue("RadarCategory_TapsAndHolds")
+				local jumps= radars:GetValue("RadarCategory_Jumps")
+				local hands= radars:GetValue("RadarCategory_Hands")
+				local length= song_get_length(song)
+				local nps= (taps + jumps + hands) / length
+				item:set_number(("%.2f"):format(nps))
+				item.number:diffuse(color_percent_above(nps/10, .5))
 			else
 				item:set_text("")
 				item:set_number("")
@@ -629,8 +744,8 @@ pain_display_mt= {
 			elseif item_config.bpm then
 				item:set_text("BPM")
 				item:set_number("XXX")
-			elseif item_config.rating then
-				item:set_text("Rating")
+			elseif item_config.meter then
+				item:set_text("Meter")
 				item:set_number("XX")
 			elseif item_config.author then
 				item:set_text("Author")
@@ -639,6 +754,9 @@ pain_display_mt= {
 				item:set_text("Radar")
 				item:set_number(
 					get_string_wrapper("PaneDisplay", item_config.radar_category))
+			elseif item_config.nps then
+				item:set_text("NPS")
+				item:set_number("X.XX")
 			else
 				item:set_text("")
 				item:set_number("")
@@ -646,46 +764,17 @@ pain_display_mt= {
 			item.text:diffuse(solar_colors.f_text())
 			item.number:diffuse(solar_colors.f_text())
 		end,
-		update_cursor_item= function(self)
-			local item_config
-			local item
-			if self.cursor_pos <= pain_rows then
-				item_config= self.config[1][self.cursor_pos]
-				item= self.left_items[self.cursor_pos]
-			else
-				item_config= self.config[2][self.cursor_pos - pain_rows]
-				item= self.right_items[self.cursor_pos - pain_rows]
-			end
-			if item_config.is_wide then
-				self:make_item_wide(item)
-			else
-				self:make_item_narrow(item, self.cursor_pos <= pain_rows)
-			end
-			if self.mode == 1 then
-				if item_config.score then
-					local hs_list= self:get_hs_list(item_config.score.machine)
-					self:set_score_item(item, item_config.score.slot, hs_list)
-				elseif item_config.tag then
-					local tag_list= self:get_tag_list(item_config.tag.machine)
-					self:set_tag_item(item, item_config.tag.slot, tag_list)
-				elseif item_config.favor then
-					self:set_favor_item(item, item_config.favor, item_config.is_wide)
-				else
-					local steps= gamestate_get_curr_steps(self.player_number)
-					local radars= steps and steps:GetRadarValues(self.player_number)
-					self:set_chart_info_item(item, item_config, radars)
-				end
-			else
-				self:set_edit_mode_item(item, item_config)
-			end
-			self:width_limit_item(item)
-			self:update_cursor()
-		end,
 		update_all_items= function(self)
 			if not GAMESTATE:IsPlayerEnabled(self.player_number) then
 				self:hide()
 				return
 			end
+			self.used_rows= math.max(#self.config[1], #self.config[2])
+			local show_rows= self.used_rows
+			if self.mode ~= 1 and self.used_rows < max_pain_rows then
+				show_rows= show_rows + 1
+			end
+			self:show_frame(show_rows)
 			local song= gamestate_get_curr_song()
 			local steps= gamestate_get_curr_steps(self.player_number)
 			local radars= steps and steps:GetRadarValues(self.player_number)
@@ -693,13 +782,12 @@ pain_display_mt= {
 			local phs_list= self:get_hs_list(false)
 			local mtag_list= self:get_tag_list(true)
 			local ptag_list= self:get_tag_list(false)
-			local function update_half(half_items, half_config, left)
+			local function update_half(half_items, half_config, other_half, left)
 				for i, item in ipairs(half_items) do
-					if song then
-						local item_config= half_config[i]
-						if not item_config then
-							Trace("No config for item " .. i .. " on " .. tostring(left))
-						end
+					local item_config= half_config[i]
+					local other_config= other_half[i]
+					local other_blocks= other_config and other_config.is_wide
+					if song and item_config and not other_blocks then
 						if item_config.is_wide then
 							self:make_item_wide(item)
 						else
@@ -724,19 +812,41 @@ pain_display_mt= {
 					self:width_limit_item(item)
 				end
 			end
-			local function update_half_edit(half_items, half_config)
+			local function update_half_edit(half_items, half_config, other_half, left)
 				for i, item in ipairs(half_items) do
 					local item_config= half_config[i]
-					self:set_edit_mode_item(item, item_config)
+					local other_config= other_half[i]
+					local other_blocks= other_config and other_config.is_wide
+					if not other_blocks then
+						if item_config then
+							if item_config.is_wide then
+								self:make_item_semi_wide(item, left)
+							else
+								self:make_item_narrow(item, left)
+							end
+							self:set_edit_mode_item(item, item_config)
+						else
+							if i <= show_rows then
+								item:set_text("Add Item")
+								item:set_number("")
+							else
+								item:set_text("")
+								item:set_number("")
+							end
+						end
+					else
+						item:set_text("")
+						item:set_number("")
+					end
 					self:width_limit_item(item)
 				end
 			end
 			if self.mode == 1 then
-				update_half(self.left_items, self.config[1], true)
-				update_half(self.right_items, self.config[2], false)
+				update_half(self.left_items, self.config[1], self.config[2], true)
+				update_half(self.right_items, self.config[2], self.config[1], false)
 			else
-				update_half_edit(self.left_items, self.config[1])
-				update_half_edit(self.right_items, self.config[2])
+				update_half_edit(self.left_items, self.config[1], self.config[2], true)
+				update_half_edit(self.right_items, self.config[2], self.config[1], false)
 			end
 			self:update_cursor()
 		end

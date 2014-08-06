@@ -24,14 +24,14 @@ local pane_text_zoom= .625
 local pane_text_height= 16 * (pane_text_zoom / 0.5875)
 local pane_text_width= 8 * (pane_text_zoom / 0.5875)
 local pane_w= ((wheel_x - 40) - (SCREEN_LEFT + 4)) / 2
-local pane_h= pane_text_height * pain_rows + 4
+local pane_h= pane_text_height * max_pain_rows + 4
 local pane_yoff= -pane_h * .5 + pane_text_height * .5 + 2
 local pane_ttx= 0
 local pad= 4
 
 local pane_y= SCREEN_BOTTOM-(pane_h/2)-pad
 local lpane_x= SCREEN_LEFT+(pane_w/2)+pad
-local rpane_x= SCREEN_LEFT+(pane_w*1.5)+pad
+local rpane_x= SCREEN_LEFT+(pane_w*1.5)+pad*1.5
 
 local entering_song= false
 local options_time= 1.5
@@ -217,27 +217,6 @@ end
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "pain_display.lua"))
 
-local function pain_frame(name, x, y, pn)
-	local args= {Name= name, InitCommand= cmd(xy, x, y)}
-	args[#args+1]= create_frame_quads(
-		"frame", 2, pane_w, pane_h, solar_colors[pn](),
-		solar_colors.bg(), 0, 0)
-	for i= 2, pain_rows, 2 do
-		args[#args+1]= Def.Quad{
-			Name= "q"..i,
-			InitCommand= function(self)
-				self:diffuse(solar_colors.bg_shadow())
-				self:y(pane_yoff + ((i-1)*pane_text_height))
-				self:SetWidth(pane_w - 4)
-				self:SetHeight(pane_text_height)
-			end
-		}
-	end
-	return Def.ActorFrame(args)
-end
-
-local pain_frames= {}
-
 local steps_display= setmetatable({}, steps_display_interface_mt)
 local pain_displays= {
 	[PLAYER_1]= setmetatable({}, pain_display_mt),
@@ -276,17 +255,16 @@ local in_special_menu= {[PLAYER_1]= 1, [PLAYER_2]= 1}
 
 local function update_pain(pn)
 	if GAMESTATE:IsPlayerEnabled(pn) then
-		pain_frames[pn]:visible(true)
+		if in_special_menu[pn] == 1 or in_special_menu[pn] == 4 then
+			pain_displays[pn]:update_all_items()
+			pain_displays[pn]:unhide()
+		elseif in_special_menu[pn] == 2 then
+			song_props_menus[pn]:update()
+		elseif in_special_menu[pn] == 3 then
+			tag_menus[pn]:update()
+		end
 	else
-		pain_frames[pn]:visible(false)
-	end
-	if in_special_menu[pn] == 1 or in_special_menu[pn] == 4 then
-		pain_displays[pn]:update_all_items()
-		pain_displays[pn]:unhide()
-	elseif in_special_menu[pn] == 2 then
-		song_props_menus[pn]:update()
-	elseif in_special_menu[pn] == 3 then
-		tag_menus[pn]:update()
+		pain_displays[pn]:hide()
 	end
 end
 
@@ -502,6 +480,7 @@ local function set_special_menu(pn, value)
 		end
 	else
 		pain_displays[pn]:hide()
+		pain_displays[pn]:show_frame()
 		special_menu_displays[pn]:unhide()
 		if in_special_menu[pn] == 2 then
 			song_props_menus[pn]:reset_info()
@@ -847,6 +826,7 @@ do
 	end
 end
 
+screen_cons_select_music_help= false
 local function maybe_help()
 	if screen_cons_select_music_help then
 		return Def.AutoHider(help_args)
@@ -857,8 +837,6 @@ return Def.ActorFrame {
 	InitCommand= function(self)
 		self:SetUpdateFunction(Update)
 		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
-			pain_frames[pn]= self:GetChild(ToEnumShortString(pn).."_pain_frame")
-			pain_frames[pn]:visible(false)
 			song_props_menus[pn]:initialize(pn, true)
 			song_props_menus[pn]:set_display(special_menu_displays[pn])
 			tag_menus[pn]:initialize(pn)
@@ -919,18 +897,16 @@ return Def.ActorFrame {
 			update_player_cursors()
 		end,
 	},
-	pain_frame("P1_pain_frame", lpane_x, pane_y, PLAYER_1),
-	pain_frame("P2_pain_frame", rpane_x, pane_y, PLAYER_2),
 	pain_displays[PLAYER_1]:create_actors(
 		"P1_pain", lpane_x, pane_y + pane_yoff, PLAYER_1, pane_w, pane_text_zoom),
 	pain_displays[PLAYER_2]:create_actors(
 		"P2_pain", rpane_x, pane_y + pane_yoff, PLAYER_2, pane_w, pane_text_zoom),
 	special_menu_displays[PLAYER_1]:create_actors(
-		"P1_menu", lpane_x, pane_y + pane_yoff,
-		pain_rows, pane_w - 16, pane_text_height, pane_text_zoom, true, true),
+		"P1_menu", lpane_x, pane_y + pane_yoff, max_pain_rows, pane_w - 16,
+		pane_text_height, pane_text_zoom, true, true),
 	special_menu_displays[PLAYER_2]:create_actors(
-		"P2_menu", rpane_x, pane_y + pane_yoff,
-		pain_rows, pane_w - 16, pane_text_height, pane_text_zoom, true, true),
+		"P2_menu", rpane_x, pane_y + pane_yoff, max_pain_rows, pane_w - 16,
+		pane_text_height, pane_text_zoom, true, true),
 	steps_display:create_actors("StepsDisplay"),
 	Def.Sprite {
 		Name="CDTitle",
