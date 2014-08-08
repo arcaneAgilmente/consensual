@@ -392,7 +392,10 @@ options_sets.boolean_option= {
 				{text= extra.true_text, underline= curr},
 				{text= extra.false_text, underline= not curr}}
 		end,
-		set_status= function(self) self.display:set_heading(self.name) end,
+		set_status= function(self)
+			self.display:set_heading(self.name)
+			self.display:set_display("")
+		end,
 		interpret_start= function(self)
 			if self.cursor_pos == 1 then return false end
 			local curr= self.cursor_pos == 2
@@ -571,7 +574,7 @@ options_sets.enum_option= {
 				local cv= self:get_val()
 				for i, v in ipairs(extra.enum) do
 					self.enum_vals[#self.enum_vals+1]= v
-					self.info_set[#self.info_set+1]= {text= v, underline= v == cv}
+					self.info_set[#self.info_set+1]= {text= ToEnumShortString(v), underline= v == cv}
 				end
 			end,
 		interpret_start=
@@ -590,7 +593,7 @@ options_sets.enum_option= {
 					else
 						self.set(self.enum_vals[self.cursor_pos-1])
 					end
-					self.display:set_display(self:get_val())
+					self.display:set_display(ToEnumShortString(self:get_val()))
 					return true
 				else
 					return false
@@ -607,7 +610,7 @@ options_sets.enum_option= {
 		set_status=
 			function(self)
 				self.display:set_heading(self.name)
-				self.display:set_display(self:get_val())
+				self.display:set_display(ToEnumShortString(self:get_val()))
 			end
 }}
 

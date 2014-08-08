@@ -793,7 +793,7 @@ local function get_code_texts_for_game()
 end
 
 local help_args= {
-	HideTime= 5,
+	HideTime= misc_config:get_data().select_music_help_time,
 	Def.Quad{
 		InitCommand= function(self)
 			self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
@@ -826,9 +826,8 @@ do
 	end
 end
 
-screen_cons_select_music_help= false
 local function maybe_help()
-	if screen_cons_select_music_help then
+	if misc_config:get_data().select_music_help_time > 0 then
 		return Def.AutoHider(help_args)
 	end
 end

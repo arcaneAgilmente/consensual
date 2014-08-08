@@ -471,7 +471,7 @@ end
 
 local time_remaining= 0
 function set_time_remaining_to_default()
-	time_remaining= default_credit_time
+	time_remaining= misc_config:get_data().default_credit_time
 end
 
 function reduce_time_remaining(amount)
@@ -488,7 +488,7 @@ function song_short_enough(s)
 	if GAMESTATE:IsEventMode() then
 		return true
 	else
-		local maxlen= time_remaining + song_length_grace
+		local maxlen= time_remaining + misc_config:get_data().song_length_grace
 		if s.GetLastSecond then
 			local len= s:GetLastSecond() - s:GetFirstSecond()
 			return len <= maxlen and len > 0
@@ -525,14 +525,20 @@ end
 
 function convert_score_to_time(score)
 	if not score then return 0 end
+	local conf_data= misc_config:get_data()
+	local min_score_for_reward= conf_data.min_score_for_reward
 	if score < min_score_for_reward then return 0 end
 	local score_factor= score - min_score_for_reward
 	local reward_factor_high= 1-min_score_for_reward
-	if reward_time_by_pct then
-		return scale(score_factor, 0, reward_factor_high, min_reward_pct, max_reward_pct) * last_song_time
-	else
-		return scale(score_factor, 0, reward_factor_high, min_reward_time, max_reward_time)
+	local min_reward= conf_data.min_reward_pct
+	local max_reward= conf_data.max_reward_pct
+	local time_mult= last_song_time
+	if not conf_data.reward_time_by_pct then
+		min_reward= conf_data.min_reward_time
+		max_reward= conf_data.max_reward_time
+		time_mult= 1
 	end
+	return scale(score_factor, 0, reward_factor_high, min_reward, max_reward) * time_mult
 end
 
 function cons_can_join()

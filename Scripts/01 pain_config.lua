@@ -94,8 +94,8 @@ local default_config= {
 	}}
 }
 
-machine_pain_setting= create_setting("machine pain config", "pain_config.lua", default_config)
-profile_pain_setting= create_setting("player pain config", "pain_config.lua", default_config[1])
+machine_pain_setting= create_setting("machine pain config", "pain_config.lua", default_config, true)
+profile_pain_setting= create_setting("player pain config", "pain_config.lua", default_config[1], true)
 
 machine_pain_setting:load()
 

@@ -6,6 +6,7 @@ do
 		ty= ty or 0
 		z= z or 1
 		align= align or center
+		local passed_init= commands and commands.InitCommand
 		commands= commands or {}
 		commands.Name= name
 		commands.Text= text
@@ -15,6 +16,7 @@ do
 														self:zoom(z)
 														self:horizalign(align)
 														maybe_distort_text(self)
+														if passed_init then passed_init(self) end
 													end
 		return LoadFont("Common Normal") .. commands
 	end

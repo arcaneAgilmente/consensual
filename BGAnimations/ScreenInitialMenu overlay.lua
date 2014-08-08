@@ -21,7 +21,6 @@ local num_players= 1
 local playmode= "regular"
 local profile_choices= {}
 
-dofile(THEME:GetPathO("", "consensual_conf.lua"))
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 
@@ -450,8 +449,14 @@ local function input(event)
 	if false and event.DeviceInput.button == "DeviceButton_n" then
 		for n= 1, 10 do mess() end
 	end
-	if event.DeviceInput.button == "DeviceButton_s" then
+	if event.DeviceInput.button == "DeviceButton_x" then
 		SCREENMAN:SetNewScreen("ScreenSigilTest")
+	end
+	if event.DeviceInput.button == "DeviceButton_z" then
+		SCREENMAN:SetNewScreen("ScreenConsService")
+	end
+	if event.DeviceInput.button == misc_config:get_data().config_menu_key then
+		SCREENMAN:SetNewScreen("ScreenConsService")
 	end
 	if event.PlayerNumber and event.GameButton then
 		interpret_code(event.PlayerNumber, event.GameButton)

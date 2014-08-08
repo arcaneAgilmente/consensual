@@ -880,18 +880,18 @@ local function extra_for_lives()
 		name= "Battery Lives",
 		min_scale= 0,
 		scale= 0,
-		max_scale= 1,
+		max_scale= 4,
 		initial_value=
 			function(player_number)
-				return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives()
+				return mod_player(player_number, "BatteryLives")
 			end,
 		validator=
 			function(value)
-				return value >= 1 and value <= 100
+				return value >= 1
 			end,
 		set=
 			function(player_number, value)
-				GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives(value)
+				mod_player(player_number, "BatteryLives", value)
 			end
 	}
 end
@@ -1095,15 +1095,8 @@ local chart_mods= {
 }
 
 local song_options= {
-	song_enum("Life", LifeType, "LifeSetting"),
-	song_enum("Drain", DrainType, "DrainSetting"),
 	--song_enum("Autosync", AutosyncType, "AutosyncSetting"),
 	--song_enum("Sound Effect", SoundEffectType, "SoundEffectSetting"),
-	player_enum("Fail", FailType, "FailSetting"),
-	{ name= "Battery Lives", meta= options_sets.adjustable_float,
-		args= extra_for_lives()},
-	{ name= "Haste", meta= options_sets.adjustable_float,
-		args= extra_for_haste()},
 }
 
 local special= {
@@ -1136,7 +1129,7 @@ local special= {
 		meta= options_sets.mutually_exclusive_special_functions,
 		args= { eles= mine_effect_eles }},
 	song_bools("Assist", {"AssistClap", "AssistMetronome", "SaveScore", }),
-	{ name= "Song Options", meta= options_sets.menu, args= song_options},
+--	{ name= "Song Options", meta= options_sets.menu, args= song_options},
 	{ name= "Driven Min", meta= options_sets.adjustable_float,
 		args= extra_for_dspeed_min("Driven Min")},
 	{ name= "Driven Max", meta= options_sets.adjustable_float,
@@ -1149,6 +1142,13 @@ local flag_eles= {}
 for i, fname in ipairs(sorted_flag_names) do
 	flag_eles[i]= generic_flag_control_element(fname)
 end
+
+local playback_options= {
+	{ name= "Rate", meta= options_sets.rate_mod,
+		args= { default_value= 1, incs= {.1, .01, -.01, -.1}}},
+	{ name= "Haste", meta= options_sets.adjustable_float,
+		args= extra_for_haste()},
+}
 
 local decorations= {
 	{ name= "Feedback", meta= options_sets.special_functions,
@@ -1174,16 +1174,24 @@ local profile_options= {
 		args= make_profile_bool_extra("Gender", "Male", "Female", "IsMale")},
 }
 
+local life_options= {
+	player_enum("Life", LifeType, "LifeSetting"),
+	player_enum("Drain", DrainType, "DrainSetting"),
+	player_enum("Fail", FailType, "FailSetting"),
+	{ name= "Battery Lives", meta= options_sets.adjustable_float,
+		args= extra_for_lives()},
+}
+
 local base_options= {
 	{ name= "Speed", meta= options_sets.speed},
-	{ name= "Rate", meta= options_sets.rate_mod,
-		args= { default_value= 1, incs= {.1, .01, -.01, -.1}}},
+	{ name= "Playback Options", meta= options_sets.menu, args= playback_options},
 	{ name= "Steps", meta= options_sets.steps_list},
 	{ name= "Perspective", meta= options_sets.menu,
 		args= make_menu_of_float_set(perspective_mods) },
 	{ name= "Decorations", meta= options_sets.menu, args= decorations},
 	{ name= "Special", meta= options_sets.menu, args= special},
 	{ name= "Profile Options", meta= options_sets.menu, args= profile_options},
+	{ name= "Life Options", meta= options_sets.menu, args= life_options},
 	{ name= "Song tags", meta= options_sets.tags_menu, args= true},
 	{ name= "Chart mods", meta= options_sets.menu, args= chart_mods},
 	{ name= "Floaty mods", meta= options_sets.menu, args= floaty_mods},
