@@ -24,6 +24,11 @@ local function generic_get_wrapper(func_name)
 				 end
 end
 
+local function length(song)
+	if not song then return {0} end
+	return {math.round(song_get_length(song))}
+end
+
 local function difficulty_wrapper(difficulty)
 	return function(song)
 					 if song.GetStepsByStepsType then
@@ -213,10 +218,6 @@ local function score_wrapper(score_func, difficulty)
 				 end
 end
 
-local function single_ret_wrapper(func)
-	return function(...) return {func(...)} end
-end
-
 local function default_cant_join_wrapper(score_func, default_el)
 	local default_return= score_func(default_el)
 	return function(left, right)
@@ -241,7 +242,7 @@ local song_sort_factors= {
 		uses_depth= true},
 	{ name= "Genre", get_names= generic_get_wrapper("GetGenre"),
 		uses_depth= true},
-	{ name= "Length", get_names= single_ret_wrapper(song_get_length)},
+	{ name= "Length", get_names= length},
 	-- Disabled, causes stepmania to eat all ram and hang.
 --	{ name= "Step Artist", get_names= step_artist, returns_multiple= true},
 }

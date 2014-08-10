@@ -720,19 +720,14 @@ local function set_clear_for_player(player_number)
 	end
 end
 
-local function generic_flag_control_element(flag_name)
-	local funcs= {generic_gsu_flag(flag_name)}
-	return {name= flag_name, init= funcs[1], set= funcs[2], unset= funcs[3]}
-end
-
 local function generic_fake_judge_element(judge_name)
 	return {name= judge_name, init= check_fake_judge(judge_name),
 					set= set_fake_judge(judge_name), unset= unset_fake_judge}
 end
 
-local function generic_mine_effect_element(effect_table)
-	return {name= effect_table.name, init= check_mine_effect(effect_table),
-					set= set_mine_effect(effect_table), unset= unset_mine_effect}
+local function generic_mine_effect_element(name)
+	return {name= name, init= check_mine_effect(name),
+					set= set_mine_effect(name), unset= unset_mine_effect}
 end
 
 local function extra_for_adj_float_mod(mod_name, is_angle)
@@ -752,7 +747,7 @@ local function extra_for_adj_float_mod(mod_name, is_angle)
 			end,
 		scale_to_text=
 			function(player_number, value)
-				if cons_players[player_number].flags.straight_floats then
+				if cons_players[player_number].flags.interface.straight_floats then
 					return value
 				else
 					return value * 100
@@ -760,7 +755,7 @@ local function extra_for_adj_float_mod(mod_name, is_angle)
 			end,
 		val_to_text=
 			function(player_number, value)
-				if cons_players[player_number].flags.straight_floats then
+				if cons_players[player_number].flags.interface.straight_floats then
 					if value == -0 then return "0" end
 					return tostring(value)
 				else
@@ -1026,9 +1021,9 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 end
 
 local mine_effect_eles= {}
-for i, v in ipairs(mine_effects) do
+for i, name in ipairs(sorted_mine_effect_names) do
 	mine_effect_eles[#mine_effect_eles+1]=
-		generic_mine_effect_element(v)
+		generic_mine_effect_element(name)
 end
 
 local boost_mods= {
@@ -1138,9 +1133,17 @@ local special= {
 	--"StaticBackground", "RandomBGOnly", "SaveReplay" }),
 }
 
-local flag_eles= {}
-for i, fname in ipairs(sorted_flag_names) do
-	flag_eles[i]= generic_flag_control_element(fname)
+local eval_flag_eles= {}
+for i, fname in ipairs(sorted_eval_flag_names) do
+	eval_flag_eles[i]= generic_flag_control_element("eval", fname)
+end
+local gameplay_flag_eles= {}
+for i, fname in ipairs(sorted_gameplay_flag_names) do
+	gameplay_flag_eles[i]= generic_flag_control_element("gameplay", fname)
+end
+local interface_flag_eles= {}
+for i, fname in ipairs(sorted_interface_flag_names) do
+	interface_flag_eles[i]= generic_flag_control_element("interface", fname)
 end
 
 local playback_options= {
@@ -1151,8 +1154,12 @@ local playback_options= {
 }
 
 local decorations= {
-	{ name= "Feedback", meta= options_sets.special_functions,
-		args= { eles= flag_eles}},
+	{ name= "Evaluation Flags", meta= options_sets.special_functions,
+		args= { eles= eval_flag_eles}},
+	{ name= "Gameplay Flags", meta= options_sets.special_functions,
+		args= { eles= gameplay_flag_eles}},
+	{ name= "Interface Flags", meta= options_sets.special_functions,
+		args= { eles= interface_flag_eles}},
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
 	{ name= "Sigil Size", meta= options_sets.adjustable_float,

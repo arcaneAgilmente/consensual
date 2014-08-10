@@ -1,73 +1,3 @@
-ops_level_none, ops_level_simple, ops_level_all, ops_level_excessive= 1, 2, 3, 4
-
-mine_effects= {
-	{ name= "stealth",
-		apply=
-			function(pn)
-				cons_players[pn].song_options:Stealth(.75, 8)
-			end,
-		unapply=
-			function(pn)
-				cons_players[pn].song_options:Stealth(0, .75)
-			end,
-		time= .0625
-	},
-	{ name= "boomerang",
-		apply=
-			function(pn)
-				cons_players[pn].song_options:Boomerang(1, 8)
-			end,
-		unapply=
-			function(pn)
-				cons_players[pn].song_options:Boomerang(0, 1)
-			end,
-		time= .0625
-	},
-	{ name= "brake",
-		apply=
-			function(pn)
-				cons_players[pn].song_options:Brake(1, 8)
-			end,
-		unapply=
-			function(pn)
-				cons_players[pn].song_options:Brake(0, 1)
-			end,
-		time= .0625
-	},
-	{ name= "tiny",
-		apply=
-			function(pn)
-				cons_players[pn].song_options:Tiny(1, 8)
-			end,
-		unapply=
-			function(pn)
-				cons_players[pn].song_options:Tiny(0, 1)
-			end,
-		time= .0625
-	},
-	{ name= "none",
-		apply= noop_nil,
-		unapply= noop_nil,
-		time= .0625
-	},
-}
-
-local things_to_put_in_user_table= {
-	"flags", "options_level", "speed_info", "sigil_data", "dspeed"
-}
-
-local dspeed_default_min= 0
-local dspeed_default_max= 2
-do
-	local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
-	local receptor_max= THEME:GetMetric("Player", "ReceptorArrowsYReverse")
-	local arrow_height= THEME:GetMetric("ArrowEffects", "ArrowSpacing")
-	local field_height= receptor_max - receptor_min
-	local center_effect_size= field_height / 2
-	dspeed_default_min= (SCREEN_CENTER_Y + receptor_min) / -center_effect_size
-	dspeed_default_max= (SCREEN_CENTER_Y + receptor_max) / center_effect_size
-end
-
 local cons_player= {}
 
 function cons_player:clear_init(player_number)
@@ -82,10 +12,8 @@ function cons_player:clear_init(player_number)
 	self.stage_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Stage")
 	self.preferred_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Preferred")
 	self.rating_cap= 4
-	self.options_level= ops_level_none
 	-- Temporarily make simple the default until this theme is used somewhere that the options menu should be hidden from normal players.
 	self.rating_cap= -1
-	self.options_level= ops_level_simple
 	self.judge_totals= {}
 	self:set_speed_info_from_poptions()
 	self.dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false}
@@ -94,7 +22,7 @@ function cons_player:clear_init(player_number)
 	self:combo_qual_reset()
 	self:stage_stats_reset()
 	self:session_stats_reset()
-	self.mine_effect= mine_effects[1]
+	self.mine_effect= sorted_mine_effect_names[1]
 	self.sigil_data= {detail= 16, size= 150}
 	self.play_history= {}
 end
@@ -115,34 +43,24 @@ function cons_player:noob_mode()
 end
 
 function cons_player:simple_options_mode()
-	self.options_level= ops_level_simple
 	self.rating_cap= -1
-	self.flags.pct_column= true
-	self.flags.best_scores= true
+	self.flags= set_player_flag_to_level(self.player_number, 2)
 	self.pain_config= set_player_pain_to_level(self.player_number, 2)
 end
 
 function cons_player:all_options_mode()
-	self.options_level= ops_level_all
 	self.rating_cap= -1
-	self.flags.judge= true
-	self.flags.pct_column= true
-	self.flags.sum_column= true
-	self.flags.best_scores= true
+	self.flags= set_player_flag_to_level(self.player_number, 3)
 	self.pain_config= set_player_pain_to_level(self.player_number, 3)
 end
 
 function cons_player:excessive_options_mode()
-	self.options_level= ops_level_excessive
 	self.rating_cap= -1
-	for i, fname in ipairs(sorted_flag_names) do
-		self.flags[fname]= true
-	end
+	self.flags= set_player_flag_to_level(self.player_number, 4)
 	self.pain_config= set_player_pain_to_level(self.player_number, 4)
 end
 
 function cons_player:kyzentun_mode()
-	self.options_level= ops_level_excessive
 	self.rating_cap= -1
 	self.kyzentun= true
 	local styletype= GAMESTATE:GetCurrentStyle():GetStyleType()
@@ -159,9 +77,7 @@ function cons_player:kyzentun_mode()
 		self.speed_info= new_speed
 	end
 	self.preferred_options:Distant(1.5)
-	for i, fname in ipairs(sorted_flag_names) do
-		self.flags[fname]= true
-	end
+	self.flags= set_player_flag_to_level(self.player_number, 4)
 	self.pain_config= set_player_pain_to_level(self.player_number, 4)
 end
 
@@ -171,10 +87,6 @@ function cons_player:rating_is_over_cap(rating)
 	if type(rating) ~= "number" then return true end
 	if self.rating_cap <= 0 then return false end
 	return rating > self.rating_cap
-end
-
-function cons_player:get_options_level()
-	return self.options_level
 end
 
 function cons_player:combo_qual_reset()
@@ -229,49 +141,43 @@ function cons_player:session_stats_reset()
 	end
 end
 
-player_flag_defaults= {
-	allow_toasty= true,
-	best_scores= false,
-	bpm_meter= true,
-	chart_info= true,
-	dance_points= true,
-	judge= false,
-	offset= false,
-	pct_column= false,
-	score_early_late= false,
-	score_meter= true,
-	session_column= false,
-	sigil= false,
-	song_column= true,
-	straight_floats= false,
-	sum_column= false,
+sorted_eval_flag_names= {
+	"chart_info",
+	"pct_score",
+	"dance_points",
+	"offset",
+	"score_early_late",
+	"pct_column",
+	"session_column",
+	"song_column",
+	"sum_column",
+	"best_scores",
+	"profile_data",
+	"combo_graph",
+	"life_graph",
+	"style_pad",
+	"banner",
+	"judge_list",
+	"reward",
 }
-
-sorted_flag_names= {
-	"sigil",
+sorted_gameplay_flag_names= {
+	"allow_toasty",
+	"bpm_meter",
+	"chart_info",
+	"dance_points",
 	"judge",
 	"offset",
 	"score_meter",
-	"dance_points",
-	"chart_info",
-	"bpm_meter",
-	"song_column",
-	"pct_column",
-	"session_column",
-	"sum_column",
-	"best_scores",
-	"allow_toasty",
-	"score_early_late",
+	"sigil",
+}
+sorted_interface_flag_names= {
 	"straight_floats",
 }
 
 function cons_player:flags_reset()
-	self.flags= {}
-	for k, v in ipairs(player_flag_defaults) do
-		self.flags[k]= v
-	end
+	self.flags= set_player_flag_to_level(self.player_number, 1)
 	-- allow_toasty is set here so it will be affected if the preference is changed while the game is running.
-	self.flags.allow_toasty= PREFSMAN:GetPreference("EasterEggs")
+	self.flags.gameplay.allow_toasty= PREFSMAN:GetPreference("EasterEggs")
 end
 
 function cons_player:pain_config_reset()
@@ -300,28 +206,12 @@ function cons_player:get_speed_info()
 end
 
 function cons_player:set_ops_from_profile(profile)
-	-- Fun fact:  Changing the tables that are set from the user_table will also
-	-- modify the user_table.
-	local ut= profile:GetUserTable()
-	self.user_table= ut
 	self.proguid= profile:GetGUID()
 	self.pain_config= profile_pain_setting:load(pn_to_profile_slot(self.player_number))
-	if ut then
-		--rec_print_table(ut)
-		-- Thanks for converting the numbers I stored into strings, stepmania.
-		-- TODO:  Fix this stupid mistake in the engine.
-		rec_convert_strings_to_numbers(ut)
-		for k, v in pairs(ut) do
-			self[k]= v
-		end
-		for i, eff in ipairs(mine_effects) do
-			if ut.mine_effect == eff.name then
-				self.mine_effect= eff
-				break
-			end
-		end
-	else
-		--Trace("Is nil.")
+	self.flags= profile_flag_setting:load(pn_to_profile_slot(self.player_number))
+	local config= player_config:load(pn_to_profile_slot(self.player_number))
+	for k, v in pairs(config) do
+		self[k]= v
 	end
 end
 
@@ -333,32 +223,26 @@ for k, v in pairs(all_player_indices) do
 	setmetatable(cons_players[v], cons_player_mt)
 end
 
-function get_highest_options_level()
-	local enabled_players= GAMESTATE:GetEnabledPlayers()
-	local prev_max= 0
-	for k, v in pairs(enabled_players) do
-		--Trace(v .. " player is joined, options level: " .. cons_players[v]:get_options_level())
-		prev_max= math.max(prev_max, cons_players[v]:get_options_level())
-	end
-	--Trace("Highest options level: " .. prev_max)
-	return prev_max
-end
-
 function options_allowed()
-	return get_highest_options_level() > ops_level_none
+	return true
 end
 
-function generic_gsu_flag(flag_name)
+function generic_gsu_flag(flag_field, flag_name)
 	return
 	function(player_number)
-		return cons_players[player_number].flags[flag_name]
+		return cons_players[player_number].flags[flag_field][flag_name]
 	end,
 	function(player_number)
-		cons_players[player_number].flags[flag_name]= true
+		cons_players[player_number].flags[flag_field][flag_name]= true
 	end,
 	function(player_number)
-		cons_players[player_number].flags[flag_name]= false
+		cons_players[player_number].flags[flag_field][flag_name]= false
 	end
+end
+
+function generic_flag_control_element(flag_field, flag_name)
+	local funcs= {generic_gsu_flag(flag_field, flag_name)}
+	return {name= flag_name, init= funcs[1], set= funcs[2], unset= funcs[3]}
 end
 
 local tn_judges= {
@@ -431,7 +315,7 @@ function set_mine_effect(eff)
 end
 
 function unset_mine_effect(player_number)
-	cons_players[player_number].mine_effect= nil
+	cons_players[player_number].mine_effect= "none"
 end
 
 function GetPreviousPlayerSteps(player_number)
@@ -574,56 +458,6 @@ function get_coin_info()
 end
 
 -- style compatibility issue:  Dance, Pump, and Techno are the only supported games.
--- Suspiciously similar design to CodeDetectorCodes in _fallback/Scripts/03 Gameplay.lua
-local cons_codes= {
-	left= {
-		default= "Left",
-		dance= "Left",
-		pump= "DownLeft"
-	},
-	right= {
-		default= "Right",
-		dance= "Right",
-		pump= "DownRight"
-	},
-	up= {
-		default= "Up",
-		dance= "Up",
-		pump= "UpLeft"
-	},
-	down= {
-		default= "Down",
-		dance= "Down",
-		pump= "UpRight"
-	},
-	left_release= {
-		default= "~Left",
-		dance= "~Left",
-		pump= "~DownLeft"
-	},
-	right_release= {
-		default= "~Right",
-		dance= "~Right",
-		pump= "~DownRight"
-	},
-	up_release= {
-		default= "~Up",
-		dance= "~Up",
-		pump= "~UpLeft"
-	},
-	down_release= {
-		default= "~Down",
-		dance= "~Down",
-		pump= "~UpRight"
-	},
-}
-
-function cons_get_code(name)
-	local code= cons_codes[name]
-	return code[lowered_game_name()] or code.default
-end
-
--- style compatibility issue:  Dance, Pump, and Techno are the only supported games.
 local steps_types_by_game= {
 	dance= {
 		{
@@ -730,13 +564,6 @@ end
 
 function SaveProfileCustom(profile, dir)
 	if profile == PROFILEMAN:GetMachineProfile() then return end
-	local user_table= profile:GetUserTable()
---	Trace("User table for " .. profile:GetDisplayName())
---	if user_table then
---		rec_print_table(user_table)
---	else
---		Trace("Is nil.")
---	end
 	local cp= false
 	for i, pn in pairs(cons_players) do
 		if pn.proguid == profile:GetGUID() then
@@ -744,17 +571,11 @@ function SaveProfileCustom(profile, dir)
 			break
 		end
 	end
-	if cp and user_table then
+	if cp then
 		profile_pain_setting:save(pn_to_profile_slot(cp.player_number))
-		--Trace("Putting theme stuff in user table.")
-		for i, k in ipairs(things_to_put_in_user_table) do
-			--Trace(k)
-			if not user_table[k] then
-				user_table[k]= cp[k]
-			end
-		end
-		if cp.mine_effect then
-			user_table.mine_effect= cp.mine_effect.name
-		end
+		profile_flag_setting:set_dirty(pn_to_profile_slot(cp.player_number))
+		profile_flag_setting:save(pn_to_profile_slot(cp.player_number))
+		player_config:set_dirty(pn_to_profile_slot(cp.player_number))
+		player_config:save(pn_to_profile_slot(cp.player_number))
 	end
 end

@@ -521,10 +521,7 @@ local dspeed_special_phase_updates= {
 }
 
 local already_spewed= true
-local spin_screen= true
-local spin_value= 0
-local update_spin= 2
-local function Update(self)
+local function spew_children()
 	if not already_spewed then
 		local top_screen= SCREENMAN:GetTopScreen()
 		Trace("Top screen children.")
@@ -546,6 +543,12 @@ local function Update(self)
 			already_spewed= true
 		end
 	end
+end
+
+-- for use inside the enabled players loop in Update.
+local player= nil
+
+local function Update(self)
 	if gameplay_start_time == -20 then
 		if GAMESTATE:GetCurMusicSeconds() >= 0 then
 			gameplay_start_time= get_screen_time()
@@ -560,50 +563,52 @@ local function Update(self)
 	end
 	song_progress_bar:update()
 	for k, v in pairs(enabled_players) do
-		local unmine_time= cons_players[v].unmine_time
+		player= cons_players[v]
+		local unmine_time= player.unmine_time
 		if unmine_time and unmine_time <= get_screen_time() then
-			cons_players[v].mine_effect.unapply(v)
-			cons_players[v].unmine_time= nil
+			player.mine_data.unapply(v)
+			player.mine_data= nil
+			player.unmine_time= nil
 		end
-		local speed_info= cons_players[v]:get_speed_info()
+		local speed_info= player:get_speed_info()
 		if speed_info.mode == "CX" and screen_gameplay.GetTrueBPS then
 			local this_bps= screen_gameplay:GetTrueBPS(v)
 			if speed_info.prev_bps ~= this_bps and this_bps > 0 then
 				speed_info.prev_bps= this_bps
 				local xmod= (speed_info.speed) / (this_bps * 60)
-				cons_players[v].song_options:XMod(xmod)
-				cons_players[v].current_options:XMod(xmod)
+				player.song_options:XMod(xmod)
+				player.current_options:XMod(xmod)
 			end
 		end
 		if speed_info.mode == "D" then
 			local this_bps= screen_gameplay:GetTrueBPS(v)
 			local song_pos= GAMESTATE:GetPlayerState(v):GetSongPosition()
-			local discard, approach= cons_players[v].song_options:Centered()
+			local discard, approach= player.song_options:Centered()
 			if approach == 0 then
 				if not song_pos:GetFreeze() and not song_pos:GetDelay() then
-					dspeed_start(cons_players[v])
+					dspeed_start(player)
 				end
 			else
 				if song_pos:GetFreeze() or song_pos:GetDelay() then
-					dspeed_halt(cons_players[v])
+					dspeed_halt(player)
 				end
 			end
 			if speed_info.prev_bps ~= this_bps and this_bps > 0 then
 				speed_info.prev_bps= this_bps
-				dspeed_start(cons_players[v])
+				dspeed_start(player)
 			end
-			if cons_players[v].dspeed.special then
-				if cons_players[v].dspeed.alternate then
-					dspeed_special_phase_updates[cons_players[v].dspeed_phase](cons_players[v])
+			if player.dspeed.special then
+				if player.dspeed.alternate then
+					dspeed_special_phase_updates[player.dspeed_phase](player)
 				else
-					dspeed_alternate(cons_players[v])
-					if cons_players[v].current_options:Centered() >= dspeed_default_max then
-						dspeed_reset(cons_players[v])
+					dspeed_alternate(player)
+					if player.current_options:Centered() >= dspeed_default_max then
+						dspeed_reset(player)
 					end
 				end
 			else
-				if cons_players[v].current_options:Centered() >= cons_players[v].dspeed.max then
-					dspeed_reset(cons_players[v])
+				if player.current_options:Centered() >= player.dspeed.max then
+					dspeed_reset(player)
 				end
 			end
 		end
@@ -637,27 +642,28 @@ local function make_special_actors_for_players()
               }
 	for k, v in pairs(enabled_players) do
 		local add_to_feedback= {}
-		if cons_players[v].flags.sigil then
+		local flags= cons_players[v].flags.gameplay
+		if flags.sigil then
 			add_to_feedback[#add_to_feedback+1]= {
 				name= "sigil", meattable= sigil_feedback_interface_mt,
 				center= {sigil_centers[v][1], sigil_centers[v][2]}}
 		end
-		if cons_players[v].flags.judge then
+		if flags.judge then
 			add_to_feedback[#add_to_feedback+1]= {
 				name= "judge_list", meattable= judge_feedback_interface_mt,
 				center= {judge_centers[v][1], judge_centers[v][2]}}
 		end
-		if cons_players[v].flags.score_meter then
+		if flags.score_meter then
 			add_to_feedback[#add_to_feedback+1]= {
 				name= "scoremeter", meattable= score_feedback_interface_mt,
 				center= {score_feedback_centers[v][1], score_feedback_centers[v][2]}}
 		end
-		if cons_players[v].flags.dance_points then
+		if flags.dance_points then
 			add_to_feedback[#add_to_feedback+1]= {
 				name= "dp", meattable= dance_points_feedback_interface_mt,
 				center= {dp_feedback_centers[v][1], dp_feedback_centers[v][2]}}
 		end
-		if cons_players[v].flags.bpm_meter then
+		if flags.bpm_meter then
 			add_to_feedback[#add_to_feedback+1]= {
 				name= "bpm", meattable= bpm_feedback_interface_mt,
 				center= {bpm_centers[v][1], bpm_centers[v][2]}}
@@ -669,7 +675,7 @@ local function make_special_actors_for_players()
 			a[#a+1]= new_feedback:create_actors(fv.name, fv.center[1], fv.center[2], v)
 			feedback_things[v][#feedback_things[v]+1]= new_feedback
 		end
-		if cons_players[v].flags.chart_info then
+		if flags.chart_info then
 			local cur_steps= gamestate_get_curr_steps(v)
 			local author= steps_get_author(cur_steps)
 			if GAMESTATE:IsCourseMode() then
@@ -887,6 +893,7 @@ return Def.ActorFrame {
 					cons_players[v]:stage_stats_reset()
 					cons_players[v]:combo_qual_reset()
 					cons_players[v].unmine_time= nil
+					cons_players[v].mine_data= nil
 					local speed_info= cons_players[v].speed_info
 					if speed_info then
 						speed_info.prev_bps= nil
@@ -929,11 +936,13 @@ return Def.ActorFrame {
 				if param.TapNoteScore == "TapNoteScore_HitMine" then
 					local cp= cons_players[param.Player]
 					if cp.mine_effect then
-						cp.mine_effect.apply(param.Player)
+						local mine_data= mine_effects[cp.mine_effect]
+						mine_data.apply(param.Player)
+						cp.mine_data= mine_data
 						if not cp.unmine_time then
 							cp.unmine_time= get_screen_time()
 						end
-						cp.unmine_time= cp.unmine_time + cp.mine_effect.time
+						cp.unmine_time= cp.unmine_time + mine_data.time
 					end
 				end
 			end,

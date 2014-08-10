@@ -324,37 +324,63 @@ options_sets.special_functions= {
 	--     set(player_number) -- called when the element is set.
 	--     unset(player_number) -- called when the element is unset.
 	__index= {
-		initialize=
-			function(self, player_number, extra)
-				self.name= extra.name
-				self.cursor_pos= 1
-				self.player_number= player_number
-				self.element_set= extra.eles
+		-- shared_display special cases added so this can be reused on evaluation
+		-- for editing flags
+		initialize= function(self, player_number, extra, shared_display)
+			self.name= extra.name
+			self.cursor_pos= 1
+			self.player_number= player_number
+			self.element_set= extra.eles
+			self.shared_display= shared_display
+			if shared_display then
+				self:reset_info()
+			else
 				self.info_set= {up_element()}
 				for i, el in ipairs(self.element_set) do
 					self.info_set[#self.info_set+1]= {
 						text= el.name, underline= el.init(player_number)}
 				end
-			end,
-		set_status= function(self) self.display:set_heading(self.name) end,
-		interpret_start=
-			function(self)
-				local ele_pos= self.cursor_pos - 1
-				local ele_info= self.element_set[ele_pos]
-				if ele_info then
-					local is_info= self.info_set[self.cursor_pos]
-					if is_info.underline then
-						ele_info.unset(self.player_number)
-					else
-						ele_info.set(self.player_number)
-					end
-					is_info.underline= not is_info.underline
-					self.display:set_element_info(self.cursor_pos, is_info)
-					return true
-				else
-					return false
-				end
 			end
+		end,
+		reset_info= function(self)
+			self.real_info_set= {{text= "Exit Flags Menu"}}
+			for i, el in ipairs(self.element_set) do
+				self.real_info_set[#self.real_info_set+1]= {
+					text= el.name, underline= el.init(self.player_number)}
+			end
+			self.info_set= DeepCopy(self.real_info_set)
+			if self.display then
+				self.display:set_info_set(self.info_set)
+			end
+		end,
+		update= function(self)
+			if GAMESTATE:IsPlayerEnabled(self.player_number) then
+				self.display:unhide()
+			else
+				self.display:hide()
+			end
+		end,
+		set_status= function(self) self.display:set_heading(self.name) end,
+		interpret_start= function(self)
+			if self.shared_display and self.cursor_pos == 1 then
+				return true, true
+			end
+			local ele_pos= self.cursor_pos - 1
+			local ele_info= self.element_set[ele_pos]
+			if ele_info then
+				local is_info= self.info_set[self.cursor_pos]
+				if is_info.underline then
+					ele_info.unset(self.player_number)
+				else
+					ele_info.set(self.player_number)
+				end
+				is_info.underline= not is_info.underline
+				self.display:set_element_info(self.cursor_pos, is_info)
+				return true
+			else
+				return false
+			end
+		end
 }}
 
 options_sets.mutually_exclusive_special_functions= {

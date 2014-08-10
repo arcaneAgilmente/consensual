@@ -342,5 +342,11 @@ dance_pad_mt= {
 					self.indicators[aid]:diffusealpha(1)
 				end
 			end
-		end
+		end,
+		hide= function(self)
+			self.container:visible(false)
+		end,
+		unhide= function(self)
+			self.container:visible(true)
+		end,
 }}

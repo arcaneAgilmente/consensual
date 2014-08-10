@@ -206,7 +206,7 @@ local args= {
 			if params.PlayerNumber == player then
 				--Trace("ToastyAchievedMessageCommand params:")
 				--rec_print_table(params)
-				if cons_players[player].flags.allow_toasty then
+				if cons_players[player].flags.gameplay.allow_toasty then
 					cons_players[player].toasty= {
 						judge= "TapNoteScore_Miss", remaining= 5, progress= 0 }
 				end
@@ -341,7 +341,7 @@ local args= {
 				end
 			end
 			if text then
-				if cons_players[player].flags.offset then
+				if cons_players[player].flags.gameplay.offset then
 					OffsetQuad:finishtweening()
 					OffsetQuad:SetWidth(disp_offset * offset_scaler)
 					OffsetQuad:diffuse(judgement_colors[disp_judge])

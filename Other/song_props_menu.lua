@@ -1,9 +1,10 @@
 options_sets.song_props_menu= {
 	__index= {
-		initialize= function(self, player_number, have_pane_edit)
+		initialize= function(self, player_number, have_pane_edit, have_flag_edit)
 			self.player_number= player_number
 			self.cursor_pos= 1
 			self.have_pane_edit= have_pane_edit
+			self.have_flag_edit= have_flag_edit
 			self:reset_info()
 		end,
 		reset_info= function(self)
@@ -11,10 +12,13 @@ options_sets.song_props_menu= {
 				{text= "Exit Props Menu"},
 				{text= "Profile favorite+"}, {text= "Profile favorite-"},
 				{text= "Machine favorite+"}, {text= "Machine favorite-"},
-				{text= "Censor"}, {text= "Edit Tags"}, {text= "Edit Pane Settings"}
+				{text= "Censor"}, {text= "Edit Tags"},
 			}
-			if not self.have_pane_edit then
-				self.real_info_set[#self.real_info_set]= nil
+			if self.have_pane_edit then
+				self.real_info_set[#self.real_info_set+1]= {text= "Edit Pane Settings"}
+			end
+			if self.have_flag_edit then
+				self.real_info_set[#self.real_info_set+1]= {text= "Edit Flag Settings"}
 			end
 			self.info_set= {}
 			for i, info in ipairs(self.real_info_set) do
@@ -27,9 +31,13 @@ options_sets.song_props_menu= {
 		interpret_start= function(self)
 			if self.cursor_pos == 7 then
 				return true, true, "tags"
-			elseif self.cursor_pos == 8 then
-				profile_pain_setting:set_dirty(pn_to_profile_slot(self.player_number))
-				return true, true, "pain"
+			elseif self.cursor_pos > 7 then
+				if self.have_pane_edit and self.cursor_pos == 8 then
+					profile_pain_setting:set_dirty(pn_to_profile_slot(self.player_number))
+					return true, true, "pain"
+				else
+					return true, true, "flags"
+				end
 			end
 			local player_slot= pn_to_profile_slot(self.player_number)
 			local song= gamestate_get_curr_song()

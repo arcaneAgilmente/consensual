@@ -20,7 +20,7 @@ local default_config= {
 	config_menu_key= "DeviceButton_z",
 }
 
-misc_config= create_setting("misc config", "misc_config.lua", default_config, true)
+misc_config= create_setting("misc config", "misc_config.lua", default_config, -1)
 misc_config:load()
 
 -- Planned but unimplemented:  (doable on request)

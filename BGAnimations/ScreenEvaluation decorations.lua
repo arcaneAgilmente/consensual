@@ -206,6 +206,8 @@ local best_score_mt= {
 									na= right, tt= "", nt= ""})
 			return Def.ActorFrame(args)
 		end,
+		hide= function(self) self.container:visible(false) end,
+		unhide= function(self) self.container:visible(true) end,
 		set= function(self, profile_pn, rank_pn)
 			local profile= false
 			if profile_pn then
@@ -273,39 +275,55 @@ local best_score_mt= {
 		end
 }}
 
-local function make_banner_actor()
-	local cur_song= gamestate_get_curr_song()
-	local song_name= ""
-	if cur_song then song_name= cur_song:GetDisplayFullTitle()
-		return Def.ActorFrame{
-			Name= "song_stuff",
-			InitCommand= function(self)
-				banner_container= self
-				self:xy(SCREEN_CENTER_X, SCREEN_TOP + 12)
-			end,
-			Def.Sprite{
-				Name= "banner",
-				InitCommand= function(self)
-					banner_image= self
-					self:xy(0, 56)
-					if cur_song then
-						self:LoadFromSongBanner(cur_song)
-						scale_to_fit(self, 256, 80)
-					else
-						self:visible(false)
+local besties= {
+	[PLAYER_1]= {machine= setmetatable({}, best_score_mt),
+							 player= setmetatable({}, best_score_mt)},
+	[PLAYER_2]= {machine= setmetatable({}, best_score_mt),
+							 player= setmetatable({}, best_score_mt)}}
+
+local dance_pads= {[PLAYER_1]= setmetatable({}, dance_pad_mt),
+	[PLAYER_2]= setmetatable({}, dance_pad_mt)}
+
+local banner_info_mt= {
+	__index= {
+		create_actors= function(self)
+			local cur_song= gamestate_get_curr_song()
+			local song_name= ""
+			if cur_song then song_name= cur_song:GetDisplayFullTitle() end
+			return Def.ActorFrame{
+				Name= "song_stuff",
+				InitCommand= function(subself)
+					self.container= subself
+					banner_container= subself
+					subself:xy(SCREEN_CENTER_X, SCREEN_TOP + 12)
+				end,
+				Def.Sprite{
+					Name= "banner",
+					InitCommand= function(self)
+						banner_image= self
+						self:xy(0, 56)
+						if cur_song then
+							self:LoadFromSongBanner(cur_song)
+							scale_to_fit(self, 256, 80)
+						else
+							self:visible(false)
+						end
 					end
-				end
-			},
-			normal_text(
-				"song_name", song_name, solar_colors.f_text(), 0, 0, 1, center,
-				{ OnCommand= function(self)
-						local limit= SCREEN_WIDTH - ((cg_thickness+lg_thickness)*2) - 16
-						width_limit_text(self, limit)
-				end
-			})
-		}
-	end
-end
+				},
+				normal_text(
+					"song_name", song_name, solar_colors.f_text(), 0, 0, 1, center,
+					{ OnCommand= function(self)
+							local limit= SCREEN_WIDTH - ((cg_thickness+lg_thickness)*2) - 16
+							width_limit_text(self, limit)
+					end
+				})
+			}
+		end,
+		hide= function(self) self.container:visible(false) end,
+		unhide= function(self) self.container:visible(true) end,
+}}
+
+local banner_info= setmetatable({}, banner_info_mt)
 
 local reward_time_mt= {
 	__index= {
@@ -333,6 +351,8 @@ local reward_time_mt= {
 			args[#args+1]= normal_text("remain_time", "", solar_colors.f_text(), 0, 0, 1)
 			return Def.ActorFrame(args)
 		end,
+		hide= function(self) self.container:visible(false) end,
+		unhide= function(self) self.container:visible(true) end,
 		set= function(self, width, reward_time)
 			local next_y= 0
 			self.used_text:settext(get_string_wrapper("ScreenEvaluation", "Used"))
@@ -386,57 +406,59 @@ local holdnote_names= {
 	"HoldNoteScore_Held", "HoldNoteScore_LetGo"
 }
 
-local life_graph_interface= {}
-local life_graph_interface_mt= { __index= life_graph_interface }
-function life_graph_interface:create_actors(pstats, firsts, gx, gy, gw, gh, reflect)
-	--local length= song_get_length(gamestate_get_curr_song())
-	local length= gameplay_end_time - gameplay_start_time
-	local samples= 100
-	local sample_resolution= gh / samples
-	local seconds_per_sample= length / samples
-	--Trace("Getting life record over length " .. tostring(length))
-	local life_record= pstats:GetLifeRecord(length, samples)
-	local actor_info= {}
-	local args= { Name= "GraphDisplay", InitCommand= cmd(xy, gx - gw/2, gy - gh/2) }
-	local verts= {}
-	local first_color= judgement_colors["TapNoteScore_W1"]
-	if reflect then
-		verts[1]= {{gw, 0, 0}, first_color}
-		verts[2]= {{gw * .5, 0, 0}, first_color}
-	else
-		verts[1]= {{gw * .5, 0, 0}, first_color}
-		verts[2]= {{0, 0, 0}, first_color}
-	end
-	for i, v in ipairs(life_record) do
-		local sy= i * sample_resolution
-		local sv= life_record[i]
-		local ss= i * seconds_per_sample
-		local sample_color= judgement_colors["TapNoteScore_W1"]
-		for i, v in ipairs(feedback_judgements) do
-			if firsts[v] then
-				if ss >= firsts[v] then
-					sample_color= judgement_colors[v]
+local life_graph_mt= {
+	__index= {
+		create_actors= function(self, pstats, firsts, gx, gy, gw, gh, reflect)
+			--local length= song_get_length(gamestate_get_curr_song())
+			local length= gameplay_end_time - gameplay_start_time
+			local samples= 100
+			local sample_resolution= gh / samples
+			local seconds_per_sample= length / samples
+			--Trace("Getting life record over length " .. tostring(length))
+			local life_record= pstats:GetLifeRecord(length, samples)
+			local actor_info= {}
+			local verts= {}
+			local first_color= judgement_colors["TapNoteScore_W1"]
+			if reflect then
+				verts[1]= {{gw, 0, 0}, first_color}
+				verts[2]= {{gw * .5, 0, 0}, first_color}
+			else
+				verts[1]= {{gw * .5, 0, 0}, first_color}
+				verts[2]= {{0, 0, 0}, first_color}
+			end
+			for i, v in ipairs(life_record) do
+				local sy= i * sample_resolution
+				local sv= life_record[i]
+				local ss= i * seconds_per_sample
+				local sample_color= judgement_colors["TapNoteScore_W1"]
+				for i, v in ipairs(feedback_judgements) do
+					if firsts[v] then
+						if ss >= firsts[v] then
+							sample_color= judgement_colors[v]
+						end
+					end
+				end
+				if reflect then
+					verts[#verts+1]= {{gw, sy, 0}, sample_color}
+					verts[#verts+1]= {{gw * (1 - sv), sy, 0}, sample_color}
+				else
+					verts[#verts+1]= {{gw * sv, sy, 0}, sample_color}
+					verts[#verts+1]= {{0, sy, 0}, sample_color}
 				end
 			end
-		end
-		if reflect then
-			verts[#verts+1]= {{gw, sy, 0}, sample_color}
-			verts[#verts+1]= {{gw * (1 - sv), sy, 0}, sample_color}
-		else
-			verts[#verts+1]= {{gw * sv, sy, 0}, sample_color}
-			verts[#verts+1]= {{0, sy, 0}, sample_color}
-		end
-	end
-	args[#args+1]= Def.ActorMultiVertex{
-		Name= "lgraph",
-		InitCommand=
-			function(self)
-				self:SetVertices(verts)
-				self:SetDrawState{Mode="DrawMode_QuadStrip"}
-			end
-	}
-	return Def.ActorFrame(args)
-end
+			return Def.ActorMultiVertex{
+				Name= "lgraph",
+				InitCommand= function(subself)
+					self.container= subself
+					subself:xy(gx - gw/2, gy - gh/2)
+					subself:SetVertices(verts)
+					subself:SetDrawState{Mode="DrawMode_QuadStrip"}
+				end
+			}
+		end,
+		hide= function(self) self.container:visible(false) end,
+		unhide= function(self) self.container:visible(true) end,
+}}
 
 local combo_graph_mt= {
 	__index= {
@@ -453,6 +475,8 @@ local combo_graph_mt= {
 				end
 			}
 		end,
+		hide= function(self) self.container:visible(false) end,
+		unhide= function(self) self.container:visible(true) end,
 		set= function(self, step_timings)
 			local length= gameplay_end_time - gameplay_start_time
 			local pix_per_sec= self.h / length
@@ -522,14 +546,18 @@ local score_report_mt= {
 			else
 				allowed_width= self.allowed_width or 1
 			end
-			local flags= cons_players[player_number].flags
+			local flags= cons_players[player_number].flags.eval
 			local session_col= get_pad_arrow_for_col(player_number, col_id)
 			local session_score= cons_players[player_number].session_stats[session_col]
 			local next_y= 0
-			self.chart_info:settext(
-				chart_info_text(gamestate_get_curr_steps(player_number)))
-			width_limit_text(self.chart_info, allowed_width, self.scale)
-			next_y= next_y + self.spacing
+			if flags.chart_info then
+				self.chart_info:settext(
+					chart_info_text(gamestate_get_curr_steps(player_number)))
+				width_limit_text(self.chart_info, allowed_width, self.scale)
+				next_y= next_y + self.spacing
+			else
+				self.chart_info:settext("")
+			end
 			do -- score stuff
 				-- TODO: session stats for score?  The data is calculated, but not displayed.
 				local adp= score_data.dp
@@ -543,13 +571,21 @@ local score_report_mt= {
 				local lower= 10^-precision
 				local percent_score= fmat:format(math.floor(adp/mdp * raise) * lower)
 				local score_color= color_for_score(adp/mdp)
-				self.score:settext(percent_score)
-				self.score:diffuse(score_color)
-				self.score:y(next_y)
-				next_y= next_y + (self.spacing * .75)
-				self.dp:settext(adp .. " / " .. mdp)
-				self.dp:diffuse(score_color)
-				self.dp:y(next_y)
+				if flags.pct_score then
+					self.score:settext(percent_score)
+					self.score:diffuse(score_color)
+					self.score:y(next_y)
+					next_y= next_y + (self.spacing * .75)
+				else
+					self.score:settext("")
+				end
+				if flags.dance_points then
+					self.dp:settext(adp .. " / " .. mdp)
+					self.dp:diffuse(score_color)
+					self.dp:y(next_y)
+				else
+					self.dp:settext("")
+				end
 				next_y= next_y + (self.spacing * .25)
 			end
 			if flags.offset then
@@ -851,6 +887,58 @@ function profile_report_interface:create_actors(player_number)
 	return Def.ActorFrame(args)
 end
 
+local judge_key_mt= {
+	__index= {
+		create_actors= function(self)
+			self.frame= setmetatable({}, frame_helper_mt)
+			self.name_set= setmetatable({}, number_set_mt)
+			self.name_data= {}
+			local args= {
+				Name= "judge_list", InitCommand= function(subself)
+					self.container= subself
+					subself:xy(_screen.cx, 240)
+					self.name_set:set(self.name_data)
+					local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(
+						self.name_set.container)
+					local fw= fxmx - fxmn + 8
+					local fh= fymx - fymn + 8
+					local fx= fxmn + (fw / 2)
+					local fy= fymn + (fh / 2)
+					self.left= fxmn + self.container:GetX()
+					self.right= fxmx + self.container:GetX()
+					self.frame:move(fx-4, fy-4)
+					self.frame:resize(fw, fh)
+				end
+			}
+			local frame_pad= .5
+			if SCREEN_WIDTH == 640 then
+				frame_pad= 1
+			end
+			args[#args+1]= self.frame:create_actors(
+				"frame", frame_pad, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
+			for i, v in ipairs(feedback_judgements) do
+				self.name_data[#self.name_data+1]= {
+					number= get_string_wrapper("ShortJudgmentNames", v),
+					color= judgement_colors[v], zoom= .5}
+			end
+			for i, v in ipairs(holdnote_names) do
+				self.name_data[#self.name_data+1]= {
+					number= get_string_wrapper("ShortJudgmentNames", v),
+					color= judgement_colors[v], zoom= .5}
+			end
+			self.name_data[#self.name_data+1]= {
+				number= get_string_wrapper("ShortJudgmentNames", "MaxCombo"),
+				color= solar_colors.f_text(), zoom= .5}
+			args[#args+1]= self.name_set:create_actors(
+				"names", 0, 0, 0, 0, 0, 24, 1, center, #self.name_data)
+			return Def.ActorFrame(args)
+		end,
+		hide= function(self) self.container:visible(false) end,
+		unhide= function(self) self.container:visible(true) end,
+}}
+
+local judge_key= setmetatable({}, judge_key_mt)
+
 local cg_centers= { [PLAYER_1]= {SCREEN_LEFT + cg_thickness/2, 0},
 	[PLAYER_2]= {SCREEN_RIGHT - cg_thickness/2, 0}}
 local lg_centers= {
@@ -859,16 +947,65 @@ local lg_centers= {
 	[PLAYER_2]= {
 		SCREEN_RIGHT - lg_thickness/2 - cg_thickness, SCREEN_CENTER_Y }}
 
+local life_graphs= {
+	[PLAYER_1]= setmetatable({}, life_graph_mt),
+	[PLAYER_2]= setmetatable({}, life_graph_mt)
+}
+
 local combo_graphs= {
 	[PLAYER_1]= setmetatable({}, combo_graph_mt),
 	[PLAYER_2]= setmetatable({}, combo_graph_mt)
 }
+
+local function update_bestiality()
+	local vote_things= {
+		banner= banner_info,
+		reward= reward_indicator,
+		judge_list= judge_key,
+	}
+	local votes= {}
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		local hide_things= {
+			best_scores= {besties[pn].machine, besties[pn].player},
+			style_pad= {dance_pads[pn]},
+			life_graph= {life_graphs[pn]},
+			combo_graph= {combo_graphs[pn]},
+		}
+		for name, value in pairs(cons_players[pn].flags.eval) do
+			if hide_things[name] then
+				for ti, thing in ipairs(hide_things[name]) do
+					if value then
+						thing:unhide()
+					else
+						thing:hide()
+					end
+				end
+			end
+			if vote_things[name] and value then
+				votes[name]= value
+			end
+		end
+	end
+	for name, thing in pairs(vote_things) do
+		if votes[name] then
+			thing:unhide()
+		else
+			thing:hide()
+		end
+	end
+end
 
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "song_props_menu.lua"))
 dofile(THEME:GetPathO("", "tags_menu.lua"))
 
 set_option_set_metatables()
+
+local flag_eles= {}
+for i, fname in ipairs(sorted_eval_flag_names) do
+	flag_eles[i]= generic_flag_control_element("eval", fname)
+end
+local flag_ex= {name= "Flags", eles= flag_eles}
 
 local special_menu_displays= {
 	[PLAYER_1]= setmetatable({}, option_display_mt),
@@ -882,6 +1019,20 @@ local special_menus= {
 	},{
 		[PLAYER_1]= setmetatable({}, options_sets.tags_menu),
 		[PLAYER_2]= setmetatable({}, options_sets.tags_menu),
+	},{
+		[PLAYER_1]= setmetatable({}, options_sets.special_functions),
+		[PLAYER_2]= setmetatable({}, options_sets.special_functions),
+}}
+local menu_args= {
+	{
+		[PLAYER_1]= {PLAYER_1, false, true},
+		[PLAYER_2]= {PLAYER_2, false, true},
+	},{
+		[PLAYER_1]= {PLAYER_1, false},
+		[PLAYER_2]= {PLAYER_2, false},
+	},{
+		[PLAYER_1]= {PLAYER_1, flag_ex, true},
+		[PLAYER_2]= {PLAYER_2, flag_ex, true},
 }}
 
 local player_cursors= {
@@ -927,6 +1078,8 @@ local function update_player_cursor(pn)
 		player_cursors[pn]:hide()
 	end
 end
+
+local set_visible_score_data
 
 local function set_special_menu(pn, spid)
 	special_menu_states[pn]= spid
@@ -1015,8 +1168,14 @@ local function filter_input_for_menus(pn, code, press)
 			handled, close, edit_tags= special_menus[spid][pn]:interpret_code(code)
 			if handled then
 				update_player_cursor(pn)
-				if edit_tags then
-					set_special_menu(pn, next_sp)
+				if showing_profile_on_other_side and spid == 3 then
+					update_bestiality()
+					set_visible_score_data(pn, score_data_viewing_indices[pn])
+				end
+				if edit_tags == "tags" then
+					set_special_menu(pn, 2)
+				elseif edit_tags == "flags" then
+					set_special_menu(pn, 3)
 				else
 					if close then
 						set_special_menu(pn, 0)
@@ -1037,8 +1196,7 @@ local function make_graph_actors()
 		local pstats= curstats:GetPlayerStageStats(player_number)
 		local args= { Name= player_number .. "_graphs" }
 		local lg_pos= lg_centers[player_number]
-		local life_graph= setmetatable({}, life_graph_interface_mt)
-		args[#args+1]= life_graph:create_actors(
+		args[#args+1]= life_graphs[player_number]:create_actors(
 			pstats, cons_players[player_number].stage_stats.firsts,
 			lg_pos[1], lg_pos[2], lg_thickness, SCREEN_HEIGHT,
 			player_number == PLAYER_2)
@@ -1052,15 +1210,6 @@ end
 
 local player_xs= { [PLAYER_1]= SCREEN_RIGHT * .25,
                    [PLAYER_2]= SCREEN_RIGHT * .75 }
-
-local dance_pads= {[PLAYER_1]= setmetatable({}, dance_pad_mt),
-	[PLAYER_2]= setmetatable({}, dance_pad_mt)}
-
-local besties= {
-	[PLAYER_1]= {machine= setmetatable({}, best_score_mt),
-							 player= setmetatable({}, best_score_mt)},
-	[PLAYER_2]= {machine= setmetatable({}, best_score_mt),
-							 player= setmetatable({}, best_score_mt)}}
 
 local function make_player_specific_actors()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
@@ -1101,57 +1250,13 @@ local function make_player_specific_actors()
 	return Def.ActorFrame(all_actors)
 end
 
-local judge_frame_helper= setmetatable({}, frame_helper_mt)
-local judge_name_set= setmetatable({}, number_set_mt)
-local judge_name_data= {}
-local function make_judge_name_actors()
-	local args= {
-		Name= "judge_names",
-		InitCommand= cmd(xy, SCREEN_CENTER_X, SCREEN_TOP + 240) }
-	local frame_pad= .5
-	if SCREEN_WIDTH == 640 then
-		frame_pad= 1
-	end
-	args[#args+1]= judge_frame_helper:create_actors("frame", frame_pad, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
-	for i, v in ipairs(feedback_judgements) do
-		judge_name_data[#judge_name_data+1]= {
-			number= get_string_wrapper("ShortJudgmentNames", v),
-			color= judgement_colors[v], zoom= .5}
-	end
-	for i, v in ipairs(holdnote_names) do
-		judge_name_data[#judge_name_data+1]= {
-			number= get_string_wrapper("ShortJudgmentNames", v),
-			color= judgement_colors[v], zoom= .5}
-	end
-	judge_name_data[#judge_name_data+1]= {
-		number= get_string_wrapper("ShortJudgmentNames", "MaxCombo"),
-		color= solar_colors.f_text(), zoom= .5}
-	args[#args+1]= judge_name_set:create_actors(
-		"names", 0, 0, 0, 0, 0, 24, 1, center, #judge_name_data)
-	return Def.ActorFrame(args)
-end
-
 local menu_states= {[PLAYER_1]= 0, [PLAYER_2]= 0}
 
 local function find_actors(self)
+	update_bestiality()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
 	local players_container= self:GetChild("players")
-	local judge_names= self:GetChild("judge_names")
-	local judge_left= SCREEN_CENTER_X
-	local judge_right= SCREEN_CENTER_X
-	if judge_names then
-		judge_name_set:set(judge_name_data)
-		local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(judge_names)
-		local fw= fxmx - fxmn + 8
-		local fh= fymx - fymn + 8
-		local fx= fxmn + (fw / 2)
-		local fy= fymn + (fh / 2)
-		judge_left= fxmn + judge_names:GetX()
-		judge_right= fxmx + judge_names:GetX()
-		judge_frame_helper:move(fx-4, fy-4)
-		judge_frame_helper:resize(fw, fh)
-	end
-	reward_indicator:set(judge_right - judge_left, reward_time)
+	reward_indicator:set(judge_key.right - judge_key.left, reward_time)
 	local graphs= self:GetChild("graphs")
 	local left_graph_edge= SCREEN_LEFT
 	local right_graph_edge= SCREEN_RIGHT
@@ -1170,11 +1275,11 @@ local function find_actors(self)
 		local cpos= player_xs[v]
 		local width= 1
 		if v == PLAYER_1 then
-			cpos= (left_graph_edge + judge_left) / 2
-			width= judge_left - left_graph_edge
+			cpos= (left_graph_edge + judge_key.left) / 2
+			width= judge_key.left - left_graph_edge
 		else
-			cpos= (right_graph_edge + judge_right) / 2
-			width= right_graph_edge - judge_right
+			cpos= (right_graph_edge + judge_key.right) / 2
+			width= right_graph_edge - judge_key.right
 		end
 		pcont:x(cpos)
 		local pad= 16
@@ -1196,10 +1301,7 @@ local function find_actors(self)
 			frame_helpers[other]:resize(fw, fh)
 		end
 		for i, menu_set in ipairs(special_menus) do
-			-- Funny trick:  For the tags_menu, "false" means "don't have an up
-			-- element".  For the song_props_menu, "false" means "don't have a pane
-			-- edit option".
-			menu_set[v]:initialize(v, false)
+			menu_set[v]:initialize(unpack(menu_args[i][v]))
 			menu_set[v]:set_display(special_menu_displays[v])
 		end
 		special_menu_displays[v]:set_underline_color(solar_colors[v]())
@@ -1345,7 +1447,7 @@ do
 	reduce_time_remaining(-reward_time)
 end
 
-local function set_visible_score_data(pn, index)
+set_visible_score_data= function(pn, index)
 	local function size_frame_to_report(report_container, is_profile)
 		local pad= 16
 		local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(report_container)
@@ -1360,6 +1462,11 @@ local function set_visible_score_data(pn, index)
 			frame_helpers[pn]:move(fx-pad/2, fy-pad/2)
 		end
 		frame_helpers[pn]:resize(fw, fh)
+		if fw < 20 then
+			frame_helpers[pn]:hide()
+		else
+			frame_helpers[pn]:unhide()
+		end
 	end
 	if index == -3 then
 		score_reports[pn]:set(pn, -1, cons_players[pn].fake_score)
@@ -1416,15 +1523,52 @@ local function input(event)
 	end
 end
 
+misc_config:get_data().evaluation_help_time= 5
+dofile(THEME:GetPathO("", "auto_hider.lua"))
+local help_args= {
+	HideTime= misc_config:get_data().evaluation_help_time,
+	Def.Quad{
+		InitCommand= function(self)
+			self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
+			self:setsize(SCREEN_WIDTH, SCREEN_HEIGHT)
+			self:diffuse(solar_colors.bg(.75))
+		end
+	},
+}
+do
+	local help_positions= {
+		menu= {_screen.cx, _screen.cy*.5},
+		column= {_screen.cx, _screen.cy*1.5},
+		screenshot= {_screen.cx, _screen.cy},
+	}
+	local help_codes= {
+		menu= {"&select;", "&menuleft;+&start;", "&menuright;+&start;"},
+		column= {"&menuleft;", "&menuright;"},
+		screenshot= {"&select;"},
+	}
+	for name, pos in pairs(help_positions) do
+		local help= THEME:GetString("Evaluation", name)
+		local or_word= " "..THEME:GetString("Common", "or").." "
+		local code_text= table.concat(help_codes[name], or_word)
+		help_args[#help_args+1]= normal_text(
+			name .. "_help", help .. " " .. code_text, nil, pos[1], pos[2], .75)
+	end
+end
+local function maybe_help()
+	if misc_config:get_data().evaluation_help_time > 0 then
+		return Def.AutoHider(help_args)
+	end
+end
+
 return Def.ActorFrame{
 	Name= "SEd",
 	InitCommand= function(self)
 		find_actors(self)
 	end,
-	make_banner_actor(),
+	banner_info:create_actors(),
 	make_player_specific_actors(),
 	reward_indicator:create_actors("reward", SCREEN_CENTER_X, SCREEN_TOP+120),
-	make_judge_name_actors(),
+	judge_key:create_actors(),
 	make_graph_actors(),
 	Def.Actor{
 		Name= "Honmono dayo",
@@ -1455,5 +1599,6 @@ return Def.ActorFrame{
 		OffCommand= function(self)
 			filter_bucket_songs_by_time()
 		end
-	}
+	},
+	maybe_help(),
 }

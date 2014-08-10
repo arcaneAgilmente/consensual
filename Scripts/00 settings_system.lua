@@ -14,12 +14,12 @@ end
 
 local setting_mt= {
 	__index= {
-		init= function(self, name, file, default, match_default)
+		init= function(self, name, file, default, match_depth)
 			assert(type(default) == "table", "default for setting must be a table.")
 			self.name= name
 			self.file= file
 			self.default= default
-			self.match_default= match_default
+			self.match_depth= match_depth
 			self.dirty_table= {}
 			self.data_set= {}
 			return self
@@ -36,21 +36,9 @@ local setting_mt= {
 				else
 					local from_file= dofile(fname)
 					if type(from_file) == "table" then
-						if self.match_default then
-							for k, v in pairs(from_file) do
-								if type(self.default[k]) ~= type(v) then
-									from_file[k]= nil
-								end
-							end
-							for k, v in pairs(self.default) do
-								if type(from_file[k]) == "nil" then
-									if type(v) == "table" then
-										from_file[k]= DeepCopy(v)
-									else
-										from_file[k]= v
-									end
-								end
-							end
+						if match_depth ~= 0 then
+							force_table_elements_to_match_type(
+								from_file, self.default, self.match_depth-1)
 						end
 						self.data_set[slot]= from_file
 					else
@@ -104,8 +92,8 @@ local setting_mt= {
 		end
 }}
 
-function create_setting(name, file, default, match_default)
-	return setmetatable({}, setting_mt):init(name, file, default, match_default)
+function create_setting(name, file, default, match_depth)
+	return setmetatable({}, setting_mt):init(name, file, default, match_depth)
 end
 
 function write_str_to_file(str, fname, str_name)

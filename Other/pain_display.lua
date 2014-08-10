@@ -263,7 +263,7 @@ options_sets.pain_menu= {
 					function() -- tag
 						if self.cursor_pos == 3 then
 							self.item_config.tag.machine=
-								not self.item_config.machine
+								not self.item_config.tag.machine
 							self:update_flag()
 							return true, true, false
 						else

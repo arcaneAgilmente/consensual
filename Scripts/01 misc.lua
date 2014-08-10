@@ -224,6 +224,25 @@ function lua_table_to_string(t, indent)
 	return ret
 end
 
+function force_table_elements_to_match_type(candidate, must_match, depth_remaining)
+	for k, v in pairs(candidate) do
+		if type(must_match[k]) ~= type(v) then
+			candidate[k]= nil
+		elseif type(v) == "table" and depth_remaining ~= 0 then
+			force_table_elements_to_match_type(v, must_match[k], depth_remaining-1)
+		end
+	end
+	for k, v in pairs(must_match) do
+		if type(candidate[k]) == "nil" then
+			if type(v) == "table" then
+				candidate[k]= DeepCopy(v)
+			else
+				candidate[k]= v
+			end
+		end
+	end
+end
+
 function get_string_wrapper(section, string)
 	--Trace("get_string_wrapper:  Searching section \"" .. tostring(section)
 	--   .. "\" for string \"" .. tostring(string) .. "\"")
