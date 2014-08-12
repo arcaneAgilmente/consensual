@@ -137,6 +137,44 @@ local default_flag_set= {
 	}
 }
 
+sorted_flag_names= {
+	{type= "eval",
+	 "chart_info",
+	 "pct_score",
+	 "dance_points",
+	 "offset",
+	 "score_early_late",
+	 "pct_column",
+	 "session_column",
+	 "song_column",
+	 "sum_column",
+	 "best_scores",
+	 "profile_data",
+	 "combo_graph",
+	 "life_graph",
+	 "style_pad",
+	 "banner",
+	 "judge_list",
+	 "reward",
+	},
+	{type= "gameplay",
+	 "allow_toasty",
+	 "bpm_meter",
+	 "chart_info",
+	 "dance_points",
+	 "judge",
+	 "offset",
+	 "score_meter",
+	 "sigil",
+	},
+	{type= "interface",
+	 "straight_floats",
+	}
+}
+sorted_eval_flag_names= sorted_flag_names[1]
+sorted_gameplay_flag_names= sorted_flag_names[2]
+sorted_interface_flag_names= sorted_flag_names[3]
+
 machine_flag_setting= create_setting("machine flag config", "flag_config.lua", default_flag_set, -1)
 profile_flag_setting= create_setting("player flag config", "flag_config.lua", default_flag_set[1], -1)
 

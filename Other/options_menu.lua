@@ -152,7 +152,7 @@ option_display_mt= {
 		set_heading=
 			function(self, h)
 				if not self.no_heading then
-					self.heading:settext(get_string_wrapper("OptionTitles", h))
+					self.heading:settext(get_string_wrapper("OptionNames", h))
 					width_limit_text(self.heading, self.el_width, self.el_zoom)
 				end
 			end,
@@ -275,44 +275,48 @@ options_sets= {}
 --     args= {} -- extra args for the initialize function of the metatable
 options_sets.menu= {
 	__index= {
-		initialize=
-			function(self, player_number, initializer_args, no_up)
-				self.menu_data= initializer_args
-				self.name= initializer_args.name
-				self.info_set= {}
-				self.no_up= no_up
-				if not no_up then
-					self.info_set[#self.info_set+1]= up_element()
-				end
-				self.cursor_pos= 1
-				for i, d in ipairs(initializer_args) do
-					self.info_set[#self.info_set+1]= {text= d.name}
-					if d.args and type(d.args) == "table" then
-						d.args.name= d.name
-					end
-				end
-			end,
-		set_status=
-			function(self)
-				if self.display then
-					self.display:set_heading(self.name or "")
-					self.display:set_display("")
-				end
-			end,
-		interpret_start=
-			function(self)
-				local data= self.menu_data[self.cursor_pos-1]
-				if self.no_up then
-					data= self.menu_data[self.cursor_pos]
-				end
-				if data then
-					return true, data
-				else
-					Trace("options_sets.menu has no data at " .. self.cursor_pos-1)
-					rec_print_table(self.menu_data)
-					return false
+		initialize= function(self, player_number, initializer_args, no_up)
+			self.menu_data= initializer_args
+			self.name= initializer_args.name
+			self.info_set= {}
+			self.no_up= no_up
+			if not no_up then
+				self.info_set[#self.info_set+1]= up_element()
+			end
+			self.cursor_pos= 1
+			for i, d in ipairs(initializer_args) do
+				self.info_set[#self.info_set+1]= {text= d.name}
+				if d.args and type(d.args) == "table" then
+					d.args.name= d.name
 				end
 			end
+		end,
+		set_status= function(self)
+			if self.display then
+				self.display:set_heading(self.name or "")
+				self.display:set_display("")
+			end
+		end,
+		interpret_start= function(self)
+			local data= self.menu_data[self.cursor_pos-1]
+			if self.no_up then
+				data= self.menu_data[self.cursor_pos]
+			end
+			if data then
+				return true, data
+			else
+				Trace("options_sets.menu has no data at " .. self.cursor_pos-1)
+				rec_print_table(self.menu_data)
+				return false
+			end
+		end,
+		get_item_name= function(self, pos)
+			pos= pos or self.cursor_pos-1
+			if self.menu_data[pos] then
+				return self.menu_data[pos].name
+			end
+			return ""
+		end
 }}
 
 options_sets.special_functions= {
@@ -341,6 +345,13 @@ options_sets.special_functions= {
 						text= el.name, underline= el.init(player_number)}
 				end
 			end
+		end,
+		get_item_name= function(self, pos)
+			pos= pos or self.cursor_pos-1
+			if self.element_set[pos] then
+				return self.element_set[pos].name
+			end
+			return ""
 		end,
 		reset_info= function(self)
 			self.real_info_set= {{text= "Exit Flags Menu"}}
@@ -645,3 +656,133 @@ function set_option_set_metatables()
 		setmetatable(set.__index, option_set_general_mt)
 	end
 end
+
+-- This exists to hand to menus that pass out of view but still exist.
+local fake_display= {}
+for k, v in pairs(option_display_mt.__index) do
+	fake_display[k]= function() end
+end
+
+menu_stack_mt= {
+	__index= {
+		create_actors= function(
+				self, name, x, y, width, height, elements, player_number)
+			self.name= name
+			self.player_number= player_number
+			self.options_set_stack= {}
+			local pcolor= solar_colors.violet()
+			if player_number then
+				pcolor= solar_colors[player_number]()
+			end
+			local args= {
+				Name= name, InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					for i, disp in ipairs(self.displays) do
+						disp:set_underline_color(pcolor)
+					end
+				end
+			}
+			self.displays= {
+				setmetatable({}, option_display_mt),
+				setmetatable({}, option_display_mt)}
+			local sep= width / #self.displays
+			local off= sep / 2
+			self.cursor= setmetatable({}, amv_cursor_mt)
+			local disp_el_width_limit= width / 2 - 8
+			for i, disp in ipairs(self.displays) do
+				args[#args+1]= disp:create_actors(
+					"disp" .. i, off+sep * (i-1), 0,
+					elements, disp_el_width_limit, line_height, 1)
+			end
+			args[#args+1]= self.cursor:create_actors(
+				"cursor", sep, 0, 20, line_height, 1, pcolor)
+			return Def.ActorFrame(args)
+		end,
+		push_options_set_stack= function(
+				self, new_set_meta, new_set_initializer_args)
+			local oss= self.options_set_stack
+			local top_set= oss[#oss]
+			local almost_top_set= oss[#oss-1]
+			local next_display= 1
+			if almost_top_set then
+				almost_top_set:set_display(fake_display)
+			end
+			if top_set then
+				top_set:set_display(self.displays[1])
+				next_display= 2
+			end
+			local nos= setmetatable({}, new_set_meta)
+			oss[#oss+1]= nos
+			nos:set_player_info(self.player_number)
+			nos:initialize(self.player_number, new_set_initializer_args)
+			nos:set_display(self.displays[next_display])
+			next_display= next_display + 1
+			if self.displays[next_display] then
+				self.displays[next_display]:hide()
+			end
+		end,
+		pop_options_set_stack= function(self)
+			local oss= self.options_set_stack
+			if #oss > 1 then
+				local former_top= oss[#oss]
+				if former_top.destructor then former_top:destructor() end
+				oss[#oss]= nil
+				local top_set= oss[#oss]
+				local almost_top_set= oss[#oss-1]
+				local next_display= 1
+				if almost_top_set then
+					almost_top_set:set_display(self.displays[1])
+					next_display= 2
+				end
+				top_set:set_display(self.displays[next_display])
+				next_display= next_display + 1
+				if self.displays[next_display] then
+					self.displays[next_display]:hide()
+				end
+			end
+		end,
+		interpret_code= function(self, code)
+			local oss= self.options_set_stack
+			local top_set= oss[#oss]
+			local handled, new_set_data= top_set:interpret_code(code)
+			if handled then
+				if new_set_data then
+					self:push_options_set_stack(new_set_data.meta, new_set_data.args)
+				end
+			else
+				if code == "Start" and #oss > 1 then
+					handled= true
+					self:pop_options_set_stack()
+				end
+			end
+			self:update_cursor_pos()
+			return handled
+		end,
+		update_cursor_pos= function(self)
+			local item= self.options_set_stack[#self.options_set_stack]:
+				get_cursor_element()
+			if item then
+				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(item.container)
+				local xp, yp= rec_calc_actor_pos(item.container)
+				xp= xp - self.container:GetX()
+				yp= yp - self.container:GetY()
+				self.cursor:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
+			end
+		end,
+		can_exit_screen= function(self)
+			local oss= self.options_set_stack
+			local top_set= oss[#oss]
+			return #oss <= 1 and (not top_set or top_set:can_exit())
+		end,
+		top_menu= function(self)
+			return self.options_set_stack[#self.options_set_stack]
+		end,
+		get_cursor_item_name= function(self)
+			local top_set= self.options_set_stack[#self.options_set_stack]
+			if top_set.get_item_name then
+				return top_set:get_item_name()
+			end
+			return ""
+		end
+}}

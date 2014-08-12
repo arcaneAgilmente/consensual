@@ -311,6 +311,13 @@ function maybe_distort_text(text_actor)
 	end
 end
 
+function april_spin(self)
+	if april_fools then
+		self:spin()
+		self:effectmagnitude(0, 0, .1)
+	end
+end
+
 local get_all_steps= "GetAllSteps"
 local get_main_title= "GetDisplayMainTitle"
 local set_curr_song= noop_nil
@@ -426,6 +433,10 @@ function steps_get_author(steps)
 		if not author or author == "" then
 			-- The place that exists in .sm files.
 			author= steps:GetDescription()
+		end
+		local fname= steps:GetFilename()
+		if fname and fname:find("DDR") and not fname:find("Encore") then
+			author = "Konami Shuffle"
 		end
 		return author
 	else

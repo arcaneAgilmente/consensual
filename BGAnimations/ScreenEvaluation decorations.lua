@@ -1523,7 +1523,6 @@ local function input(event)
 	end
 end
 
-misc_config:get_data().evaluation_help_time= 5
 dofile(THEME:GetPathO("", "auto_hider.lua"))
 local help_args= {
 	HideTime= misc_config:get_data().evaluation_help_time,
@@ -1564,6 +1563,7 @@ return Def.ActorFrame{
 	Name= "SEd",
 	InitCommand= function(self)
 		find_actors(self)
+		april_spin(self)
 	end,
 	banner_info:create_actors(),
 	make_player_specific_actors(),

@@ -851,6 +851,7 @@ return Def.ActorFrame {
 				GAMESTATE:AddStageToPlayer(pn)
 			end
 		end
+		april_spin(self)
 	end,
 	OnCommand= function(self)
 							 local top_screen= SCREENMAN:GetTopScreen()

@@ -468,6 +468,7 @@ pain_display_mt= {
 			local center_y= revealed_height/2 - (self.text_height/2)
 			self.frame_main:resize(self.el_w, revealed_height)
 			self.frame_main:move(nil, center_y-2)
+			self.container:finishtweening()
 			self.container:linear(.1)
 			self.container:y(self.original_y+hidden_height)
 		end,

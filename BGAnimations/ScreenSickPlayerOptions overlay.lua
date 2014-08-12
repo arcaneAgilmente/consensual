@@ -2,7 +2,6 @@ local line_height= 24
 local option_set_elements= (SCREEN_HEIGHT / line_height) - 5
 local sect_width= SCREEN_WIDTH/2
 local sect_height= SCREEN_HEIGHT
-local disp_el_width_limit= sect_width / 2 - 8
 
 -- SPEED RATE COORDINATION
 -- Each speed option row and each rate mod option line registers with this
@@ -568,140 +567,6 @@ dofile(THEME:GetPathO("", "tags_menu.lua"))
 
 set_option_set_metatables()
 
--- This exists to hand to menus that pass out of view but still exist.
-local fake_display= {}
-for k, v in pairs(option_display_mt.__index) do
-	fake_display[k]= function() end
-end
-
-local options_menu_mt= {
-	__index= {
-		create_actors=
-			function(self, name, x, y, player_number)
-				self.name= name
-				self.player_number= player_number
-				self.options_set_stack= {}
-				local pcolor= solar_colors[player_number]()
-				local args= {
-					Name= name,
-					InitCommand= function(subself)
-						subself:xy(x, y)
-						self.container= subself
-						for i, disp in ipairs(self.displays) do
-							disp:set_underline_color(solar_colors[self.player_number]())
-						end
-					end
-				}
-				self.frame= setmetatable({}, frame_helper_mt)
-				args[#args+1]= self.frame:create_actors(
-					"frame", 2, sect_width, sect_height, pcolor, solar_colors.bg(), sect_width/2, sect_height/2)
-				local pname= player_number
-				local pro= PROFILEMAN:GetProfile(player_number)
-				if pro and pro:GetDisplayName() ~= "" then
-					pname= pro:GetDisplayName()
-				end
-				args[#args+1]= normal_text(
-					"name", pname, pcolor, 8, line_height / 2, 1, left)
-				self.bpm_disp= setmetatable({}, bpm_displayer_interface_mt)
-				args[#args+1]= self.bpm_disp:create_actors(
-					"bpm", player_number, sect_width/2, line_height*1.5)
-				self.displays= {
-					setmetatable({}, option_display_mt),
-					setmetatable({}, option_display_mt)}
-				local sep= sect_width / #self.displays
-				local off= sep / 2
-				self.cursor= setmetatable({}, amv_cursor_mt)
-				for i, disp in ipairs(self.displays) do
-					args[#args+1]= disp:create_actors(
-						"disp" .. i, off+sep * (i-1), line_height * 2.5,
-						option_set_elements, disp_el_width_limit, line_height, 1)
-				end
-				args[#args+1]= self.cursor:create_actors(
-					"cursor", sep, line_height*2.5, 20, line_height, 1, pcolor)
-				return Def.ActorFrame(args)
-			end,
-		push_options_set_stack=
-			function(self, new_set_meta, new_set_initializer_args)
-				local oss= self.options_set_stack
-				local top_set= oss[#oss]
-				local almost_top_set= oss[#oss-1]
-				local next_display= 1
-				if almost_top_set then
-					almost_top_set:set_display(fake_display)
-				end
-				if top_set then
-					top_set:set_display(self.displays[1])
-					next_display= 2
-				end
-				local nos= setmetatable({}, new_set_meta)
-				oss[#oss+1]= nos
-				nos:set_player_info(self.player_number)
-				nos:initialize(self.player_number, new_set_initializer_args)
-				nos:set_display(self.displays[next_display])
-				next_display= next_display + 1
-				if self.displays[next_display] then
-					self.displays[next_display]:hide()
-				end
-			end,
-		pop_options_set_stack=
-			function(self)
-				local oss= self.options_set_stack
-				if #oss > 1 then
-					local former_top= oss[#oss]
-					if former_top.destructor then former_top:destructor() end
-					oss[#oss]= nil
-					local top_set= oss[#oss]
-					local almost_top_set= oss[#oss-1]
-					local next_display= 1
-					if almost_top_set then
-						almost_top_set:set_display(self.displays[1])
-						next_display= 2
-					end
-					top_set:set_display(self.displays[next_display])
-					next_display= next_display + 1
-					if self.displays[next_display] then
-						self.displays[next_display]:hide()
-					end
-				end
-			end,
-		interpret_code=
-			function(self, code)
-				local oss= self.options_set_stack
-				local top_set= oss[#oss]
-				local handled, new_set_data= top_set:interpret_code(code)
-				if handled then
-					if new_set_data then
-						self:push_options_set_stack(new_set_data.meta, new_set_data.args)
-					end
-				else
-					if code == "Start" and #oss > 1 then
-						handled= true
-						self:pop_options_set_stack()
-					end
-				end
-				self:update_cursor_pos()
-				return handled
-			end,
-		update_cursor_pos=
-			function(self)
-				local item= self.options_set_stack[#self.options_set_stack]:
-					get_cursor_element()
-				if item then
-					local xmn, xmx, ymn, ymx= rec_calc_actor_extent(item.container)
-					local xp, yp= rec_calc_actor_pos(item.container)
-					xp= xp - self.container:GetX()
-					yp= yp - self.container:GetY()
-					self.cursor:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
-				end
-			end,
-		can_exit_screen=
-			function(self)
-				local oss= self.options_set_stack
-				local top_set= oss[#oss]
-				return #oss <= 1 and (not top_set or top_set:can_exit())
-			end
-}}
-
 local function set_clear_for_player(player_number)
 	if true then
 		Trace("Clear option disabled until partial clear of player data is added.")
@@ -1010,14 +875,38 @@ end
 
 local args= {}
 local menus= {}
+local bpm_disps= {}
+local frames= {}
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-	local menu= setmetatable({}, options_menu_mt)
+	local menu= setmetatable({}, menu_stack_mt)
+	local bpm= setmetatable({}, bpm_displayer_interface_mt)
+	local frame= setmetatable({}, frame_helper_mt)
 	local mx, my= 0, 0
 	if pn == PLAYER_2 then
 		mx= sect_width
 	end
-	args[#args+1]= menu:create_actors("m" .. pn, mx, my, pn)
+	local pcolor= solar_colors[pn]()
+	local pname= pn
+	local pro= PROFILEMAN:GetProfile(pn)
+	if pro and pro:GetDisplayName() ~= "" then
+		pname= pro:GetDisplayName()
+	end
+	args[#args+1]= Def.ActorFrame{
+		Name= "decs" .. pn, InitCommand= function(self)
+			self:xy(mx, my)
+		end,
+		frame:create_actors(
+			"frame", 2, sect_width, sect_height, pcolor, solar_colors.bg(),
+			sect_width/2, sect_height/2),
+		normal_text("name", pname, pcolor, 8, line_height / 2, 1, left),
+		bpm:create_actors("bpm", pn, sect_width/2, line_height*1.5),
+	}
+	args[#args+1]= menu:create_actors(
+		"m" .. pn, mx, my+line_height*2.5, sect_width, sect_height,
+		option_set_elements, pn)
 	menus[pn]= menu
+	bpm_disps[pn]= bpm
+	frames[pn]= frame
 end
 
 local mine_effect_eles= {}

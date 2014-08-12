@@ -141,39 +141,6 @@ function cons_player:session_stats_reset()
 	end
 end
 
-sorted_eval_flag_names= {
-	"chart_info",
-	"pct_score",
-	"dance_points",
-	"offset",
-	"score_early_late",
-	"pct_column",
-	"session_column",
-	"song_column",
-	"sum_column",
-	"best_scores",
-	"profile_data",
-	"combo_graph",
-	"life_graph",
-	"style_pad",
-	"banner",
-	"judge_list",
-	"reward",
-}
-sorted_gameplay_flag_names= {
-	"allow_toasty",
-	"bpm_meter",
-	"chart_info",
-	"dance_points",
-	"judge",
-	"offset",
-	"score_meter",
-	"sigil",
-}
-sorted_interface_flag_names= {
-	"straight_floats",
-}
-
 function cons_player:flags_reset()
 	self.flags= set_player_flag_to_level(self.player_number, 1)
 	-- allow_toasty is set here so it will be affected if the preference is changed while the game is running.

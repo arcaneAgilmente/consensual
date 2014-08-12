@@ -2,9 +2,10 @@ local config_data= misc_config:get_data()
 misc_config:set_dirty()
 
 dofile(THEME:GetPathO("", "options_menu.lua"))
+dofile(THEME:GetPathO("", "pain_display.lua"))
 options_sets.settable_thing= {
 	__index= {
-		initialize= function(self, extra)
+		initialize= function(self, pn, extra)
 			self.name= extra.name
 			self.get= extra.get
 			self.set= extra.set
@@ -27,8 +28,7 @@ options_sets.settable_thing= {
 set_option_set_metatables()
 dofile(THEME:GetPathO("", "auto_hider.lua"))
 
-local main_display= setmetatable({}, option_display_mt)
-local sec_display= setmetatable({}, option_display_mt)
+local pain_display= setmetatable({}, pain_display_mt)
 
 local function make_extra_for_conf_val(name, min_scale, scale, max_scale)
 	return {
@@ -36,80 +36,131 @@ local function make_extra_for_conf_val(name, min_scale, scale, max_scale)
 		min_scale= min_scale,
 		scale= scale,
 		max_scale= max_scale,
-		initial_value= function()
-			return config_data[name]
-		end,
-		set= function(pn, value)
-			config_data[name]= value
-		end
+		initial_value= function() return config_data[name] end,
+		set= function(pn, value) config_data[name]= value end
 	}
 end
-
-local config_num_args= {
-	default_credit_time= {0, 1, 2},
-	min_remaining_time= {0, 1, 2},
-	song_length_grace= {0, 1, 2},
-	min_score_for_reward= {-2, -1, 0},
-	min_reward_pct= {-2, -1, 0},
-	max_reward_pct= {-2, -1, 0},
-	min_reward_time= {0, 1, 2},
-	max_reward_time= {0, 1, 2},
-	select_music_help_time= {-3, 0, 2},
-	evaluation_help_time= {-3, 0, 2},
-	service_help_time= {-3, 0, 2},
-}
 
 local function make_extra_for_bool_val(name, on, off)
 	return {
 		name= name,
 		true_text= on,
 		false_text= off,
-		get= function()
-			return config_data[name]
-		end,
-		set= function(pn, value)
-			config_data[name]= value
-		end
+		get= function() return config_data[name] end,
+		set= function(pn, value) config_data[name]= value end
 	}
 end
 
-local config_bool_args= {
-	reward_time_by_pct= {"Percent", "Flat"},
+local reward_options= {
+	{name= "default_credit_time", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("default_credit_time", 0, 1, 2)},
+	{name= "min_remaining_time", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("min_remaining_time", 0, 1, 2)},
+	{name= "song_length_grace", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("song_length_grace", 0, 1, 2)},
+	{name= "min_score_for_reward", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("min_score_for_reward", -2, -1, 0)},
+	{name= "reward_time_by_pct", meta= options_sets.boolean_option,
+	 args= make_extra_for_bool_val("reward_time_by_pct", "Percent", "Flat")},
+	{name= "min_reward_pct", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("min_reward_pct", -3, -1, 0)},
+	{name= "max_reward_pct", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("max_reward_pct", -3, -1, 0)},
+	{name= "min_reward_time", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("min_reward_time", 0, 1, 2)},
+	{name= "max_reward_time", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("max_reward_time", 0, 1, 2)},
 }
 
-local config_menu= setmetatable({}, options_sets.menu)
-local menu_items= {
-	{name= "exit_config"},
-	{name= "default_credit_time"},
-	{name= "min_remaining_time"},
-	{name= "song_length_grace"},
-	{name= "min_score_for_reward"},
-	{name= "reward_time_by_pct"},
-	{name= "min_reward_pct"},
-	{name= "max_reward_pct"},
-	{name= "min_reward_time"},
-	{name= "max_reward_time"},
-	{name= "select_music_help_time"},
-	{name= "evaluation_help_time"},
-	{name= "service_help_time"},
-	{name= "set_config_key"},
+local help_options= {
+	{name= "select_music_help_time", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("select_music_help_time", -3, 0, 2)},
+	{name= "evaluation_help_time", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("evaluation_help_time", -3, 0, 2)},
+	{name= "service_help_time", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("service_help_time", -3, 0, 2)},
 }
-config_menu:initialize(nil, menu_items, true)
+
+local flag_slot_options= {}
+do -- make a flags menu for each set of flags.
+	local machine_flags= machine_flag_setting:get_data()
+	machine_flag_setting:set_dirty()
+	local function flag_controller(slot, type_name, flag_name)
+		return {
+			name= flag_name,
+			init= function(pn)
+				return machine_flags[slot][type_name][flag_name]
+			end,
+			set= function(pn)
+				machine_flags[slot][type_name][flag_name]= true
+			end,
+			unset= function(pn)
+				machine_flags[slot][type_name][flag_name]= false
+			end
+		}
+	end
+	for slot, set in ipairs(machine_flags) do
+		local type_eles= {}
+		for i, name_list in ipairs(sorted_flag_names) do
+			local flag_eles= {}
+			for f, name in ipairs(name_list) do
+				flag_eles[#flag_eles+1]= flag_controller(slot, name_list.type, name)
+			end
+			type_eles[#type_eles+1]= {
+				name= name_list.type, meta= options_sets.special_functions,
+				args= {eles= flag_eles}}
+		end
+		flag_slot_options[#flag_slot_options+1]= {
+			name= "Slot " .. slot, meta= options_sets.menu, args= type_eles}
+	end
+end
+
+local press_prompt= {}
+local on_press_prompt= false
+local function key_get()
+	return ToEnumShortString(config_data.config_menu_key)
+end
+
+local function key_set()
+	press_prompt:visible(true)
+	on_press_prompt= true
+	local tops= SCREENMAN:GetTopScreen()
+	local tempback= noop_false
+	tempback= function(event)
+		if event.type == "InputEventType_FirstPress" then
+			config_data.config_menu_key= event.DeviceInput.button
+			tops:RemoveInputCallback(tempback)
+			press_prompt:visible(false)
+			on_press_prompt= 2
+		end
+	end
+	tops:AddInputCallback(tempback)
+end
+
+local menu_items= {
+	{name= "set_config_key", meta= options_sets.settable_thing,
+	 args= {get= key_get, set= key_set}},
+	{name= "reward_config", meta= options_sets.menu, args= reward_options},
+	{name= "help_config", meta= options_sets.menu, args= help_options},
+	{name= "flags_config", meta= options_sets.menu, args= flag_slot_options},
+--	{name= "pain_config"},
+}
+
+local config_menu= setmetatable({}, menu_stack_mt)
 
 local secondary_menu= {}
 local on_main_menu= true
 local return_on_start= false
-local on_press_prompt= false
-
-local cursor= setmetatable({}, amv_cursor_mt)
 
 local hider_frame= setmetatable({}, frame_helper_mt)
 local hider_text= {}
 local hider_params= {
-	Name="help",
+	Name="help", InitCommand= function(self)
+		self:xy(_screen.cx, _screen.cy)
+	end,
 	hider_frame:create_actors(
 		"frame", 1, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0),
-	normal_text("text", "", solar_colors.f_text(), _screen.cx, _screen.cy, 1,
+	normal_text("text", "", solar_colors.f_text(), 0, 0, 1,
 							center, {InitCommand= function(self) hider_text= self end}),
 }
 
@@ -123,127 +174,53 @@ end
 update_hider_time()
 
 local function update_hider_text()
-	local pos= config_menu.cursor_pos
-	hider_text:settext(get_string_wrapper("ConsService", menu_items[pos].name))
+	local item_name= config_menu:get_cursor_item_name()
+	if THEME:HasString("ConsService", item_name) then
+		local help= THEME:GetString("ConsService", item_name)
+		hider_text:settext(help)
+	end
 	local xmn, xmx, ymn, ymx= rec_calc_actor_extent(hider_text)
-	hider_frame:move((xmx+xmn)/2 + _screen.cx, (ymx+ymn)/2 + _screen.cy)
 	hider_frame:resize(xmx-xmn+20, ymx-ymn+20)
 end
 
 local prompt_frame= setmetatable({}, frame_helper_mt)
-local press_prompt= {}
-local function update_cursor_pos()
-	local item
-	if on_main_menu then
-		item= config_menu:get_cursor_element()
-		update_hider_text()
-	else
-		item= secondary_menu:get_cursor_element()
-	end
-	if item then
-		local xmn, xmx, ymn, ymx= rec_calc_actor_extent(item.container)
-		local xp, yp= rec_calc_actor_pos(item.container)
-		cursor:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
-	end
-end
-
-local function key_get()
-	return ToEnumShortString(config_data.config_menu_key)
-end
-
-local function key_set()
-	press_prompt:visible(true)
-	on_press_prompt= 1
-end
 
 local function input(event)
 	if on_press_prompt then
-		if on_press_prompt == 1 then
-			if event.type == "InputEventType_Release" then
-				on_press_prompt= 2
-			end
-		else
-			if event.type == "InputEventType_FirstPress" then
-				config_data.config_menu_key= event.DeviceInput.button
-				secondary_menu:update_text()
-				update_cursor_pos()
-				press_prompt:visible(false)
-			elseif event.type == "InputEventType_Release" then
-				on_press_prompt= false
-			end
+		config_menu:top_menu():update_text()
+		if on_press_prompt == 2 then
+			on_press_prompt= false
 		end
 		return false
 	end
 	if event.type == "InputEventType_Release" then return false end
 	if event.PlayerNumber and event.GameButton then
-		if on_main_menu then
-			local handled, extra= config_menu:interpret_code(event.GameButton)
-			if handled and extra then
-				extra= extra.name
-				if extra == "exit_config" then
-					misc_config:save()
-					SCREENMAN:SetNewScreen("ScreenInitialMenu")
-				elseif extra == "set_config_key" then
-					secondary_menu= setmetatable({}, options_sets.settable_thing)
-					secondary_menu:initialize{
-						name= "set_config_key", get= key_get, set= key_set}
-					secondary_menu:set_display(sec_display)
-					on_main_menu= false
-					return_on_start= false
-				else
-					if config_num_args[extra] then
-						secondary_menu= setmetatable({}, options_sets.adjustable_float)
-						secondary_menu:initialize(
-							nil, make_extra_for_conf_val(
-								extra, unpack(config_num_args[extra])))
-						secondary_menu:set_display(sec_display)
-						on_main_menu= false
-						return_on_start= false
-					elseif config_bool_args[extra] then
-						secondary_menu= setmetatable({}, options_sets.boolean_option)
-						secondary_menu:initialize(
-							nil, make_extra_for_bool_val(
-								extra, unpack(config_bool_args[extra])))
-						secondary_menu:set_display(sec_display)
-						on_main_menu= false
-						return_on_start= true
-					end
-				end
-			end
-		else
-			local handled= secondary_menu:interpret_code(event.GameButton)
-			if event.GameButton == "Start" and
-			(secondary_menu.cursor_pos == 1 or return_on_start) then
-				secondary_menu= {}
-				update_hider_time()
-				on_main_menu= true
-				sec_display:hide()
+		local code= event.GameButton
+		if not config_menu:interpret_code(code) then
+			if code == "Start" and config_menu:can_exit_screen() then
+				misc_config:save()
+				machine_flag_setting:save()
+				SCREENMAN:SetNewScreen("ScreenInitialMenu")
 			end
 		end
-		update_cursor_pos()
-		return true
+		update_hider_time()
+		update_hider_text()
+		return false
 	end
 	return false
 end
 
 return Def.ActorFrame{
 	InitCommand= function(self)
-		main_display:set_underline_color(solar_colors.violet())
-		config_menu:set_display(main_display)
-		sec_display:set_underline_color(solar_colors.violet())
-		sec_display:hide()
-		update_cursor_pos()
+		config_menu:push_options_set_stack(options_sets.menu, menu_items)
+		config_menu:update_cursor_pos()
+		update_hider_text()
 	end,
 	OnCommand= function(self)
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
 	end,
-	main_display:create_actors(
-		"Main Menu", _screen.cx*.5, 60, (_screen.h / 24) - 5, _screen.w / 3, 24,
-		1, true, true),
-	sec_display:create_actors(
-		"Sec Menu", _screen.cx*1.5, 60, (_screen.h / 24) - 5, _screen.w / 3, 24,
-		1, false, false),
-	cursor:create_actors("cursor", 0, 0, 0, 0, 1, solar_colors.violet()),
+	config_menu:create_actors(
+		"menu", 0, 16, _screen.w, _screen.h, _screen.h / 24 - 3, nil),
 	Def.AutoHider(hider_params),
 	Def.ActorFrame{
 		Name= "press prompt",
@@ -260,5 +237,5 @@ return Def.ActorFrame{
 		prompt_frame:create_actors(
 			"ppf", 1, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0),
 		normal_text("ppt", "Press key.", solar_colors.green(), 0, 0, 1),
-	}
+	},
 }

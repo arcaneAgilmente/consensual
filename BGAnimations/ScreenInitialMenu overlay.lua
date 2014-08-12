@@ -478,10 +478,11 @@ local star_args= {
 
 local args= {
 	InitCommand= function(self)
-								 find_actors(self)
-								 rescale_stars()
-								 update_cursor_pos()
-							 end,
+		find_actors(self)
+		rescale_stars()
+		update_cursor_pos()
+		april_spin(self)
+	end,
 	Def.Actor{
 		Name= "code_interpreter",
 		OnCommand= function(self)
