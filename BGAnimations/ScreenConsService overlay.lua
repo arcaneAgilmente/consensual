@@ -28,8 +28,6 @@ options_sets.settable_thing= {
 set_option_set_metatables()
 dofile(THEME:GetPathO("", "auto_hider.lua"))
 
-local pain_display= setmetatable({}, pain_display_mt)
-
 local function make_extra_for_conf_val(name, min_scale, scale, max_scale)
 	return {
 		name= name,
@@ -115,6 +113,26 @@ do -- make a flags menu for each set of flags.
 	end
 end
 
+local pain_display= setmetatable({}, pain_display_mt)
+local in_pain= false
+local function pain_extern(params)
+	in_pain= true
+	pain_display:set_config(params.config)
+	pain_display:enter_edit_mode()
+	pain_display:unhide()
+end
+
+local pain_slot_options= {}
+do -- make an option for each pain slot.
+	local machine_pain= machine_pain_setting:get_data()
+	machine_pain_setting:set_dirty()
+	for slot, config in ipairs(machine_pain) do
+		pain_slot_options[#pain_slot_options+1]= {
+			name= "Slot " .. slot, meta= "external_interface",
+			extern= pain_extern, args= {config= config}}
+	end
+end
+
 local press_prompt= {}
 local on_press_prompt= false
 local function key_get()
@@ -143,7 +161,7 @@ local menu_items= {
 	{name= "reward_config", meta= options_sets.menu, args= reward_options},
 	{name= "help_config", meta= options_sets.menu, args= help_options},
 	{name= "flags_config", meta= options_sets.menu, args= flag_slot_options},
---	{name= "pain_config"},
+	{name= "pain_config", meta= options_sets.menu, args= pain_slot_options},
 }
 
 local config_menu= setmetatable({}, menu_stack_mt)
@@ -196,15 +214,25 @@ local function input(event)
 	if event.type == "InputEventType_Release" then return false end
 	if event.PlayerNumber and event.GameButton then
 		local code= event.GameButton
-		if not config_menu:interpret_code(code) then
-			if code == "Start" and config_menu:can_exit_screen() then
-				misc_config:save()
-				machine_flag_setting:save()
-				SCREENMAN:SetNewScreen("ScreenInitialMenu")
+		if in_pain then
+			local handled, close= pain_display:interpret_code(code)
+			if handled and close then
+				pain_display:hide()
+				config_menu:exit_external_mode()
+				in_pain= false
 			end
+		else
+			if not config_menu:interpret_code(code) then
+				if code == "Start" and config_menu:can_exit_screen() then
+					misc_config:save()
+					machine_flag_setting:save()
+					machine_pain_setting:save()
+					SCREENMAN:SetNewScreen("ScreenInitialMenu")
+				end
+			end
+			update_hider_time()
+			update_hider_text()
 		end
-		update_hider_time()
-		update_hider_text()
 		return false
 	end
 	return false
@@ -221,6 +249,7 @@ return Def.ActorFrame{
 	end,
 	config_menu:create_actors(
 		"menu", 0, 16, _screen.w, _screen.h, _screen.h / 24 - 3, nil),
+	pain_display:create_actors("pain", _screen.w*.75, 80, nil, 184, .625),
 	Def.AutoHider(hider_params),
 	Def.ActorFrame{
 		Name= "press prompt",

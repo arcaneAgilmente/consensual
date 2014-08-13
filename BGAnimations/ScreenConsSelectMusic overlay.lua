@@ -897,17 +897,17 @@ return Def.ActorFrame {
 			update_player_cursors()
 		end,
 	},
+	steps_display:create_actors("StepsDisplay"),
 	pain_displays[PLAYER_1]:create_actors(
-		"P1_pain", lpane_x, pane_y + pane_yoff, PLAYER_1, pane_w, pane_text_zoom),
+		"P1_pain", lpane_x, pane_y + pane_yoff - pane_text_height, PLAYER_1, pane_w, pane_text_zoom),
 	pain_displays[PLAYER_2]:create_actors(
-		"P2_pain", rpane_x, pane_y + pane_yoff, PLAYER_2, pane_w, pane_text_zoom),
+		"P2_pain", rpane_x, pane_y + pane_yoff - pane_text_height, PLAYER_2, pane_w, pane_text_zoom),
 	special_menu_displays[PLAYER_1]:create_actors(
 		"P1_menu", lpane_x, pane_y + pane_yoff, max_pain_rows, pane_w - 16,
 		pane_text_height, pane_text_zoom, true, true),
 	special_menu_displays[PLAYER_2]:create_actors(
 		"P2_menu", rpane_x, pane_y + pane_yoff, max_pain_rows, pane_w - 16,
 		pane_text_height, pane_text_zoom, true, true),
-	steps_display:create_actors("StepsDisplay"),
 	Def.Sprite {
 		Name="CDTitle",
 		InitCommand=cmd(x,280;y,SCREEN_TOP+180),

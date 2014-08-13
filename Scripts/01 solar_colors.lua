@@ -74,9 +74,6 @@ solar_colors=
                   end,
 }
 
-solar_colors[PLAYER_1]= function() return solar_colors.red() end
-solar_colors[PLAYER_2]= function() return solar_colors.cyan() end
-
 local function write_palette_function(key_name)
    solar_colors[key_name]= function(alpha)
                               if alpha then
@@ -104,6 +101,14 @@ local function write_palette_access_functions()
    for k,v in pairs(accents) do
       write_accent_color_function(k)
    end
+end
+
+solar_colors[PLAYER_1]= function() return solar_colors.red() end
+solar_colors[PLAYER_2]= function() return solar_colors.cyan() end
+
+function pn_to_color(pn)
+	if solar_colors[pn] then return solar_colors[pn]() end
+	return solar_colors.violet()
 end
 
 write_palette_access_functions()

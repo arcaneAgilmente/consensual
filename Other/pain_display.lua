@@ -95,7 +95,7 @@ options_sets.pain_menu= {
 					self.container:visible(false)
 					self.info_set= {}
 					self:set_display(self.own_display)
-					self.display:set_underline_color(solar_colors[self.player_number]())
+					self.display:set_underline_color(pn_to_color(self.player_number))
 				end
 			}
 			self.name= name
@@ -112,7 +112,7 @@ options_sets.pain_menu= {
 				"inc_arrow", 10, 0, -6, 12, 4, solar_colors.uf_text())
 			self.cursor= setmetatable({}, amv_cursor_mt)
 			args[#args+1]= self.cursor:create_actors(
-				"cursor", 0, 0, 0, 12, .5, solar_colors[player_number]())
+				"cursor", 0, 0, 0, 12, .5, pn_to_color(player_number))
 			self.cursor_pos= 1
 			self.depth= 1
 			self.mode= 1
@@ -383,9 +383,10 @@ pain_display_mt= {
 			self.narrow_el_w= (el_w * .5) - 8
 			self.wide_el_w= el_w - 8
 			self.text_height= 16 * (el_z / 0.5875)
+			self.disp_row_limit= max_pain_rows + 1 -- One for "Exit Pain Edit"
 			-- Height was originally 16 in default theme, zoom was originally
 			--   0.5875, so that is used as the base point.
-			local frame_height= self.text_height * max_pain_rows + 4
+			local frame_height= self.text_height * self.disp_row_limit + 4
 			local frame_y= (frame_height / 2) - (self.text_height/2)
 			local shadow_args= {
 				Name= "shadows", InitCommand= function(subself)
@@ -394,17 +395,19 @@ pain_display_mt= {
 			}
 			self.frame_main= setmetatable({}, frame_helper_mt)
 			shadow_args[#shadow_args+1]= self.frame_main:create_actors(
-				"frame", 2, el_w, frame_height, solar_colors[player_number](),
+				"frame", 2, el_w, frame_height, pn_to_color(player_number),
 				solar_colors.bg(), 0, 0)
 			self.shadows= {}
-			for i= 2, max_pain_rows, 2 do
+			for i= 1, self.disp_row_limit do
+				local scolor= solar_colors.bg_shadow()
+				if i % 2 == 1 then scolor= solar_colors.bg() end
 				shadow_args[#shadow_args+1]= Def.Quad{
 					Name= "q"..i, InitCommand= function(subself)
 						self.shadows[#self.shadows+1]= subself
 						subself:visible(false)
 						subself:xy(0, (i-1)*self.text_height)
 						subself:setsize(el_w - 4, self.text_height)
-						subself:diffuse(solar_colors.bg_shadow())
+						subself:diffuse(scolor)
 					end
 				}
 			end
@@ -421,7 +424,7 @@ pain_display_mt= {
 				text_section= "PaneDisplay"}
 			self.left_items= {}
 			self.right_items= {}
-			for r= 1, max_pain_rows do
+			for r= 1, self.disp_row_limit do
 				tani_args.sy= (r - 1) * self.text_height
 				tani_args.sx= self.left_x
 				self.left_items[r]= setmetatable({}, text_and_number_interface_mt)
@@ -432,7 +435,7 @@ pain_display_mt= {
 			end
 			self.cursor= setmetatable({}, amv_cursor_mt)
 			el_args[#el_args+1]= self.cursor:create_actors(
-				"cursor", 0, 0, 0, 12, .5, solar_colors[player_number]())
+				"cursor", 0, 0, 0, 12, .5, pn_to_color(player_number))
 			self.cursor_pos= {1, 1}
 			self.mode= 1
 			self.menu= setmetatable({}, options_sets.pain_menu)
@@ -441,7 +444,12 @@ pain_display_mt= {
 			return Def.ActorFrame(args)
 		end,
 		fetch_config= function(self)
-			self.config= cons_players[self.player_number].pain_config
+			if self.player_number then
+				self.config= cons_players[self.player_number].pain_config
+			end
+		end,
+		set_config= function(self, config)
+			self.config= config
 		end,
 		hide= function(self)
 			self.container:visible(false)
@@ -461,10 +469,11 @@ pain_display_mt= {
 			self.shadow_container:visible(true)
 			self.frame_main.outer:unhide()
 			for i, shadow in ipairs(self.shadows) do
-				shadow:visible(i <= rows/2)
+				shadow:visible(i <= rows)
 			end
 			local revealed_height= rows * self.text_height + 4
-			local hidden_height= (max_pain_rows - rows) * self.text_height
+			local row_limit= self.disp_row_limit - 1
+			local hidden_height= (self.disp_row_limit - rows) * self.text_height
 			local center_y= revealed_height/2 - (self.text_height/2)
 			self.frame_main:resize(self.el_w, revealed_height)
 			self.frame_main:move(nil, center_y-2)
@@ -474,6 +483,9 @@ pain_display_mt= {
 		end,
 		enter_edit_mode= function(self)
 			self.mode= 2
+			if self.player_number then
+				self.container:addy(-self.text_height)
+			end
 			self:update_all_items()
 			self.cursor_pos= {1, 1}
 			self.cursor:unhide()
@@ -481,7 +493,7 @@ pain_display_mt= {
 		end,
 		interpret_code= function(self, code)
 			-- return code: handled, close
-			if code == "Select" then
+			function exit_edit()
 				self.menu:deactivate()
 				self.cursor:hide()
 				for ch, config_half in ipairs(self.config) do
@@ -491,8 +503,10 @@ pain_display_mt= {
 				self:update_all_items()
 				return true, true
 			end
-			local two_menu_directions=
-				PREFSMAN:GetPreference("ThreeKeyNavigation")
+			if code == "Select" then
+				return exit_edit()
+			end
+			local two_menu_directions= PREFSMAN:GetPreference("ThreeKeyNavigation")
 			if two_menu_directions then
 				if code == "MenuLeft" then
 					code= "MenuUp"
@@ -503,7 +517,7 @@ pain_display_mt= {
 			if self.mode == 2 then
 				local config_half= self.config[self.cursor_pos[1]]
 				local other_side= ({2, 1})[self.cursor_pos[1]]
-				local max_row= math.min(self.used_rows+1, max_pain_rows)
+				local max_row= math.min(self.used_rows+2, self.disp_row_limit)
 				if code == "MenuUp" then
 					self.cursor_pos[2]= self.cursor_pos[2] - 1
 					if self.cursor_pos[2] < 1 then
@@ -533,6 +547,9 @@ pain_display_mt= {
 					self:update_cursor()
 					return true, false
 				elseif code == "Start" then
+					if self.cursor_pos[2] >= max_row then
+						return exit_edit()
+					end
 					local menu_x= ({self.right_x, self.left_x})[self.cursor_pos[1]]
 					local config_pos= self.cursor_pos[2]
 					local item_config= config_half[config_pos]
@@ -765,16 +782,61 @@ pain_display_mt= {
 			item.text:diffuse(solar_colors.f_text())
 			item.number:diffuse(solar_colors.f_text())
 		end,
+		edit_mode_update_all= function(self)
+			self.used_rows= math.max(#self.config[1], #self.config[2])
+			local show_rows= self.used_rows + 1
+			if self.used_rows < max_pain_rows then
+				show_rows= show_rows + 1
+			end
+			self:show_frame(show_rows)
+			local function update_half_edit(half_items, half_config, other_half, left)
+				for i, item in ipairs(half_items) do
+					local item_config= half_config[i]
+					local other_config= other_half[i]
+					local other_blocks= other_config and other_config.is_wide
+					if not other_blocks then
+						if item_config then
+							if item_config.is_wide then
+								self:make_item_semi_wide(item, left)
+							else
+								self:make_item_narrow(item, left)
+							end
+							self:set_edit_mode_item(item, item_config)
+						else
+							if i <= show_rows-1 then
+								item:set_text("Add Item")
+								item:set_number("")
+							elseif i == show_rows then
+								item:set_text("Exit Edit")
+								item:set_number("")
+							else
+								item:set_text("")
+								item:set_number("")
+							end
+						end
+					else
+						item:set_text("")
+						item:set_number("")
+					end
+					self:width_limit_item(item)
+				end
+			end
+			update_half_edit(self.left_items, self.config[1], self.config[2], true)
+			update_half_edit(self.right_items, self.config[2], self.config[1], false)
+			self:update_cursor()
+		end,
 		update_all_items= function(self)
-			if not GAMESTATE:IsPlayerEnabled(self.player_number) then
+			if self.mode ~= 1 then
+				self:edit_mode_update_all()
+				return
+			end
+			if not self.player_number or
+			not GAMESTATE:IsPlayerEnabled(self.player_number) then
 				self:hide()
 				return
 			end
 			self.used_rows= math.max(#self.config[1], #self.config[2])
 			local show_rows= self.used_rows
-			if self.mode ~= 1 and self.used_rows < max_pain_rows then
-				show_rows= show_rows + 1
-			end
 			self:show_frame(show_rows)
 			local song= gamestate_get_curr_song()
 			local steps= gamestate_get_curr_steps(self.player_number)
@@ -813,42 +875,8 @@ pain_display_mt= {
 					self:width_limit_item(item)
 				end
 			end
-			local function update_half_edit(half_items, half_config, other_half, left)
-				for i, item in ipairs(half_items) do
-					local item_config= half_config[i]
-					local other_config= other_half[i]
-					local other_blocks= other_config and other_config.is_wide
-					if not other_blocks then
-						if item_config then
-							if item_config.is_wide then
-								self:make_item_semi_wide(item, left)
-							else
-								self:make_item_narrow(item, left)
-							end
-							self:set_edit_mode_item(item, item_config)
-						else
-							if i <= show_rows then
-								item:set_text("Add Item")
-								item:set_number("")
-							else
-								item:set_text("")
-								item:set_number("")
-							end
-						end
-					else
-						item:set_text("")
-						item:set_number("")
-					end
-					self:width_limit_item(item)
-				end
-			end
-			if self.mode == 1 then
-				update_half(self.left_items, self.config[1], self.config[2], true)
-				update_half(self.right_items, self.config[2], self.config[1], false)
-			else
-				update_half_edit(self.left_items, self.config[1], self.config[2], true)
-				update_half_edit(self.right_items, self.config[2], self.config[1], false)
-			end
+			update_half(self.left_items, self.config[1], self.config[2], true)
+			update_half(self.right_items, self.config[2], self.config[1], false)
 			self:update_cursor()
 		end
 }}

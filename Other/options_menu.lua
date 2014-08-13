@@ -742,13 +742,50 @@ menu_stack_mt= {
 				end
 			end
 		end,
+		enter_external_mode= function(self)
+			local oss= self.options_set_stack
+			local top_set= oss[#oss]
+			local almost_top_set= oss[#oss-1]
+			local next_display= 1
+			if almost_top_set then
+				almost_top_set:set_display(fake_display)
+			end
+			if top_set then
+				top_set:set_display(self.displays[1])
+				next_display= 2
+			end
+			self.displays[next_display]:hide()
+		end,
+		exit_external_mode= function(self)
+			local oss= self.options_set_stack
+			if #oss > 0 then
+				local top_set= oss[#oss]
+				local almost_top_set= oss[#oss-1]
+				local next_display= 1
+				if almost_top_set then
+					almost_top_set:set_display(self.displays[1])
+					next_display= 2
+				end
+				top_set:set_display(self.displays[next_display])
+				next_display= next_display + 1
+				if self.displays[next_display] then
+					self.displays[next_display]:hide()
+				end
+			end
+			self:update_cursor_pos()
+		end,
 		interpret_code= function(self, code)
 			local oss= self.options_set_stack
 			local top_set= oss[#oss]
 			local handled, new_set_data= top_set:interpret_code(code)
 			if handled then
 				if new_set_data then
-					self:push_options_set_stack(new_set_data.meta, new_set_data.args)
+					if new_set_data.meta == "external_interface" then
+						self:enter_external_mode()
+						new_set_data.extern(new_set_data.args)
+					else
+						self:push_options_set_stack(new_set_data.meta, new_set_data.args)
+					end
 				end
 			else
 				if code == "Start" and #oss > 1 then
