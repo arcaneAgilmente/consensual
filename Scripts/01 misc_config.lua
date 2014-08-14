@@ -17,6 +17,8 @@ local default_config= {
 	evaluation_help_time= 60,
 	service_help_time= 10,
 
+	gameplay_reset_limit= 5,
+
 	config_menu_key= "DeviceButton_z",
 }
 

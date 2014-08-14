@@ -1442,9 +1442,11 @@ do
 			crunch_combo_data_for_column(cons_players[v].column_scores[ic])
 			add_column_score_to_session(v, cons_players[v].session_stats, ic, cons_players[v].column_scores[ic])
 		end
+		cons_players[v].unacceptable_score.enabled= nil
 	end
 	reward_time= convert_score_to_time(highest_score)
 	reduce_time_remaining(-reward_time)
+	unacc_reset_count= nil
 end
 
 set_visible_score_data= function(pn, index)

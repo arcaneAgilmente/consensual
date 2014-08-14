@@ -84,36 +84,6 @@ local non_mine_tnses= {
 	TapNoteScore_CheckpointMiss= true,
 }
 
---[[
-local tns_values= {
-	TapNoteScore_CheckpointHit=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightCheckpointHit"),
-	TapNoteScore_CheckpointMiss=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightCheckpointMiss"),
-	TapNoteScore_W1=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightW1"),
-	TapNoteScore_W2=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightW2"),
-	TapNoteScore_W3=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightW3"),
-	TapNoteScore_W4=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightW4"),
-	TapNoteScore_W5=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightW5"),
-	TapNoteScore_Miss=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightMiss"),
-	TapNoteScore_HitMine=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightHitMine"),
-	TapNoteScore_AvoidMine= 0,
-	TapNoteScore_None= 0,
-	HoldNoteScore_Held=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightHeld"),
-	HoldNoteScore_LetGo=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightLetGo"),
-	HoldNoteScore_MissedHold=
-		THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeightLetGo"),
-}
-]]
 local tns_values= {}
 local function add_value_set(enum_table)
 	for i, tns in ipairs(enum_table) do
@@ -180,6 +150,10 @@ local function set_combo_stuff(param)
 	PulseLabel(tani.text, param)
 end
 
+local fake_judge= cons_players[player].fake_judge
+local fake_score= cons_players[player].fake_score
+local stage_stats= cons_players[player].stage_stats
+
 local args= {
 	Name= "Judgement",
 	normal_text("Judgment", "", solar_colors.f_text(), 0, 0, 1, center, {
@@ -215,9 +189,6 @@ local args= {
 	JudgmentMessageCommand=
 		function(self, param)
 			if param.Player ~= player then return end
-			local fake_judge= cons_players[player].fake_judge
-			local fake_score= cons_players[player].fake_score
-			local stage_stats= cons_players[player].stage_stats
 			do
 				local step_judge= param.HoldNoteScore or param.TapNoteScore
 				local step_value= tns_values[step_judge]

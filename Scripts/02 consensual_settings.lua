@@ -20,6 +20,7 @@ function cons_player:clear_init(player_number)
 	self:flags_reset()
 	self:pain_config_reset()
 	self:combo_qual_reset()
+	self:unacceptable_score_reset()
 	self:stage_stats_reset()
 	self:session_stats_reset()
 	self.mine_effect= sorted_mine_effect_names[1]
@@ -102,6 +103,11 @@ local function empty_judge_count_set()
 		ret[tns]= 0
 	end
 	return ret
+end
+
+function cons_player:unacceptable_score_reset()
+	self.unacceptable_score= {
+		enabled= false, condition= "dance_points", value= 0}
 end
 
 function cons_player:stage_stats_reset()

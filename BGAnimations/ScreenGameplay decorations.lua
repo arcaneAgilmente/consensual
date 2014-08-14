@@ -547,6 +547,12 @@ end
 
 -- for use inside the enabled players loop in Update.
 local player= nil
+local curstats= STATSMAN:GetCurStageStats()
+local pstats= {}
+local enabled_players= GAMESTATE:GetEnabledPlayers()
+for i, pn in ipairs(enabled_players) do
+	pstats[pn]= curstats:GetPlayerStageStats(pn)
+end
 
 local function Update(self)
 	if gameplay_start_time == -20 then
@@ -556,8 +562,6 @@ local function Update(self)
 	else
 		gameplay_end_time= get_screen_time()
 	end
-	local enabled_players= GAMESTATE:GetEnabledPlayers()
-	local curstats= STATSMAN:GetCurStageStats()
 	if not curstats then
 		Trace("SGbg.Update:  curstats is nil.")
 	end
@@ -620,12 +624,8 @@ local function Update(self)
 			end
 			side_toggles[v]= not side_toggles[v]
 		end
-		local pstats= curstats:GetPlayerStageStats(v)
-		if not pstats then
-			Trace("SGbg.Update:  pstats for " .. v .. " is nil.")
-		end
 		for fk, fv in pairs(feedback_things[v]) do
-			if fv.update then fv:update(pstats) end
+			if fv.update then fv:update(pstats[v]) end
 		end
 	end
 end
@@ -636,7 +636,6 @@ local author_centers= {
 }
 
 local function make_special_actors_for_players()
-	local enabled_players= GAMESTATE:GetEnabledPlayers()
 	local args= { Name= "special_actors",
 								OnCommand= cmd(SetUpdateFunction,Update)
               }
@@ -813,13 +812,18 @@ local function set_speed_from_speed_info(player)
 	end
 end
 
-local function cleanup(self)
-	prev_song_end_timestamp= hms_timestamp()
+local function apply_time_spent()
 	local time_spent= gameplay_end_time - gameplay_start_time
 	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		cons_players[pn].credit_time= (cons_players[pn].credit_time or 0) + time_spent
 	end
 	reduce_time_remaining(time_spent)
+	return time_spent
+end
+
+local function cleanup(self)
+	prev_song_end_timestamp= hms_timestamp()
+	local time_spent= apply_time_spent()
 	set_last_song_time(time_spent)
 end
 
@@ -851,6 +855,11 @@ local function note_date_edit_test()
 		end
 	end
 end
+
+local do_unacceptable_check= false
+local unacc_dp_limits= {}
+local unacc_voted= {}
+local unacc_reset_votes= 0
 
 return Def.ActorFrame {
 	Name= "SGPbgf",
@@ -884,16 +893,34 @@ return Def.ActorFrame {
 				else
 					song_ops:SaveScore(true)
 				end
-				local enabled_players= GAMESTATE:GetEnabledPlayers()
 				prev_song_start_timestamp= hms_timestamp()
 				local force_swap= (cons_players[PLAYER_1].side_swap or 0) > 1 or
 					(cons_players[PLAYER_2].side_swap or 0) > 1
+				local unacc_enable_votes= 0
+				local unacc_reset_limit= misc_config:get_data().gameplay_reset_limit
+				local curstats= STATSMAN:GetCurStageStats()
 				for k, v in pairs(enabled_players) do
 					cons_players[v].prev_steps= gamestate_get_curr_steps(v)
 					cons_players[v]:stage_stats_reset()
 					cons_players[v]:combo_qual_reset()
 					cons_players[v].unmine_time= nil
 					cons_players[v].mine_data= nil
+					local punacc= cons_players[v].unacceptable_score
+					if punacc.enabled then
+						unacc_enable_votes= unacc_enable_votes + 1
+						unacc_reset_limit= math.min(
+							unacc_reset_limit, cons_players[v].unacceptable_score.limit)
+						local mdp= curstats:GetPlayerStageStats(v):GetPossibleDancePoints()
+						local tdp= mdp
+						if punacc.condition == "dance_points" then
+							tdp= math.max(0, math.round(punacc.value))
+						elseif punacc.condition == "score_pct" then
+							tdp= math.max(0, math.round(mdp - mdp * punacc.value))
+						else
+							unacc_enable_votes= unacc_enable_votes - 1
+						end
+						unacc_dp_limits[v]= tdp
+					end
 					local speed_info= cons_players[v].speed_info
 					if speed_info then
 						speed_info.prev_bps= nil
@@ -910,11 +937,14 @@ return Def.ActorFrame {
 						side_actors[v]:x(swap_on_xs[v])
 						side_toggles[v]= true
 					end
-
-					--local ps= GAMESTATE:GetPlayerState(v)
-					--local ops= ps:GetPlayerOptionsString("ModsLevel_Song")
-					--Trace("pops: " .. ops)
-					--ps:SetPlayerOptions("ModsLevel_Song", ops)
+				end
+				if unacc_enable_votes == #enabled_players and
+					(GAMESTATE:IsEventMode() or get_current_song_length() /
+					 song_ops:MusicRate() < get_time_remaining()) then
+						unacc_reset_count= unacc_reset_count or 0
+						if unacc_reset_count < unacc_reset_limit then
+							do_unacceptable_check= true
+						end
 				end
 			end,
 		OffCommand= cleanup,
@@ -931,20 +961,38 @@ return Def.ActorFrame {
 			function(self, param)
 				set_speed_from_speed_info(cons_players[PLAYER_2])
 			end,
-		JudgmentMessageCommand=
-			function(self, param)
-				if param.TapNoteScore == "TapNoteScore_HitMine" then
-					local cp= cons_players[param.Player]
-					if cp.mine_effect then
-						local mine_data= mine_effects[cp.mine_effect]
-						mine_data.apply(param.Player)
-						cp.mine_data= mine_data
-						if not cp.unmine_time then
-							cp.unmine_time= get_screen_time()
+		JudgmentMessageCommand= function(self, param)
+			local pn= param.Player
+			if param.TapNoteScore == "TapNoteScore_HitMine" then
+				local cp= cons_players[pn]
+				if cp.mine_effect then
+					local mine_data= mine_effects[cp.mine_effect]
+					mine_data.apply(pn)
+					cp.mine_data= mine_data
+					if not cp.unmine_time then
+						cp.unmine_time= get_screen_time()
+					end
+					cp.unmine_time= cp.unmine_time + mine_data.time
+				end
+			end
+			if do_unacceptable_check and not unacc_voted[pn] then
+				local pdp= pstats[pn]:GetCurrentPossibleDancePoints()
+				local adp= pstats[pn]:GetActualDancePoints()
+				if pdp - adp > unacc_dp_limits[pn] then
+					unacc_voted[pn]= true
+					unacc_reset_votes= unacc_reset_votes + 1
+					if unacc_reset_votes >= #enabled_players then
+						unacc_reset_count= unacc_reset_count + 1
+						apply_time_spent()
+						for i, pn in ipairs(enabled_players) do
+							while GAMESTATE:GetNumStagesLeft(pn) < 3 do
+								GAMESTATE:AddStageToPlayer(pn)
+							end
 						end
-						cp.unmine_time= cp.unmine_time + mine_data.time
+						SCREENMAN:SetNewScreen("ScreenStageInformation")
 					end
 				end
-			end,
+			end
+		end,
 	},
 }

@@ -983,6 +983,52 @@ local song_options= {
 	--song_enum("Sound Effect", SoundEffectType, "SoundEffectSetting"),
 }
 
+local unacceptable_options= {
+	{name= "Enabled", meta= options_sets.boolean_option, args= {
+		 true_text= "On", false_text= "Off",
+		 get= function(pn)
+			 return cons_players[pn].unacceptable_score.enabled
+		 end,
+		 set= function(pn, val)
+			 cons_players[pn].unacceptable_score.enabled= val
+	end}},
+	{name= "Condition", meta= options_sets.boolean_option, args= {
+		 true_text= "dance_points", false_text= "score_pct",
+		 get= function(pn)
+			 return cons_players[pn].unacceptable_score.condition == "dance_points"
+		 end,
+		 set= function(pn, val)
+			 if val then
+				 cons_players[pn].unacceptable_score.condition= "dance_points"
+			 else
+				 cons_players[pn].unacceptable_score.condition= "score_pct"
+			 end
+	end}},
+	{name= "Value", meta= options_sets.adjustable_float, args= {
+		 min_scale= -4, scale= 0, max_scale= 4,
+		 initial_value= function(pn)
+			 return cons_players[pn].unacceptable_score.value
+		 end,
+		 validator= function(value) return value >= 0 end,
+		 set= function(pn, value)
+			 cons_players[pn].unacceptable_score.value= value
+		 end
+	}},
+	{name= "Reset Limit", meta= options_sets.adjustable_float, args= {
+		 min_scale= 0, scale= 0, max_scale= 1,
+		 initial_value= function(pn)
+			 return cons_players[pn].unacceptable_score.limit
+		 end,
+		 validator= function(value)
+			 return value >= 0 and
+			 value <= misc_config:get_data().gameplay_reset_limit
+		 end,
+		 set= function(pn, value)
+			 cons_players[pn].unacceptable_score.limit= value
+		 end
+	}},
+}
+
 local special= {
 	{ name= "Distortion", meta= options_sets.special_functions,
 		args= {
@@ -999,6 +1045,7 @@ local special= {
 				{ name= "Dark", init= noop_false,
 					set= solar_colors.set_dark_map,
 					unset= noop_nil}}}},
+	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options},
 	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions,
 		args= {eles= {
 						 generic_fake_judge_element("Random"),

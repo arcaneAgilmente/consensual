@@ -68,6 +68,8 @@ local reward_options= {
 	 args= make_extra_for_conf_val("min_reward_time", 0, 1, 2)},
 	{name= "max_reward_time", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("max_reward_time", 0, 1, 2)},
+	{name= "reset_limit", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("gameplay_reset_limit", 0, 0, 1)},
 }
 
 local help_options= {
