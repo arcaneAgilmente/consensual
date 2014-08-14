@@ -1,27 +1,19 @@
-local censored_songs= {}
-local censor_list_changed= false
-local censor_file_name= "Save/consensual_settings/censor_list.lua"
-
-function load_censored_list()
-	censor_list_changed= false
-	if FILEMAN:DoesFileExist(censor_file_name) then
-		censored_songs= dofile(censor_file_name)
-	end
-end
+local censor_config= create_setting("censor list", "censor_list.lua", {})
+censor_config:load()
+local censored_songs= censor_config:get_data()
 
 function save_censored_list()
-	if not censor_list_changed then return end
-	local censor_str= "return " .. lua_table_to_string(censored_songs) .. "\n"
-	write_str_to_file(censor_str, censor_file_name, "censors")
+	censor_config:save()
 end
 
 function add_to_censor_list(song)
 	if not song then return end
-	censor_list_changed= true
+	censor_config:set_dirty()
 	censored_songs[song_get_dir(song)]= true
 end
 
 function check_censor_list(song)
 	if not song then return end
+	local ret= censored_songs[song_get_dir(song)]
 	return censored_songs[song_get_dir(song)]
 end

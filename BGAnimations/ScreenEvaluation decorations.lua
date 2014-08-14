@@ -1599,7 +1599,7 @@ return Def.ActorFrame{
 	Def.Actor{
 		Name= "Vacuum Cleaner D27",
 		OffCommand= function(self)
-			filter_bucket_songs_by_time()
+			bucket_man:sort_songs()
 		end
 	},
 	maybe_help(),

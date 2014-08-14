@@ -36,7 +36,7 @@ local setting_mt= {
 				else
 					local from_file= dofile(fname)
 					if type(from_file) == "table" then
-						if match_depth ~= 0 then
+						if self.match_depth and self.match_depth ~= 0 then
 							force_table_elements_to_match_type(
 								from_file, self.default, self.match_depth-1)
 						end

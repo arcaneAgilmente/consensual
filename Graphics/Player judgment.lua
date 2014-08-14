@@ -150,10 +150,6 @@ local function set_combo_stuff(param)
 	PulseLabel(tani.text, param)
 end
 
-local fake_judge= cons_players[player].fake_judge
-local fake_score= cons_players[player].fake_score
-local stage_stats= cons_players[player].stage_stats
-
 local args= {
 	Name= "Judgement",
 	normal_text("Judgment", "", solar_colors.f_text(), 0, 0, 1, center, {
@@ -189,6 +185,9 @@ local args= {
 	JudgmentMessageCommand=
 		function(self, param)
 			if param.Player ~= player then return end
+			local fake_judge= cons_players[player].fake_judge
+			local fake_score= cons_players[player].fake_score
+			local stage_stats= cons_players[player].stage_stats
 			do
 				local step_judge= param.HoldNoteScore or param.TapNoteScore
 				local step_value= tns_values[step_judge]

@@ -2,24 +2,29 @@ Some theme elements might overlap with each other if the aspect ratio isn't 16:1
 
 This theme is only tested on the tip of the github repository.  It should work on the latest nightly build.  It will not work on SM5 beta 3.
 
+Many parts are explained through on-screen help layers that appear after a delay.
+The help layers appear after set amounts of time, configured in the Consensual service screen.  Defaults are 10 seconds for Select Music, 60 seconds for Evaluation, and 10 seconds for Consensual service.
+
 Initial screen:
 2 player mode is under Style->Versus.
 Double mode doesn't have a specific menu option because this theme supports changing style on SelectMusic.
 Course or marathon mode is under Playmode->Nonstop.
 Course mode is disabled because it causes problems.
 Each player that is joined must select a profile if enough profiles exist.
-Some per-player theme specific settings are stored in the profile, so making one is useful.
-Use some other theme to make a profile if you don't already have a local profile.  Loading profiles from USB is supported but not forced.
+Some per-player theme specific settings are stored in the profile, so making one is useful.  All of them are under the "consensual_settings" folder in the profile.
+Use the profile options in the normal service menu to make a profile if you don't already have a local profile.
+Loading profiles from USB is supported but not forced.
+Press 'z' on the initial menu to visit the Consensual service screen to set options specific to Consensual.
+You can configure a different key to use to access the Consensual service screen, and the setting is stored in Save/consensual_settings/misc_config.lua if you need to reset it.
 
 
 SelectMusic:
-The amount of info shown in the pane display is controlled by pad codes.
-simple is currently the default.
-Pad codes:
-none:  left, left, left, right, right, right, up, up, up, down, down, down
-simple:  left, down, right, left, down, right
-all:  right, down, left, right, down, left
-excessive:  left, up, right, up, left, down, right, down, left
+Pane settings and Evaluation info flags are organized into slots.
+There are 4 slots that contain preset configurations for the pane display and Evaluation.
+A player can set their profile to use the settings in a slot by entering the pad code for that slot on SelectMusic.
+Wait for the help layer to appear to see the pad codes.
+Alternatively, the pane display can be edited to a custom configuration by using the special menu.
+Evaluation info flags can be customized on the options screen or on evaluation.
 
 Special menu on Select Music:
 Press select to bring up the song properties menu.
@@ -27,7 +32,10 @@ Alternatively, hold MenuLeft and press Start to bring up the song properties men
 Current options:
   Machine Favor +1/-1:  Adjusts the machine favor value for the song.
   Player Favor +1/-1:  Adjusts the player's favor value for the song.
-  Censor:  Marks the song as censored.
+  Censor:  Marks the song as censored.  Censored songs will not show up in
+	  the music wheel and have to be manually removed from
+		Save/consensual_settings/censor_list.lua to uncensor.
+	Edit Tags:  Switch to the Tags menu.
   Edit Pane Settings:  Switches the pane display to edit mode.
 Press select a second time to bring up the tags menu.
 Holding select will not bring up the menu because of the bindings that use select plus another button to change something else.
@@ -35,6 +43,7 @@ Pad codes cannot be used while in the special menu.
 
 Special menu on Evaluation:
 The song properties and tags menus can also be accessed on the Evaluation screen, by tapping select, or by holding MenuLeft and tapping Start.
+The menu for turning on/off Evaluation info flags is also accessible.
 Hold MenuRight and tap Start to take a screenshot on Evaluation if you don't have a Select button.
 
 Pane display on Select Music:
@@ -118,20 +127,20 @@ Speed:
 	"Driven" is the mmod system, with the "Driven" style, where the targets move instead of the arrows.  Overhead perspective is recommended when in use.
 	"Alt Driven" is the mmod system, with the "Driven" style, where the targets move instead of the arrows.  The targets reverse direction at the edges instead of resetting.
 	The chosen speed setting is saved to the profile.
-Feedback:
-  Sigil:  Enables a sigil feedback during gameplay.  It is a combined life bar and score meter.  The complexity of it comes from the score out of the current possible (based only on steps that have gone by).
+Evaluation Flags:
+	The names should be explanation enough.  Play with the flags while on Evaluation if you don't know what's what.
+Gameplay Flags:
+	Allow toasty:  Whether to allow the toasty.
+  BPM Meter: Displays the current bpm during the song, adjusted for any rate or haste mod that is active.
+  Chart Info: Display of who made the chart, the difficulty, and foot rating.
+  Dance Points: Display of current dance points out of maximum dance points.
   Judgement:  A list of all TapNoteScores gathered so far.
   Offset: A rectangle between the combo and the judgment showing how far off your timing is.
 	Score meter:  A meter adjacent to the life bar that fills non-linearly with the percent of dance points earned.
-  Dance Points: Display of current dance points out of maximum dance points.
-  Chart Info: Display of who made the chart, the difficulty, and foot rating.
-  BPM Meter: Displays the current bpm during the song, adjusted for any rate or haste mod that is active.
-	Song/pct/session/sum column:  Flags for enabling columns on the score screen.
-	Best scores:  Whether to show the best scores on the score screen.
-	Allow toasty:  Whether to allow the toasty.
-	Score early/late:  Whether to split up the stats on the score screen into early/late.
+  Sigil:  Enables a sigil feedback during gameplay.  The complexity of it comes from the score out of the current possible (based only on steps that have gone by).
+Interface Flags:
   Straight Floats: Whether the float mods are in the old % style or just the raw numbers.
-	The flags set in the Feedback menu are saved to the profile.
+The flags set in the options menu are saved to the profile.
 Sigil Detail:  The maximum detail of the sigil feedback.
 Sigil Size:  The size of the sigil feedback.
 Driven Min:  Configuration for the Driven speed mod.
@@ -142,6 +151,24 @@ Mine Effects:
 	The chosen mine effect is saved to the profile.
 Distortion:
 	Toggle text distortion.
+Unacceptable Score:
+	The "Unacceptable Score" system allows you to specify a minimum score you
+		must achieve to finish the song.  If it becomes impossible for you to
+		achieve the score, the song will immediately start over.  Time is still
+		deducted from your time remaining and there is a machine-wide limit on
+		the number of resets.  If two players are joined, both players must meet
+		their reset condition in order for the reset to be triggered.
+	The "Enabled" flag will reset to off after every song.  If either player
+		has Enabled set to off, resets will not occur.
+	There are two ways of specifying your goal:  Dance points, or score percent.
+	When specifying by dance points, you set the number of dance points you
+		are allowed to miss.
+	When specifying by score percent, you set the score you must be able to
+		reach.  1.00 is 100%, so if your goal is 99%, set the value to 0.99.
+	You must set your reset limit to the number of times you want to reset.
+		This is capped by the machine wide setting.
+	Unacceptable score settings are not saved in the profile because they are
+		not meant to be used on every song.
 
 Profile options:
 	Some of the editable profile options can be edited through the options screen in the Profile Options menu.  Consensual has support for calculating calories burned from heart rate, song duration, and profile data.
@@ -166,3 +193,4 @@ The sum column is a total of the session column values with the same or better j
 The combo graph is at the edge of the screen and colored by the step judgments that affect the combo.
 The life graph is inward from the combo graph and colored to indicate where the first judgment of each type occurred.
 The color coding on the graphs is the same as in the stats.
+Wait for the help layer to show to see the pad codes for the screen.

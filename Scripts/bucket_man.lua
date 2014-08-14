@@ -410,6 +410,7 @@ function bucket_man_interface:initialize()
 		set_song_mode()
 		set_song_mode_sort_info()
 	end
+	self:style_filter_songs()
 end
 
 function bucket_man_interface:style_filter_songs()
@@ -438,11 +439,11 @@ function bucket_man_interface:style_filter_songs()
 			end
 		end
 	end
-	self.filtered_songs= filtered_songs
+	self.style_filtered_songs= filtered_songs
 end
 
-function bucket_man_interface:filter_and_resort_songs(filter_func)
-	if not self.filtered_songs then
+function bucket_man_interface:filter_songs(filter_func)
+	if not self.style_filtered_songs then
 		Trace("bucket_man_interface:  fars operates on already style-filtered songs.")
 		return
 	end
@@ -451,22 +452,17 @@ function bucket_man_interface:filter_and_resort_songs(filter_func)
 		return
 	end
 	local refiltered_songs= {}
-	for i, v in ipairs(self.filtered_songs) do
+	for i, v in ipairs(self.style_filtered_songs) do
 		if filter_func(v) then
 			refiltered_songs[#refiltered_songs+1]= v
 		end
 	end
 	self.filtered_songs= refiltered_songs
-	if self.cur_sort_info then
-		return self:sort_songs(self.cur_sort_info)
-	end
 end
 
 function bucket_man_interface:sort_songs(sort_info)
-	if not self.filtered_songs then
-		Trace("bucket_man_interface:  Songs must be filtered before sorting.")
-		return
-	end
+	sort_info= sort_info or self.cur_sort_info
+	self:filter_songs(song_short_and_uncensored)
 	if sort_info.pre_sort_func then
 		sort_info.pre_sort_func(sort_info.pre_sort_arg)
 	end

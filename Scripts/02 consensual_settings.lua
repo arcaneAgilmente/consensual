@@ -28,7 +28,7 @@ function cons_player:clear_init(player_number)
 	self.play_history= {}
 end
 
-function cons_player:noob_mode()
+function cons_player:clear_mods()
 	self:clear_init(self.player_number)
 	GAMESTATE:ApplyGameCommand("mod,clearall", self.player_number)
 	-- SM5 will crash if a noteskin is not applied after clearing all mods.
@@ -41,6 +41,12 @@ function cons_player:noob_mode()
 			Warn("Failed to set default noteskin when clearing player options.  Please do not delete the default noteskin.")
 		end
 	end
+end
+
+function cons_player:noob_mode()
+	self.rating_cap= -1
+	self.flags= set_player_flag_to_level(self.player_number, 1)
+	self.pain_config= set_player_pain_to_level(self.player_number, 1)
 end
 
 function cons_player:simple_options_mode()
@@ -366,10 +372,6 @@ function time_short_enough(t)
 	else
 		return t <= time_remaining
 	end
-end
-
-function filter_bucket_songs_by_time()
-	bucket_man:filter_and_resort_songs(song_short_and_uncensored)
 end
 
 local last_song_time= 0

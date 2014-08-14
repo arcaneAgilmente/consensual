@@ -11,7 +11,6 @@ end
 
 load_favorites("ProfileSlot_Machine")
 load_tags("ProfileSlot_Machine")
-load_censored_list()
 
 local num_songs= SONGMAN:GetNumSongs()
 local num_groups= SONGMAN:GetNumSongGroups()
@@ -296,8 +295,6 @@ local function interpret_code(pn, code)
 			end
 			set_time_remaining_to_default()
 			bucket_man:initialize()
-			bucket_man:style_filter_songs()
-			filter_bucket_songs_by_time()
 		else
 			local ts= SCREENMAN:GetTopScreen()
 			Trace("Finish returned false.")
@@ -451,9 +448,6 @@ local function input(event)
 	end
 	if event.DeviceInput.button == "DeviceButton_x" then
 		SCREENMAN:SetNewScreen("ScreenSigilTest")
-	end
-	if event.DeviceInput.button == "DeviceButton_z" then
-		SCREENMAN:SetNewScreen("ScreenConsService")
 	end
 	if event.DeviceInput.button == misc_config:get_data().config_menu_key then
 		SCREENMAN:SetNewScreen("ScreenConsService")
