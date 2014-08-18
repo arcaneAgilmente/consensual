@@ -447,6 +447,39 @@ local input_functions= {
 	}
 }
 
+local function set_closest_steps_to_preferred(pn)
+	local preferred_diff= GAMESTATE:GetPreferredDifficulty(pn) or
+		"Difficulty_Beginner"
+	local curr_steps_type= GAMESTATE:GetCurrentStyle():GetStepsType()
+	local candidates= get_filtered_sorted_steps_list()
+	if candidates and #candidates > 0 then
+		local steps_set= false
+		local closest_same_type= {}
+		local closest_diff_type= {}
+		local function checkset_closest(closest, steps)
+			local this_difference= math.abs(
+				Difficulty:Compare(preferred_diff, steps:GetDifficulty()))
+			if not closest.steps or this_difference < closest.difference then
+				closest.steps= steps
+				closest.difference= this_difference
+			end
+		end
+		for i, c in ipairs(candidates) do
+			if c:GetStepsType() == curr_steps_type then
+				checkset_closest(closest_same_type, c)
+				if closest_same_type.difference == 0 then break end
+			else
+				checkset_closest(closest_diff_type, c)
+			end
+		end
+		if closest_same_type.steps then
+			cons_set_current_steps(pn, closest_same_type.steps)
+		elseif closest_diff_type.steps then
+			cons_set_current_steps(pn, closest_diff_type.steps)
+		end
+	end
+end
+
 local function adjust_difficulty(player, dir, sound)
 	local steps= gamestate_get_curr_steps(player)
 	if steps then
@@ -456,6 +489,7 @@ local function adjust_difficulty(player, dir, sound)
 				local picked_steps= steps_list[i+dir]
 				if picked_steps then
 					cons_set_current_steps(player, picked_steps)
+					GAMESTATE:SetPreferredDifficulty(player, picked_steps:GetDifficulty())
 					SOUND:PlayOnce("Themes/_fallback/Sounds/_switch " .. sound)
 				else
 					SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
@@ -725,23 +759,12 @@ local function input(event)
 					GAMESTATE:ApplyGameCommand(
 						"playmode," .. playmode_to_command[cpm], pn)
 					GAMESTATE:ApplyGameCommand("style,versus")
+					music_wheel:resort_for_new_style()
 					steps_display:update_steps_set()
 					-- Loading the profile for the joining player is not
 					-- possible without exposing several PROFILEMAN and GAMESTATE
 					-- functions.
-					local pref_diff= (GAMESTATE:GetPreferredDifficulty(pn) or
-															"Difficulty_Beginner")
-					local steps_list= get_filtered_sorted_steps_list()
-					local set_steps= false
-					for i, v in ipairs(steps_list) do
-						if v:GetDifficulty() == pref_diff then
-							set_steps= true
-							cons_set_current_steps(pn, v)
-						end
-					end
-					if not set_steps and steps_list[1] then
-						cons_set_current_steps(pn, steps_list[1])
-					end
+					set_closest_steps_to_preferred(pn)
 				end
 			end
 		end
@@ -1027,25 +1050,7 @@ return Def.ActorFrame {
 			function(self)
 				local enabled_players= GAMESTATE:GetEnabledPlayers()
 				for i, v in ipairs(enabled_players) do
-					local preferred_diff= GAMESTATE:GetPreferredDifficulty(v)
-					local curr_steps_type= GAMESTATE:GetCurrentStyle():GetStepsType()
-					local candidates= get_filtered_sorted_steps_list()
-					if candidates and #candidates > 0 then
-						local steps_set= false
-						local default_steps= nil
-						for i, c in ipairs(candidates) do
-							if c:GetDifficulty() == preferred_diff
-							and c:GetStepsType() == curr_steps_type then
-								cons_set_current_steps(v, c)
-								steps_set= true
-							elseif not default_steps then
-								default_steps= c
-							end
-						end
-						if not steps_set and default_steps then
-							cons_set_current_steps(v, default_steps)
-						end
-					end
+					set_closest_steps_to_preferred(v)
 				end
 			end,
 	},

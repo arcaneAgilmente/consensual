@@ -512,7 +512,6 @@ function cons_set_current_steps(pn, steps)
 					" ~= " .. steps:GetStepsType())
 		return
 	end
-	GAMESTATE:SetPreferredDifficulty(pn, steps:GetDifficulty())
 	gamestate_set_curr_steps(pn, steps)
 end
 

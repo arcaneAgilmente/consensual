@@ -9,6 +9,7 @@ options_sets.tags_menu= {
 			self.cursor_pos= 1
 		end,
 		reset_info= function(self)
+			self.cursor_pos= 1
 			self.real_info_set= {}
 			if self.have_up_el then
 				self.real_info_set[1]= up_element()

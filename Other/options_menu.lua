@@ -121,9 +121,7 @@ option_display_mt= {
 						if not self.no_display then
 							self.display= subself:GetChild("display")
 						end
-						for i, item in ipairs(self.sick_wheel.items) do
-							item:set_geo(self.el_width, self.el_height, self.el_zoom)
-						end
+						self:regeo_items()
 					end
 				}
 				local next_y= 0
@@ -149,6 +147,17 @@ option_display_mt= {
 					item:set_underline_color(color)
 				end
 			end,
+		set_el_geo= function(self, width, height, zoom)
+			self.el_width= width or self.el_width
+			self.el_height= height or self.el_height
+			self.el_zoom= zoom or self.el_zoom
+			self:regeo_items()
+		end,
+		regeo_items= function(self)
+			for i, item in ipairs(self.sick_wheel.items) do
+				item:set_geo(self.el_width, self.el_height, self.el_zoom)
+			end
+		end,
 		set_heading=
 			function(self, h)
 				if not self.no_heading then
@@ -354,6 +363,7 @@ options_sets.special_functions= {
 			return ""
 		end,
 		reset_info= function(self)
+			self.cursor_pos= 1
 			self.real_info_set= {{text= "Exit Flags Menu"}}
 			for i, el in ipairs(self.element_set) do
 				self.real_info_set[#self.real_info_set+1]= {

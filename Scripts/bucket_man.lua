@@ -419,7 +419,8 @@ function bucket_man_interface:style_filter_songs()
 	if #filter_types >= 1 then
 		for i, v in ipairs(self.song_set) do
 			local matched= false
-			if v.AllSongsAreFixed and v:AllSongsAreFixed() then
+			if not v.AllSongsAreFixed or
+			(v.AllSongsAreFixed and v:AllSongsAreFixed()) then
 				local song_steps= song_get_all_steps(v)
 				for si, sv in ipairs(song_steps) do
 					local st= sv:GetStepsType()
@@ -646,8 +647,14 @@ function music_whale_interface:sort_songs(si)
 	play_sample_music()
 end
 
+function music_whale_interface:resort_for_new_style()
+	self.cursor_song= gamestate_get_curr_song()
+	bucket_man:style_filter_songs()
+	self:sort_songs(self.cur_sort_info)
+end
+
 function music_whale_interface:add_player_randoms(disp_bucket, player_number)
-	if GetPreviousPlayerSteps then
+	if GetPreviousPlayerSteps and GAMESTATE:IsPlayerEnabled(player_number) then
 		local prev_steps= GetPreviousPlayerSteps(player_number)
 		local sn= ToEnumShortString(player_number)
 		if prev_steps then

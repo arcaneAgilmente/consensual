@@ -8,11 +8,12 @@ options_sets.song_props_menu= {
 			self:reset_info()
 		end,
 		reset_info= function(self)
+			self.cursor_pos= 1
 			self.real_info_set= {
 				{text= "Exit Props Menu"},
 				{text= "Profile favorite+"}, {text= "Profile favorite-"},
 				{text= "Machine favorite+"}, {text= "Machine favorite-"},
-				{text= "Censor"}, {text= "Edit Tags"},
+				{text= "Censor"}, {text= "Edit Tags"}, {text= "End Credit"},
 			}
 			if self.have_pane_edit then
 				self.real_info_set[#self.real_info_set+1]= {text= "Edit Pane Settings"}
@@ -31,8 +32,19 @@ options_sets.song_props_menu= {
 		interpret_start= function(self)
 			if self.cursor_pos == 7 then
 				return true, true, "tags"
-			elseif self.cursor_pos > 7 then
-				if self.have_pane_edit and self.cursor_pos == 8 then
+			elseif self.cursor_pos == 8 then
+				SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+				local next_screen= "ScreenInitialMenu"
+				for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+					if cons_players[pn].play_history[1] then
+						next_screen= "ScreenConsNameEntry"
+						break
+					end
+				end
+				SCREENMAN:SetNewScreen(next_screen)
+				return true, true
+			elseif self.cursor_pos > 8 then
+				if self.have_pane_edit and self.cursor_pos == 9 then
 					profile_pain_setting:set_dirty(pn_to_profile_slot(self.player_number))
 					return true, true, "pain"
 				else

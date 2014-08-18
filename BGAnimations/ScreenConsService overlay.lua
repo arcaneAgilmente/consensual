@@ -195,9 +195,11 @@ update_hider_time()
 
 local function update_hider_text()
 	local item_name= config_menu:get_cursor_item_name()
-	if THEME:HasString("ConsService", item_name) then
-		local help= THEME:GetString("ConsService", item_name)
-		hider_text:settext(help)
+	if item_name ~= "" then
+		if THEME:HasString("ConsService", item_name) then
+			local help= THEME:GetString("ConsService", item_name)
+			hider_text:settext(help)
+		end
 	end
 	local xmn, xmx, ymn, ymx= rec_calc_actor_extent(hider_text)
 	hider_frame:resize(xmx-xmn+20, ymx-ymn+20)

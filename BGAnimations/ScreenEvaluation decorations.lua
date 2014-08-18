@@ -217,6 +217,7 @@ local best_score_mt= {
 			end
 			local rank_profile= PROFILEMAN:GetProfile(rank_pn)
 			self.score:hide()
+			self.fh:hide()
 			if profile and rank_profile then
 				local hs_list= profile:GetHighScoreListIfExists(
 					gamestate_get_curr_song(), gamestate_get_curr_steps(rank_pn))
@@ -250,6 +251,7 @@ local best_score_mt= {
 						local name_width= 80 - self.score.number:GetZoomedWidth() - 4
 						width_clip_text(self.score.text, name_width)
 						self.score:unhide()
+						self.fh:unhide()
 						local fxmn, fxmx, fymn, fymx=
 							rec_calc_actor_extent(self.container)
 						local fw= fxmx - fxmn + 2
@@ -982,7 +984,7 @@ local function update_bestiality()
 				end
 			end
 			if vote_things[name] and value then
-				votes[name]= value
+				votes[name]= true
 			end
 		end
 	end
@@ -1081,25 +1083,53 @@ end
 
 local set_visible_score_data
 
+local function size_frame_to_report(frame, report_container, is_profile)
+	local pad= 16
+	local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(report_container)
+	local fw= fxmx - fxmn + pad
+	local fh= fymx - fymn + pad
+	local fx= (fxmn + fxmx) / 2 + report_container:GetX()
+	local fy= (fymn + fymx) / 2 + report_container:GetY()
+	frame:move(fx, fy)
+	frame:resize(fw, fh)
+	if fw < 20 then
+		frame:hide()
+	else
+		frame:unhide()
+	end
+end
+
 local function set_special_menu(pn, spid)
 	special_menu_states[pn]= spid
 	if spid == 0 then
 		special_menu_displays[pn]:hide()
 		player_cursors[pn]:hide()
 		if showing_profile_on_other_side then
-			profile_reports[pn].container:diffusealpha(1)
+			if cons_players[pn].flags.eval.profile_data then
+				profile_reports[pn].container:diffusealpha(1)
+				size_frame_to_report(frame_helpers[other_player[pn]],
+														 profile_reports[pn].container, 1)
+			else
+				profile_reports[pn].container:diffusealpha(0)
+				frame_helpers[other_player[pn]]:resize(0, 0)
+				frame_helpers[other_player[pn]]:hide()
+			end
 		else
 			set_visible_score_data(pn, score_data_viewing_indices[pn])
 		end
 	else
+		local frame_pn= pn
 		if showing_profile_on_other_side then
 			profile_reports[pn].container:diffusealpha(0)
+			frame_pn= other_player[pn]
 		else
 			score_reports[pn].container:diffusealpha(0)
 			profile_reports[pn].container:diffusealpha(0)
 		end
 		special_menus[spid][pn]:reset_info()
 		special_menus[spid][pn]:update()
+		size_frame_to_report(frame_helpers[frame_pn],
+												 special_menu_displays[pn].container, 2)
 		special_menu_displays[pn]:unhide()
 		update_player_cursor(pn)
 		player_cursors[pn]:unhide()
@@ -1168,9 +1198,11 @@ local function filter_input_for_menus(pn, code, press)
 			handled, close, edit_tags= special_menus[spid][pn]:interpret_code(code)
 			if handled then
 				update_player_cursor(pn)
-				if showing_profile_on_other_side and spid == 3 then
+				if spid == 3 then
 					update_bestiality()
-					set_visible_score_data(pn, score_data_viewing_indices[pn])
+					if showing_profile_on_other_side then
+						set_visible_score_data(pn, score_data_viewing_indices[pn])
+					end
 				end
 				if edit_tags == "tags" then
 					set_special_menu(pn, 2)
@@ -1222,7 +1254,7 @@ local function make_player_specific_actors()
 		if #enabled_players > 1 then
 			args[#args+1]= profile_reports[v]:create_actors(v)
 			args[#args+1]= special_menu_displays[v]:create_actors(
-				"menu", 0, 0, 11, 120, 24, 1, true, true)
+				"menu", 0, 0, 12, 120, 24, 1, true, true)
 		end
 		args[#args+1]= dance_pads[v]:create_actors("dance_pad", 0, -34, 10)
 		args[#args+1]= besties[v].machine:create_actors(
@@ -1239,7 +1271,7 @@ local function make_player_specific_actors()
 			"frame", 2, 0, 0, solar_colors[this](), solar_colors.bg(), 0, 0)
 		args[#args+1]= profile_reports[this]:create_actors(this)
 		args[#args+1]= special_menu_displays[this]:create_actors(
-			"menu", 0, 16, 11, 160, 24, 1, true, true)
+			"menu", 0, 16, 12, 160, 24, 1, true, true)
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
 	end
 	-- In its own loop to make sure they're above all other actors.
@@ -1291,21 +1323,17 @@ local function find_actors(self)
 		if #GAMESTATE:GetEnabledPlayers() == 1 then
 			showing_profile_on_other_side= true
 			local other= other_player[v]
-			local opcont= players_container:GetChild(other)
-			local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(opcont)
-			local fw= fxmx - fxmn + pad
-			local fh= fymx - fymn + pad
-			local fx= fxmn + (fw / 2)
-			local fy= fymn + (fh / 2)
-			frame_helpers[other]:move(fx-pad/2, fy)
-			frame_helpers[other]:resize(fw, fh)
+			frame_helpers[other]:move(0, 120)
+			frame_helpers[other]:resize(0, 0)
 		end
 		for i, menu_set in ipairs(special_menus) do
 			menu_set[v]:initialize(unpack(menu_args[i][v]))
 			menu_set[v]:set_display(special_menu_displays[v])
 		end
 		special_menu_displays[v]:set_underline_color(solar_colors[v]())
+		special_menu_displays[v]:set_el_geo(width, nil, nil)
 		special_menu_displays[v]:hide()
+		set_special_menu(v, 0)
 		init_player_cursor_pos(v)
 	end
 end
@@ -1450,30 +1478,10 @@ do
 end
 
 set_visible_score_data= function(pn, index)
-	local function size_frame_to_report(report_container, is_profile)
-		local pad= 16
-		local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(report_container)
-		local fw= fxmx - fxmn + pad
-		local fh= fymx - fymn + pad
-		local fx= fxmn + (fw / 2)
-		local fy= fymn + (fh / 2)
-		-- There's probably a bug in rec_calc_actor_extent....
-		if is_profile then
-			frame_helpers[pn]:move(fx-pad/2, fy+pad*1.75)
-		else
-			frame_helpers[pn]:move(fx-pad/2, fy-pad/2)
-		end
-		frame_helpers[pn]:resize(fw, fh)
-		if fw < 20 then
-			frame_helpers[pn]:hide()
-		else
-			frame_helpers[pn]:unhide()
-		end
-	end
 	if index == -3 then
 		score_reports[pn]:set(pn, -1, cons_players[pn].fake_score)
 		score_reports[pn].container:diffusealpha(1)
-		size_frame_to_report(score_reports[pn].container)
+		size_frame_to_report(frame_helpers[pn], score_reports[pn].container)
 		if not showing_profile_on_other_side then
 			profile_reports[pn].container:diffusealpha(0)
 		end
@@ -1481,11 +1489,11 @@ set_visible_score_data= function(pn, index)
 	elseif index == -2 then
 		score_reports[pn].container:diffusealpha(0)
 		profile_reports[pn].container:diffusealpha(1)
-		size_frame_to_report(profile_reports[pn].container, true)
+		size_frame_to_report(frame_helpers[pn], profile_reports[pn].container, true)
 	else
 		score_reports[pn]:set(pn, index, score_datas[pn][index])
 		score_reports[pn].container:diffusealpha(1)
-		size_frame_to_report(score_reports[pn].container)
+		size_frame_to_report(frame_helpers[pn], score_reports[pn].container)
 		if not showing_profile_on_other_side then
 			profile_reports[pn].container:diffusealpha(0)
 		end
@@ -1508,17 +1516,14 @@ local function input(event)
 		elseif code == "MenuRight" then
 			score_data_viewing_indices[pn]= score_data_viewing_indices[pn] + 1
 		end
-		if score_data_viewing_indices[pn] < -2 then
-			score_data_viewing_indices[pn]= #score_datas[pn]
-		elseif (score_data_viewing_indices[pn] == -2 and
-						showing_profile_on_other_side) then
+		local view_min= -2
+		if showing_profile_on_other_side or not cons_players[pn].flags.eval.profile_data then
+			view_min= -1
+		end
+		if score_data_viewing_indices[pn] < view_min then
 			score_data_viewing_indices[pn]= #score_datas[pn]
 		elseif score_data_viewing_indices[pn] > #score_datas[pn] then
-			if showing_profile_on_other_side then
-				score_data_viewing_indices[pn]= -1
-			else
-				score_data_viewing_indices[pn]= -2
-			end
+			score_data_viewing_indices[pn]= view_min
 		end
 		toggle_visible_indicator(pn, dance_pads[pn], score_data_viewing_indices[pn])
 		set_visible_score_data(pn, score_data_viewing_indices[pn])

@@ -421,6 +421,11 @@ function steps_get_bpms_as_text(strail)
 	return short_text
 end
 
+function steps_are_konami_trash(steps)
+	local fname= steps:GetFilename()
+	return fname and fname:find("DDR") and not fname:find("Encore")
+end
+
 function steps_get_author(steps)
 	if steps.GetAuthorCredit then
 		-- All three of these are plausible places for the author name.
@@ -434,8 +439,7 @@ function steps_get_author(steps)
 			-- The place that exists in .sm files.
 			author= steps:GetDescription()
 		end
-		local fname= steps:GetFilename()
-		if fname and fname:find("DDR") and not fname:find("Encore") then
+		if steps_are_konami_trash(steps) then
 			author = "Konami Shuffle"
 		end
 		return author

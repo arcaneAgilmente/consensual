@@ -715,8 +715,11 @@ local function make_special_actors_for_players()
 end
 
 local function find_read_bpm_for_player_steps(player_number)
-	if GAMESTATE:GetCurrentSong():IsDisplayBpmConstant() then
-		local max_bpm= GAMESTATE:GetCurrentSteps(player_number):GetDisplayBpms()[2]
+	local steps= GAMESTATE:GetCurrentSteps(player_number)
+	if steps:GetDisplayBPMType() == "DisplayBPM_Specified" and
+	-- DDR worshippers like to give DDR simfiles Konami's false display bpms.
+	not steps_are_konami_trash(steps) then
+		local max_bpm= steps:GetDisplayBpms()[2]
 		return max_bpm
 	else
 		local timing_data= GAMESTATE:GetCurrentSteps(player_number):GetTimingData()
@@ -790,6 +793,7 @@ local function set_speed_from_speed_info(player)
 				 local real_speed= (speed / read_bpm) / rate_coordinator:get_current_rate()
 				 player.dspeed_mult= real_speed
 				 player.song_options:XMod(real_speed)
+				 player.current_options:XMod(real_speed)
 				 if math.abs(player.dspeed.max - player.dspeed.min) < .01 then
 					 player.dspeed.special= true
 					 if player.dspeed.alternate then

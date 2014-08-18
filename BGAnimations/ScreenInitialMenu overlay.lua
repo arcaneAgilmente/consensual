@@ -1,5 +1,6 @@
 -- Unjoin currently joined players because stuff like going into the options and changing the theme joins players.
 GAMESTATE:Reset()
+SOUND:StopMusic()
 
 local profile_list= {}
 for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do
