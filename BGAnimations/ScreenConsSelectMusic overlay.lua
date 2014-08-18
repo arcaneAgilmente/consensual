@@ -81,6 +81,10 @@ local function change_sort_text(new_text)
 	overlay:GetChild("sort_prop"):playcommand("Set")
 end
 
+local function update_sort_prop()
+	SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_prop"):playcommand("Set")
+end
+
 local steps_display_interface= {}
 local steps_display_interface_mt= { __index= steps_display_interface }
 
@@ -712,6 +716,7 @@ local function input(event)
 					local handled, close, edit_pain=
 						song_props_menus[pn]:interpret_code(code)
 					if close then
+						update_sort_prop()
 						if edit_pain then
 							if edit_pain == "pain" then
 								pain_displays[pn]:enter_edit_mode()

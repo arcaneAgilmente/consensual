@@ -229,6 +229,9 @@ local function convert_elements_to_items(els, sfs)
 			local names
 			names, sf_spew_flags[si]= validate_name_set(
 				sf.get_names(el), sf, not sf_spew_flags[si])
+			for i, n in ipairs(names) do
+				names[i]= n:lower()
+			end
 			name_set[#name_set+1]= {source= sf, names= names}
 		end
 		items[#items+1]= {el= el, name_set= name_set}
