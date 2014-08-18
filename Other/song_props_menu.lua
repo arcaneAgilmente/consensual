@@ -34,14 +34,7 @@ options_sets.song_props_menu= {
 				return true, true, "tags"
 			elseif self.cursor_pos == 8 then
 				SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
-				local next_screen= "ScreenInitialMenu"
-				for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-					if cons_players[pn].play_history[1] then
-						next_screen= "ScreenConsNameEntry"
-						break
-					end
-				end
-				SCREENMAN:SetNewScreen(next_screen)
+				end_credit_now()
 				return true, true
 			elseif self.cursor_pos > 8 then
 				if self.have_pane_edit and self.cursor_pos == 9 then

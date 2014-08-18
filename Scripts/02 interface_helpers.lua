@@ -201,7 +201,7 @@ function split_string_to_words(s)
 	s= tostring(s)
 	for i= 1, #s do
 		local c= s:sub(i, i)
-		if c == " " or c == "_" or c == "-" or c == "." then
+		if c == " " or c == "_" or c == "-" or c == "." and i-1 > cur_word_start then
 			words[#words+1]= s:sub(cur_word_start, i-1)
 			cur_word_start= i+1
 			-- Yeah, this doesn't handle double space conditions well.

@@ -447,8 +447,8 @@ local function input(event)
 	if false and event.DeviceInput.button == "DeviceButton_n" then
 		for n= 1, 10 do mess() end
 	end
-	if event.DeviceInput.button == "DeviceButton_x" then
-		SCREENMAN:SetNewScreen("ScreenSigilTest")
+	if event.DeviceInput.button == "DeviceButton_x" and event.type == "InputEventType_FirstPress" then
+		gen_name_only_test_data()
 	end
 	if event.DeviceInput.button == misc_config:get_data().config_menu_key then
 		SCREENMAN:SetNewScreen("ScreenConsService")

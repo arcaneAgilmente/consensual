@@ -229,10 +229,12 @@ end
 local title_sort= {
 	name= "Title", get_names= generic_get_wrapper("GetDisplayMainTitle"),
 	uses_depth= true, can_join= noop_true}
+local group_sort= {
+	name= "Group", get_names= generic_get_wrapper("GetGroupName"),
+		can_join= noop_false, group_similar= true}
 
 local shared_sort_factors= {
-	{ name= "Group", get_names= generic_get_wrapper("GetGroupName"),
-		can_join= noop_false, group_similar= true},
+	group_sort,
 	title_sort,
 }
 
@@ -361,6 +363,10 @@ local function gen_test_sorts(contents)
 		rec_print_table(contents)
 	end
 	generate_song_sort_test_data(factor_list)
+end
+
+function gen_name_only_test_data()
+	generate_song_sort_test_data({group_sort, title_sort})
 end
 
 local function set_course_mode_sort_info()

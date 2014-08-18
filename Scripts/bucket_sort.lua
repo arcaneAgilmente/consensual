@@ -1,6 +1,13 @@
 local min_bucket_size= 32
 local max_bucket_size= 96
 
+local invalid_sort_item_name= "invalid_sort_item_name"
+local bad_name_source_factor= {
+	name= "bad_name", get_names= function() return {invalid_sort_item_name} end,
+		can_join= noop_true, group_similar= false
+}
+local bad_sort_name_warning_occurred= false
+
 local function depth_clip_name(name, depth)
 	if type(name) == "number" then return name, -1 end
 	return name:sub(1, depth), #name - depth
@@ -46,6 +53,16 @@ local cmp_table= {
 local function name_cmp(left, right)
 	local ltype= type(left)
 	local rtype= type(right)
+	if not cmp_table[ltype] then
+		Trace("ltype of: " .. ltype)
+		ltype= "string"
+		left= "bad"
+	end
+	if not cmp_table[rtype] then
+		Trace("rtype of: " .. rtype)
+		rtype= "string"
+		right= "bad"
+	end
 	return cmp_table[ltype][rtype](left, right)
 end
 
@@ -106,16 +123,32 @@ local function sort_uns_buckets(uns)
 	return bucketed_set
 end
 
+local function get_name_from_item(thing, sort_depth)
+	-- Just assume there's only one name.
+	local name= thing.name_set[sort_depth] or thing.name_set[#thing.name_set]
+	return name.names[1], name.source
+end
+
 local function get_name_from_bucket_or_item(thing, sort_depth)
 	if thing.contents then
 		if thing.from_split then
+			if thing.contents[1].name_set then
+				return get_name_from_item(thing.contents[1], sort_depth)
+			elseif not thing.contents[1].name then
+				if not bad_sort_name_warning_occurred then
+					local message= "Something ended up without a name while sorting.  Please generate sort test data to send back to Kyzentun by pressing 'x' on the main menu."
+					message= message .. "\nBucket name info: '" .. thing.name.value .. "' from '" .. thing.name.source.name .. "'"
+					lua.ReportScriptError(message)
+					rec_print_table(thing.contents, "  ", 2)
+					bad_sort_name_warning_occurred= true
+				end
+				return invalid_sort_item_name, bad_name_source_factor
+			end
 			return thing.contents[1].name.value, thing.contents[1].name.source
 		end
 		return thing.name.value, thing.name.source
 	else
-		-- Just assume there's only one name.
-		local name= thing.name_set[sort_depth] or thing.name_set[#thing.name_set]
-		return name.names[1], name.source
+		return get_name_from_item(thing, sort_depth)
 	end
 end
 
@@ -746,7 +779,7 @@ function generate_song_sort_test_data(sort_factors)
 			"dont_clip= " .. tostring(sf.dont_clip) .. "},\n"
 	end
 	local file_handle= RageFileUtil.CreateRageFile()
-	local file_name= "test_song_sort_data.lua"
+	local file_name= "Save/consensual_settings/test_song_sort_data.lua"
 	if not file_handle:Open(file_name, 2) then
 		Trace("Could not open '" .. file_name .. "' to write test song sort data.")
 	else
@@ -761,6 +794,6 @@ function generate_song_sort_test_data(sort_factors)
 		file_handle:Write("}\n")
 		file_handle:Close()
 		file_handle:destroy()
-		Warn("test song sort data written to '" .. file_name .. "'")
+		lua.ReportScriptError("test song sort data written to '" .. file_name .. "'")
 	end
 end

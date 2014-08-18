@@ -430,7 +430,11 @@ local input_functions= {
 	back= function()
 					stop_music()
 					SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
-					SCREENMAN:SetNewScreen("ScreenInitialMenu")
+					if not GAMESTATE:IsEventMode() then
+						end_credit_now()
+					else
+						SCREENMAN:SetNewScreen("ScreenInitialMenu")
+					end
 				end
 }
 

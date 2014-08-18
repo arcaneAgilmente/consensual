@@ -743,7 +743,11 @@ local function extra_for_lives()
 		max_scale= 4,
 		initial_value=
 			function(player_number)
-				return mod_player(player_number, "BatteryLives")
+				if PlayerOptions.BatteryLives then
+					return mod_player(player_number, "BatteryLives")
+				else
+					return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives()
+				end
 			end,
 		validator=
 			function(value)
@@ -751,7 +755,11 @@ local function extra_for_lives()
 			end,
 		set=
 			function(player_number, value)
-				mod_player(player_number, "BatteryLives", value)
+				if PlayerOptions.BatteryLives then
+					mod_player(player_number, "BatteryLives", value)
+				else
+					return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives(value)
+				end
 			end
 	}
 end
@@ -1045,6 +1053,13 @@ local special= {
 				{ name= "Dark", init= noop_false,
 					set= solar_colors.set_dark_map,
 					unset= noop_nil}}}},
+	{ name= "Next Screen", meta= options_sets.special_functions,
+		args= {
+			eles= {
+				{ name= "Select Music", init= noop_false, set= function()
+						SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
+						SCREENMAN:SetNewScreen("ScreenConsSelectMusic")
+				end, unset= noop_nil}}}},
 	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options},
 	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions,
 		args= {eles= {
@@ -1117,13 +1132,23 @@ local profile_options= {
 		args= make_profile_bool_extra("Gender", "Male", "Female", "IsMale")},
 }
 
-local life_options= {
-	player_enum("Life", LifeType, "LifeSetting"),
-	player_enum("Drain", DrainType, "DrainSetting"),
-	player_enum("Fail", FailType, "FailSetting"),
-	{ name= "Battery Lives", meta= options_sets.adjustable_float,
-		args= extra_for_lives()},
-}
+local life_options= {}
+if PlayerOptions.LifeSetting then
+	life_options= {
+		player_enum("Life", LifeType, "LifeSetting"),
+		player_enum("Drain", DrainType, "DrainSetting"),
+		player_enum("Fail", FailType, "FailSetting"),
+		{ name= "Battery Lives", meta= options_sets.adjustable_float,
+			args= extra_for_lives()},
+	}
+else
+	life_options= {
+		song_enum("Drain", DrainType, "DrainSetting"),
+		player_enum("Fail", FailType, "FailSetting"),
+		{ name= "Battery Lives", meta= options_sets.adjustable_float,
+			args= extra_for_lives()},
+	}
+end
 
 local base_options= {
 	{ name= "Speed", meta= options_sets.speed},

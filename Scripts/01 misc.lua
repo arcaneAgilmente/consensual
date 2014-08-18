@@ -678,4 +678,15 @@ function string_in_table(str, tab)
 	return false
 end
 
+function end_credit_now()
+	local next_screen= "ScreenInitialMenu"
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		if cons_players[pn].play_history[1] then
+			next_screen= "ScreenConsNameEntry"
+			break
+		end
+	end
+	SCREENMAN:SetNewScreen(next_screen)
+end
+
 music_wheel_width= SCREEN_WIDTH*.3125

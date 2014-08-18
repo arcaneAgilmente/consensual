@@ -852,7 +852,7 @@ function profile_report_interface:create_actors(player_number)
 				name= "Toasties", number= pro:GetNumToasties(), color= color}
 		end
 		do
-			local taps= pro:GetTotalTapsAndHolds()
+			local taps= pro:GetTotalTapsAndHolds() + pro:GetTotalJumps() + pro:GetTotalHands()
 			local level= 0
 			local calc_taps= 0
 			repeat
@@ -862,7 +862,7 @@ function profile_report_interface:create_actors(player_number)
 			things_in_list[#things_in_list+1]= {
 				name= "Experience Level", number= level }
 			things_in_list[#things_in_list+1]= {
-				name= "Next level at", number= calc_taps }
+				name= "Taps to next level", number= calc_taps - taps }
 		end
 		things_in_list[#things_in_list+1]= {
 			name= "Taps and holds", number= pro:GetTotalTapsAndHolds() }
