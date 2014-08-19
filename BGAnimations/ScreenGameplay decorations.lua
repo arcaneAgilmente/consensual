@@ -195,6 +195,12 @@ local dp_feedback_centers= {
 	[PLAYER_1]= { SCREEN_RIGHT * .25, SCREEN_TOP + h_line_spacing },
 	[PLAYER_2]= { SCREEN_RIGHT * .75, SCREEN_TOP + h_line_spacing }
 }
+local dual_score_poses= {
+	[PLAYER_1]= {{ SCREEN_RIGHT * .125, SCREEN_TOP + h_line_spacing },
+		{ SCREEN_RIGHT * .375, SCREEN_TOP + h_line_spacing }},
+	[PLAYER_2]= {{ SCREEN_RIGHT * .625, SCREEN_TOP + h_line_spacing },
+		{ SCREEN_RIGHT * .875, SCREEN_TOP + h_line_spacing }}
+}
 function dance_points_feedback_interface:create_actors(name, fx, fy, player_number)
 	if not name then return nil end
 	self.name= name
@@ -247,6 +253,55 @@ function dance_points_feedback_interface:update(player_stage_stats)
 end
 
 local dance_points_feedback_interface_mt= { __index= dance_points_feedback_interface }
+
+local pct_score_feedback_mt= {
+	__index= {
+		create_actors= function(self, name, x, y, pn)
+			if not name then return nil end
+			self.name= name
+			self.player_number= pn
+			self.fmat= "%.2f%%"
+			x= x or 0
+			y= y or 0
+			return normal_text(
+				name, self.fmat:format(0), nil, x, y, 1, right, {
+					InitCommand= function(subself) self.container= subself end })
+		end,
+		update= function(self, pss)
+			local adp= pss:GetActualDancePoints()
+			local mdp= pss:GetPossibleDancePoints()
+			if not self.precision then
+				self.precision= math.max(2, math.ceil(math.log(mdp) / math.log(10))-2)
+				self.fmat= "%." .. self.precision .. "f%%"
+			end
+			local fake_score
+			if cons_players[self.player_number].fake_judge then
+				fake_score= cons_players[self.player_number].fake_score
+				adp= fake_score.dp
+			end
+			local function set_color(c)
+				self.container:diffuse(c)
+			end
+			if fake_score then
+				for i, fj in ipairs(feedback_judgements) do
+					if fake_score.judge_counts[fj] > 0 then
+						set_color(judgement_colors[fj])
+						break
+					end
+				end
+			else
+				for i, fj in ipairs(feedback_judgements) do
+					if pss:GetTapNoteScores(fj) > 0 then
+						set_color(judgement_colors[fj])
+						break
+					end
+				end
+			end
+			local pct= math.floor(adp/mdp*(10^(self.precision+2))) *
+				(10^-self.precision)
+			self.container:settext(self.fmat:format(pct))
+		end
+}}
 
 local bpm_feedback_interface= {}
 local bpm_y= SCREEN_BOTTOM - line_spacing
@@ -658,8 +713,21 @@ local function make_special_actors_for_players()
 				center= {score_feedback_centers[v][1], score_feedback_centers[v][2]}}
 		end
 		if flags.dance_points then
+			if flags.pct_score then
+				add_to_feedback[#add_to_feedback+1]= {
+					name= "dp", meattable= dance_points_feedback_interface_mt,
+					center= {dual_score_poses[v][1][1], dual_score_poses[v][1][2]}}
+				add_to_feedback[#add_to_feedback+1]= {
+					name= "pct", meattable= pct_score_feedback_mt,
+					center= {dual_score_poses[v][2][1], dual_score_poses[v][2][2]}}
+			else
+				add_to_feedback[#add_to_feedback+1]= {
+					name= "dp", meattable= dance_points_feedback_interface_mt,
+					center= {dp_feedback_centers[v][1], dp_feedback_centers[v][2]}}
+			end
+		elseif flags.pct_score then
 			add_to_feedback[#add_to_feedback+1]= {
-				name= "dp", meattable= dance_points_feedback_interface_mt,
+				name= "pct", meattable= pct_score_feedback_mt,
 				center= {dp_feedback_centers[v][1], dp_feedback_centers[v][2]}}
 		end
 		if flags.bpm_meter then

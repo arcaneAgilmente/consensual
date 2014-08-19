@@ -13,6 +13,10 @@ local function depth_clip_name(name, depth)
 	return name:sub(1, depth), #name - depth
 end
 
+local function str_cmp(a, b)
+	return a:lower() < b:lower()
+end
+
 local function less_cmp(a, b)
 	return a < b
 end
@@ -48,7 +52,7 @@ end
 
 local cmp_table= {
 	number= {number= less_cmp, string= noop_true},
-	string= {number= noop_false, string= less_cmp}
+	string= {number= noop_false, string= str_cmp}
 }
 local function name_cmp(left, right)
 	local ltype= type(left)
@@ -229,8 +233,10 @@ local function convert_elements_to_items(els, sfs)
 			local names
 			names, sf_spew_flags[si]= validate_name_set(
 				sf.get_names(el), sf, not sf_spew_flags[si])
-			for i, n in ipairs(names) do
-				names[i]= n:lower()
+			if sf.insensitive_names then
+				for i, n in ipairs(names) do
+					names[i]= n:lower()
+				end
 			end
 			name_set[#name_set+1]= {source= sf, names= names}
 		end

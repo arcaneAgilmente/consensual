@@ -228,7 +228,7 @@ end
 
 local title_sort= {
 	name= "Title", get_names= generic_get_wrapper("GetDisplayMainTitle"),
-	uses_depth= true, can_join= noop_true}
+	uses_depth= true, can_join= noop_true, insensitive_names= true}
 local group_sort= {
 	name= "Group", get_names= generic_get_wrapper("GetGroupName"),
 		can_join= noop_false, group_similar= true}

@@ -47,6 +47,7 @@ function lowered_game_name()
 end
 
 -- Lua:  Battery contacts not included.
+engine_round= math.round
 -- Round to nearest integer.
 function math.round(n)
 	if n > 0 then
