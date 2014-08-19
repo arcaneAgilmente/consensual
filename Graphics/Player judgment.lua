@@ -7,6 +7,7 @@ local tani_params= {
 	sy= 60, tx= 8, nx= -8, ta= left, na= right, text_section= "Combo"
 }
 local OffsetQuad
+local bg_is_bright= PREFSMAN:GetPreference("BGBrightness") > .25
 
 local JudgeCmds = {
 	TapNoteScore_W1 = THEME:GetMetric( "Judgment", "JudgmentW1Command" );
@@ -170,6 +171,11 @@ local args= {
 								 OffsetQuad= self:GetChild("offset")
 								 Judgment:visible(false)
 								 tani:hide()
+								 if bg_is_bright then
+									 Judgment:strokecolor(solar_colors.bg())
+									 tani.text:strokecolor(solar_colors.bg())
+									 tani.number:strokecolor(solar_colors.bg())
+								 end
 							 end,
 	ToastyAchievedMessageCommand=
 		function(self,params)

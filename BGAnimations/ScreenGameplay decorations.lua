@@ -7,6 +7,8 @@ local feedback_judgements= {
 	"TapNoteScore_W3", "TapNoteScore_W2", "TapNoteScore_W1"
 }
 
+local bg_is_bright= PREFSMAN:GetPreference("BGBrightness") > .25
+
 local screen_gameplay= false
 
 local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
@@ -50,6 +52,12 @@ function judge_feedback_interface:create_actors(name, fx, fy, player_number)
 		InitCommand= function(subself)
 			self.container= subself
 			subself:xy(fx, fy)
+			if bg_is_bright then
+				for i, tani in ipairs(self.elements) do
+					tani.text:strokecolor(solar_colors.bg())
+					tani.number:strokecolor(solar_colors.bg())
+				end
+			end
 		end
 	}
 	local tx= -10
@@ -190,116 +198,125 @@ end
 
 local score_feedback_interface_mt= { __index= score_feedback_interface }
 
-local dance_points_feedback_interface= {}
 local dp_feedback_centers= {
 	[PLAYER_1]= { SCREEN_RIGHT * .25, SCREEN_TOP + h_line_spacing },
 	[PLAYER_2]= { SCREEN_RIGHT * .75, SCREEN_TOP + h_line_spacing }
 }
-local dual_score_poses= {
-	[PLAYER_1]= {{ SCREEN_RIGHT * .125, SCREEN_TOP + h_line_spacing },
-		{ SCREEN_RIGHT * .375, SCREEN_TOP + h_line_spacing }},
-	[PLAYER_2]= {{ SCREEN_RIGHT * .625, SCREEN_TOP + h_line_spacing },
-		{ SCREEN_RIGHT * .875, SCREEN_TOP + h_line_spacing }}
-}
-function dance_points_feedback_interface:create_actors(name, fx, fy, player_number)
-	if not name then return nil end
-	self.name= name
-	self.player_number= player_number
-	if not fx then fx= 0 end
-	if not fy then fy= 0 end
-	return Def.ActorFrame{
-		Name= name,
-		InitCommand= function(subself)
-			subself:xy(fx, fy)
-			self.container= subself
-			self.curr_text= subself:GetChild("curr_dp")
-			self.max_text= subself:GetChild("max_dp")
-		end,
-		normal_text("curr_dp", "0", solar_colors.f_text(), -10, 0, 1, right),
-		normal_text("slash", "/", solar_colors.f_text(), 0, 0, 1),
-		normal_text("max_dp", "0", solar_colors.f_text(), 10, 0, 1, left),
-	}
-end
 
-function dance_points_feedback_interface:update(player_stage_stats)
-	local adp= player_stage_stats:GetActualDancePoints()
-	local mdp= player_stage_stats:GetPossibleDancePoints()
-	local fake_score
-	if cons_players[self.player_number].fake_judge then
-		fake_score= cons_players[self.player_number].fake_score
-		adp= fake_score.dp
-	end
-	local function set_color(c)
-		self.curr_text:diffuse(c)
-		self.max_text:diffuse(c)
-	end
-	if fake_score then
-		for i, fj in ipairs(feedback_judgements) do
-			if fake_score.judge_counts[fj] > 0 then
-					set_color(judgement_colors[fj])
-					break
-				end
-		end
-	else
-		for i, fj in ipairs(feedback_judgements) do
-			if player_stage_stats:GetTapNoteScores(fj) > 0 then
-				set_color(judgement_colors[fj])
-				break
-			end
-		end
-	end
-	self.curr_text:settext(tostring(adp))
-	self.max_text:settext(tostring(mdp))
-end
-
-local dance_points_feedback_interface_mt= { __index= dance_points_feedback_interface }
-
-local pct_score_feedback_mt= {
+local numerical_score_feedback_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, pn)
-			if not name then return nil end
 			self.name= name
 			self.player_number= pn
-			self.fmat= "%.2f%%"
 			x= x or 0
 			y= y or 0
-			return normal_text(
-				name, self.fmat:format(0), nil, x, y, 1, right, {
-					InitCommand= function(subself) self.container= subself end })
+			local flags= cons_players[pn].flags.gameplay
+			self.fmat= "%.2f%%"
+			Trace("numerical_score_feedback_mt creating")
+			local args= {
+				Name= name, InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					self.pct= subself:GetChild("pct")
+				end,
+				OnCommand= function(subself)
+					local mdp= STATSMAN:GetCurStageStats():GetPlayerStageStats(self.player_number):GetPossibleDancePoints()
+					Trace("numerical_score_feedback_mt mdp: " .. mdp)
+					if self.pct then
+						self.precision= math.max(
+							2, math.ceil(math.log(mdp) / math.log(10))-2)
+						self.fmat= "%." .. self.precision .. "f%%"
+						-- maximum width for the pct will be -222%
+						self.pct:settext(self.fmat:format(-222))
+						local pct_width= self.pct:GetWidth()
+						self.pct:x(pct_width / 2)
+						self.pct:settext(self.fmat:format(0))
+					end
+					if self.max_dp then
+						self.max_dp:settext(mdp)
+					end
+					if self.dual_mode then
+						local pad= 16
+						-- add the width the scored dp will have.
+						local dp_width= (self.max_dp:GetWidth() * 2) + 20
+						-- maximum width for the pct will be -222%
+						self.pct:settext(self.fmat:format(-222))
+						local pct_width= self.pct:GetWidth()
+						local total_width= dp_width + pct_width + pad
+						local pct_x= total_width / 2
+						self.pct:x(pct_x)
+						self.dp_container:x(pct_x - pct_width - pad - (dp_width/2))
+						self.pct:settext(self.fmat:format(0))
+					end
+				end
+			}
+			if flags.dance_points then
+				if flags.pct_score then
+					self.dual_mode= true
+				end
+				args[#args+1]= Def.ActorFrame{
+					Name= "dp", InitCommand= function(subself)
+						self.dp_container= subself
+						self.curr_dp= subself:GetChild("curr_dp")
+						self.slash_dp= subself:GetChild("slash_dp")
+						self.max_dp= subself:GetChild("max_dp")
+					end,
+					normal_text(
+						"curr_dp", "0", solar_colors.f_text(), -10, 0, 1, right),
+					normal_text(
+						"slash_dp", "/", solar_colors.f_text(), 0, 0, 1),
+					normal_text(
+						"max_dp", "0", solar_colors.f_text(), 10, 0, 1, left),
+				}
+			end
+			if flags.pct_score then
+				args[#args+1]= normal_text(
+					"pct", "", solar_colors.f_text(), 0, 0, 1, right)
+			end
+			return Def.ActorFrame(args)
+		end,
+		init= function(self, pss)
+			self.inited= true
 		end,
 		update= function(self, pss)
+			if not self.inited then
+				self:init(pss)
+			end
 			local adp= pss:GetActualDancePoints()
 			local mdp= pss:GetPossibleDancePoints()
-			if not self.precision then
-				self.precision= math.max(2, math.ceil(math.log(mdp) / math.log(10))-2)
-				self.fmat= "%." .. self.precision .. "f%%"
-			end
 			local fake_score
 			if cons_players[self.player_number].fake_judge then
 				fake_score= cons_players[self.player_number].fake_score
 				adp= fake_score.dp
 			end
-			local function set_color(c)
-				self.container:diffuse(c)
-			end
+			local text_color= solar_colors.f_text()
 			if fake_score then
 				for i, fj in ipairs(feedback_judgements) do
 					if fake_score.judge_counts[fj] > 0 then
-						set_color(judgement_colors[fj])
+						text_color= judgement_colors[fj]
 						break
 					end
 				end
 			else
 				for i, fj in ipairs(feedback_judgements) do
 					if pss:GetTapNoteScores(fj) > 0 then
-						set_color(judgement_colors[fj])
+						text_color= judgement_colors[fj]
 						break
 					end
 				end
 			end
-			local pct= math.floor(adp/mdp*(10^(self.precision+2))) *
-				(10^-self.precision)
-			self.container:settext(self.fmat:format(pct))
+			if self.pct then
+				local pct= math.floor(adp/mdp*(10^(self.precision+2))) *
+					(10^-self.precision)
+				self.pct:settext(self.fmat:format(pct))
+				self.pct:diffuse(text_color)
+			end
+			if self.dp_container then
+				self.curr_dp:settext(adp)
+				self.max_dp:settext(mdp)
+				self.curr_dp:diffuse(text_color)
+				self.max_dp:diffuse(text_color)
+			end
 		end
 }}
 
@@ -318,6 +335,10 @@ function bpm_feedback_interface:create_actors(name, fx, fy, player_number)
 		Name= self.name, InitCommand= function(subself)
 			subself:xy(fx, fy)
 			self.container= subself
+			if bg_is_bright then
+				self.tani.text:strokecolor(solar_colors.bg())
+				self.tani.number:strokecolor(solar_colors.bg())
+			end
 		end,
 		self.tani:create_actors(
 			"tani", { tx= -4, nx= 4, tt= "BPM: ", text_section= "ScreenGameplay"
@@ -712,22 +733,9 @@ local function make_special_actors_for_players()
 				name= "scoremeter", meattable= score_feedback_interface_mt,
 				center= {score_feedback_centers[v][1], score_feedback_centers[v][2]}}
 		end
-		if flags.dance_points then
-			if flags.pct_score then
-				add_to_feedback[#add_to_feedback+1]= {
-					name= "dp", meattable= dance_points_feedback_interface_mt,
-					center= {dual_score_poses[v][1][1], dual_score_poses[v][1][2]}}
-				add_to_feedback[#add_to_feedback+1]= {
-					name= "pct", meattable= pct_score_feedback_mt,
-					center= {dual_score_poses[v][2][1], dual_score_poses[v][2][2]}}
-			else
-				add_to_feedback[#add_to_feedback+1]= {
-					name= "dp", meattable= dance_points_feedback_interface_mt,
-					center= {dp_feedback_centers[v][1], dp_feedback_centers[v][2]}}
-			end
-		elseif flags.pct_score then
+		if flags.dance_points or flags.pct_score then
 			add_to_feedback[#add_to_feedback+1]= {
-				name= "pct", meattable= pct_score_feedback_mt,
+				name= "scorenumber", meattable= numerical_score_feedback_mt,
 				center= {dp_feedback_centers[v][1], dp_feedback_centers[v][2]}}
 		end
 		if flags.bpm_meter then
@@ -758,8 +766,11 @@ local function make_special_actors_for_players()
 				"author", info_text, solar_colors.f_text(),
 				author_centers[v][1], author_centers[v][2], 1, center,
 				{ OnCommand= function(self)
-											 width_limit_text(self, spb_width/2 - 48)
-										 end })
+						width_limit_text(self, spb_width/2 - 48)
+						if bg_is_bright then
+							self:strokecolor(solar_colors.bg())
+						end
+			end })
 		end
 		args[#args+1]= Def.ActorFrame(a)
 	end
@@ -768,16 +779,18 @@ local function make_special_actors_for_players()
 		SCREEN_BOTTOM - (line_spacing*2), 1, center, {
 			OnCommand= cmd(playcommand, "Set"),
 			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
-			SetCommand=
-				function(self)
-					local cur_song= GAMESTATE:GetCurrentSong()
-					if cur_song then
-						local title= cur_song:GetDisplayFullTitle()
-						self:settext(title)
-						width_limit_text(self, spb_width)
+			SetCommand= function(self)
+				local cur_song= GAMESTATE:GetCurrentSong()
+				if cur_song then
+					local title= cur_song:GetDisplayFullTitle()
+					self:settext(title)
+					width_limit_text(self, spb_width)
+					if bg_is_bright then
+						self:strokecolor(solar_colors.bg())
 					end
 				end
-		})
+			end
+	})
 	args[#args+1]= song_progress_bar:create_actors()
 	return Def.ActorFrame(args)
 end

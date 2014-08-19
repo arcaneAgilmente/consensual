@@ -785,6 +785,22 @@ local function extra_for_haste()
 	}
 end
 
+local function extra_for_bg_bright()
+	return {
+		name= "BG Brightness",
+		min_scale= -2, scale= -1, max_scale= 0,
+		initial_value= function(pn)
+			return PREFSMAN:GetPreference("BGBrightness")
+		end,
+		validator= function(value)
+			return value >= 0 and value <= 1
+		end,
+		set= function(pn, value)
+			PREFSMAN:SetPreference("BGBrightness", value)
+		end
+	}
+end
+
 local function make_profile_float_extra(func_name)
 	return {
 		name= func_name,
@@ -1071,6 +1087,8 @@ local special= {
 						 generic_fake_judge_element("TapNoteScore_W2"),
 						 generic_fake_judge_element("TapNoteScore_W1"),
 			 }}},
+	{ name= "BG Brightness", meta= options_sets.adjustable_float,
+		args= extra_for_bg_bright()},
 	{ name= "Mine Effects",
 		meta= options_sets.mutually_exclusive_special_functions,
 		args= { eles= mine_effect_eles }},

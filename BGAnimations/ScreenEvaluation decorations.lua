@@ -852,17 +852,25 @@ function profile_report_interface:create_actors(player_number)
 				name= "Toasties", number= pro:GetNumToasties(), color= color}
 		end
 		do
-			local taps= pro:GetTotalTapsAndHolds() + pro:GetTotalJumps() + pro:GetTotalHands()
+			local taps= pro:GetTotalTapsAndHolds() + pro:GetTotalJumps() +
+				pro:GetTotalHands()
 			local level= 0
 			local calc_taps= 0
+			local prev_calc_taps= 0
+			local level_diff= 0
 			repeat
 				level= level + 1
-				calc_taps= (level * (level + 1) * (level + 2)) * 500
+				calc_taps= math.round(((400*level)^(1+level/140)+(level*(level+1)*(level+2)*100)/10)^(1+(100-level)/1000))
+				level_diff= calc_taps - prev_calc_taps
+				prev_calc_taps= calc_taps
 			until calc_taps > taps
 			things_in_list[#things_in_list+1]= {
 				name= "Experience Level", number= level }
 			things_in_list[#things_in_list+1]= {
-				name= "Taps to next level", number= calc_taps - taps }
+				name= "Experience Taps", number= taps }
+			things_in_list[#things_in_list+1]= {
+				name= "Taps to next level", number= calc_taps - taps,
+				color= color_percent_above(1-((calc_taps-taps) / level_diff), .5)}
 		end
 		things_in_list[#things_in_list+1]= {
 			name= "Taps and holds", number= pro:GetTotalTapsAndHolds() }
