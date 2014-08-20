@@ -528,7 +528,7 @@ function sick_wheel_item_interface:set(info)
 	self.number:settext("")
 	if info.bucket_info then
 		if self.info.is_current_group then
-			self.text:diffuse(solar_colors.blue())
+			self.text:diffuse(solar_colors.cyan())
 		else
 			self.text:diffuse(solar_colors.violet())
 		end
@@ -543,7 +543,7 @@ function sick_wheel_item_interface:set(info)
 		self.text:diffuse(solar_colors.uf_text())
 	elseif info.sort_info then
 		self.text:settext(info.sort_info.name)
-		self.text:diffuse(solar_colors.cyan())
+		self.text:diffuse(solar_colors.yellow())
 	else
 		Warn("Tried to display bad element in display bucket.")
 		rec_print_table(info)

@@ -212,10 +212,9 @@ option_set_general_mt= {
 				self:set_status()
 			end,
 		set_status= function() end, -- This is meant to be overridden.
-		can_exit=
-			function(self)
-				return self.info_set[self.cursor_pos].text == up_element().text
-			end,
+		can_exit= function(self)
+			return self.cursor_pos == 1
+		end,
 		get_cursor_element=
 			function(self)
 				if self.display then
@@ -284,13 +283,17 @@ options_sets= {}
 --     args= {} -- extra args for the initialize function of the metatable
 options_sets.menu= {
 	__index= {
-		initialize= function(self, player_number, initializer_args, no_up)
+		initialize= function(self, player_number, initializer_args, no_up, up_text)
 			self.menu_data= initializer_args
 			self.name= initializer_args.name
 			self.info_set= {}
 			self.no_up= no_up
 			if not no_up then
-				self.info_set[#self.info_set+1]= up_element()
+				if up_text then
+					self.info_set[#self.info_set+1]= {text= up_text}
+				else
+					self.info_set[#self.info_set+1]= up_element()
+				end
 			end
 			self.cursor_pos= 1
 			for i, d in ipairs(initializer_args) do
@@ -725,7 +728,11 @@ menu_stack_mt= {
 			local nos= setmetatable({}, new_set_meta)
 			oss[#oss+1]= nos
 			nos:set_player_info(self.player_number)
-			nos:initialize(self.player_number, new_set_initializer_args)
+			if #oss == 1 then
+				nos:initialize(self.player_number, new_set_initializer_args, false, "Exit Menu")
+			else
+				nos:initialize(self.player_number, new_set_initializer_args)
+			end
 			nos:set_display(self.displays[next_display])
 			next_display= next_display + 1
 			if self.displays[next_display] then

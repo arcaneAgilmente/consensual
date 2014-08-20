@@ -1031,7 +1031,7 @@ return Def.ActorFrame {
 										local song= gamestate_get_curr_song()
 										if song then
 											local lenstr= secs_to_str(song_get_length(song))
-											self:settext(lenstr .. " long")
+											self:settext("song length: " .. lenstr)
 											self:visible(true)
 										else
 											self:visible(false)

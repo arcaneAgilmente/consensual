@@ -1170,10 +1170,10 @@ end
 
 local base_options= {
 	{ name= "Speed", meta= options_sets.speed},
-	{ name= "Playback Options", meta= options_sets.menu, args= playback_options},
-	{ name= "Steps", meta= options_sets.steps_list},
 	{ name= "Perspective", meta= options_sets.menu,
 		args= make_menu_of_float_set(perspective_mods) },
+	{ name= "Playback Options", meta= options_sets.menu, args= playback_options},
+	{ name= "Steps", meta= options_sets.steps_list},
 	{ name= "Decorations", meta= options_sets.menu, args= decorations},
 	{ name= "Special", meta= options_sets.menu, args= special},
 	{ name= "Profile Options", meta= options_sets.menu, args= profile_options},
@@ -1213,6 +1213,9 @@ local function input(event)
 				if all_on_exit then
 					SCREENMAN:GetTopScreen():queuecommand("ExitOptions")
 				end
+			elseif code == "Back" then
+				SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
+				SCREENMAN:SetNewScreen("ScreenConsSelectMusic")
 			end
 		end
 	end
