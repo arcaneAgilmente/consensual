@@ -254,14 +254,19 @@ local course_sort_factors= {
 
 local favor_sort_factors= {}
 local tag_sort_factors= {}
-for i, slot in ipairs{
-	"ProfileSlot_Machine", "ProfileSlot_Player1", "ProfileSlot_Player2"} do
-	favor_sort_factors[#favor_sort_factors+1]= {
-		name= slot:sub(13) .. " Favor", get_names= favor_wrapper(slot),
-		can_join= noop_false}
-	tag_sort_factors[#tag_sort_factors+1]= {
-		name= slot:sub(13) .. " Tag", get_names= tag_wrapper(slot),
-		can_join= noop_false}
+local function make_favor_tag_sorts()
+	local slots= {"ProfileSlot_Machine"}
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		slots[#slots+1]= pn_to_profile_slot(pn)
+	end
+	for i, slot in ipairs(slots) do
+		favor_sort_factors[#favor_sort_factors+1]= {
+			name= slot:sub(13) .. " Favor", get_names= favor_wrapper(slot),
+			can_join= noop_false}
+		tag_sort_factors[#tag_sort_factors+1]= {
+			name= slot:sub(13) .. " Tag", get_names= tag_wrapper(slot),
+			can_join= noop_false}
+	end
 end
 
 
@@ -348,6 +353,7 @@ local function make_rival_bucket()
 end
 
 local global_sort_info= {}
+local rival_bucket= {}
 
 local function gen_test_sorts(contents)
 	local factor_list= {}
@@ -369,7 +375,7 @@ function gen_name_only_test_data()
 	generate_song_sort_test_data({group_sort, title_sort})
 end
 
-local function set_course_mode_sort_info()
+local function get_course_mode_sort_info()
 	local contents= {}
 	for i, sf in ipairs(shared_sort_factors) do
 		contents[#contents+1]= sf
@@ -381,11 +387,11 @@ local function set_course_mode_sort_info()
 	contents[#contents+1]= make_bucket_from_factors("Favor",favor_sort_factors)
 	contents[#contents+1]= make_bucket_from_factors("Tag",tag_sort_factors)
 	contents[#contents+1]= score_factor_bucket
-	contents[#contents+1]= make_rival_bucket()
-	global_sort_info= contents
+	contents[#contents+1]= rival_bucket
+	return contents
 end
 
-local function set_song_mode_sort_info()
+local function get_song_mode_sort_info()
 	local contents= {}
 	for i, sf in ipairs(shared_sort_factors) do
 		contents[#contents+1]= sf
@@ -397,9 +403,18 @@ local function set_song_mode_sort_info()
 	contents[#contents+1]= make_bucket_from_factors("Favor",favor_sort_factors)
 	contents[#contents+1]= make_bucket_from_factors("Tag",tag_sort_factors)
 	contents[#contents+1]= score_factor_bucket
-	contents[#contents+1]= make_rival_bucket()
+	contents[#contents+1]= rival_bucket
 --	gen_test_sorts(contents)
-	global_sort_info= contents
+	return contents
+end
+
+local function get_sort_info()
+	make_favor_tag_sorts()
+	if GAMESTATE:IsCourseMode() then
+		return get_course_mode_sort_info()
+	else
+		return get_song_mode_sort_info()
+	end
 end
 
 local bucket_man_interface= {}
@@ -410,12 +425,13 @@ function bucket_man_interface:initialize()
 	if GAMESTATE:IsCourseMode() then
 		self.song_set= SONGMAN:GetAllCourses(false) -- fuck autogen courses
 		set_course_mode()
-		set_course_mode_sort_info()
+		global_sort_info= get_course_mode_sort_info()
 	else
 		self.song_set= SONGMAN:GetAllSongs()
 		set_song_mode()
-		set_song_mode_sort_info()
+		global_sort_info= get_song_mode_sort_info()
 	end
+	rival_bucket= make_rival_bucket()
 	self:style_filter_songs()
 end
 
@@ -539,8 +555,13 @@ function sick_wheel_item_interface:set(info)
 		self.text:diffuse(solar_colors.red())
 --		self.number:settext(#info.candidate_set) -- sticks out too much.
 	elseif info.song_info then
-		self.text:settext(song_get_main_title(info.song_info))
-		self.text:diffuse(solar_colors.uf_text())
+		if info.is_prev then
+			self.text:settext(info.disp_name)
+		self.text:diffuse(solar_colors.f_text())
+		else
+			self.text:settext(song_get_main_title(info.song_info))
+			self.text:diffuse(solar_colors.uf_text())
+		end
 	elseif info.sort_info then
 		self.text:settext(info.sort_info.name)
 		self.text:diffuse(solar_colors.yellow())
@@ -759,6 +780,12 @@ function music_whale_interface:add_special_items_to_bucket(bucket)
 			-- For the case where we are at the top level.
 			last_el= nil
 		end
+		if prev_picked_song then
+			bucket[#bucket+1]= {
+				name= "Previous Song",
+				disp_name= get_string_wrapper("MusicWheel", "PrevSong"),
+				is_prev= true, song_info= prev_picked_song}
+		end
 		self:add_randoms(bucket)
 		bucket[#bucket+1]= last_el
 		--Trace("Added special items.")
@@ -769,7 +796,7 @@ function music_whale_interface:remove_special_items_from_bucket(bucket)
 	local i= 1
 	while i <= #bucket and bucket[i] do
 		local v= bucket[i]
-		if v.is_random then
+		if v.is_random or v.is_prev then
 			table.remove(bucket, i)
 		else
 			i= i + 1
@@ -927,7 +954,7 @@ function music_whale_interface:interact_with_element()
 			cursor_song= cur_song,
 			alt_cursor_songs= alt_cursor_songs
 		}
-		if curr_element.is_random then
+		if curr_element.is_random or curr_element.is_prev then
 			music_whale_state.on_random= curr_element.name
 			music_whale_state.depth_to_random= #self.disp_stack
 			--Trace("music_whale_state.depth_to_random: " .. music_whale_state.depth_to_random)
@@ -944,6 +971,6 @@ function music_whale_interface:show_sort_list()
 		self.current_sort_name= "Sort Menu"
 		self.cursor_song= gamestate_get_curr_song()
 		self:push_onto_disp_stack()
-		self:set_display_bucket(global_sort_info, 1)
+		self:set_display_bucket(get_sort_info(), 1)
 	end
 end

@@ -411,7 +411,7 @@ frame_helper_mt= {
 		end,
 		unhide= function(self)
 			self.container:visible(true)
-		end
+		end,
 }}
 
 function credit_reporter(x, y, show_credits)

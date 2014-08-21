@@ -212,7 +212,6 @@ local numerical_score_feedback_mt= {
 			y= y or 0
 			local flags= cons_players[pn].flags.gameplay
 			self.fmat= "%.2f%%"
-			Trace("numerical_score_feedback_mt creating")
 			local args= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
@@ -221,8 +220,10 @@ local numerical_score_feedback_mt= {
 				end,
 				OnCommand= function(subself)
 					local mdp= STATSMAN:GetCurStageStats():GetPlayerStageStats(self.player_number):GetPossibleDancePoints()
-					Trace("numerical_score_feedback_mt mdp: " .. mdp)
 					if self.pct then
+						if bg_is_bright then
+							self.pct:strokecolor(solar_colors.bg())
+						end
 						self.precision= math.max(
 							2, math.ceil(math.log(mdp) / math.log(10))-2)
 						self.fmat= "%." .. self.precision .. "f%%"
@@ -260,6 +261,11 @@ local numerical_score_feedback_mt= {
 						self.curr_dp= subself:GetChild("curr_dp")
 						self.slash_dp= subself:GetChild("slash_dp")
 						self.max_dp= subself:GetChild("max_dp")
+						if bg_is_bright then
+							self.curr_dp:strokecolor(solar_colors.bg())
+							self.slash_dp:strokecolor(solar_colors.bg())
+							self.max_dp:strokecolor(solar_colors.bg())
+						end
 					end,
 					normal_text(
 						"curr_dp", "0", solar_colors.f_text(), -10, 0, 1, right),

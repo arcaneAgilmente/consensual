@@ -867,7 +867,7 @@ function profile_report_interface:create_actors(player_number)
 			things_in_list[#things_in_list+1]= {
 				name= "Experience Level", number= level }
 			things_in_list[#things_in_list+1]= {
-				name= "Experience Taps", number= taps }
+				name= "Experience", number= taps }
 			things_in_list[#things_in_list+1]= {
 				name= "Taps to next level", number= calc_taps - taps,
 				color= color_percent_above(1-((calc_taps-taps) / level_diff), .5)}
@@ -1170,10 +1170,11 @@ end
 local function filter_input_for_menus(pn, code, press)
 	local handled, close= false, false
 	local spid= special_menu_states[pn]
+	if code == "MenuLeft" or code == "MenuRight"then
+		keys_down[code]= down_map[press]
+	end
 	if spid == 0 then
-		if code == "MenuLeft" or code == "MenuRight"then
-			keys_down[code]= down_map[press]
-		elseif code == "Select" then
+		if code == "Select" then
 			if press == "InputEventType_FirstPress" then
 				select_press_times[pn]= GetTimeSinceStart()
 			elseif press == "InputEventType_Release" then
@@ -1513,7 +1514,7 @@ local function input(event)
 	local pn= event.PlayerNumber
 	local code= event.GameButton
 	local press= event.type
-	if not score_data_viewing_indices[pn] then return end
+	if not pn or not GAMESTATE:IsPlayerEnabled(pn) then return end
 	if filter_input_for_menus(pn, code, press) then return end
 	if press ~= "InputEventType_Release" then return end
 	local view_changers= {MenuLeft= true, MenuRight= true}
@@ -1528,9 +1529,13 @@ local function input(event)
 		if showing_profile_on_other_side or not cons_players[pn].flags.eval.profile_data then
 			view_min= -1
 		end
+		local view_max= #score_datas[pn]
+		if not cons_players[pn].flags.eval.style_pad then
+			view_max= -1
+		end
 		if score_data_viewing_indices[pn] < view_min then
-			score_data_viewing_indices[pn]= #score_datas[pn]
-		elseif score_data_viewing_indices[pn] > #score_datas[pn] then
+			score_data_viewing_indices[pn]= view_max
+		elseif score_data_viewing_indices[pn] > view_max then
 			score_data_viewing_indices[pn]= view_min
 		end
 		toggle_visible_indicator(pn, dance_pads[pn], score_data_viewing_indices[pn])

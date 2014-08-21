@@ -5,9 +5,9 @@ SOUND:StopMusic()
 local profile_list= {}
 for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do
 	local profile= PROFILEMAN:GetLocalProfileFromIndex(p)
+	local id= PROFILEMAN:GetLocalProfileIDFromIndex(p)
 	profile_list[#profile_list+1]= {
-		-- Profile index 0 is apparently reserved for the memory card.
-		name= profile:GetDisplayName(), index= p + 1}
+		name= profile:GetDisplayName(), id= id}
 end
 
 load_favorites("ProfileSlot_Machine")
@@ -19,7 +19,12 @@ local frame_helper= setmetatable({}, frame_helper_mt)
 
 local num_players= 1
 local playmode= "regular"
-local profile_choices= {}
+local function get_prof_choice(pn)
+	return PREFSMAN:GetPreference("DefaultLocalProfileID" .. ToEnumShortString(pn))
+end
+local function set_prof_choice(pn, id)
+	PREFSMAN:SetPreference("DefaultLocalProfileID" .. ToEnumShortString(pn), id)
+end
 
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
@@ -64,56 +69,55 @@ local playmode_menu_init= {
 	name= "Playmode", eles= {
 		{ name= "Regular", init= check_play_regular, set= set_play_regular,
 			unset= noop_false},
-		{ name= "Nonstop", init= check_play_nonstop, set= set_play_nonstop,
-			unset= noop_false},
+--		{ name= "Nonstop", init= check_play_nonstop, set= set_play_nonstop,
+		--			unset= noop_false},
 }}
 local playmode_menu= setmetatable({}, options_sets.mutually_exclusive_special_functions)
 playmode_menu:initialize(nil, playmode_menu_init)
 
 options_sets.profile_menu= {
 	__index= {
-		initialize=
-			function(self, player_number)
-				self.name= ToEnumShortString(player_number) .. " Profile"
-				self.cursor_pos= 1
-				self.player_number= player_number
-				self.info_set= {up_element()}
-				if PREFSMAN:GetPreference("MemoryCards") then
-					local state= MEMCARDMAN:GetCardState(player_number)
-					Trace("Memcard " .. player_number .. " state: " .. state)
-					if state == "MemoryCardState_ready" then
-						self.info_set[#self.info_set+1]= {text= "Card", index= 0}
-					end
+		initialize= function(self, player_number)
+			self.name= ToEnumShortString(player_number) .. " Profile"
+			self.cursor_pos= 1
+			self.player_number= player_number
+			self.info_set= {up_element()}
+			local has_card= false
+			if PREFSMAN:GetPreference("MemoryCards") then
+				local state= MEMCARDMAN:GetCardState(player_number)
+				Trace("Memcard " .. player_number .. " state: " .. state)
+				if state == "MemoryCardState_ready" then
+					self.info_set[#self.info_set+1]= {text= "Card", underline= true}
+					has_card= true
 				end
+			end
+			if not has_card then
 				for i, pro in ipairs(profile_list) do
-					self.info_set[#self.info_set+1]= {text= pro.name, index= pro.index}
-					if i == profile_choices[player_number] then
+					self.info_set[#self.info_set+1]= {text= pro.name, id= pro.id}
+					if pro.id == get_prof_choice(player_number) then
 						self.info_set[#self.info_set].underline= true
 					end
 				end
-			end,
-		set_status=
-			function(self)
-				self.display:set_heading(self.name)
-				if profile_choices[player_number] then
-					self.display:set_display(profile_choices[self.player_number].name)
-				end
-			end,
-		interpret_start=
-			function(self)
-				for i, info in ipairs(self.info_set) do
-					if info.underline then
-						info.underline= false
-						self.display:set_element_info(i, info)
-					end
-				end
-				local prinfo= self.info_set[self.cursor_pos]
-				profile_choices[self.player_number]= {
-					name= prinfo.text, index= prinfo.index}
-				self.info_set[self.cursor_pos].underline= true
-				self.display:set_element_info(self.cursor_pos,
-																			self.info_set[self.cursor_pos])
 			end
+		end,
+		set_status= function(self)
+			self.display:set_heading(self.name)
+		end,
+		interpret_start= function(self)
+			for i, info in ipairs(self.info_set) do
+				if info.underline then
+					info.underline= false
+					self.display:set_element_info(i, info)
+				end
+			end
+			local prinfo= self.info_set[self.cursor_pos]
+			if prinfo.id then
+				set_prof_choice(self.player_number, prinfo.id)
+			end
+			self.info_set[self.cursor_pos].underline= true
+			self.display:set_element_info(
+				self.cursor_pos, self.info_set[self.cursor_pos])
+		end
 }}
 local profile_menus= {
 	[PLAYER_1]= setmetatable({}, options_sets.profile_menu),
@@ -227,44 +231,46 @@ local function find_actors(container)
 	end
 end
 
-local function set_profile_index_for_player(pn)
-	local proc= profile_choices[pn]
-	if proc then
-		Trace("Setting profile for " .. pn .. " to " .. proc.index)
-		if not SCREENMAN:GetTopScreen():SetProfileIndex(pn, proc.index) then
-			Trace("Could not set profile index.")
-			Trace("IsHumanPlayer: " .. tostring(GAMESTATE:IsHumanPlayer(pn)))
-			Trace("IsJoined: " .. tostring(GAMESTATE:IsSideJoined(pn)))
+local fail_message_mt= {
+	__index= {
+		create_actors= function(self, name, x, y)
+			self.name= name
+			self.frame= setmetatable({}, frame_helper_mt)
+			return Def.ActorFrame{
+				Name= name, InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					self.text= subself:GetChild("text")
+					self.container:diffusealpha(0)
+				end,
+				self.frame:create_actors("frame", 1, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0),
+				normal_text("text", "")
+			}
+		end,
+		show_message= function(self, message)
+			self.text:settext(message)
+			self.frame:resize_to_outline(self.text, 12)
+			self.container:stoptweening()
+			self.container:linear(.125)
+			self.container:diffusealpha(1)
+			self.container:sleep(2)
+			self.container:linear(.25)
+			self.container:diffusealpha(0)
 		end
-	else
-		Trace("No proc for " .. pn)
-		if PREFSMAN:GetPreference("MemoryCards") == 1 then
-			local state= MEMCARDMAN:GetCardState(player_number)
-			Trace("Memcard " .. player_number .. " state: " .. state)
-			if MEMCARDMAN:GetCardState(player_number) == "MemoryCardState_ready" then
-				if not SCREENMAN:GetTopScreen():SetProfileIndex(pn, 0) then
-					Trace("Could not set memcard profile index.")
-					Trace("IsHumanPlayer: " .. tostring(GAMESTATE:IsHumanPlayer(pn)))
-					Trace("IsJoined: " .. tostring(GAMESTATE:IsSideJoined(pn)))
-				end
-			end
-		end
-	end
-end
+}}
+
+local fail_message= setmetatable({}, fail_message_mt)
 
 -- Players have to be joined before Screen:Finish can be called, but Screen:Finish can fail for various reasons, and joining uses up credits.
 -- So this function exists to check the things that can cause Screen:Finish to fail, so a failed attempt doesn't use up credits.
 local function play_will_succeed(pns)
 	local credits, coins, needed= get_coin_info()
 	if needed > 0 and credits < #pns then
+		local coins_needed= (#pns * needed) - (coins + (needed * credits))
+		local coins_text= "coins"
+		if coins_needed == 1 then coins_text= "coin" end
+		fail_message:show_message("Insert " .. coins_needed .. " " .. coins_text)
 		return false
-	end
-	if #profile_list > 0 then
-		for i, pn in ipairs(pns) do
-			if not profile_choices[pn] then
-				return false
-			end
-		end
 	end
 	return true
 end
@@ -281,31 +287,23 @@ local function interpret_code(pn, code)
 	current_menu.cursor_pos= cursor_poses[pn]
 	local handled, extra= current_menu:interpret_code(code)
 	cursor_poses[pn]= current_menu.cursor_pos
-	local function maybe_finalize_and_exit(pns)
-		if SCREENMAN:GetTopScreen():Finish() then
-			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
-			for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
-				local prof= PROFILEMAN:GetProfile(rpn)
-				if prof then
-					if prof ~= PROFILEMAN:GetMachineProfile() then
-						cons_players[rpn]:set_ops_from_profile(prof)
-						load_favorites(pn_to_profile_slot(rpn))
-						load_tags(pn_to_profile_slot(rpn))
-					end
+	local function finalize_and_exit(pns)
+		SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+		GAMESTATE:LoadProfiles()
+		for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
+			local prof= PROFILEMAN:GetProfile(rpn)
+			if prof then
+				if prof ~= PROFILEMAN:GetMachineProfile() then
+					cons_players[rpn]:set_ops_from_profile(prof)
+					load_favorites(pn_to_profile_slot(rpn))
+					load_tags(pn_to_profile_slot(rpn))
 				end
 			end
-			set_time_remaining_to_default()
-			bucket_man:initialize()
-		else
-			local ts= SCREENMAN:GetTopScreen()
-			Trace("Finish returned false.")
-			Trace("Players enabled: " .. GAMESTATE:GetNumPlayersEnabled())
-			Trace("Pindex 1: " .. ts:GetProfileIndex(PLAYER_1))
-			Trace("Pindex 2: " .. ts:GetProfileIndex(PLAYER_2))
-			Trace("Num local profiles: " .. PROFILEMAN:GetNumLocalProfiles())
-			SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
-			GAMESTATE:Reset()
 		end
+		set_time_remaining_to_default()
+		prev_picked_song= nil
+		bucket_man:initialize()
+		SCREENMAN:SetNewScreen("ScreenConsSelectMusic")
 	end
 	--Trace("(" .. tostring(handled) .. ") (" .. tostring(extra) .. ")")
 	if handled then
@@ -318,10 +316,9 @@ local function interpret_code(pn, code)
 					if num_players == 1 then
 						--Trace("Single player: " .. pn)
 						if play_will_succeed{pn} and cons_join_player(pn) then
-							GAMESTATE:ApplyGameCommand("style,single", pn)
-							GAMESTATE:ApplyGameCommand("playmode,"..playmode, pn)
-							set_profile_index_for_player(pn)
-							maybe_finalize_and_exit{pn}
+							GAMESTATE:ApplyGameCommand("style,single")
+							GAMESTATE:ApplyGameCommand("playmode,"..playmode)
+							finalize_and_exit{pn}
 						else
 							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
 							--Trace("Failed to join player.")
@@ -334,17 +331,17 @@ local function interpret_code(pn, code)
 						if play_will_succeed{PLAYER_1, PLAYER_2} then
 							for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
 								cons_join_player(rpn)
-								GAMESTATE:ApplyGameCommand("style,versus")
-								GAMESTATE:ApplyGameCommand("playmode,"..playmode, rpn)
-								set_profile_index_for_player(rpn)
 							end
-							maybe_finalize_and_exit{PLAYER_1, PLAYER_2}
+							GAMESTATE:ApplyGameCommand("style,versus")
+							GAMESTATE:ApplyGameCommand("playmode,"..playmode)
+							finalize_and_exit{PLAYER_1, PLAYER_2}
 						else
 							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
 						end
 					end
 				else
-					--Trace("Different choice states.")
+					fail_message:show_message(
+						"Player " .. ToEnumShortString(other_player[pn]) .. " is unready.")
 					SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
 				end
 			else
@@ -495,6 +492,7 @@ local args= {
 		normal_text("groups", num_groups .. " Groups", solar_colors.uf_text(), 0, 36),
 	},
 	credit_reporter(SCREEN_CENTER_X, SCREEN_TOP+60, true),
+	fail_message:create_actors("why", SCREEN_CENTER_X, SCREEN_CENTER_Y),
 }
 
 args[#args+1]= Def.LogDisplay{
