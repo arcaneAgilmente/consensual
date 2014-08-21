@@ -88,53 +88,72 @@ end
 local steps_display_interface= {}
 local steps_display_interface_mt= { __index= steps_display_interface }
 
+local std_item_w= 56
+local std_item_h= 32
 local std_items_mt= {
-	__index=
-		{
+	__index= {
 		create_actors= function(self, name)
 			self.name= name
 			self.tani= setmetatable({}, text_and_number_interface_mt)
-			return self.tani:create_actors(
-				name, {
-					tx= -4, tz= .5, tc= solar_colors.uf_text(),
-					text_section= "",
-					nx= 4, nz= .5, nc= solar_colors.f_text()})
+			return Def.ActorFrame{
+				Name= name, InitCommand= function(subself)
+					self.container= subself
+					self.bg= subself:GetChild("bg")
+					self.tani.number:strokecolor(solar_colors.bg())
+					self.tani.text:strokecolor(solar_colors.bg())
+				end,
+				Def.Quad{
+					Name= "bg", InitCommand= cmd(setsize, std_item_w, std_item_h)
+				},
+				self.tani:create_actors(
+					"text", {
+						tx= -8, tz= 1, tc= solar_colors.uf_text(),
+						text_section= "",
+						nx= 24, nz= 1, na= right, nc= solar_colors.f_text()})
+			}
 		end,
-		transform=
-			function(self, item_index, num_items, is_focus)
-				local changing_edge=
-					((self.prev_index == 1 and item_index == num_items) or
-				 (self.prev_index == num_items and item_index == 1))
-				if changing_edge then
-					self.tani:hide()
-				end
-				self.tani:move_to(0, (item_index - 1) * 12, .1)
-				self.tani:unhide()
-				self.prev_index= item_index
-			end,
-		set=
-			function(self, info)
-				self.info= info
-				if info then
-					self.tani:set_text(steps_to_string(info))
-					self.tani:set_number(info:GetMeter())
-					self.tani:unhide()
-				else
-					self.tani:set_text("")
-					self.tani:set_number("")
-				end
+		transform= function(self, item_index, num_items, is_focus)
+			local changing_edge=
+				((self.prev_index == 1 and item_index == num_items) or
+						(self.prev_index == num_items and item_index == 1))
+			if changing_edge then
+				self.bg:diffusealpha(0)
+				self.tani:hide()
 			end
-	}
-}
+			local nx= (item_index - 1) * (std_item_w + 6)
+			self.container:stoptweening()
+			self.container:linear(.1)
+			self.container:x(nx)
+			self.tani:unhide()
+			self.bg:diffusealpha(1)
+			self.prev_index= item_index
+		end,
+		set= function(self, info)
+			self.info= info
+			if info then
+				self.tani:set_text(
+					get_string_wrapper("DifficultyNames", self.info:GetStepsType()))
+				self.tani:set_number(info:GetMeter())
+				width_limit_text(self.tani.number, 30)
+				self.tani:unhide()
+				self.bg:diffuse(difficulty_colors[info:GetDifficulty()] or
+													solar_colors.violet())
+				self.bg:diffusealpha(1)
+				self.container:visible(true)
+			else
+				self.container:visible(false)
+			end
+		end
+}}
 
-local steps_display_elements= 5
+local steps_display_elements= 6
 function steps_display_interface:create_actors(name)
 	self.name= name
 	local args= {
 		Name= name,
 		InitCommand= function(subself)
 			self.container= subself
-			subself:xy(banner_x, title_y + 66)
+			subself:xy(4+(std_item_w/2), 195)
 			for k, v in pairs(self.cursors) do
 				if not GAMESTATE:IsPlayerEnabled(k) then
 					v:hide()
@@ -147,7 +166,7 @@ function steps_display_interface:create_actors(name)
 		local new_curs= {}
 		setmetatable(new_curs, amv_cursor_mt)
 		args[#args+1]= new_curs:create_actors(
-			v .. "curs", -20, 0, 80, 12, .75, solar_colors[v]())
+			v .. "curs", 0, 0, std_item_w+4, std_item_h+4, 2, solar_colors[v]())
 		cursors[v]= new_curs
 	end
 	self.cursors= cursors
@@ -189,17 +208,14 @@ function steps_display_interface:update_cursors()
 			tot= tot + p
 			cnt= cnt + 1
 		end
-		local average= tot / cnt
-		self.sick_wheel:scroll_to_pos(average+1)
+		self.sick_wheel:scroll_to_pos((tot / cnt)+1)
 		for k, cursor in pairs(self.cursors) do
 			if cursor_poses[k] then
-				local real_pos= cursor_poses[k] - self.sick_wheel.info_pos
 				local item= self.sick_wheel:find_item_by_info(player_steps[k])[1]
 				if item then
-					local tot, tw, nw= item.tani:get_widths()
-					local cx= nw - (tot / 2)
-					local cy= item.tani.y
-					cursor:refit(cx, cy, tot + 2, nil)
+					local cx= item.container:GetDestX()
+					local cy= item.container:GetDestY()
+					cursor:refit(cx, cy, nil, nil)
 					cursor:unhide()
 				else
 					cursor:hide()
@@ -208,9 +224,16 @@ function steps_display_interface:update_cursors()
 				cursor:hide()
 			end
 		end
-		if cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] and #enabled_players > 1 then
-			self.cursors[PLAYER_1]:left_half()
-			self.cursors[PLAYER_2]:right_half()
+		if #enabled_players > 1 then
+			if cursor_poses[PLAYER_1] and cursor_poses[PLAYER_2] then
+				if cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] then
+					self.cursors[PLAYER_1]:left_half()
+					self.cursors[PLAYER_2]:right_half()
+				else
+					self.cursors[PLAYER_1]:un_half()
+					self.cursors[PLAYER_2]:un_half()
+				end
+			end
 		else
 			self.cursors[PLAYER_1]:un_half()
 			self.cursors[PLAYER_2]:un_half()
@@ -658,13 +681,14 @@ local function handle_triggered_codes(pn, code, button, press)
 			if false then -- crashes
 				Trace("Master player: " .. GAMESTATE:GetMasterPlayerNumber())
 				Trace("Unjoining player: " .. pn)
+				GAMESTATE:ApplyGameCommand("style,double")
 				GAMESTATE:UnjoinPlayer(other_player[pn])
 				Trace("NPE: " .. GAMESTATE:GetNumPlayersEnabled())
 				lua.Flush()
-				GAMESTATE:ApplyGameCommand("style,single", pn)
+				GAMESTATE:ApplyGameCommand("style,single")
 				Trace("Master player after unjoin: " .. GAMESTATE:GetMasterPlayerNumber())
 				steps_display:update_steps_set()
-				update_pain(pn)
+				steps_display:update_cursors()
 			end
 		end
 		if cons_players[pn] and cons_players[pn][v] then
@@ -761,18 +785,19 @@ local function input(event)
 							GAMESTATE:AddStageToPlayer(pn)
 						end
 					end
+					GAMESTATE:LoadProfiles()
+					local prof= PROFILEMAN:GetProfile(pn)
+					if prof then
+						if prof ~= PROFILEMAN:GetMachineProfile() then
+							cons_players[pn]:set_ops_from_profile(prof)
+							load_favorites(pn_to_profile_slot(pn))
+							load_tags(pn_to_profile_slot(pn))
+						end
+					end
 					SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
-					cons_players[pn]:clear_init(pn)
 					pain_displays[pn]:fetch_config()
-					local cpm= GAMESTATE:GetPlayMode()
-					GAMESTATE:ApplyGameCommand(
-						"playmode," .. playmode_to_command[cpm], pn)
 					GAMESTATE:ApplyGameCommand("style,versus")
 					music_wheel:resort_for_new_style()
-					steps_display:update_steps_set()
-					-- Loading the profile for the joining player is not
-					-- possible without exposing several PROFILEMAN and GAMESTATE
-					-- functions.
 					set_closest_steps_to_preferred(pn)
 				end
 			end
@@ -874,9 +899,9 @@ return Def.ActorFrame {
 			tag_menus[pn]:set_display(special_menu_displays[pn])
 			special_menu_displays[pn]:set_underline_color(solar_colors[pn]())
 			special_menu_displays[pn]:hide()
+			update_pain(pn)
 		end
 		music_wheel:find_actors(self:GetChild(music_wheel.name))
-		update_player_cursors()
 		-- Give everybody enough tokens to play, as a way of disabling the stage system.
 		for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 			while GAMESTATE:GetNumStagesLeft(pn) < 3 do
@@ -920,9 +945,9 @@ return Def.ActorFrame {
 		CurrentTrailP1ChangedMessageCommand=cmd(playcommand,"Set"),
 		CurrentTrailP2ChangedMessageCommand=cmd(playcommand,"Set"),
 		SCSetCommand= function(self)
-										steps_display:update_steps_set()
-										self:playcommand("Set")
-									end,
+			steps_display:update_steps_set()
+			self:playcommand("Set")
+		end,
 		SetCommand= function(self)
 			update_pain(PLAYER_1)
 			update_pain(PLAYER_2)
@@ -942,59 +967,51 @@ return Def.ActorFrame {
 		"P2_menu", rpane_x, pane_y + pane_yoff, max_pain_rows, pane_w - 16,
 		pane_text_height, pane_text_zoom, true, true),
 	Def.Sprite {
-		Name="CDTitle",
-		InitCommand=cmd(x,280;y,SCREEN_TOP+180),
+		Name="CDTitle", InitCommand=cmd(x,346;y,146),
 		OnCommand= cmd(playcommand, "Set"),
 		CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
-		SetCommand=
-			function(self)
-				-- Courses can't have CDTitles, so gamestate_get_curr_song isn't used.
-				local song= GAMESTATE:GetCurrentSong()
-				if song and song:HasCDTitle()then
-					self:LoadBanner(song:GetCDTitlePath())
-					self:visible(true)
-					-- Jousway suggests fucking people with fucking huge cdtitles.
-					local height= self:GetHeight()
-					local width= self:GetWidth()
-					local max_size= 70
-					self:zoom(max_size / math.max(max_size, math.max(height, width)))
-				else
-					self:visible(false)
-				end
+		SetCommand= function(self)
+			-- Courses can't have CDTitles, so gamestate_get_curr_song isn't used.
+			local song= GAMESTATE:GetCurrentSong()
+			if song and song:HasCDTitle()then
+				self:LoadBanner(song:GetCDTitlePath())
+				self:visible(true)
+				-- Jousway suggests fucking people with fucking huge cdtitles.
+				scale_to_fit(self, 48, 48)
+			else
+				self:visible(false)
 			end
+		end
 	},
 	Def.Sprite {
-		Name="Banner",
-		InitCommand=cmd(xy, banner_x, banner_y),
+		Name="Banner", InitCommand=cmd(xy, banner_x, banner_y),
 		CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
 		CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
-		SetCommand=
-			function(self)
-				local song= gamestate_get_curr_song()
-				if song and song:HasBanner()then
-					self:LoadBanner(song:GetBannerPath())
+		SetCommand= function(self)
+			local song= gamestate_get_curr_song()
+			if song and song:HasBanner()then
+				self:LoadBanner(song:GetBannerPath())
+				scale_to_fit(self, banner_w, banner_h)
+				self:visible(true)
+			else
+				self:visible(false)
+			end
+		end,
+		current_group_changedMessageCommand= function(self, param)
+			local name= param[1]
+			if songman_does_group_exist(name) then
+				local path= songman_get_group_banner_path(name)
+				if path and path ~= "" then
+					self:LoadBanner(path)
 					scale_to_fit(self, banner_w, banner_h)
 					self:visible(true)
 				else
 					self:visible(false)
 				end
-			end,
-		current_group_changedMessageCommand=
-			function(self, param)
-				local name= param[1]
-				if songman_does_group_exist(name) then
-					local path= songman_get_group_banner_path(name)
-					if path and path ~= "" then
-						self:LoadBanner(path)
-						scale_to_fit(self, banner_w, banner_h)
-						self:visible(true)
-					else
-						self:visible(false)
-					end
-				else
-					self:visible(false)
-				end
+			else
+				self:visible(false)
 			end
+		end
 	},
 	normal_text("SongName", "", solar_colors.f_text(),
 							title_x, title_y, 1, left,

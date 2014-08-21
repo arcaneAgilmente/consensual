@@ -132,6 +132,15 @@ judgement_colors= {
    TapNoteScore_W1= solar_colors.cyan()
 }
 
+difficulty_colors= {
+	Difficulty_Beginner= solar_colors.violet(),
+	Difficulty_Easy= solar_colors.green(),
+	Difficulty_Medium= solar_colors.yellow(),
+	Difficulty_Hard= solar_colors.red(),
+	Difficulty_Challenge= solar_colors.cyan(),
+	Difficulty_Edit= solar_colors.blue(),
+}
+
 local percent_colors= {
 	solar_colors.green,
 	solar_colors.yellow,
