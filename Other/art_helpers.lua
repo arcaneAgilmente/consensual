@@ -243,6 +243,76 @@ function noteskin_arrow_amv(name, x, y, r, size, out_color, in_color)
 	}
 end
 
+function random_grow_circle(name, x, y, center_color, edge_color, step_time, end_radius, activate_command)
+	return Def.ActorMultiVertex{
+		Name= name,
+		[activate_command.."Command"]= function(self)
+			if type(center_color) == "function" then center_color= center_color() end
+			if type(edge_color) == "function" then edge_color= edge_color() end
+			self:xy(x, y)
+			local verts= {{{0, 0, 0}, center_color}}
+			local points= 128
+			for i= 1, points+1 do
+				verts[#verts+1]= {{0, 0, 0}, edge_color}
+			end
+			local expansion_vectors= calc_circle_verts(end_radius * .05, points, 0, 0)
+			self:SetVertices(verts)
+			self:SetDrawState{Mode= "DrawMode_Fan"}
+			for i= 1, 20 do
+				self:linear(step_time)
+				for v, vert in ipairs(verts) do
+					if v > 1 then
+						local scale= i + ((MersenneTwister.Random(1, 11) - 6) * .05)
+						vert[1][1]= expansion_vectors[v-1][1][1] * scale
+						vert[1][2]= expansion_vectors[v-1][1][2] * scale
+					end
+				end
+				-- Make the join point of the circle match.
+				verts[#verts][1][1]= verts[2][1][1]
+				verts[#verts][1][2]= verts[2][1][2]
+				self:SetVertices(verts)
+			end
+		end
+	}
+end
+
+function random_grow_column(name, x, y, bottom_color, top_color, w, step_time, end_h, activate_command)
+	return Def.ActorMultiVertex{
+		Name= name,
+		[activate_command.."Command"]= function(self)
+			if type(bottom_color) == "function" then bottom_color= bottom_color() end
+			if type(top_color) == "function" then top_color= top_color() end
+			if type(end_h) == "function" then end_h= end_h() end
+			self:xy(x, y)
+			local sx= w*-.5
+			local cols= 64
+			local xdiff= w / cols
+			local verts= {}
+			for i= 1, cols+1 do
+				local vx= sx + ((i-1) * xdiff)
+				verts[#verts+1]= {{vx, 0, 0}, bottom_color}
+				verts[#verts+1]= {{vx, 0, 0}, top_color}
+			end
+			local grow_amount= end_h / 20
+			self:SetVertices(verts)
+			self:SetDrawState{Mode= "DrawMode_Strip"}
+			for i= 1, 20 do
+				self:linear(step_time)
+				for v, vert in ipairs(verts) do
+					if v % 2 == 0 then
+						local scale= i
+						if i < 20 then
+							scale= i + ((MersenneTwister.Random(1, 11) - 6) * .2)
+						end
+						vert[1][2]= grow_amount * scale
+					end
+				end
+				self:SetVertices(verts)
+			end
+		end
+	}
+end
+
 dance_pad_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, panel_width)

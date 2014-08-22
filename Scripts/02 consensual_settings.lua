@@ -546,10 +546,17 @@ function SaveProfileCustom(profile, dir)
 		end
 	end
 	if cp then
-		profile_pain_setting:save(pn_to_profile_slot(cp.player_number))
-		profile_flag_setting:set_dirty(pn_to_profile_slot(cp.player_number))
-		profile_flag_setting:save(pn_to_profile_slot(cp.player_number))
-		player_config:set_dirty(pn_to_profile_slot(cp.player_number))
-		player_config:save(pn_to_profile_slot(cp.player_number))
+		local pn= cp.player_number
+		profile_pain_setting:save(pn_to_profile_slot(pn))
+		profile_flag_setting:set_dirty(pn_to_profile_slot(pn))
+		profile_flag_setting:save(pn_to_profile_slot(pn))
+		local config_data= player_config:get_data(pn_to_profile_slot(pn))
+		for k, v in pairs(config_data) do
+			if type(v) ~= "table" then
+				config_data[k]= cp[k]
+			end
+		end
+		player_config:set_dirty(pn_to_profile_slot(pn))
+		player_config:save(pn_to_profile_slot(pn))
 	end
 end

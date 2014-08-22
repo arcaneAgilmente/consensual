@@ -1053,6 +1053,20 @@ local unacceptable_options= {
 	}},
 }
 
+local combo_threshold_options= {}
+for i, tns in ipairs{
+	"TapNoteScore_Miss", "TapNoteScore_W5", "TapNoteScore_W4",
+	"TapNoteScore_W3", "TapNoteScore_W2", "TapNoteScore_W1"} do
+	combo_threshold_options[#combo_threshold_options+1]= {
+		name= tns, unset= noop_nil, init= function(pn)
+			return tns == cons_players[pn].combo_splash_threshold
+		end,
+		set= function(pn)
+			cons_players[pn].combo_splash_threshold= tns
+		end,
+	}
+end
+
 local special= {
 	{ name= "Distortion", meta= options_sets.special_functions,
 		args= {
@@ -1129,6 +1143,8 @@ local decorations= {
 		args= { eles= gameplay_flag_eles}},
 	{ name= "Interface Flags", meta= options_sets.special_functions,
 		args= { eles= interface_flag_eles}},
+	{ name= "Combo Splash Threshold", meta= options_sets.mutually_exclusive_special_functions,
+		args= {eles= combo_threshold_options, disallow_unset= true}},
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
 	{ name= "Sigil Size", meta= options_sets.adjustable_float,

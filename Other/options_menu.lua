@@ -348,6 +348,7 @@ options_sets.special_functions= {
 			self.player_number= player_number
 			self.element_set= extra.eles
 			self.shared_display= shared_display
+			self.disallow_unset= extra.disallow_unset
 			if shared_display then
 				self:reset_info()
 			else
@@ -393,12 +394,13 @@ options_sets.special_functions= {
 			local ele_info= self.element_set[ele_pos]
 			if ele_info then
 				local is_info= self.info_set[self.cursor_pos]
-				if is_info.underline then
+				if is_info.underline and not self.disallow_unset then
 					ele_info.unset(self.player_number)
+					is_info.underline= false
 				else
 					ele_info.set(self.player_number)
+					is_info.underline= true
 				end
-				is_info.underline= not is_info.underline
 				self.display:set_element_info(self.cursor_pos, is_info)
 				return true
 			else

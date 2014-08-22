@@ -174,8 +174,10 @@ function color_percent_above(val, above)
 	end
 end
 
+score_color_threshold= 31/32
+
 function color_for_score(score)
-	return color_percent_above(score, 31/32)
+	return color_percent_above(score, score_color_threshold)
 end
 
 function adjust_luma(from_color, adjustment)
