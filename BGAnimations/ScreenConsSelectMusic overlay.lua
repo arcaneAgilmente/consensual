@@ -261,9 +261,21 @@ local special_menu_displays= {
 	[PLAYER_2]= setmetatable({}, option_display_mt),
 }
 
+local song_props_menu_items= {
+	{name= "exit_menu"},
+	{name= "prof_favor_inc"},
+	{name= "prof_favor_dec"},
+	{name= "mach_favor_inc"},
+	{name= "mach_favor_dec"},
+	{name= "censor"},
+	{name= "edit_tags"},
+	{name= "edit_pain"},
+	{name= "end_credit"},
+}
+
 local song_props_menus= {
-	[PLAYER_1]= setmetatable({}, options_sets.song_props_menu),
-	[PLAYER_2]= setmetatable({}, options_sets.song_props_menu),
+	[PLAYER_1]= setmetatable({}, options_sets.menu),
+	[PLAYER_2]= setmetatable({}, options_sets.menu),
 }
 
 local tag_menus= {
@@ -737,20 +749,21 @@ local function input(event)
 						return
 					end
 					if press == "InputEventType_Release" then return end
-					local handled, close, edit_pain=
-						song_props_menus[pn]:interpret_code(code)
-					if close then
-						update_sort_prop()
-						if edit_pain then
-							if edit_pain == "pain" then
-								pain_displays[pn]:enter_edit_mode()
-								set_special_menu(pn, 4)
-							else
-								set_special_menu(pn, 3)
-							end
-						else
+					local handled, extra= song_props_menus[pn]:interpret_code(code)
+					Trace("Choice from menu: " .. tostring(handled) .. ", " .. tostring(extra))
+					if handled and extra then
+						rec_print_table(extra)
+						if extra.name == "exit_menu" then
+							set_special_menu(pn, 1)
+						elseif extra.name == "edit_tags" then
+							set_special_menu(pn, 3)
+						elseif extra.name == "edit_pain" then
+							pain_displays[pn]:enter_edit_mode()
+							set_special_menu(pn, 4)
+						elseif interpret_common_song_props_code(pn, extra.name) then
 							set_special_menu(pn, 1)
 						end
+						update_sort_prop()
 					end
 				end,
 				function()
@@ -893,7 +906,7 @@ return Def.ActorFrame {
 	InitCommand= function(self)
 		self:SetUpdateFunction(Update)
 		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
-			song_props_menus[pn]:initialize(pn, true)
+			song_props_menus[pn]:initialize(pn, song_props_menu_items, true)
 			song_props_menus[pn]:set_display(special_menu_displays[pn])
 			tag_menus[pn]:initialize(pn)
 			tag_menus[pn]:set_display(special_menu_displays[pn])

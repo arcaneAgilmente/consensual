@@ -286,27 +286,42 @@ options_sets.menu= {
 		initialize= function(self, player_number, initializer_args, no_up, up_text)
 			self.menu_data= initializer_args
 			self.name= initializer_args.name
-			self.info_set= {}
+			self.player_number= player_number
 			self.no_up= no_up
-			if not no_up then
-				if up_text then
-					self.info_set[#self.info_set+1]= {text= up_text}
+			self.up_text= up_text
+			self:reset_info()
+		end,
+		reset_info= function(self)
+			self.info_set= {}
+			if not self.no_up then
+				if self.up_text then
+					self.info_set[#self.info_set+1]= {text= self.up_text}
 				else
 					self.info_set[#self.info_set+1]= up_element()
 				end
 			end
 			self.cursor_pos= 1
-			for i, d in ipairs(initializer_args) do
+			for i, d in ipairs(self.menu_data) do
 				self.info_set[#self.info_set+1]= {text= d.name}
 				if d.args and type(d.args) == "table" then
 					d.args.name= d.name
 				end
+			end
+			if self.display then
+				self.display:set_info_set(self.info_set)
 			end
 		end,
 		set_status= function(self)
 			if self.display then
 				self.display:set_heading(self.name or "")
 				self.display:set_display("")
+			end
+		end,
+		update= function(self)
+			if GAMESTATE:IsPlayerEnabled(self.player_number) then
+				self.display:unhide()
+			else
+				self.display:hide()
 			end
 		end,
 		interpret_start= function(self)

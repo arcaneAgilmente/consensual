@@ -1022,10 +1022,22 @@ local special_menu_displays= {
 	[PLAYER_2]= setmetatable({}, option_display_mt),
 }
 
+local song_props_menu_items= {
+	{name= "exit_menu"},
+	{name= "prof_favor_inc"},
+	{name= "prof_favor_dec"},
+	{name= "mach_favor_inc"},
+	{name= "mach_favor_dec"},
+	{name= "censor"},
+	{name= "edit_tags"},
+	{name= "edit_flags"},
+	{name= "end_credit"},
+}
+
 local special_menus= {
 	{
-		[PLAYER_1]= setmetatable({}, options_sets.song_props_menu),
-		[PLAYER_2]= setmetatable({}, options_sets.song_props_menu),
+		[PLAYER_1]= setmetatable({}, options_sets.menu),
+		[PLAYER_2]= setmetatable({}, options_sets.menu),
 	},{
 		[PLAYER_1]= setmetatable({}, options_sets.tags_menu),
 		[PLAYER_2]= setmetatable({}, options_sets.tags_menu),
@@ -1035,8 +1047,8 @@ local special_menus= {
 }}
 local menu_args= {
 	{
-		[PLAYER_1]= {PLAYER_1, false, true},
-		[PLAYER_2]= {PLAYER_2, false, true},
+		[PLAYER_1]= {PLAYER_1, song_props_menu_items, true},
+		[PLAYER_2]= {PLAYER_2, song_props_menu_items, true},
 	},{
 		[PLAYER_1]= {PLAYER_1, false},
 		[PLAYER_2]= {PLAYER_2, false},
@@ -1204,7 +1216,7 @@ local function filter_input_for_menus(pn, code, press)
 		if code == "Select" and press == "InputEventType_Release" then
 			set_special_menu(pn, next_sp)
 		elseif press ~= "InputEventType_Release" then
-			handled, close, edit_tags= special_menus[spid][pn]:interpret_code(code)
+			handled, close= special_menus[spid][pn]:interpret_code(code)
 			if handled then
 				update_player_cursor(pn)
 				if spid == 3 then
@@ -1213,13 +1225,15 @@ local function filter_input_for_menus(pn, code, press)
 						set_visible_score_data(pn, score_data_viewing_indices[pn])
 					end
 				end
-				if edit_tags == "tags" then
-					set_special_menu(pn, 2)
-				elseif edit_tags == "flags" then
-					set_special_menu(pn, 3)
-				else
-					if close then
+				if close then
+					if type(close) == "boolean" or close.name == "exit_menu" then
 						set_special_menu(pn, 0)
+					elseif close.name == "edit_tags" then
+						set_special_menu(pn, 2)
+					elseif close.name == "edit_flags" then
+						set_special_menu(pn, 3)
+					else
+						interpret_common_song_props_code(pn, close.name)
 					end
 				end
 			end
