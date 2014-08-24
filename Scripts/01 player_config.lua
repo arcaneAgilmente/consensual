@@ -286,6 +286,16 @@ local default_config= {
 	dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false},
 	mine_effect= sorted_mine_effect_names[1],
 	combo_splash_threshold= "TapNoteScore_W3",
+	preferred_style= "single",
 }
 
 player_config= create_setting("player_config", "player_config.lua", default_config, -1)
+
+function get_preferred_style(pn)
+	return player_config:get_data(pn_to_profile_slot(pn)).preferred_style
+end
+
+function set_preferred_style(pn, value)
+	player_config:set_dirty(pn_to_profile_slot(pn))
+	player_config:get_data(pn_to_profile_slot(pn)).preferred_style= value
+end

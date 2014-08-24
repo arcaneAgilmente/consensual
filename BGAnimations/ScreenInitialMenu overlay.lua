@@ -1,6 +1,7 @@
 -- Unjoin currently joined players because stuff like going into the options and changing the theme joins players.
 GAMESTATE:Reset()
 SOUND:StopMusic()
+init_songs_of_each_style()
 
 local profile_list= {}
 for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do
@@ -18,7 +19,7 @@ local num_groups= SONGMAN:GetNumSongGroups()
 local frame_helper= setmetatable({}, frame_helper_mt)
 
 local num_players= 1
-local playmode= "regular"
+local playmode= "PlayMode_Regular"
 local function get_prof_choice(pn)
 	return PREFSMAN:GetPreference("DefaultLocalProfileID" .. ToEnumShortString(pn))
 end
@@ -53,16 +54,16 @@ local style_menu= setmetatable({}, options_sets.mutually_exclusive_special_funct
 style_menu:initialize(nil, style_menu_init)
 
 local function check_play_regular()
-	return playmode == "regular"
+	return playmode == "Playmode_Regular"
 end
 local function set_play_regular()
-	playmode= "regular"
+	playmode= "Playmode_Regular"
 end
 local function check_play_nonstop()
-	return playmode == "nonstop"
+	return playmode == "Playmode_Nonstop"
 end
 local function set_play_nonstop()
-	playmode= "regular" -- Disabled until course mode is worth supporting.
+	playmode= "Playmode_Regular" -- Disabled until course mode is worth supporting.
 end
 
 local playmode_menu_init= {
@@ -316,8 +317,8 @@ local function interpret_code(pn, code)
 					if num_players == 1 then
 						--Trace("Single player: " .. pn)
 						if play_will_succeed{pn} and cons_join_player(pn) then
-							GAMESTATE:ApplyGameCommand("style,single")
-							GAMESTATE:ApplyGameCommand("playmode,"..playmode)
+							set_current_style("single")
+							set_current_playmode(playmode)
 							finalize_and_exit{pn}
 						else
 							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
@@ -332,8 +333,8 @@ local function interpret_code(pn, code)
 							for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
 								cons_join_player(rpn)
 							end
-							GAMESTATE:ApplyGameCommand("style,versus")
-							GAMESTATE:ApplyGameCommand("playmode,"..playmode)
+							set_current_style("versus")
+							set_current_playmode(playmode)
 							finalize_and_exit{PLAYER_1, PLAYER_2}
 						else
 							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")

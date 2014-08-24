@@ -12,7 +12,7 @@ local song_prop_funcs= {
 		change_favor("ProfileSlot_Machine", gamestate_get_curr_song(), -1)
 	end,
 	censor= function()
-		censor(gamestate_get_curr_song())
+		add_to_censor_list(gamestate_get_curr_song())
 	end,
 	end_credit= function()
 		SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")

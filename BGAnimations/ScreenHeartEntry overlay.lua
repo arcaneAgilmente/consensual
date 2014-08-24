@@ -32,8 +32,8 @@ local heart_entry_mt= {
 				{-24, 0},   {0, 0},   {24, 0},
 				{-24, 24}, {0, 24},   {24, 24},
 				{-24, 48}, {0, 48},   {24, 48}}
-			self.done_text= "(_)"
-			self.back_text= "<-"
+			self.done_text= "&start;"
+			self.back_text= "&leftarrow;"
 			self.numpad_nums= {7, 8, 9, 4, 5, 6, 1, 2, 3, 0,
 												 self.done_text, self.back_text}
 			if april_fools then

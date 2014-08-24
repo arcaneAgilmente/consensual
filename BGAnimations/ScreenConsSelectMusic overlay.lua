@@ -107,7 +107,7 @@ local std_items_mt= {
 				},
 				self.tani:create_actors(
 					"text", {
-						tx= -8, tz= 1, tc= solar_colors.uf_text(),
+						tx= -24, tz= 1, ta= left, tc= solar_colors.uf_text(),
 						text_section= "",
 						nx= 24, nz= 1, na= right, nc= solar_colors.f_text()})
 			}
@@ -134,6 +134,7 @@ local std_items_mt= {
 				self.tani:set_text(
 					get_string_wrapper("DifficultyNames", self.info:GetStepsType()))
 				self.tani:set_number(info:GetMeter())
+				width_limit_text(self.tani.text, 18)
 				width_limit_text(self.tani.number, 30)
 				self.tani:unhide()
 				self.bg:diffuse(difficulty_colors[info:GetDifficulty()] or
@@ -270,6 +271,7 @@ local song_props_menu_items= {
 	{name= "censor"},
 	{name= "edit_tags"},
 	{name= "edit_pain"},
+	{name= "edit_styles"},
 	{name= "end_credit"},
 }
 
@@ -283,6 +285,24 @@ local tag_menus= {
 	[PLAYER_2]= setmetatable({}, options_sets.tags_menu),
 }
 
+local function make_visible_style_data(pn)
+	local num_players= GAMESTATE:GetNumPlayersEnabled()
+	local eles= {}
+	for i, style_data in ipairs(cons_players[pn].style_config[num_players]) do
+		eles[#eles+1]= {
+			name= style_data.style, init= function() return style_data.visible end,
+			set= function() style_data.visible= true end,
+			unset= function() style_data.visible= false end,
+		}
+	end
+	return {eles= eles}
+end
+
+local visible_styles_menus= {
+	[PLAYER_1]= setmetatable({}, options_sets.special_functions),
+	[PLAYER_2]= setmetatable({}, options_sets.special_functions),
+}
+
 local player_cursors= {
 	[PLAYER_1]= setmetatable({}, amv_cursor_mt),
 	[PLAYER_2]= setmetatable({}, amv_cursor_mt)
@@ -294,13 +314,15 @@ local in_special_menu= {[PLAYER_1]= 1, [PLAYER_2]= 1}
 
 local function update_pain(pn)
 	if GAMESTATE:IsPlayerEnabled(pn) then
-		if in_special_menu[pn] == 1 or in_special_menu[pn] == 4 then
+		if in_special_menu[pn] == 1 or in_special_menu[pn] == 5 then
 			pain_displays[pn]:update_all_items()
 			pain_displays[pn]:unhide()
 		elseif in_special_menu[pn] == 2 then
 			song_props_menus[pn]:update()
 		elseif in_special_menu[pn] == 3 then
 			tag_menus[pn]:update()
+		elseif in_special_menu[pn] == 4 then
+			visible_styles_menus[pn]:update()
 		end
 	else
 		pain_displays[pn]:hide()
@@ -323,23 +345,25 @@ local function update_player_cursors()
 		if GAMESTATE:IsPlayerEnabled(pn) then
 			num_enabled= num_enabled + 1
 			local cursed_item= false
+			local function fit_cursor_to_menu(menu)
+				cursed_item= menu:get_cursor_element()
+				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
+				local xp, yp= rec_calc_actor_pos(cursed_item.container)
+				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
+			end
 			if in_special_menu[pn] == 1 then
 				cursed_item= music_wheel.sick_wheel:get_actor_item_at_focus_pos().text
 				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item)
 				local xp= wheel_x + ((xmx - xmn) / 2) + 4
 				player_cursors[pn]:refit(xp, wheel_cursor_y, xmx - xmn + 4, ymx - ymn + 4)
 			elseif in_special_menu[pn] == 2 then
-				cursed_item= song_props_menus[pn]:get_cursor_element()
-				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
-				local xp, yp= rec_calc_actor_pos(cursed_item.container)
-				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
+				fit_cursor_to_menu(song_props_menus[pn])
 			elseif in_special_menu[pn] == 3 then
-				cursed_item= tag_menus[pn]:get_cursor_element()
-				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
-				local xp, yp= rec_calc_actor_pos(cursed_item.container)
-				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
+				fit_cursor_to_menu(tag_menus[pn])
+			elseif in_special_menu[pn] == 4 then
+				fit_cursor_to_menu(visible_styles_menus[pn])
 			end
-			if in_special_menu[pn] ~= 4 then
+			if in_special_menu[pn] ~= 5 then
 				player_cursors[pn]:unhide()
 			end
 		else
@@ -493,32 +517,43 @@ local input_functions= {
 local function set_closest_steps_to_preferred(pn)
 	local preferred_diff= GAMESTATE:GetPreferredDifficulty(pn) or
 		"Difficulty_Beginner"
+	local pref_style= get_preferred_style(pn)
 	local curr_steps_type= GAMESTATE:GetCurrentStyle():GetStepsType()
 	local candidates= get_filtered_sorted_steps_list()
 	if candidates and #candidates > 0 then
 		local steps_set= false
-		local closest_same_type= {}
-		local closest_diff_type= {}
-		local function checkset_closest(closest, steps)
-			local this_difference= math.abs(
-				Difficulty:Compare(preferred_diff, steps:GetDifficulty()))
-			if not closest.steps or this_difference < closest.difference then
-				closest.steps= steps
-				closest.difference= this_difference
-			end
-		end
-		for i, c in ipairs(candidates) do
-			if c:GetStepsType() == curr_steps_type then
-				checkset_closest(closest_same_type, c)
-				if closest_same_type.difference == 0 then break end
+		local closest
+		for i, steps in ipairs(candidates) do
+			if not closest then
+				closest= {
+					steps= steps, diff_diff=
+						math.abs(Difficulty:Compare(preferred_diff, steps:GetDifficulty())),
+					style= stepstype_to_style[steps:GetStepsType()].name}
 			else
-				checkset_closest(closest_diff_type, c)
+				local this_difference= math.abs(
+					Difficulty:Compare(preferred_diff, steps:GetDifficulty()))
+				local this_style= stepstype_to_style[steps:GetStepsType()].name
+				if closest.style == pref_style then
+					if this_style == pref_style and
+					this_difference < closest.diff_diff then
+						closest= {
+							steps= steps, diff_diff= this_difference, style= this_style}
+					end
+				else
+					if this_style == pref_style then
+						closest= {
+							steps= steps, diff_diff= this_difference, style= this_style}
+					elseif this_difference < closest.diff_diff then
+						closest= {
+							steps= steps, diff_diff= this_difference, style= this_style}
+					end
+				end
 			end
 		end
-		if closest_same_type.steps then
-			cons_set_current_steps(pn, closest_same_type.steps)
-		elseif closest_diff_type.steps then
-			cons_set_current_steps(pn, closest_diff_type.steps)
+		if closest then
+			cons_set_current_steps(pn, closest.steps)
+		else
+			cons_set_current_steps(pn, candidates[1])
 		end
 	end
 end
@@ -533,6 +568,7 @@ local function adjust_difficulty(player, dir, sound)
 				if picked_steps then
 					cons_set_current_steps(player, picked_steps)
 					GAMESTATE:SetPreferredDifficulty(player, picked_steps:GetDifficulty())
+					set_preferred_style(player, stepstype_to_style[picked_steps:GetStepsType()].name)
 					SOUND:PlayOnce("Themes/_fallback/Sounds/_switch " .. sound)
 				else
 					SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
@@ -545,11 +581,11 @@ end
 
 local function set_special_menu(pn, value)
 	in_special_menu[pn]= value
-	if in_special_menu[pn] == 1 or in_special_menu[pn] == 4 then
+	if in_special_menu[pn] == 1 or in_special_menu[pn] == 5 then
 		pain_displays[pn]:unhide()
 		pain_displays[pn]:update_all_items()
 		special_menu_displays[pn]:hide()
-		if in_special_menu[pn] == 4 then
+		if in_special_menu[pn] == 5 then
 			player_cursors[pn]:hide()
 		else
 			player_cursors[pn]:unhide()
@@ -562,9 +598,13 @@ local function set_special_menu(pn, value)
 		if in_special_menu[pn] == 2 then
 			song_props_menus[pn]:reset_info()
 			song_props_menus[pn]:update()
-		else
+		elseif in_special_menu[pn] == 3 then
 			tag_menus[pn]:reset_info()
 			tag_menus[pn]:update()
+		else
+			visible_styles_menus[pn]:initialize(pn, make_visible_style_data(pn), true)
+			visible_styles_menus[pn]:reset_info()
+			visible_styles_menus[pn]:update()
 		end
 	end
 end
@@ -757,9 +797,11 @@ local function input(event)
 							set_special_menu(pn, 1)
 						elseif extra.name == "edit_tags" then
 							set_special_menu(pn, 3)
+						elseif extra.name == "edit_styles" then
+							set_special_menu(pn, 4)
 						elseif extra.name == "edit_pain" then
 							pain_displays[pn]:enter_edit_mode()
-							set_special_menu(pn, 4)
+							set_special_menu(pn, 5)
 						elseif interpret_common_song_props_code(pn, extra.name) then
 							set_special_menu(pn, 1)
 						end
@@ -775,6 +817,26 @@ local function input(event)
 					local handled, close= tag_menus[pn]:interpret_code(code)
 					if close then
 						set_special_menu(pn, 1)
+					end
+				end,
+				function()
+					local function close_attempt()
+						if enough_sourses_of_visible_styles() then
+							style_config:set_dirty(pn_to_profile_slot(pn))
+							music_wheel:resort_for_new_style()
+							set_special_menu(pn, 1)
+							return
+						else
+							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
+						end
+					end
+					if code == "Select" and press == "InputEventType_FirstPress" then
+						close_attempt()
+					end
+					if press == "InputEventType_Release" then return end
+					local handled, close= visible_styles_menus[pn]:interpret_code(code)
+					if close then
+						close_attempt()
 					end
 				end,
 				function()
@@ -809,7 +871,7 @@ local function input(event)
 					end
 					SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
 					pain_displays[pn]:fetch_config()
-					GAMESTATE:ApplyGameCommand("style,versus")
+					set_current_style("versus")
 					music_wheel:resort_for_new_style()
 					set_closest_steps_to_preferred(pn)
 				end
@@ -910,6 +972,8 @@ return Def.ActorFrame {
 			song_props_menus[pn]:set_display(special_menu_displays[pn])
 			tag_menus[pn]:initialize(pn)
 			tag_menus[pn]:set_display(special_menu_displays[pn])
+			visible_styles_menus[pn]:initialize(pn, make_visible_style_data(pn), true)
+			visible_styles_menus[pn]:set_display(special_menu_displays[pn])
 			special_menu_displays[pn]:set_underline_color(solar_colors[pn]())
 			special_menu_displays[pn]:hide()
 			update_pain(pn)

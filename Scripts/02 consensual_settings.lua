@@ -186,9 +186,11 @@ end
 
 function cons_player:set_ops_from_profile(profile)
 	self.proguid= profile:GetGUID()
-	self.pain_config= profile_pain_setting:load(pn_to_profile_slot(self.player_number))
-	self.flags= profile_flag_setting:load(pn_to_profile_slot(self.player_number))
-	local config= player_config:load(pn_to_profile_slot(self.player_number))
+	local prof_slot= pn_to_profile_slot(self.player_number)
+	self.pain_config= profile_pain_setting:load(prof_slot)
+	self.flags= profile_flag_setting:load(prof_slot)
+	self.style_config= style_config:load(prof_slot)
+	local config= player_config:load(prof_slot)
 	for k, v in pairs(config) do
 		self[k]= v
 	end
@@ -432,77 +434,33 @@ function get_coin_info()
 	return credits, coins, needed
 end
 
--- style compatibility issue:  Dance, Pump, and Techno are the only supported games.
-local steps_types_by_game= {
-	dance= {
-		{
-			"StepsType_Dance_Single",
-			"StepsType_Dance_Double",
-		},
-		{
-			"StepsType_Dance_Single",
-		}
-	},
-	pump= {
-		{
-			"StepsType_Pump_Single",
-			"StepsType_Pump_Halfdouble",
-			"StepsType_Pump_Double",
-		},
-		{
-			"StepsType_Pump_Single",
-		}
-	},
-	techno= {
-		{
-			"StepsType_Techno_Single4",
-			"StepsType_Techno_Single5",
-			"StepsType_Techno_Single8",
-			"StepsType_Techno_Double4",
-			"StepsType_Techno_Double5",
-			"StepsType_Techno_Double8",
-		},
-		{
-			"StepsType_Techno_Single4",
-			"StepsType_Techno_Single5",
-			"StepsType_Techno_Single8",
-		}
-	},
-}
-
--- style compatibility issue:  Dance, Pump, are the only supported games.
-style_command_for_steps_type= {
-	StepsType_Dance_Single= "style,single",
-	StepsType_Dance_Double= "style,double",
-	StepsType_Pump_Single= "style,single",
-	StepsType_Pump_Halfdouble= "style,halfdouble",
-	StepsType_Pump_Double= "style,double",
-}
-
 function cons_get_steps_types_to_show()
-	local gname= lowered_game_name()
-	local type_group= steps_types_by_game[lowered_game_name()]
-	local num_players= GAMESTATE:GetNumPlayersEnabled()
-	return (type_group and type_group[num_players]) or
-	{}
+	local types= {}
+	for i, data in ipairs(combined_visible_styles()) do
+		types[#types+1]= data.stepstype
+	end
+	return types
 end
 
 function cons_set_current_steps(pn, steps)
-	if GAMESTATE:GetNumPlayersEnabled() == 1 then
+	local num_players= GAMESTATE:GetNumPlayersEnabled()
+	if num_players == 1 then
 		local curr_st= GAMESTATE:GetCurrentStyle():GetStepsType()
 		local to_st= steps:GetStepsType()
 		if curr_st ~= to_st then
-			local style_com= style_command_for_steps_type[to_st]
-			if style_com then
-				-- If the current style is double, and we try to set the style to
-				-- single, then GameCommand::IsPlayable returns this error:
-				-- Exception: Can't apply mode "style,single": too many players
-				-- joined for ONE_PLAYER_ONE_CREDIT
-				-- Unjoining the other side prevents that crash.
-				if GAMESTATE:GetNumSidesJoined() > 1 then
+			local curr_style_info= stepstype_to_style[curr_st]
+			local to_style= stepstype_to_style[to_st]
+			if to_style then
+				if curr_style_info.for_sides > to_style.for_sides then
+					-- If the current style is double, and we try to set the style to
+					-- single, then we run into the error of having too many sides
+					-- joined to change styles.
+					-- Unjoining the other side prevents that error.
 					GAMESTATE:UnjoinPlayer(other_player[pn])
+				elseif curr_style_info.for_sides < to_style.for_sides then
+					-- No action necessary.
 				end
-				GAMESTATE:ApplyGameCommand(style_com, pn)
+				set_current_style(to_style.name)
 			end
 		end
 	end
@@ -547,16 +505,18 @@ function SaveProfileCustom(profile, dir)
 	end
 	if cp then
 		local pn= cp.player_number
-		profile_pain_setting:save(pn_to_profile_slot(pn))
-		profile_flag_setting:set_dirty(pn_to_profile_slot(pn))
-		profile_flag_setting:save(pn_to_profile_slot(pn))
-		local config_data= player_config:get_data(pn_to_profile_slot(pn))
+		local prof_slot= pn_to_profile_slot(pn)
+		profile_pain_setting:save(prof_slot)
+		profile_flag_setting:set_dirty(prof_slot)
+		profile_flag_setting:save(prof_slot)
+		local config_data= player_config:get_data(prof_slot)
 		for k, v in pairs(config_data) do
 			if type(v) ~= "table" then
 				config_data[k]= cp[k]
 			end
 		end
-		player_config:set_dirty(pn_to_profile_slot(pn))
-		player_config:save(pn_to_profile_slot(pn))
+		player_config:set_dirty(prof_slot)
+		player_config:save(prof_slot)
+		style_config:save(prof_slot)
 	end
 end

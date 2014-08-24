@@ -417,10 +417,62 @@ local function get_sort_info()
 	end
 end
 
+local songs_of_each_style= false
+local courses_of_each_style= false
+local function add_to_of_style(of_set, style_name)
+	of_set[style_name]= (of_set[style_name] or 0) + 1
+end
+function init_songs_of_each_style()
+	-- Walking all steps for all songs is time consuming, so only do it once.
+	-- Problem is the data is invalid if songs are reloaded.
+	if songs_of_each_style then return end
+	songs_of_each_style= {}
+	courses_of_each_style= {}
+	local function make_of(set, set_of)
+		for i, item in ipairs(set) do
+			if not item.AllSongsAreFixed or item:AllSongsAreFixed() then
+				local step_set= sourse_get_all_steps(item)
+				for si, steps in ipairs(step_set) do
+					local stype= steps:GetStepsType()
+					local added= false
+					for sts, style_set in ipairs(visible_styles) do
+						for sti, style in ipairs(style_set) do
+							if stype == style.stepstype then
+								add_to_of_style(set_of, style.style)
+								added= true
+								break
+							end
+						end
+						if added then break end
+					end
+				end
+			end
+		end
+	end
+	make_of(SONGMAN:GetAllSongs(), songs_of_each_style)
+	make_of(SONGMAN:GetAllCourses(false), courses_of_each_style)
+end
+
+function enough_sourses_of_visible_styles()
+	local total= 0
+	local function calc_total(of_set)
+		for i, style in ipairs(combined_visible_styles()) do
+			total= total + (of_set[style.style] or 0)
+		end
+	end
+	if GAMESTATE:IsCourseMode() then
+		calc_total(courses_of_each_style)
+	else
+		calc_total(songs_of_each_style)
+	end
+	return total > 0
+end
+
 local bucket_man_interface= {}
 local bucket_man_interface_mt= { __index= bucket_man_interface }
 
 function bucket_man_interface:initialize()
+	init_songs_of_each_style()
 	machine_profile= PROFILEMAN:GetMachineProfile()
 	if GAMESTATE:IsCourseMode() then
 		self.song_set= SONGMAN:GetAllCourses(false) -- fuck autogen courses
@@ -441,8 +493,7 @@ function bucket_man_interface:style_filter_songs()
 	if #filter_types >= 1 then
 		for i, v in ipairs(self.song_set) do
 			local matched= false
-			if not v.AllSongsAreFixed or
-			(v.AllSongsAreFixed and v:AllSongsAreFixed()) then
+			if not v.AllSongsAreFixed or v:AllSongsAreFixed() then
 				local song_steps= song_get_all_steps(v)
 				for si, sv in ipairs(song_steps) do
 					local st= sv:GetStepsType()
@@ -632,7 +683,7 @@ function music_whale_interface:sort_songs(si)
 		self.sorted_songs= bucket_man:sort_songs(si)
 		self.disp_stack= {}
 		self.display_bucket= nil
-		if self.cursor_song then
+		if self.cursor_song and #self.sorted_songs > 0 then
 			local function final_compare(a, b)
 				return a == b
 			end
@@ -758,9 +809,11 @@ function music_whale_interface:add_randoms(bucket)
 	end
 	bucket_traverse(
 		self.curr_bucket.contents or self.curr_bucket, nil, add_to_candidates)
-	bucket[#bucket+1]= {
-		name= "Random", disp_name= get_string_wrapper("MusicWheel", "Random"),
-		is_random= true, candidate_set= candidates }
+	if #candidates > 0 then
+		bucket[#bucket+1]= {
+			name= "Random", disp_name= get_string_wrapper("MusicWheel", "Random"),
+			is_random= true, candidate_set= candidates }
+	end
 	if not GAMESTATE:IsCourseMode() then
 		self:add_player_randoms(bucket, PLAYER_1)
 		self:add_player_randoms(bucket, PLAYER_2)
@@ -774,7 +827,7 @@ function music_whale_interface:add_special_items_to_bucket(bucket)
 		-- bucket isn't known when popping, and adding the special items happens
 		-- during popping too.
 		local last_el= bucket[#bucket]
-		if last_el.is_current_group then
+		if last_el and last_el.is_current_group then
 			bucket[#bucket]= nil
 		else
 			-- For the case where we are at the top level.

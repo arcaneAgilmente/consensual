@@ -383,7 +383,7 @@ options_sets.special_functions= {
 		end,
 		reset_info= function(self)
 			self.cursor_pos= 1
-			self.real_info_set= {{text= "Exit Flags Menu"}}
+			self.real_info_set= {{text= "Exit Menu"}}
 			for i, el in ipairs(self.element_set) do
 				self.real_info_set[#self.real_info_set+1]= {
 					text= el.name, underline= el.init(self.player_number)}

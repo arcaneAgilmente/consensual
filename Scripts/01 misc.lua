@@ -366,6 +366,13 @@ function  set_song_mode()
 		end
 end
 
+function sourse_get_all_steps(sourse)
+	if sourse.GetAllSteps then
+		return sourse:GetAllSteps()
+	end
+	return sourse:GetAllTrails()
+end
+
 function song_get_all_steps(song)
 	return song[get_all_steps](song)
 end
@@ -493,6 +500,23 @@ end
 
 function get_rate_from_songopts()
 	return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate()
+end
+
+-- API compatibility to support older versions that don't have GAMESTATE:SetCurrentStyle.
+function set_current_style(style)
+	if GAMESTATE.SetCurrentStyle then
+		GAMESTATE:SetCurrentStyle(style)
+	else
+		GAMESTATE:ApplyGameCommand("style," .. style)
+	end
+end
+
+function set_current_playmode(playmode)
+	if GAMESTATE.SetCurrentPlayMode then
+		GAMESTATE:SetCurrentPlayMode(playmode)
+	else
+		GAMESTATE:ApplyGameCommand("playmode," .. ToEnumShortString(playmode):lower())
+	end
 end
 
 -- An object to handle coordination of rate changes between things on a screen.

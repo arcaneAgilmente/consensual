@@ -488,6 +488,8 @@ local function recursive_sort(items, sort_factors, sort_depth, name_depth)
 			table.sort(items, item_cmp_wrapper(sort_depth))
 			return items
 		end
+	else
+		return items
 	end
 end
 
