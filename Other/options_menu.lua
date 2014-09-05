@@ -332,8 +332,6 @@ options_sets.menu= {
 			if data then
 				return true, data
 			else
-				Trace("options_sets.menu has no data at " .. self.cursor_pos-1)
-				rec_print_table(self.menu_data)
 				return false
 			end
 		end,
@@ -730,7 +728,7 @@ menu_stack_mt= {
 			return Def.ActorFrame(args)
 		end,
 		push_options_set_stack= function(
-				self, new_set_meta, new_set_initializer_args)
+				self, new_set_meta, new_set_initializer_args, base_exit)
 			local oss= self.options_set_stack
 			local top_set= oss[#oss]
 			local almost_top_set= oss[#oss-1]
@@ -746,7 +744,7 @@ menu_stack_mt= {
 			oss[#oss+1]= nos
 			nos:set_player_info(self.player_number)
 			if #oss == 1 then
-				nos:initialize(self.player_number, new_set_initializer_args, false, "Exit Menu")
+				nos:initialize(self.player_number, new_set_initializer_args, false, base_exit)
 			else
 				nos:initialize(self.player_number, new_set_initializer_args)
 			end

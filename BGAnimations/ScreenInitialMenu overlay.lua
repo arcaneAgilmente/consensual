@@ -304,7 +304,7 @@ local function interpret_code(pn, code)
 		set_time_remaining_to_default()
 		prev_picked_song= nil
 		bucket_man:initialize()
-		SCREENMAN:SetNewScreen("ScreenConsSelectMusic")
+		trans_new_screen("ScreenConsSelectMusic")
 	end
 	--Trace("(" .. tostring(handled) .. ") (" .. tostring(extra) .. ")")
 	if handled then
@@ -422,34 +422,15 @@ local function rescale_stars()
 	stars[2]:move(SCREEN_WIDTH - (radius+pad))
 end
 
-local function mess()
-	local message= {}
-	--[[
-	local lines= math.random(1, 5)
-	for l= 1, lines do
-		message[#message+1]= string.rep("s", math.random(32, 256))
-	end
-	]]
-	message= {
-		"Error playing command: /Themes/DDR 2013/BGAnimations/ScreenSelectMusic overlay/default.lua:332: attempt to index a nil value",
-		"/Themes/DDR 2013/BGAnimations/ScreenSelectMusic overlay/default.lua:332: GetProfileHighScores(pn = PlayerNumber_P2,profile = (null),song = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = 1,(*temporary) = 0,(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = (null),(*temporary) = attempt to index a nil value)",
-		"/Themes/DDR 2013/BGAnimations/ScreenSelectMusic overlay/default.lua:779: unknown(self = (null),song = (null))"
-	}
-
-	local mess= table.concat(message, "\n")
-	MESSAGEMAN:Broadcast("FakeError", {message= mess})
-end
-
 local function input(event)
 	if event.type == "InputEventType_Release" then return false end
-	if false and event.DeviceInput.button == "DeviceButton_n" then
-		for n= 1, 10 do mess() end
+	if event.DeviceInput.button == "DeviceButton_n" then
 	end
 	if event.DeviceInput.button == "DeviceButton_x" and event.type == "InputEventType_FirstPress" then
 		gen_name_only_test_data()
 	end
 	if event.DeviceInput.button == misc_config:get_data().config_menu_key then
-		SCREENMAN:SetNewScreen("ScreenConsService")
+		trans_new_screen("ScreenConsService")
 	end
 	if event.PlayerNumber and event.GameButton then
 		interpret_code(event.PlayerNumber, event.GameButton)

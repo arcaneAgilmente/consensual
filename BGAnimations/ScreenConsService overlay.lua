@@ -231,7 +231,7 @@ local function input(event)
 					misc_config:save()
 					machine_flag_setting:save()
 					machine_pain_setting:save()
-					SCREENMAN:SetNewScreen("ScreenInitialMenu")
+					trans_new_screen("ScreenInitialMenu")
 				end
 			end
 			update_hider_time()
@@ -244,7 +244,7 @@ end
 
 return Def.ActorFrame{
 	InitCommand= function(self)
-		config_menu:push_options_set_stack(options_sets.menu, menu_items)
+		config_menu:push_options_set_stack(options_sets.menu, menu_items, "Exit Menu")
 		config_menu:update_cursor_pos()
 		update_hider_text()
 	end,

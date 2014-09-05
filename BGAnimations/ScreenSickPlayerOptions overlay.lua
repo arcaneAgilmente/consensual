@@ -1088,7 +1088,7 @@ local special= {
 			eles= {
 				{ name= "Select Music", init= noop_false, set= function()
 						SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
-						SCREENMAN:SetNewScreen("ScreenConsSelectMusic")
+						trans_new_screen("ScreenConsSelectMusic")
 				end, unset= noop_nil}}}},
 	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options},
 	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions,
@@ -1204,13 +1204,9 @@ local base_options= {
 
 function args:InitCommand()
 	for pn, menu in pairs(menus) do
-		menu:push_options_set_stack(options_sets.menu, base_options)
+		menu:push_options_set_stack(options_sets.menu, base_options, "Play Song")
 		menu:update_cursor_pos()
 	end
-end
-
-function args:ExitOptionsCommand()
-	SCREENMAN:SetNewScreen("ScreenStageInformation")
 end
 
 local function input(event)
@@ -1227,11 +1223,11 @@ local function input(event)
 					end
 				end
 				if all_on_exit then
-					SCREENMAN:GetTopScreen():queuecommand("ExitOptions")
+					trans_new_screen("ScreenStageInformation")
 				end
 			elseif code == "Back" then
 				SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
-				SCREENMAN:SetNewScreen("ScreenConsSelectMusic")
+				trans_new_screen("ScreenConsSelectMusic")
 			end
 		end
 	end

@@ -1630,7 +1630,7 @@ return Def.ActorFrame{
 	},
 	Def.Actor{
 		Name= "Vacuum Cleaner D27",
-		OffCommand= function(self)
+		StartTransitioningCommand= function(self)
 			bucket_man:sort_songs()
 		end
 	},

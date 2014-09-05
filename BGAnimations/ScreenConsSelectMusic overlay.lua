@@ -496,7 +496,7 @@ local input_functions= {
 					if not GAMESTATE:IsEventMode() then
 						end_credit_now()
 					else
-						SCREENMAN:SetNewScreen("ScreenInitialMenu")
+						trans_new_screen("ScreenInitialMenu")
 					end
 				end
 }
@@ -1006,9 +1006,9 @@ return Def.ActorFrame {
 										end,
 	real_play_songCommand= function(self)
 													 if go_to_options then
-														 SCREENMAN:SetNewScreen("ScreenSickPlayerOptions")
+														 trans_new_screen("ScreenSickPlayerOptions")
 													 else
-														 SCREENMAN:SetNewScreen("ScreenStageInformation")
+														 trans_new_screen("ScreenStageInformation")
 													 end
 												 end,
 	Def.ActorFrame{

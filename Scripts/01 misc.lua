@@ -502,6 +502,11 @@ function get_rate_from_songopts()
 	return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate()
 end
 
+function trans_new_screen(name)
+	SCREENMAN:GetTopScreen():SetNextScreenName(name)
+	SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
+end
+
 -- API compatibility to support older versions that don't have GAMESTATE:SetCurrentStyle.
 function set_current_style(style)
 	if GAMESTATE.SetCurrentStyle then
@@ -711,7 +716,7 @@ function end_credit_now()
 			break
 		end
 	end
-	SCREENMAN:SetNewScreen(next_screen)
+	trans_new_screen(next_screen)
 end
 
 music_wheel_width= SCREEN_WIDTH*.3125

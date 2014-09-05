@@ -467,7 +467,7 @@ local function maybe_finish()
 	for k, fin in pairs(unfinished_players) do
 		if fin then return end
 	end
-	SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
+	trans_new_screen("ScreenProfileSave")
 end
 
 local function input(event)

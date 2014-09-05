@@ -107,7 +107,7 @@ local should_be_here= false
 
 local function input(event)
 	if not should_be_here then
-		SCREENMAN:SetNewScreen(Branch.AfterGameplay())
+		trans_new_screen(Branch.AfterGameplay())
 	end
 	local pn= event.PlayerNumber
 	if not pn then return false end
@@ -130,7 +130,7 @@ local function input(event)
 					cons_players[pn].last_song_heart_rate= en.value
 				end
 			end
-			SCREENMAN:SetNewScreen(Branch.AfterGameplay())
+			trans_new_screen(Branch.AfterGameplay())
 		end
 	end
 end
