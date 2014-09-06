@@ -8,6 +8,7 @@ local default_flag_set= {
 			dance_points= true,
 			judge_list= false,
 			life_graph= true,
+			lock_per_arrow= true,
 			offset= false,
 			pct_column= false,
 			pct_score= true,
@@ -32,6 +33,10 @@ local default_flag_set= {
 			sigil= false,
 		},
 		interface= {
+			easier_random= false,
+			harder_random= false,
+			same_random= false,
+			score_random= false,
 			straight_floats= false,
 		}
 	},
@@ -44,6 +49,7 @@ local default_flag_set= {
 			score_splash= true,
 			dance_points= true,
 			judge_list= false,
+			lock_per_arrow= true,
 			life_graph= true,
 			offset= false,
 			pct_column= true,
@@ -69,6 +75,10 @@ local default_flag_set= {
 			sigil= false,
 		},
 		interface= {
+			easier_random= false,
+			harder_random= false,
+			same_random= true,
+			score_random= false,
 			straight_floats= false,
 		}
 	},
@@ -82,6 +92,7 @@ local default_flag_set= {
 			dance_points= true,
 			judge_list= false,
 			life_graph= true,
+			lock_per_arrow= true,
 			offset= false,
 			pct_column= true,
 			pct_score= true,
@@ -106,6 +117,10 @@ local default_flag_set= {
 		},
 		interface= {
 			straight_floats= false,
+			easier_random= true,
+			harder_random= true,
+			same_random= true,
+			score_random= false,
 		}
 	},
 	{
@@ -118,6 +133,7 @@ local default_flag_set= {
 			dance_points= true,
 			judge_list= true,
 			life_graph= true,
+			lock_per_arrow= false,
 			offset= true,
 			pct_column= true,
 			pct_score= true,
@@ -141,6 +157,10 @@ local default_flag_set= {
 			sigil= true,
 		},
 		interface= {
+			easier_random= true,
+			harder_random= true,
+			same_random= true,
+			score_random= true,
 			straight_floats= true,
 		}
 	}
@@ -153,6 +173,7 @@ sorted_flag_names= {
 	 "dance_points",
 	 "offset",
 	 "score_early_late",
+	 "lock_per_arrow",
 	 "pct_column",
 	 "session_column",
 	 "song_column",
@@ -179,6 +200,10 @@ sorted_flag_names= {
 	 "sigil",
 	},
 	{type= "interface",
+	 "easier_random",
+	 "harder_random",
+	 "same_random",
+	 "score_random",
 	 "straight_floats",
 	}
 }

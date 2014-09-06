@@ -1156,7 +1156,7 @@ local function set_special_menu(pn, spid)
 	end
 end
 
-local keys_down= {}
+local keys_down= {[PLAYER_1]= {}, [PLAYER_2]= {}}
 local down_map= {
 	InputEventType_FirstPress= true, InputEventType_Repeat= true,
 	InputEventType_Release= false}
@@ -1183,7 +1183,7 @@ local function filter_input_for_menus(pn, code, press)
 	local handled, close= false, false
 	local spid= special_menu_states[pn]
 	if code == "MenuLeft" or code == "MenuRight"then
-		keys_down[code]= down_map[press]
+		keys_down[pn][code]= down_map[press]
 	end
 	if spid == 0 then
 		if code == "Select" then
@@ -1200,10 +1200,10 @@ local function filter_input_for_menus(pn, code, press)
 				end
 			end
 		elseif code == "Start" and press == "InputEventType_FirstPress" then
-			if keys_down.MenuLeft then
+			if keys_down[pn].MenuLeft then
 				set_special_menu(pn, 1)
 				handled= true
-			elseif keys_down.MenuRight then
+			elseif keys_down[pn].MenuRight then
 				perform_screenshot(pn)
 			else
 				SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
@@ -1544,7 +1544,7 @@ local function input(event)
 			view_min= -1
 		end
 		local view_max= #score_datas[pn]
-		if not cons_players[pn].flags.eval.style_pad then
+		if cons_players[pn].flags.eval.lock_per_arrow then
 			view_max= -1
 		end
 		if score_data_viewing_indices[pn] < view_min then

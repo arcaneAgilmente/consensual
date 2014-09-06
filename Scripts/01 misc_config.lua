@@ -16,8 +16,14 @@ local default_config= {
 	select_music_help_time= 10,
 	evaluation_help_time= 60,
 	service_help_time= 10,
+	ssm_advanced_help= true,
 
 	gameplay_reset_limit= 5,
+	have_select_button= true,
+
+	transition_split_min= 1,
+	transition_split_max= 64,
+	transition_meta_var_max= 64,
 
 	config_menu_key= "DeviceButton_z",
 }

@@ -749,27 +749,31 @@ function music_whale_interface:add_player_randoms(disp_bucket, player_number)
 			local prev_same= {}
 			local prev_harder= {}
 			local prev_sbd= {}
+			local interface_flags= cons_players[player_number].flags.interface
 			local function candy_filter(item)
 				local song= item.el
 				local steps_list= get_filtered_sorted_steps_list(song)
 				for i, v in ipairs(steps_list) do
 					local meter= v:GetMeter()
-					if meter == prev_meter - 1 then
+					if interface_flags.easier_random and meter == prev_meter - 1 then
 						prev_easier[#prev_easier+1]= song
 					end
-					if meter == prev_meter then
+					if interface_flags.same_random and meter == prev_meter then
 						prev_same[#prev_same+1]= song
 					end
-					if meter == prev_meter + 1 then
+					if interface_flags.harder_random and meter == prev_meter + 1 then
 						prev_harder[#prev_harder+1]= song
 					end
-					if meter == prev_meter + sbd then
+					if interface_flags.score_random and meter == prev_meter + sbd then
 						prev_sbd[#prev_sbd+1]= song
 					end
 				end
 			end
-			bucket_traverse(
-				self.curr_bucket.contents or self.curr_bucket, nil, candy_filter)
+			if interface_flags.easier_random or interface_flags.same_random
+			or interface_flags.harder_random or interface_flags.score_random then
+				bucket_traverse(
+					self.curr_bucket.contents or self.curr_bucket, nil, candy_filter)
+			end
 			if #prev_easier > 0 then
 				disp_bucket[#disp_bucket+1]= {
 					name= sn .. "Random Easier", is_random= true,
@@ -1017,6 +1021,10 @@ function music_whale_interface:interact_with_element()
 		Warn("Interacted with bad element in display bucket:")
 		rec_print_table(curr_element)
 	end
+end
+
+function music_whale_interface:close_group()
+	self:pop_from_disp_stack()
 end
 
 function music_whale_interface:show_sort_list()

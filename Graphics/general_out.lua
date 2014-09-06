@@ -1,12 +1,39 @@
+local conf_data= misc_config:get_data()
+if conf_data.transition_split_max <= 0 or conf_data.transition_split_min <= 0 then
+	return Def.Quad{
+		StartTransitioningCommand= function(self)
+			self:xy(_screen.cx, _screen.cy)
+			self:setsize(_screen.w, _screen.h)
+			self:diffuse(solar_colors.bg(0))
+			self:linear(1)
+			self:diffusealpha(1)
+		end
+	}
+end
+
 local function pot(i)
 	return 2^(math.ceil(math.log(i) / math.log(2)))
 end
 local dwidth= DISPLAY:GetDisplayWidth()
 local dheight= DISPLAY:GetDisplayHeight()
 local ratio= dwidth / dheight
-local xq= math.random(1, 64)
+local split_min= math.floor(force_to_range(1, conf_data.transition_split_min, 64))
+local split_max= math.ceil(force_to_range(1, conf_data.transition_split_max, 64))
+local xq= math.max(split_max, split_min)
+if split_max - split_min > 1 then
+	xq= math.random(split_min, split_max)
+end
 local yq= math.ceil(xq / ratio)
-local max_var= dwidth / xq * 2
+local max_var= 0
+local meta_var_max= conf_data.transition_meta_var_max
+if meta_var_max > 0 then
+	meta_var_max= force_to_range(1, math.ceil(meta_var_max), 96)
+	local var_var= .125
+	if meta_var_max > 1 then
+		var_var= math.random(1, math.ceil(meta_var_max)) / 8
+	end
+	max_var= math.ceil(dwidth / xq * var_var)
+end
 local vc= color("#ffffff")
 local spx= _screen.w / xq
 local spy= _screen.h / yq
@@ -26,10 +53,14 @@ for x= -1, xq+1 do
 	skewed_verts[x]= {}
 	for y= -1, yq+1 do
 		if x > 0 and x < xq+1 and y > 0 and y < yq+1 then
-			skewed_verts[x][y]= {
-				(spx * x) + math.random(-max_var, max_var),
-				(spy * y) + math.random(-max_var, max_var)
-			}
+			if max_var > 0 then
+				skewed_verts[x][y]= {
+					(spx * x) + math.random(-max_var, max_var),
+					(spy * y) + math.random(-max_var, max_var)
+				}
+			else
+				skewed_verts[x][y]= {(spx * x), (spy * y)}
+			end
 			unskewed_verts[x][y]= {(spx * x), (spy * y)}
 		else
 			skewed_verts[x][y]= {(spx * x), (spy * y)}

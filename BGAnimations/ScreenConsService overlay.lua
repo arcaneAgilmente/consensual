@@ -75,6 +75,8 @@ local reward_options= {
 local help_options= {
 	{name= "select_music_help_time", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("select_music_help_time", -3, 0, 2)},
+	{name= "ssm_advanced_help", meta= options_sets.boolean_option,
+	 args= make_extra_for_bool_val("ssm_advanced_help", "Yes", "No")},
 	{name= "evaluation_help_time", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("evaluation_help_time", -3, 0, 2)},
 	{name= "service_help_time", meta= options_sets.adjustable_float,
@@ -157,9 +159,21 @@ local function key_set()
 	tops:AddInputCallback(tempback)
 end
 
-local menu_items= {
+local consensual_options= {
 	{name= "set_config_key", meta= options_sets.settable_thing,
 	 args= {get= key_get, set= key_set}},
+	{name= "set_have_select", meta= options_sets.boolean_option,
+	 args= make_extra_for_bool_val("have_select_button", "Yes", "No")},
+	{name= "transition_split_min", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("transition_split_min", 0, 0, 1)},
+	{name= "transition_split_max", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("transition_split_max", 0, 0, 1)},
+	{name= "transition_meta_var_max", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("transition_meta_var_max", 0, 0, 1)},
+}
+
+local menu_items= {
+	{name= "cons_config", meta= options_sets.menu, args= consensual_options},
 	{name= "reward_config", meta= options_sets.menu, args= reward_options},
 	{name= "help_config", meta= options_sets.menu, args= help_options},
 	{name= "flags_config", meta= options_sets.menu, args= flag_slot_options},
@@ -181,7 +195,8 @@ local hider_params= {
 	hider_frame:create_actors(
 		"frame", 1, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0),
 	normal_text("text", "", solar_colors.f_text(), 0, 0, 1,
-							center, {InitCommand= function(self) hider_text= self end}),
+		center, {InitCommand= function(self) hider_text= self
+			self:wrapwidthpixels(SCREEN_WIDTH-20) end}),
 }
 
 local function update_hider_time()

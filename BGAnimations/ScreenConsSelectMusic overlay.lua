@@ -308,8 +308,6 @@ local player_cursors= {
 	[PLAYER_2]= setmetatable({}, amv_cursor_mt)
 }
 
-local select_press_times= {[PLAYER_1]= 0, [PLAYER_2]= 0}
--- Set when select is pressed, so it can be used to determine whether the special menu should be brought up.
 local in_special_menu= {[PLAYER_1]= 1, [PLAYER_2]= 1}
 
 local function update_pain(pn)
@@ -337,6 +335,23 @@ local function start_auto_scrolling(dir)
 	local curr_time= get_screen_time() + (time_after_scroll - time_before_scroll)
 	next_auto_scroll_time= curr_time + time_before_auto_scroll
 	fast_scroll_start_time= curr_time + time_before_fast_scroll
+end
+
+local function stop_auto_scrolling()
+	--steps_decompress_test(GAMESTATE:GetCurrentSteps(PLAYER_2))
+	play_sample_music()
+	auto_scrolling= nil
+	fast_auto_scroll= nil
+end
+
+local function correct_for_overscroll()
+	local was_scroll= auto_scrolling
+	auto_scrolling= nil
+	fast_auto_scroll= nil
+	if was_scroll then
+		music_wheel:scroll_amount(-was_scroll)
+		play_sample_music()
+	end
 end
 
 local function update_player_cursors()
@@ -447,13 +462,6 @@ local function steps_decompress_test(steps)
 	Trace("SDT:  " .. (end_time - start_time) .. " to decompress.  " .. (post_release_time - end_time) .. " to release.")
 end
 
-local function stop_auto_scrolling()
-	--steps_decompress_test(GAMESTATE:GetCurrentSteps(PLAYER_2))
-	play_sample_music()
-	auto_scrolling= nil
-	fast_auto_scroll= nil
-end
-
 local function Update(self)
 	if entering_song then
 		if get_screen_time() > entering_song then
@@ -483,29 +491,30 @@ end
 local options_message_frame_helper= setmetatable({}, frame_helper_mt)
 
 local input_functions= {
-	scroll_left= function() start_auto_scrolling(-1) end,
-	scroll_right= function() start_auto_scrolling(1) end,
+	scroll_left= function()
+		if auto_scrolling then stop_auto_scrolling()
+		else start_auto_scrolling(-1) end
+	end,
+	scroll_right= function()
+		if auto_scrolling then stop_auto_scrolling()
+		else start_auto_scrolling(1) end
+	end,
 	stop_scroll= function() stop_auto_scrolling() end,
-	interact= function()
-							music_wheel:interact_with_element()
-							change_sort_text(music_wheel.current_sort_name)
-						end,
 	back= function()
-					stop_music()
-					SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
-					if not GAMESTATE:IsEventMode() then
-						end_credit_now()
-					else
-						trans_new_screen("ScreenInitialMenu")
-					end
-				end
+		stop_music()
+		SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
+		if not GAMESTATE:IsEventMode() then
+			end_credit_now()
+		else
+			trans_new_screen("ScreenInitialMenu")
+		end
+	end
 }
 
 local input_functions= {
 	InputEventType_FirstPress= {
 		MenuLeft= input_functions.scroll_left,
 		MenuRight= input_functions.scroll_right,
-		Start= input_functions.interact,
 		Back= input_functions.back
 	},
 	InputEventType_Release= {
@@ -609,19 +618,83 @@ local function set_special_menu(pn, value)
 	end
 end
 
+local keys_down= {[PLAYER_1]= {}, [PLAYER_2]= {}}
+local down_count= {[PLAYER_1]= 0, [PLAYER_2]= 0}
+local pressed_since_menu_change= {[PLAYER_1]= {}, [PLAYER_2]= {}}
+local codes_since_release= {}
+local down_map= {
+	InputEventType_FirstPress= true, InputEventType_Repeat= true,
+	InputEventType_Release= false}
+local menu_button_names= {
+	MenuLeft= true, MenuRight= true, MenuUp= true, MenuDown= true, Start= true,
+	Select= true, Back= true
+}
+local scroll_affectors= {MenuLeft= true, MenuRight= true}
+if not PREFSMAN:GetPreference("OnlyDedicatedMenuButtons") then
+	scroll_affectors.Left= true
+	scroll_affectors.Right= true
+end
+
+local function menu_code_to_text(code)
+	local hold_string= ""
+	if #code.hold_buttons > 0 then
+		hold_string= "&" .. table.concat(code.hold_buttons, ";&") .. ";+"
+	end
+	return hold_string .. "&" .. code.release_trigger .. ";"
+end
+
+local function code_to_text(code)
+	if code.ignore_release then
+		return "&" .. table.concat(code, ";&") .. ";"
+	else
+		return "&" .. table.concat(code, ";+&") .. ";"
+	end
+end
+
+local menu_codes= {
+	{name= "play_song", hold_buttons= {},
+	 release_trigger= "Start", canceled_by_others= false, nothing_down= true},
+	{name= "close_group", hold_buttons= {"MenuLeft", "MenuRight"},
+	 release_trigger= "Start", canceled_by_others= false},
+	{name= "close_group", hold_buttons= {"Left", "Right"},
+	 release_trigger= "Start", canceled_by_others= false},
+}
+do
+	local function amc(mc)
+		menu_codes[#menu_codes+1]= mc
+	end
+	if misc_config:get_data().have_select_button then
+		amc{name= "sort_mode", hold_buttons= {"Select"},
+				release_trigger= "Start", canceled_by_others= false}
+		amc{name= "open_special", hold_buttons= {},
+				release_trigger= "Select", canceled_by_others= true}
+		amc{name= "diff_up", hold_buttons= {"Select"},
+				release_trigger= "MenuLeft", canceled_by_others= false}
+		amc{name= "diff_down", hold_buttons= {"Select"},
+				release_trigger= "MenuRight", canceled_by_others= false}
+	else
+		amc{name= "sort_mode", hold_buttons= {"MenuLeft"},
+				release_trigger= "MenuRight", canceled_by_others= false}
+		amc{name= "sort_mode", hold_buttons= {"MenuRight"},
+				release_trigger= "MenuLeft", canceled_by_others= false}
+		amc{name= "open_special", hold_buttons= {"MenuLeft"},
+				release_trigger= "Start", canceled_by_others= false,
+				nothing_down= true, overscroll= true}
+		amc{name= "open_special", hold_buttons= {"MenuRight"},
+				release_trigger= "Start", canceled_by_others= false,
+				nothing_down= true, overscroll= true}
+	end
+end
+
 local codes= {
+	{ name= "change_song", fake= true, "MenuLeft" },
+	{ name= "change_song", fake= true, "MenuRight" },
+	{ name= "change_song", fake= true, "Left" },
+	{ name= "change_song", fake= true, "Right" },
 	{ name= "sort_mode", ignore_release= true, games= {"dance", "techno"},
 		"Up", "Down", "Up", "Down" },
 	{ name= "sort_mode", ignore_release= true, games= {"pump", "techno"},
 		"UpLeft", "UpRight", "UpLeft", "UpRight" },
-	{ name= "sort_mode", ignore_release= false,
-		"MenuLeft", "MenuRight" },
-	{ name= "sort_mode", ignore_release= false,
-		ignore_press_list= {"MenuLeft", "MenuRight", "Start"},
-		ignore_release_list= {"MenuLeft", "MenuRight"},
-		"Select", "Start" },
-	{ name= "open_special", ignore_release= false,
-		"MenuLeft", "Start" },
 	{ name= "diff_up", ignore_release= true, games= {"dance", "techno"},
 		"Up", "Up" },
 	{ name= "diff_up", ignore_release= true, games= {"pump", "techno"},
@@ -630,16 +703,6 @@ local codes= {
 		"Down", "Down" },
 	{ name= "diff_down", ignore_release= true, games= {"pump", "techno"},
 		"UpRight", "UpRight" },
-	{ name= "diff_up", ignore_release= false, repeat_first_on_end= true,
-		ignore_press_list= {"MenuRight", "Start"},
-		ignore_release_list= {
-			"MenuLeft", "MenuRight", "Start"},
-		"Select", "MenuLeft"},
-	{ name= "diff_down", ignore_release= false, repeat_first_on_end= true,
-		ignore_press_list= {"MenuLeft", "Start"},
-		ignore_release_list= {
-			"MenuLeft", "MenuRight", "Start"},
-		"Select", "MenuRight"},
 	{ name= "noob_mode", ignore_release= true, games= {"dance", "techno"},
 		"Up", "Up", "Down", "Down", "Left", "Right", "Left", "Right"},
 	{ name= "simple_options_mode", ignore_release= true, games= {"dance", "techno"},
@@ -652,53 +715,138 @@ local codes= {
 		"Right", "Up", "Left", "Right", "Up", "Left" },
 	{ name= "unjoin", ignore_release= true, games= {"none"},
 		"Down", "Left", "Up", "Down", "Left", "Up", "Down", "Left", "Up"},
-	{ name= "change_song", fake= true, "Left" },
-	{ name= "change_song", fake= true, "Right" },
-	{ name= "play_song", fake= true, "Start" },
-	{ name= "open_special", fakes= true, "Select" },
 }
 for i, v in ipairs(codes) do
-	v.curr_pos= { [PLAYER_1]= 1, [PLAYER_2]= 1}
+	v.curr_pos= {[PLAYER_1]= 1, [PLAYER_2]= 1}
 end
 
-local function update_code_status(pn, code, press)
+local function update_keys_down(pn, key_pressed, press_type)
+	if PREFSMAN:GetPreference("OnlyDedicatedMenuButtons") then
+		if menu_button_names[key_pressed] then
+			keys_down[pn][key_pressed]= down_map[press_type]
+		end
+	else
+		keys_down[pn][key_pressed]= down_map[press_type]
+	end
+	if press_type == "InputEventType_FirstPress" then
+		pressed_since_menu_change[pn][key_pressed]= true
+	end
+	down_count[pn]= 0
+	for keyname, status in pairs(keys_down[pn]) do
+		if status then down_count[pn]= down_count[pn] + 1 end
+	end
+end
+
+local function update_code_status(pn, key_pressed, press_type)
 	local triggered= {}
 	local press_handlers= {
 		InputEventType_FirstPress= function(to_check)
-			if code == to_check[to_check.curr_pos[pn]] then
+			if key_pressed == to_check[to_check.curr_pos[pn]] then
 				to_check.curr_pos[pn]= to_check.curr_pos[pn] + 1
 				if to_check.curr_pos[pn] > #to_check then
 					triggered[#triggered+1]= to_check.name
 					to_check.curr_pos[pn]= 1
 					if to_check.repeat_first_on_end then
-						to_check.curr_pos[pn]= 2
+						to_check.curr_pos[pn]= #to_check
 					end
 				end
 			else
-				if not string_in_table(code, to_check.ignore_press_list) then
+				if not string_in_table(key_pressed, to_check.ignore_press_list) then
 					to_check.curr_pos[pn]= 1
 				end
 			end
 		end,
 		InputEventType_Release= function(to_check)
 			if not to_check.ignore_release and
-			not string_in_table(code, to_check.ignore_release_list) then
+			not string_in_table(key_pressed, to_check.ignore_release_list) then
 				to_check.curr_pos[pn]= 1
 			end
 		end
 	}
-	local handler= press_handlers[press]
-	if not handler then return triggered end
-	for i, v in ipairs(codes) do
-		if not v.fake then
-			handler(v)
+	local handler= press_handlers[press_type]
+	if handler then
+		if scroll_affectors[key_pressed] then
+			stop_auto_scrolling()
+		end
+		for i, v in ipairs(codes) do
+			if not v.fake then
+				handler(v)
+			end
+		end
+	end
+	if press_type == "InputEventType_Release" then
+		for i, check in ipairs(menu_codes) do
+			if not codes_since_release[pn] or not check.canceled_by_others then
+				if key_pressed == check.release_trigger then
+					local held_count= 0
+					for keyname, down in pairs(keys_down[pn]) do
+						if down and string_in_table(keyname, check.hold_buttons) then
+							held_count= held_count+1
+						elseif down and check.nothing_down then
+							held_count= -1
+							break
+						end
+					end
+					if held_count == #check.hold_buttons then
+						triggered[#triggered+1]= check.name
+						if check.overscroll then
+							correct_for_overscroll()
+						end
+						if not check.nothing_down then
+							codes_since_release[pn]= true
+						end
+					end
+				end
+			end
 		end
 	end
 	return triggered
 end
 
-local function handle_triggered_codes(pn, code, button, press)
-	local triggered= update_code_status(pn, code, press)
+local code_functions= {
+		sort_mode= function(pn)
+			stop_auto_scrolling()
+			music_wheel:show_sort_list()
+			change_sort_text(music_wheel.current_sort_name)
+		end,
+		play_song= function(pn)
+			music_wheel:interact_with_element()
+			change_sort_text(music_wheel.current_sort_name)
+		end,
+		diff_up= function(pn)
+			stop_auto_scrolling()
+			adjust_difficulty(pn, -1, "up.ogg")
+		end,
+		diff_down= function(pn)
+			stop_auto_scrolling()
+			adjust_difficulty(pn, 1, "down.ogg")
+		end,
+		open_special= function(pn)
+			stop_auto_scrolling()
+			set_special_menu(pn, 2)
+		end,
+		close_group= function(pn)
+			stop_auto_scrolling()
+			music_wheel:close_group()
+		end,
+		unjoin= function(pn)
+			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Cancel.ogg")
+			do return end -- crashes?
+			Trace("Master player: " .. GAMESTATE:GetMasterPlayerNumber())
+			Trace("Unjoining player: " .. pn)
+			GAMESTATE:ApplyGameCommand("style,double")
+			GAMESTATE:UnjoinPlayer(other_player[pn])
+			Trace("NPE: " .. GAMESTATE:GetNumPlayersEnabled())
+			lua.Flush()
+			GAMESTATE:ApplyGameCommand("style,single")
+			Trace("Master player after unjoin: " .. GAMESTATE:GetMasterPlayerNumber())
+			steps_display:update_steps_set()
+			steps_display:update_cursors()
+		end
+}
+
+local function handle_triggered_codes(pn, key_pressed, button, press_type)
+	local triggered= update_code_status(pn, key_pressed, press_type)
 	for i, v in ipairs(triggered) do
 		local ctext= SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("code_text")
 		if ctext then
@@ -718,105 +866,81 @@ local function handle_triggered_codes(pn, code, button, press)
 				ctext:diffusealpha(0)
 			end
 		end
-		if v == "sort_mode" then
-			music_wheel:show_sort_list()
-			change_sort_text(music_wheel.current_sort_name)
-		elseif v == "diff_up" then
-			adjust_difficulty(pn, -1, "up.ogg")
-		elseif v == "diff_down" then
-			adjust_difficulty(pn, 1, "down.ogg")
-		elseif v == "open_special" then
-			stop_auto_scrolling()
-			set_special_menu(pn, 2)
-		elseif v == "unjoin" then
-			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Cancel.ogg")
-			if false then -- crashes
-				Trace("Master player: " .. GAMESTATE:GetMasterPlayerNumber())
-				Trace("Unjoining player: " .. pn)
-				GAMESTATE:ApplyGameCommand("style,double")
-				GAMESTATE:UnjoinPlayer(other_player[pn])
-				Trace("NPE: " .. GAMESTATE:GetNumPlayersEnabled())
-				lua.Flush()
-				GAMESTATE:ApplyGameCommand("style,single")
-				Trace("Master player after unjoin: " .. GAMESTATE:GetMasterPlayerNumber())
-				steps_display:update_steps_set()
-				steps_display:update_cursors()
-			end
-		end
+		if code_functions[v] then code_functions[v](pn) end
 		if cons_players[pn] and cons_players[pn][v] then
 			cons_players[pn][v](cons_players[pn])
 			pain_displays[pn]:fetch_config()
 			pain_displays[pn]:update_all_items()
 		end
 	end
-	if #triggered == 0 then
-		if input_functions[press] and input_functions[press][button] then
-			input_functions[press][button]()
+	if #triggered == 0 and down_count[pn] <= 1 and not codes_since_release[pn] then
+		if input_functions[press_type] and input_functions[press_type][button] then
+			input_functions[press_type][button]()
 		end
 	end
 end
 
 local function input(event)
 	local pn= event.PlayerNumber
-	local code= event.GameButton
-	local press= event.type
+	local key_pressed= event.GameButton
+	local press_type= event.type
 	if not pn then return end
 	if GAMESTATE:IsSideJoined(pn) then
 		if entering_song then
-			if code == "Start" and press == "InputEventType_FirstPress" then
+			if key_pressed == "Start" and press_type == "InputEventType_FirstPress" then
 				SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
 				entering_song= 0
 				go_to_options= true
 			end
 		else
+			local function common_menu_change(next_menu)
+				pressed_since_menu_change[pn]= {}
+				set_special_menu(pn, next_menu)
+			end
+			local function common_select_handler(next_menu, attempt)
+				if key_pressed == "Select" then
+					if press_type == "InputEventType_Release"
+					and pressed_since_menu_change[pn].Select then
+						if attempt then
+							attempt()
+						else
+							common_menu_change(next_menu)
+						end
+						pressed_since_menu_change[pn].Select= false
+						return true
+					end
+				end
+			end
 			local menu_func= {
 				function()
-					if code == "Select" then
-						if press == "InputEventType_FirstPress" then
-							select_press_times[pn]= get_screen_time()
-						elseif press == "InputEventType_Release" then
-							if get_screen_time() - select_press_times[pn] <
-							special_menu_activate_time then
-								set_special_menu(pn, 2)
-							end
-						end
-					end
-					handle_triggered_codes(pn, event.button, code, press)
+					handle_triggered_codes(pn, event.button, key_pressed, press_type)
 				end,
 				function()
-					if code == "Select" and press == "InputEventType_FirstPress" then
-						set_special_menu(pn, 3)
-						return
-					end
-					if press == "InputEventType_Release" then return end
-					local handled, extra= song_props_menus[pn]:interpret_code(code)
-					Trace("Choice from menu: " .. tostring(handled) .. ", " .. tostring(extra))
+					if common_select_handler(3) then return end
+					if press_type == "InputEventType_Release" then return end
+					local handled, extra= song_props_menus[pn]:interpret_code(key_pressed)
 					if handled and extra then
-						rec_print_table(extra)
 						if extra.name == "exit_menu" then
-							set_special_menu(pn, 1)
+							common_menu_change(1)
 						elseif extra.name == "edit_tags" then
-							set_special_menu(pn, 3)
+							common_menu_change(3)
 						elseif extra.name == "edit_styles" then
-							set_special_menu(pn, 4)
+							common_menu_change(4)
 						elseif extra.name == "edit_pain" then
 							pain_displays[pn]:enter_edit_mode()
-							set_special_menu(pn, 5)
+							common_menu_change(5)
 						elseif interpret_common_song_props_code(pn, extra.name) then
-							set_special_menu(pn, 1)
+							common_menu_change(1)
 						end
 						update_sort_prop()
 					end
 				end,
 				function()
-					if code == "Select" and press == "InputEventType_FirstPress" then
-						set_special_menu(pn, 1)
-						return
-					end
-					if press == "InputEventType_Release" then return end
-					local handled, close= tag_menus[pn]:interpret_code(code)
+					if common_select_handler(1) then return end
+					if press_type == "InputEventType_Release" then return end
+					local handled, close= tag_menus[pn]:interpret_code(key_pressed)
 					if close then
-						set_special_menu(pn, 1)
+						common_menu_change(1)
 					end
 				end,
 				function()
@@ -824,33 +948,34 @@ local function input(event)
 						if enough_sourses_of_visible_styles() then
 							style_config:set_dirty(pn_to_profile_slot(pn))
 							music_wheel:resort_for_new_style()
-							set_special_menu(pn, 1)
+							common_menu_change(1)
 							return
 						else
 							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
 						end
 					end
-					if code == "Select" and press == "InputEventType_FirstPress" then
-						close_attempt()
-					end
-					if press == "InputEventType_Release" then return end
-					local handled, close= visible_styles_menus[pn]:interpret_code(code)
-					if close then
-						close_attempt()
-					end
+					if common_select_handler(1, close_attempt) then return end
+					if press_type == "InputEventType_Release" then return end
+					local handled, close=
+						visible_styles_menus[pn]:interpret_code(key_pressed)
+					if close then close_attempt() end
 				end,
 				function()
-					if press == "InputEventType_Release" then return end
-					local handled, close=pain_displays[pn]:interpret_code(code)
+					if press_type == "InputEventType_Release" then return end
+					local handled, close=pain_displays[pn]:interpret_code(key_pressed)
 					if close then
-						set_special_menu(pn, 1)
+						common_menu_change(1)
 					end
 				end
 			}
-			menu_func[in_special_menu[pn]]()
+			update_keys_down(pn, key_pressed, press_type)
+			if pressed_since_menu_change[pn][key_pressed] then
+				menu_func[in_special_menu[pn]]()
+			end
+			if down_count[pn] == 0 then codes_since_release[pn]= false end
 		end
 	else
-		if code == "Start" then
+		if key_pressed == "Start" then
 			local curr_style_type= GAMESTATE:GetCurrentStyle():GetStyleType()
 			if curr_style_type == "StyleType_OnePlayerOneSide" then
 				if cons_join_player(pn) then
@@ -903,14 +1028,6 @@ local function spew_song_specials(song)
 	Trace("Done.")
 end
 
-local function code_to_text(code)
-	if code.ignore_release then
-		return "&" .. table.concat(code, ";&") .. ";"
-	else
-		return "&" .. table.concat(code, ";+&") .. ";"
-	end
-end
-
 local function get_code_texts_for_game()
 	local game= GAMESTATE:GetCurrentGame():GetName():lower()
 	local ret= {}
@@ -918,8 +1035,14 @@ local function get_code_texts_for_game()
 		local in_game= (not code.games) or (string_in_table(game, code.games))
 		if in_game then
 			if not ret[code.name] then ret[code.name]= {} end
-			ret[code.name][#ret[code.name]+1]= code_to_text(code)
+			local add_to= ret[code.name]
+			add_to[#add_to+1]= code_to_text(code)
 		end
+	end
+	for i, code in ipairs(menu_codes) do
+		if not ret[code.name] then ret[code.name]= {} end
+		local add_to= ret[code.name]
+		add_to[#add_to+1]= menu_code_to_text(code)
 	end
 	return ret
 end
@@ -935,26 +1058,42 @@ local help_args= {
 	},
 }
 do
+	local menu_help_start= 288
 	local code_positions= {
 		change_song= {wheel_x, 24},
 		play_song= {wheel_x, 48},
-		sort_mode= {wheel_x, 96},
+		sort_mode= {wheel_x, 168, true},
+		close_group= {wheel_x, 288, true},
 		diff_up= {8, 168},
 		diff_down= {8, 192},
-		open_special= {8, SCREEN_CENTER_Y},
-		noob_mode= {8, SCREEN_CENTER_Y+48},
-		simple_options_mode= {8, SCREEN_CENTER_Y+72},
-		all_options_mode= {8, SCREEN_CENTER_Y+96},
-		excessive_options_mode= {8, SCREEN_CENTER_Y+120},
 	}
+	if misc_config:get_data().ssm_advanced_help then
+		code_positions.open_special= {8, menu_help_start}
+		code_positions.noob_mode= {8, menu_help_start+48}
+		code_positions.simple_options_mode= {8, menu_help_start+72}
+		code_positions.all_options_mode= {8, menu_help_start+96}
+		code_positions.excessive_options_mode= {8, menu_help_start+120}
+	end
 	local game_codes= get_code_texts_for_game()
 	for code_name, code_set in pairs(game_codes) do
 		local pos= code_positions[code_name]
-		local help= THEME:GetString("SelectMusic", code_name)
-		local or_word= " "..THEME:GetString("Common", "or").." "
-		local code_text= table.concat(code_set, or_word)
-		help_args[#help_args+1]= normal_text(
-			code_name .. "_help", help .. " " .. code_text, nil, pos[1], pos[2], .75, left)
+		if pos then
+			local help= THEME:GetString("SelectMusic", code_name)
+			local or_word= " "..THEME:GetString("Common", "or").." "
+			local code_text= ""
+			for i, sintext in ipairs(code_set) do
+				if pos[3] and i % 2 == 1 and i > 1 then
+					code_text= code_text .. "\n"
+				end
+				code_text= code_text .. sintext
+				if i < #code_set then
+					code_text= code_text .. or_word
+				end
+			end
+			help_args[#help_args+1]= normal_text(
+				code_name .. "_help", help .. " " .. code_text, nil, pos[1], pos[2],
+					.75, left)
+		end
 	end
 end
 
