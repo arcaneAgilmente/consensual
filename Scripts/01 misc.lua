@@ -284,9 +284,19 @@ do
 	end
 end
 
-if MonthOfYear() == 3 and DayOfMonth() == 1 then
-	april_fools= true
+function aprf_check()
+	if MonthOfYear() == 3 and DayOfMonth() == 1 and PREFSMAN:GetPreference("EasterEggs") then
+		april_fools= true
+	else
+		april_fools= false
+	end
+	if MonthOfYear() == 10 and DayOfMonth() == 7 and PREFSMAN:GetPreference("EasterEggs") then
+		kyzentun_birthday= true
+	else
+		kyzentun_birthday= false
+	end
 end
+aprf_check()
 
 global_distortion_mode= april_fools
 function maybe_distort_text(text_actor)

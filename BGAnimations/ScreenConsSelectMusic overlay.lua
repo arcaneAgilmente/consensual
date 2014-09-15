@@ -502,7 +502,7 @@ local input_functions= {
 	stop_scroll= function() stop_auto_scrolling() end,
 	back= function()
 		stop_music()
-		SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
+		SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
 		if not GAMESTATE:IsEventMode() then
 			end_credit_now()
 		else
@@ -578,9 +578,9 @@ local function adjust_difficulty(player, dir, sound)
 					cons_set_current_steps(player, picked_steps)
 					GAMESTATE:SetPreferredDifficulty(player, picked_steps:GetDifficulty())
 					set_preferred_style(player, stepstype_to_style[picked_steps:GetStepsType()].name)
-					SOUND:PlayOnce("Themes/_fallback/Sounds/_switch " .. sound)
+					SOUND:PlayOnce(THEME:GetPathS("_switch", sound))
 				else
-					SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
+					SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
 				end
 				break
 			end
@@ -815,11 +815,11 @@ local code_functions= {
 		end,
 		diff_up= function(pn)
 			stop_auto_scrolling()
-			adjust_difficulty(pn, -1, "up.ogg")
+			adjust_difficulty(pn, -1, "up")
 		end,
 		diff_down= function(pn)
 			stop_auto_scrolling()
-			adjust_difficulty(pn, 1, "down.ogg")
+			adjust_difficulty(pn, 1, "down")
 		end,
 		open_special= function(pn)
 			stop_auto_scrolling()
@@ -830,7 +830,7 @@ local code_functions= {
 			music_wheel:close_group()
 		end,
 		unjoin= function(pn)
-			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Cancel.ogg")
+			SOUND:PlayOnce(THEME:GetPathS("Common", "Cancel"))
 			do return end -- crashes?
 			Trace("Master player: " .. GAMESTATE:GetMasterPlayerNumber())
 			Trace("Unjoining player: " .. pn)
@@ -888,7 +888,7 @@ local function input(event)
 	if GAMESTATE:IsSideJoined(pn) then
 		if entering_song then
 			if key_pressed == "Start" and press_type == "InputEventType_FirstPress" then
-				SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+				SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 				entering_song= 0
 				go_to_options= true
 			end
@@ -951,7 +951,7 @@ local function input(event)
 							common_menu_change(1)
 							return
 						else
-							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
+							SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
 						end
 					end
 					if common_select_handler(1, close_attempt) then return end
@@ -977,7 +977,7 @@ local function input(event)
 	else
 		if key_pressed == "Start" then
 			local curr_style_type= GAMESTATE:GetCurrentStyle():GetStyleType()
-			if curr_style_type == "StyleType_OnePlayerOneSide" then
+			if curr_style_type == "StyleType_OnePlayerOneSide" and not kyzentun_birthday then
 				if cons_join_player(pn) then
 					-- Give everybody enough tokens to play, as a way of disabling the stage system.
 					for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
@@ -994,7 +994,7 @@ local function input(event)
 							load_tags(pn_to_profile_slot(pn))
 						end
 					end
-					SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+					SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 					pain_displays[pn]:fetch_config()
 					set_current_style("versus")
 					music_wheel:resort_for_new_style()
@@ -1133,7 +1133,7 @@ return Def.ActorFrame {
 							 change_sort_text(music_wheel.current_sort_name)
 						 end,
 	play_songCommand= function(self)
-											SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+											SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 											local om= self:GetChild("options message")
 											om:accelerate(0.25)
 											om:diffusealpha(1)

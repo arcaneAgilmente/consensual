@@ -1,6 +1,7 @@
 -- Unjoin currently joined players because stuff like going into the options and changing the theme joins players.
 GAMESTATE:Reset()
 SOUND:StopMusic()
+aprf_check()
 init_songs_of_each_style()
 
 local profile_list= {}
@@ -40,6 +41,7 @@ local function check_two_player()
 	return num_players == 2
 end
 local function set_two_player()
+	if kyzentun_birthday then return end
 	num_players= 2
 end
 
@@ -289,7 +291,7 @@ local function interpret_code(pn, code)
 	local handled, extra= current_menu:interpret_code(code)
 	cursor_poses[pn]= current_menu.cursor_pos
 	local function finalize_and_exit(pns)
-		SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+		SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 		GAMESTATE:LoadProfiles()
 		for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
 			local prof= PROFILEMAN:GetProfile(rpn)
@@ -321,7 +323,7 @@ local function interpret_code(pn, code)
 							set_current_playmode(playmode)
 							finalize_and_exit{pn}
 						else
-							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
+							SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
 							--Trace("Failed to join player.")
 							--Trace("CanJoin: " .. tostring(GAMESTATE:PlayersCanJoin()))
 							--Trace("IsJoined: " .. tostring(GAMESTATE:IsSideJoined(pn)))
@@ -337,13 +339,13 @@ local function interpret_code(pn, code)
 							set_current_playmode(playmode)
 							finalize_and_exit{PLAYER_1, PLAYER_2}
 						else
-							SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
+							SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
 						end
 					end
 				else
 					fail_message:show_message(
 						"Player " .. ToEnumShortString(other_player[pn]) .. " is unready.")
-					SOUND:PlayOnce("Themes/_fallback/Sounds/Common invalid.ogg")
+					SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
 				end
 			else
 				local new_menu= menu_name_to_number[extra]

@@ -60,7 +60,16 @@ local heart_entry_mt= {
 				local num= self.numpad_nums[self.cursor_pos]
 				local as_num= tonumber(num)
 				if as_num then
-					self.value= (self.value * 10) + as_num
+					local new_value= (self.value * 10) + as_num
+					if new_value < 300 then
+						self.value= new_value
+						if new_value > 100 then
+							self.cursor_pos= 11
+							self:update_cursor()
+						end
+					else
+						SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
+					end
 					self.rate:settext(self.value)
 					return true, false
 				else
@@ -77,23 +86,35 @@ local heart_entry_mt= {
 				local adds= {
 					Left= {2, -1, -1},
 					Right= {1, 1, -2},
+					MenuLeft= {-1, -1, -1},
+					MenuRight= {1, 1, 1},
 					Up= {9, -3, -3, -3},
 					Down= {3, 3, 3, -9}
 				}
+				adds.MenuUp= adds.Up
+				adds.MenuDown= adds.Down
+				local lr_buttons= {
+					Left= true, Right= true, MenuLeft= true, MenuRight= true}
 				if adds[code] then
 					local ind= 0
-					if code == "Left" or code == "Right" then
+					if lr_buttons[code] then
 						ind= ((self.cursor_pos-1)%3)+1
 					else
 						ind= math.ceil(self.cursor_pos / 3)
 					end
-					self.cursor_pos= self.cursor_pos + adds[code][ind]
-					local pos= self.numpad_poses[self.cursor_pos]
-					self.cursor:refit(pos[1], pos[2])
+					local new_pos= self.cursor_pos + adds[code][ind]
+					if new_pos < 1 then new_pos= #self.numpad_nums end
+					if new_pos > #self.numpad_nums then new_pos= 1 end
+					self.cursor_pos= new_pos
+					self:update_cursor()
 					return true, false
 				end
 			end
 			return false, false
+		end,
+		update_cursor= function(self)
+			local pos= self.numpad_poses[self.cursor_pos]
+			self.cursor:refit(pos[1], pos[2])
 		end
 }}
 
@@ -103,12 +124,7 @@ local heart_xs= {
 	[PLAYER_1]= SCREEN_WIDTH * .25,
 	[PLAYER_2]= SCREEN_WIDTH * .75,
 }
-local should_be_here= false
-
 local function input(event)
-	if not should_be_here then
-		trans_new_screen(Branch.AfterGameplay())
-	end
 	local pn= event.PlayerNumber
 	if not pn then return false end
 	if event.type == "InputEventType_Release" then return false end
@@ -130,6 +146,7 @@ local function input(event)
 					cons_players[pn].last_song_heart_rate= en.value
 				end
 			end
+			SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 			trans_new_screen(Branch.AfterGameplay())
 		end
 	end
@@ -161,7 +178,6 @@ local args= {
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	local profile= PROFILEMAN:GetProfile(pn)
 	if profile and profile:GetIgnoreStepCountCalories() then
-		should_be_here= true
 		heart_entries[pn]= setmetatable({}, heart_entry_mt)
 		args[#args+1]= heart_entries[pn]:create_actors(
 			pn, heart_xs[pn], SCREEN_CENTER_Y, pn)

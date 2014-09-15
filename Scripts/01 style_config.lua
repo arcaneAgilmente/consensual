@@ -49,6 +49,19 @@ function combined_visible_styles()
 	for name, style in pairs(visible) do
 		ret[#ret+1]= style
 	end
+	if kyzentun_birthday then
+		local double_ret= {}
+		for i, style in ipairs(styles_for_game) do
+			if style:GetName():find("double") then
+				double_ret[#double_ret+1]= {
+					visible= true, style= style:GetName(),
+					stepstype= style:GetStepsType()}
+			end
+		end
+		if #double_ret > 0 then
+			ret= double_ret
+		end
+	end
 	table.sort(ret, function(a, b) return a.style < b.style end)
 	return ret
 end

@@ -130,9 +130,9 @@ function cons_player:stage_stats_reset()
 		local columns= cur_style:ColumnsPerPlayer()
 		--Trace("Making column score slots for " .. tostring(columns) .. " columns.")
 		self.column_scores= {}
-		-- Track indices from the engine are 0-indexed.
-		-- Column -1 is for all columns combined.
-		for c= -1, columns-1 do
+		-- Track indices from the engine are 1-indexed.
+		-- Column 0 is for all columns combined.
+		for c= 0, columns do
 			self.column_scores[c]= empty_col_score()
 		end
 	end

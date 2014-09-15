@@ -103,6 +103,22 @@ local tns_cont_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToContinu
 local tns_maint_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToMaintainCombo")]
 local tns_inc_miss_combo= tns_reverse[THEME:GetMetric("Gameplay", "MaxScoreToIncrementMissCombo")]
 
+local function add_to_col(col_score, judge, max_value, offset)
+	local step_value= tns_values[judge]
+	if not step_value then return end
+	col_score.dp= col_score.dp + step_value
+	col_score.mdp= col_score.mdp + max_value
+	col_score.judge_counts[judge]= col_score.judge_counts[judge] + 1
+	col_score.step_timings[#col_score.step_timings+1]= {
+		time= GAMESTATE:GetCurMusicSeconds(),
+		judge= judge, offset= offset}
+end
+
+local function add_tn_to_col(col_score, tapnote, max_value)
+	add_to_col(col_score, tapnote:GetTapNoteResult():GetTapNoteScore(),
+						 max_value, tapnote:GetTapNoteResult():GetTapNoteOffset())
+end
+
 local function set_combo_stuff(param)
 	local toast= cons_players[player].toasty
 	if toast then
@@ -195,8 +211,6 @@ local args= {
 			local fake_score= cons_players[player].fake_score
 			local stage_stats= cons_players[player].stage_stats
 			do
-				local step_judge= param.HoldNoteScore or param.TapNoteScore
-				local step_value= tns_values[step_judge]
 				local max_step_value= 0
 				if param.HoldNoteScore then
 					max_step_value= tns_values.HoldNoteScore_Held
@@ -205,21 +219,22 @@ local args= {
 						max_step_value= tns_values.TapNoteScore_W1
 					end
 				end
-				local tracks= {param.FirstTrack}
-				if param.Tracks and #param.Tracks > 0 then
-					tracks= param.Tracks
+				local taps= param.Notes
+				local holds= param.Holds
+				local col_scores= cons_players[player].column_scores
+				if taps then
+					add_to_col(col_scores[0], param.TapNoteScore, max_step_value, param.TapNoteOffset)
+					local function add_set(set)
+						for track, tapnote in pairs(set) do
+							add_tn_to_col(col_scores[track], tapnote, max_step_value)
+						end
+					end
+					if taps then add_set(taps) end
+					if holds then add_set(holds) end
 				end
-				-- Add the column for the combined score to the list.
-				table.insert(tracks, 1, -1)
-				for ic, col in ipairs(tracks) do
-					local col_score= cons_players[player].column_scores[col]
-					col_score.dp= col_score.dp + step_value
-					col_score.mdp= col_score.mdp + max_step_value
-					col_score.judge_counts[step_judge]=
-						col_score.judge_counts[step_judge] + 1
-					col_score.step_timings[#col_score.step_timings+1]= {
-						time= GAMESTATE:GetCurMusicSeconds(),
-						judge= step_judge, offset= param.TapNoteOffset}
+				if param.HoldNoteScore then
+					add_to_col(col_scores[0], param.HoldNoteScore, max_step_value)
+					add_to_col(col_scores[param.FirstTrack], param.HoldNoteScore, max_step_value)
 				end
 			end
 			if param.HoldNoteScore then

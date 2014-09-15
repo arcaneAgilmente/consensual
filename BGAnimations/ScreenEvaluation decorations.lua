@@ -48,50 +48,50 @@ local tnss_that_can_be_early= {
 -- style compatibility issue:  Dance, Pump, and Techno are the only supported games.
 local column_to_pad_arrow_map= {
 	[PLAYER_1]= {
-		StepsType_Dance_Single= {[0]= 4, 8, 2, 6},
-		StepsType_Dance_Double= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Couple= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Solo= {[0]= 4, 1, 8, 2, 3, 6},
-		StepsType_Dance_Threepanel= {[0]= 1, 8, 3},
-		StepsType_Dance_Routine= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Pump_Single= {[0]= 7, 1, 5, 3, 9},
-		StepsType_Pump_Halfdouble= {[0]= 5, 3, 9, 16, 10, 14},
-		StepsType_Pump_Double= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Couple= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Routine= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Techno_Single4= {[0]= 4, 8, 2, 6},
-		StepsType_Techno_Single5= {[0]= 7, 1, 5, 3, 9},
-		StepsType_Techno_Single8= {[0]= 1, 2, 3, 4, 6, 7, 8, 9},
-		StepsType_Techno_Double4= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Techno_Double5= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Techno_Double8= {[0]= 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
+		StepsType_Dance_Single= {4, 8, 2, 6},
+		StepsType_Dance_Double= {4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Dance_Couple= {4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Dance_Solo= {4, 1, 8, 2, 3, 6},
+		StepsType_Dance_Threepanel= {1, 8, 3},
+		StepsType_Dance_Routine= {4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Pump_Single= {7, 1, 5, 3, 9},
+		StepsType_Pump_Halfdouble= {5, 3, 9, 16, 10, 14},
+		StepsType_Pump_Double= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Pump_Couple= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Pump_Routine= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Techno_Single4= {4, 8, 2, 6},
+		StepsType_Techno_Single5= {7, 1, 5, 3, 9},
+		StepsType_Techno_Single8= {1, 2, 3, 4, 6, 7, 8, 9},
+		StepsType_Techno_Double4= {4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Techno_Double5= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Techno_Double8= {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
 	},
 	[PLAYER_2]= {
-		StepsType_Dance_Single= {[0]= 13, 17, 11, 15},
-		StepsType_Dance_Double= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Couple= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Solo= {[0]= 13, 10, 17, 11, 12, 15},
-		StepsType_Dance_Threepanel= {[0]= 10, 17, 12},
-		StepsType_Dance_Routine= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Pump_Single= {[0]= 16, 10, 14, 12, 18},
-		StepsType_Pump_Halfdouble= {[0]= 5, 3, 9, 16, 10, 14},
-		StepsType_Pump_Double= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Couple= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Routine= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Techno_Single4= {[0]= 13, 17, 11, 15},
-		StepsType_Techno_Single5= {[0]= 16, 10, 14, 12, 18},
-		StepsType_Techno_Single8= {[0]= 10, 11, 12, 13, 15, 16, 17, 18},
-		StepsType_Techno_Double4= {[0]= 4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Techno_Double5= {[0]= 7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Techno_Double8= {[0]= 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
+		StepsType_Dance_Single= {13, 17, 11, 15},
+		StepsType_Dance_Double= {4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Dance_Couple= {4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Dance_Solo= {13, 10, 17, 11, 12, 15},
+		StepsType_Dance_Threepanel= {10, 17, 12},
+		StepsType_Dance_Routine= {4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Pump_Single= {16, 10, 14, 12, 18},
+		StepsType_Pump_Halfdouble= {5, 3, 9, 16, 10, 14},
+		StepsType_Pump_Double= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Pump_Couple= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Pump_Routine= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Techno_Single4= {13, 17, 11, 15},
+		StepsType_Techno_Single5= {16, 10, 14, 12, 18},
+		StepsType_Techno_Single8= {10, 11, 12, 13, 15, 16, 17, 18},
+		StepsType_Techno_Double4= {4, 8, 2, 6, 13, 17, 11, 15},
+		StepsType_Techno_Double5= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Techno_Double8= {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
 }}
 
 local score_datas= {}
 local score_data_viewing_indices= {}
 
 local function get_pad_arrow_for_col(pn, col)
-	-- -1 is the index for the combined stats of all panels
-	if col == -1 then return -1 end
+	-- 0 is the index for the combined stats of all panels
+	if col == 0 then return 0 end
 	local steps_type= gamestate_get_curr_steps(pn):GetStepsType()
 	if column_to_pad_arrow_map[pn][steps_type] then
 		return column_to_pad_arrow_map[pn][steps_type][col]
@@ -649,7 +649,7 @@ local score_report_mt= {
 				local late_counts= {}
 				for i, tim in ipairs(score_data.step_timings) do
 					-- Misses count as early because of this.
-					if tnss_that_can_be_early[tim.judge] and tim.offset >= 0 then
+					if tnss_that_can_be_early[tim.judge] and (tim.offset or 0) >= 0 then
 						late_counts[tim.judge]= (late_counts[tim.judge] or 0) + 1
 					else
 						early_counts[tim.judge]= (early_counts[tim.judge] or 0) + 1
@@ -1206,7 +1206,7 @@ local function filter_input_for_menus(pn, code, press)
 			elseif keys_down[pn].MenuRight then
 				perform_screenshot(pn)
 			else
-				SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+				SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 				SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
 			end
 		end
@@ -1364,12 +1364,16 @@ end
 local function add_column_score_to_session(pn, session_stats, col_id, col_score)
 	local session_col_id= get_pad_arrow_for_col(pn, col_id)
 	local sesscol= session_stats[session_col_id]
+	-- Prevent reloading the screen from increasing session stats.
+	local stage_seed= GAMESTATE:GetStageSeed()
+	if stage_seed == sesscol.stage_seed then return end
+	sesscol.stage_seed= stage_seed
 	sesscol.dp= sesscol.dp + col_score.dp
 	sesscol.mdp= sesscol.mdp + col_score.mdp
 	sesscol.max_combo= math.max(sesscol.max_combo, col_score.max_combo)
 	for i, tim in ipairs(col_score.step_timings) do
 		if sesscol.judge_counts.early[tim.judge] then
-			if tnss_that_can_be_early[tim.judge] and tim.offset >= 0 then
+			if tnss_that_can_be_early[tim.judge] and (tim.offset or 0) >= 0 then
 				sesscol.judge_counts.late[tim.judge]=
 					sesscol.judge_counts.late[tim.judge] + 1
 			else
@@ -1471,24 +1475,24 @@ do
 		end
 		score_datas[v]= {}
 		local pstats= curstats:GetPlayerStageStats(v)
-		for i= -1, #cons_players[v].column_scores do
+		for i= 0, #cons_players[v].column_scores do
 			score_datas[v][i]= cons_players[v].column_scores[i]
 		end
-		score_datas[v][-1].dp= pstats:GetActualDancePoints()
-		score_datas[v][-1].mdp= pstats:GetPossibleDancePoints()
-		score_datas[v][-1].max_combo= pstats:MaxCombo()
+		score_datas[v][0].dp= pstats:GetActualDancePoints()
+		score_datas[v][0].mdp= pstats:GetPossibleDancePoints()
+		score_datas[v][0].max_combo= pstats:MaxCombo()
 		for i, fj in ipairs(feedback_judgements) do
-			score_datas[v][-1].judge_counts[fj]= pstats:GetTapNoteScores(fj)
+			score_datas[v][0].judge_counts[fj]= pstats:GetTapNoteScores(fj)
 		end
 		for i, hj in ipairs(holdnote_names) do
-			score_datas[v][-1].judge_counts[hj]= pstats:GetHoldNoteScores(hj)
+			score_datas[v][0].judge_counts[hj]= pstats:GetHoldNoteScores(hj)
 		end
-		cons_players[v].fake_score.mdp= score_datas[v][-1].mdp
-		score_data_viewing_indices[v]= -1
+		cons_players[v].fake_score.mdp= score_datas[v][0].mdp
+		score_data_viewing_indices[v]= 0
 		highest_score= math.max(highest_score,
 			pstats:GetActualDancePoints() / pstats:GetPossibleDancePoints())
 		--save_column_scores(v)
-		add_column_score_to_session(v, cons_players[v].session_stats, -1, score_datas[v][-1])
+		add_column_score_to_session(v, cons_players[v].session_stats, 0, score_datas[v][0])
 		for ic= 0, #cons_players[v].column_scores do
 			crunch_combo_data_for_column(cons_players[v].column_scores[ic])
 			add_column_score_to_session(v, cons_players[v].session_stats, ic, cons_players[v].column_scores[ic])
@@ -1501,15 +1505,15 @@ do
 end
 
 set_visible_score_data= function(pn, index)
-	if index == -3 then
-		score_reports[pn]:set(pn, -1, cons_players[pn].fake_score)
+	if index == -2 then
+		score_reports[pn]:set(pn, 0, cons_players[pn].fake_score)
 		score_reports[pn].container:diffusealpha(1)
 		size_frame_to_report(frame_helpers[pn], score_reports[pn].container)
 		if not showing_profile_on_other_side then
 			profile_reports[pn].container:diffusealpha(0)
 		end
 		combo_graphs[pn]:set(cons_players[pn].fake_score.step_timings)
-	elseif index == -2 then
+	elseif index == -1 then
 		score_reports[pn].container:diffusealpha(0)
 		profile_reports[pn].container:diffusealpha(1)
 		size_frame_to_report(frame_helpers[pn], profile_reports[pn].container, true)
@@ -1539,13 +1543,13 @@ local function input(event)
 		elseif code == "MenuRight" then
 			score_data_viewing_indices[pn]= score_data_viewing_indices[pn] + 1
 		end
-		local view_min= -2
+		local view_min= -1
 		if showing_profile_on_other_side or not cons_players[pn].flags.eval.profile_data then
-			view_min= -1
+			view_min= 0
 		end
 		local view_max= #score_datas[pn]
 		if cons_players[pn].flags.eval.lock_per_arrow then
-			view_max= -1
+			view_max= 0
 		end
 		if score_data_viewing_indices[pn] < view_min then
 			score_data_viewing_indices[pn]= view_max
@@ -1610,9 +1614,9 @@ return Def.ActorFrame{
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
 			for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 				if cons_players[pn].fake_judge then
-					set_visible_score_data(pn, -3)
+					set_visible_score_data(pn, -2)
 				else
-					set_visible_score_data(pn, -1)
+					set_visible_score_data(pn, 0)
 				end
 			end
 			self:sleep(5)
@@ -1621,8 +1625,8 @@ return Def.ActorFrame{
 		ShowRealScoreCommand= function(self)
 			for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 				if cons_players[pn].fake_judge then
-					if score_data_viewing_indices[pn] == -1 then
-						set_visible_score_data(pn, -1)
+					if score_data_viewing_indices[pn] == 0 then
+						set_visible_score_data(pn, 0)
 					end
 				end
 			end

@@ -498,7 +498,7 @@ local function input(event)
 			end
 		elseif key_ret == "enter" then
 			local screen= SCREENMAN:GetTopScreen()
-			SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+			SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 			local player_name= name_displays[pn]:get_text()
 			local profile= PROFILEMAN:GetProfile(pn)
 			if profile then

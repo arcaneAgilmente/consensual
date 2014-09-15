@@ -424,7 +424,9 @@ options_sets.rate_mod= {
 				self:mod_command()
 				rate_coordinator:notify(self.current_value, true)
 			end,
-		get_eltext= function(self) return self.current_value .. "x" end,
+		get_eltext= function(self)
+			return ("%.2fx"):format(self.current_value)
+		end,
 		mod_command=
 			function(self)
 				GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(self.current_value)
@@ -1087,7 +1089,7 @@ local special= {
 		args= {
 			eles= {
 				{ name= "Select Music", init= noop_false, set= function()
-						SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
+						SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
 						trans_new_screen("ScreenConsSelectMusic")
 				end, unset= noop_nil}}}},
 	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options},
@@ -1223,10 +1225,11 @@ local function input(event)
 					end
 				end
 				if all_on_exit then
+					SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 					trans_new_screen("ScreenStageInformation")
 				end
 			elseif code == "Back" then
-				SOUND:PlayOnce("Themes/_fallback/Sounds/Common cancel.ogg")
+				SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
 				trans_new_screen("ScreenConsSelectMusic")
 			end
 		end

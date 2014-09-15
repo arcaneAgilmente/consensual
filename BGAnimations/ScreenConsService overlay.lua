@@ -30,12 +30,19 @@ dofile(THEME:GetPathO("", "auto_hider.lua"))
 
 local function make_extra_for_conf_val(name, min_scale, scale, max_scale)
 	return {
-		name= name,
-		min_scale= min_scale,
-		scale= scale,
-		max_scale= max_scale,
+		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
 		initial_value= function() return config_data[name] end,
 		set= function(pn, value) config_data[name]= value end
+	}
+end
+
+local function time_conf(name, min_scale, scale, max_scale)
+	return {
+		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
+		initial_value= function() return config_data[name] end,
+		set= function(pn, value) config_data[name]= value end,
+		val_to_text= function(pn, value) return secs_to_str(value) end,
+		scale_to_text= function(pn, value) return secs_to_str(value) end,
 	}
 end
 
@@ -51,11 +58,11 @@ end
 
 local reward_options= {
 	{name= "default_credit_time", meta= options_sets.adjustable_float,
-	 args= make_extra_for_conf_val("default_credit_time", 0, 1, 2)},
+	 args= time_conf("default_credit_time", 0, 1, 2)},
 	{name= "min_remaining_time", meta= options_sets.adjustable_float,
-	 args= make_extra_for_conf_val("min_remaining_time", 0, 1, 2)},
+	 args= time_conf("min_remaining_time", 0, 1, 2)},
 	{name= "song_length_grace", meta= options_sets.adjustable_float,
-	 args= make_extra_for_conf_val("song_length_grace", 0, 1, 2)},
+	 args= time_conf("song_length_grace", 0, 1, 2)},
 	{name= "min_score_for_reward", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("min_score_for_reward", -2, -1, 0)},
 	{name= "reward_time_by_pct", meta= options_sets.boolean_option,
@@ -65,22 +72,22 @@ local reward_options= {
 	{name= "max_reward_pct", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("max_reward_pct", -3, -1, 0)},
 	{name= "min_reward_time", meta= options_sets.adjustable_float,
-	 args= make_extra_for_conf_val("min_reward_time", 0, 1, 2)},
+	 args= time_conf("min_reward_time", 0, 1, 2)},
 	{name= "max_reward_time", meta= options_sets.adjustable_float,
-	 args= make_extra_for_conf_val("max_reward_time", 0, 1, 2)},
+	 args= time_conf("max_reward_time", 0, 1, 2)},
 	{name= "reset_limit", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("gameplay_reset_limit", 0, 0, 1)},
 }
 
 local help_options= {
 	{name= "select_music_help_time", meta= options_sets.adjustable_float,
-	 args= make_extra_for_conf_val("select_music_help_time", -3, 0, 2)},
+	 args= time_conf("select_music_help_time", -3, 0, 2)},
 	{name= "ssm_advanced_help", meta= options_sets.boolean_option,
 	 args= make_extra_for_bool_val("ssm_advanced_help", "Yes", "No")},
 	{name= "evaluation_help_time", meta= options_sets.adjustable_float,
-	 args= make_extra_for_conf_val("evaluation_help_time", -3, 0, 2)},
+	 args= time_conf("evaluation_help_time", -3, 0, 2)},
 	{name= "service_help_time", meta= options_sets.adjustable_float,
-	 args= make_extra_for_conf_val("service_help_time", -3, 0, 2)},
+	 args= time_conf("service_help_time", -3, 0, 2)},
 }
 
 local flag_slot_options= {}
