@@ -234,7 +234,7 @@ local args= {
 				end
 				if param.HoldNoteScore then
 					add_to_col(col_scores[0], param.HoldNoteScore, max_step_value)
-					add_to_col(col_scores[param.FirstTrack], param.HoldNoteScore, max_step_value)
+					add_to_col(col_scores[param.FirstTrack+1], param.HoldNoteScore, max_step_value)
 				end
 			end
 			if param.HoldNoteScore then

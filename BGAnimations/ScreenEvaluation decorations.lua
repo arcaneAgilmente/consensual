@@ -1493,7 +1493,7 @@ do
 			pstats:GetActualDancePoints() / pstats:GetPossibleDancePoints())
 		--save_column_scores(v)
 		add_column_score_to_session(v, cons_players[v].session_stats, 0, score_datas[v][0])
-		for ic= 0, #cons_players[v].column_scores do
+		for ic= 1, #cons_players[v].column_scores do
 			crunch_combo_data_for_column(cons_players[v].column_scores[ic])
 			add_column_score_to_session(v, cons_players[v].session_stats, ic, cons_players[v].column_scores[ic])
 		end

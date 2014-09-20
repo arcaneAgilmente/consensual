@@ -606,7 +606,7 @@ end
 --   match_element= element,
 --   final_compare= function, -- passed a candidate element and match_element
 --     to determine if the candidate matches.
---   default_to_brute= bool -- Use brute search is bucket_search fails.
+--   default_to_brute= bool -- Use brute search if bucket_search fails.
 -- )
 function bucket_search(set, match_element, final_compare, default_to_brute)
 	for i, item in ipairs(set) do
