@@ -77,8 +77,6 @@ local function bckt_cmp(left, right)
 end
 
 local function item_cmp_wrapper(sort_depth)
-	-- The bucket making process should sort out all the multiple name parts,
-	-- and handle most of the depth.  So those layers of names are ignored here.
 	return function(left, right)
 		if not left then return false end
 		if not right then return true end
@@ -340,7 +338,6 @@ local function group_similar_buckets(left, right, dont_clip)
 	if not left or not right then return nil end
 	local min_sim= 2
 	local function rename_grouped_buckets(group)
-		-- sort_depth doesn't need to be passed because it's not used on buckets
 		set_range_name_from_contents(group)
 		if dont_clip then return end
 		local shared_len= #group.name.value + 2
@@ -363,7 +360,6 @@ local function group_similar_buckets(left, right, dont_clip)
 				sorted= true, from_similar= true}
 		end
 		rename_grouped_buckets(left)
-		set_range_name_from_contents(left)
 		return left
 	end
 	return nil
@@ -383,7 +379,7 @@ local function recursive_sort(items, sort_factors, sort_depth, name_depth)
 		end
 	end
 	local function can_join_wrapper(left, right)
-		local can_join= left.name.source.can_join or noop_true
+		local can_join= left.name.source.can_join
 		local left_has_items= not left.contents[1].contents
 		local right_has_items= not right.contents[1].contents
 		if (left_has_items ~= right_has_items) or
@@ -430,11 +426,9 @@ local function recursive_sort(items, sort_factors, sort_depth, name_depth)
 				if used == -1 then
 					table.remove(buckets, i)
 					bucket= nil
-					i= i - 1
 				elseif used == 1 then
 					table.remove(buckets, i+1)
 					bucket= nil
-					i= i - 1
 				end
 			end
 			if bucket then
@@ -445,11 +439,12 @@ local function recursive_sort(items, sort_factors, sort_depth, name_depth)
 						buckets[i-1]= new_left
 						table.remove(buckets, i)
 						bucket= nil
-						i= i - 1
 					end
 				end
 			end
-			i= i + 1
+			if bucket then
+				i= i + 1
+			end
 		end
 	end
 	if should_split then
@@ -473,7 +468,7 @@ local function recursive_sort(items, sort_factors, sort_depth, name_depth)
 			end
 		end
 		process_sub_buckets(buckets, depth_remains)
-		while #buckets > max_bucket_size and not sub_split do
+		while #buckets > max_bucket_size do
 			buckets= evenly_split_bucket(buckets, sort_factors[sort_depth])
 			for i, bucket in ipairs(buckets) do
 				set_range_name_from_contents(bucket, sort_depth)
@@ -501,9 +496,15 @@ end
 --   name= string, -- optional human readable name, used by bucket_print.
 --   get_names= function(element), -- returns a table of names for element.
 --   returns_multiple= bool, -- whether get_names can return multiple names.
---   uses_depth= bool,
+--   uses_depth= bool, -- whether the name is a string that can be clipped
+--     -- for depth.  This is useful for title sort, where you want to clip
+--     -- the names down to just the first letter for the first layer of
+--     -- buckets, then add a letter with each layer.
 --   can_join= function(name, name),
---     returns whether the named buckets can be joined.
+--     -- returns whether the buckets made by this sort_factor can be joined
+--     -- if they are below min_bucket_size.
+--   insensitive_names= bool,
+--     -- whether the names are case-insensitive strings.
 --   group_similar= bool, -- whether to group buckets with similar names.
 --   dont_clip= bool, -- whether to clip names when grouping similar buckets.
 -- }
@@ -533,6 +534,7 @@ end
 --   contents_name_range= {name, name}
 --   contents= {item/bucket, ...}
 --   sorted= bool, -- whether this bucket has been sorted by table.sort yet.
+--   from_adduns= bool, -- whether bucket was made by add_item_to_uns_buckets
 --   from_split= bool, -- whether bucket was made by evenly_split_bucket
 --   from_similar= bool, -- whether bucket was made by grouping similar
 -- }
@@ -544,6 +546,7 @@ end
 --   sort_factors= {sort_factor, ...}
 -- )
 -- The final sort_factor in sort_factors must not return multiple names.
+
 function bucket_sort(set, sort_factors)
 	for i, sf in ipairs(sort_factors) do
 		ensure_can_join(sf)
@@ -603,9 +606,11 @@ end
 -- bucket_search params:
 -- (
 --   set= {bucket, ...} -- the set of buckets returned by bucket_sort
---   match_element= element,
+--   match_element= element, -- used to fetch the names to find the element
 --   final_compare= function, -- passed a candidate element and match_element
 --     to determine if the candidate matches.
+--     If final_compare(candidate, match_element) returns true, the element
+--     has been found and the full path is returned.
 --   default_to_brute= bool -- Use brute search if bucket_search fails.
 -- )
 function bucket_search(set, match_element, final_compare, default_to_brute)
@@ -725,7 +730,7 @@ function item_name_str(name)
 end
 
 function item_print(item, depth)
-	if true then return end
+	do return end
 	local indent= ("  "):rep(depth)
 	if #item.name_set > 1 then
 		Trace(indent .. "Names:")
@@ -784,8 +789,9 @@ function generate_song_sort_test_data(sort_factors)
 			"get_names= function(el)\n" ..
 			"	return el[\"" .. sf_name .. "\"]\n" ..
 			"end,\n" ..
-				-- can_join not saved because it can't be.
+			-- can_join not saved because it can't be.
 			"uses_depth= " .. tostring(sf.uses_depth) .. ",\n" ..
+			"insensitive_names= " .. tostring(sf.insensitive_names) .. ",\n" ..
 			"group_similar= " .. tostring(sf.group_similar) .. ",\n" ..
 			"dont_clip= " .. tostring(sf.dont_clip) .. "},\n"
 	end

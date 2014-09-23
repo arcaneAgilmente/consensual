@@ -201,6 +201,8 @@ function split_string_to_words(s)
 	s= tostring(s)
 	for i= 1, #s do
 		local c= s:sub(i, i)
+		-- The "i-1 > cur_word_start" condition is there to make sure that a word
+		-- is never shorter than one letter.
 		if c == " " or c == "_" or c == "-" or c == "." and i-1 > cur_word_start then
 			words[#words+1]= s:sub(cur_word_start, i-1)
 			cur_word_start= i+1

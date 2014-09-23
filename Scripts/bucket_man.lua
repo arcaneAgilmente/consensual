@@ -246,6 +246,7 @@ local song_sort_factors= {
 		uses_depth= true},
 	{ name= "Length", get_names= length},
 	-- Disabled, causes stepmania to eat all ram and hang.
+	-- Left in as disabled so it's known to not work.
 --	{ name= "Step Artist", get_names= step_artist, returns_multiple= true},
 }
 
