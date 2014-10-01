@@ -395,73 +395,6 @@ local function update_player_cursors()
 	end
 end
 
-local function note_data_mod_test(note_data)
-	local tapnote_found= false
-	local tap_row= 1
-	while not tapnote_found do
-		local tapnote= note_data:GetTapNote(1, tap_row)
-		if tapnote then
-			Trace("Tapnote found on row " .. tap_row .. " of type " .. tapnote:GetType())
-			tapnote_found= true
-		end
-		tap_row= tap_row + 1
-		if tap_row > 3000 then
-			Trace("Tapnote not found in the first 3000 rows.")
-			tapnote_found= true
-		end
-	end
-	local function print_rows(tapnote, row, track)
-		Trace(tapnote:GetType() .. " r: " .. row .. " t: " .. tostring(track))
-	end
-	local lefts= 0
-	local rights= 0
-	local function arrow_count(tapnote, row, track)
-		if track == 0 then
-			lefts= lefts+1
-		end
-		if track == 3 then
-			rights= rights+1
-		end
-	end
-	local function print_and_count(tapnote, row, track)
-		print_rows(tapnote, row, track)
-		arrow_count(tapnote, row, track)
-	end
-	note_data:ForEachTapNoteAllTracks(0, -1, arrow_count)
-	Trace(lefts .. " lefts, " .. rights .. " rights.");
-	local first_left_beat= note_data:GetNextTapNoteRowForTrack(0, 0)
-	Trace("first_left_beat is " .. tostring(first_left_beat))
-	local row_empty= note_data:IsRowEmpty(first_left_beat)
-	local range_empty= note_data:IsRangeEmpty(0, first_left_beat-1, first_left_beat+1)
-	local num_taps_on_row= note_data:GetNumTapsOnRow(first_left_beat)
-	local tracks_with_tap= note_data:GetTracksWithTapAtRow(first_left_beat)
-	Trace("flb: " .. first_left_beat .. " re: " .. tostring(row_empty) .. " rae: " .. tostring(range_empty) .. " ntor: " .. num_taps_on_row .. " twt: " .. table.concat(tracks_with_tap, ", "))
-end
-
-local function steps_decompress_test(steps)
-	if not steps then return end
-	local start_time= GetTimeSinceStart()
-	local note_data= steps:GetNoteData()
-	local end_time= GetTimeSinceStart()
-	--NoteDataUtil.ExamineNoteDataMeta(note_data)
-	local note_meta= getmetatable(note_data)
-	Trace("NoteData metatable:")
-	rec_print_table(note_meta)
-	local alloced_nd= NoteDataUtil.NewNoteData()
-	Trace("alloced_nd: " .. tostring(alloced_nd))
-	local alloced_meta= getmetatable(alloced_nd)
-	Trace("Alloced metatable:")
-	rec_print_table(alloced_meta)
-	local alloced_meta_meta= getmetatable(alloced_meta)
-	Trace("Alloced metametatable:")
-	rec_print_table(alloced_meta_meta)
-	Trace("alloced_nd.GetTapNote: " .. tostring(alloced_nd.GetTapNote))
-	-- note_data_mod_test(note_data)
-	steps:ReleaseNoteData()
-	local post_release_time= GetTimeSinceStart()
-	Trace("SDT:  " .. (end_time - start_time) .. " to decompress.  " .. (post_release_time - end_time) .. " to release.")
-end
-
 local function Update(self)
 	if entering_song then
 		if get_screen_time() > entering_song then
@@ -1004,28 +937,6 @@ local function input(event)
 		end
 	end
 	update_player_cursors()
-end
-
-local function spew_song_specials(song)
-	local special_names= {
-		"Warps", "Fakes", "Scrolls", "Speeds", "TimeSignatures", "Combos",
-		"Tickcounts", "Stops", "Delays", "BPMs", "BPMsAndTimes"
-	}
-	Trace("Spewing specials for " .. song:GetDisplayFullTitle())
-	local timing_data= song:GetTimingData()
-	for i, name in ipairs(special_names) do
-		local func_name= "Get"..name
-		Trace(name .. " : (" .. func_name .. ")")
-		local specs= timing_data[func_name](timing_data)
-		rec_print_table(specs, "  ")
-	end
-	Trace("Done.")
-	Trace("Does GetBPMs actually return strings?")
-	local bpms= timing_data:GetBPMs()
-	for i, bpm in ipairs(bpms) do
-		print(type(bpm))
-	end
-	Trace("Done.")
 end
 
 local function get_code_texts_for_game()

@@ -449,6 +449,10 @@ function cons_set_current_steps(pn, steps)
 		local to_st= steps:GetStepsType()
 		if curr_st ~= to_st then
 			local curr_style_info= stepstype_to_style[curr_st]
+			if not curr_style_info then
+				Trace("Error when trying to fetch style info.  Dumping stepstype_to_style.")
+				rec_print_table(stepstype_to_style)
+			end
 			local to_style= stepstype_to_style[to_st]
 			if to_style then
 				if curr_style_info.for_sides > to_style.for_sides then

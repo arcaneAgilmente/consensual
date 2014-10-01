@@ -2,7 +2,6 @@
 GAMESTATE:Reset()
 SOUND:StopMusic()
 aprf_check()
-init_songs_of_each_style()
 
 local profile_list= {}
 for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do

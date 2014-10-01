@@ -602,7 +602,7 @@ local score_report_mt= {
 					-- Misses have an offset of 0.
 					if tim.offset and tim.judge ~= "TapNoteScore_Miss" then
 						offs_judged= offs_judged + 1
-						offset_total= offset_total + math.abs(tim.offset)
+						offset_total= offset_total + tim.offset
 					end
 				end
 				local off_precision= math.ceil(math.log(offs_judged) / math.log(10))

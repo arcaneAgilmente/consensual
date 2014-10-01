@@ -370,13 +370,16 @@ local function recursive_sort(items, sort_factors, sort_depth, name_depth)
 	local should_split= false
 	if #items > max_bucket_size then
 		should_split= true
-	elseif curr_factor and curr_factor.returns_multiple then
-		for i, item in ipairs(items) do
-			if #item.name_set[sort_depth].names > 1 then
-				should_split= true
-				break
-			end
-		end
+		-- Forcing a split just because one of the items has multiple names
+		-- causes infinite recursion because the splitting doesn't know when to
+		-- advance to the next sort_factor.
+--	elseif curr_factor and curr_factor.returns_multiple then
+--		for i, item in ipairs(items) do
+--			if #item.name_set[sort_depth].names > 1 then
+--				should_split= true
+--				break
+--			end
+--		end
 	end
 	local function can_join_wrapper(left, right)
 		local can_join= left.name.source.can_join

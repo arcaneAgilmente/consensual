@@ -113,7 +113,7 @@ local function newest_score(score_list)
 		-- Date is clipped to YYYY-MM-DD
 		return {score_list:GetHighScores()[1]:GetDate():sub(1, 10)}
 	else
-		return {""}
+		return {"No Scores"}
 	end
 end
 
@@ -172,9 +172,9 @@ local rival_functions= {
 					-- Date is clipped to YYYY-MM-DD
 					return {highest:GetDate():sub(1, 10)}
 				end
-				return {"0"}
+				return {"No Scores"}
 			else
-				return {"0"}
+				return {"No Scores"}
 			end
 		end,
 		name_func=
@@ -256,6 +256,9 @@ local course_sort_factors= {
 local favor_sort_factors= {}
 local tag_sort_factors= {}
 local function make_favor_tag_sorts()
+	-- Clear the tables so we don't accumulate sort_factors every time.
+	favor_sort_factors= {}
+	tag_sort_factors= {}
 	local slots= {"ProfileSlot_Machine"}
 	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		slots[#slots+1]= pn_to_profile_slot(pn)
@@ -266,7 +269,7 @@ local function make_favor_tag_sorts()
 			can_join= noop_false}
 		tag_sort_factors[#tag_sort_factors+1]= {
 			name= slot:sub(13) .. " Tag", get_names= tag_wrapper(slot),
-			can_join= noop_false}
+			can_join= noop_false, returns_multiple= true}
 	end
 end
 
@@ -282,7 +285,7 @@ end
 local score_factor_source= {name= "score_factor_bucket"}
 local function score_sub_bucket_maker(score_func, prename, postname)
 	local contents= {}
-	name= prename or postname or "Report this bug"
+	local name= prename or postname or "Report this bug"
 	prename= (prename and prename .. " ") or ""
 	postname= (postname and " " .. postname) or ""
 	for d, diff in ipairs(difficulty_list) do
@@ -306,12 +309,9 @@ local score_factor_bucket= {
 }}
 
 local function make_bucket_from_factors(name, factors)
-	local source= {name= "make from " .. name}
-	local contents= {}
-	for i, factor in ipairs(factors) do
-		contents[#contents+1]= factor
-	end
-	return {name= {value= name, source= source}, contents= contents}
+	return {
+		name= {value= name, source= {name= "make from " .. name}},
+		contents= factors}
 end
 
 local function make_rival_bucket()
@@ -337,7 +337,7 @@ local function make_rival_bucket()
 					get_names= score_wrapper(rival_element.func, diff.diff),
 					can_join= default_cant_join_wrapper(
 						rival_element.func, fake_high_score_list),
-					dont_clip= true, from_rival= true}
+					group_similar= true, dont_clip= true, from_rival= true}
 			end
 			contents[#contents+1]= {
 				name= {value= rival_element.name, source= source},
@@ -353,7 +353,6 @@ local function make_rival_bucket()
 	return {name= {value= "Rival", source= source}, contents= sorted_names}
 end
 
-local global_sort_info= {}
 local rival_bucket= {}
 
 local function gen_test_sorts(contents)
@@ -376,36 +375,35 @@ function gen_name_only_test_data()
 	generate_song_sort_test_data({group_sort, title_sort})
 end
 
-local function get_course_mode_sort_info()
-	local contents= {}
-	for i, sf in ipairs(shared_sort_factors) do
-		contents[#contents+1]= sf
+local function add_factor_sets_to_sort_list(contents, sets)
+	for i, set in ipairs(sets) do
+		for f, sf in ipairs(set) do
+			contents[#contents+1]= sf
+		end
 	end
-	for i, sf in ipairs(course_sort_factors) do
-		contents[#contents+1]= sf
-	end
+end
+
+local function add_common_buckets_to_sort_list(contents)
 	contents[#contents+1]= make_bucket_from_factors("Meter",meter_sort_factors)
 	contents[#contents+1]= make_bucket_from_factors("Favor",favor_sort_factors)
 	contents[#contents+1]= make_bucket_from_factors("Tag",tag_sort_factors)
 	contents[#contents+1]= score_factor_bucket
 	contents[#contents+1]= rival_bucket
+end
+
+local function get_course_mode_sort_info()
+	local contents= {}
+	add_factor_sets_to_sort_list(
+		contents, {shared_sort_factors, course_sort_factors})
+	add_common_buckets_to_sort_list(contents)
 	return contents
 end
 
 local function get_song_mode_sort_info()
 	local contents= {}
-	for i, sf in ipairs(shared_sort_factors) do
-		contents[#contents+1]= sf
-	end
-	for i, sf in ipairs(song_sort_factors) do
-		contents[#contents+1]= sf
-	end
-	contents[#contents+1]= make_bucket_from_factors("Meter",meter_sort_factors)
-	contents[#contents+1]= make_bucket_from_factors("Favor",favor_sort_factors)
-	contents[#contents+1]= make_bucket_from_factors("Tag",tag_sort_factors)
-	contents[#contents+1]= score_factor_bucket
-	contents[#contents+1]= rival_bucket
---	gen_test_sorts(contents)
+	add_factor_sets_to_sort_list(
+		contents, {shared_sort_factors, song_sort_factors})
+	add_common_buckets_to_sort_list(contents)
 	return contents
 end
 
@@ -478,11 +476,9 @@ function bucket_man_interface:initialize()
 	if GAMESTATE:IsCourseMode() then
 		self.song_set= SONGMAN:GetAllCourses(false) -- fuck autogen courses
 		set_course_mode()
-		global_sort_info= get_course_mode_sort_info()
 	else
 		self.song_set= SONGMAN:GetAllSongs()
 		set_song_mode()
-		global_sort_info= get_song_mode_sort_info()
 	end
 	rival_bucket= make_rival_bucket()
 	self:style_filter_songs()
@@ -519,11 +515,11 @@ end
 
 function bucket_man_interface:filter_songs(filter_func)
 	if not self.style_filtered_songs then
-		Trace("bucket_man_interface:  fars operates on already style-filtered songs.")
+		Trace("bucket_man_interface:  filter_songs operates on already style-filtered songs.")
 		return
 	end
 	if not filter_func then
-		Trace("bucket_man_interface:  Forgot to pass a filter_func to fars.")
+		Trace("bucket_man_interface:  Forgot to pass a filter_func to filter_songs.")
 		return
 	end
 	local refiltered_songs= {}
@@ -570,9 +566,8 @@ function sick_wheel_item_interface:create_actors(name)
 	}
 end
 
-do
-local move_time= .1
 function sick_wheel_item_interface:transform(item_index, num_items, is_focus)
+	local move_time= .1
 	local width_limit= SCREEN_RIGHT - wheel_x - 8
 	self.container:finishtweening()
 	self.container:linear(move_time)
@@ -583,11 +578,7 @@ function sick_wheel_item_interface:transform(item_index, num_items, is_focus)
 	else
 		self.container:diffusealpha(1)
 	end
-	local xmin, xmax, ymin, ymax= rec_calc_actor_extent(self.text)
-	local cxz= self.text:GetZoomX()
-	local width= (xmax - xmin) / cxz
 	width_limit_text(self.text, width_limit)
-end
 end
 
 function sick_wheel_item_interface:set(info)
@@ -602,14 +593,14 @@ function sick_wheel_item_interface:set(info)
 		end
 		self.text:settext(bucket_disp_name(info.bucket_info))
 		self.number:settext(#info.bucket_info.contents)
-	elseif info.is_random then
+	elseif info.random_info then
 		self.text:settext(info.disp_name)
 		self.text:diffuse(solar_colors.red())
 --		self.number:settext(#info.candidate_set) -- sticks out too much.
 	elseif info.song_info then
 		if info.is_prev then
 			self.text:settext(info.disp_name)
-		self.text:diffuse(solar_colors.f_text())
+			self.text:diffuse(solar_colors.f_text())
 		else
 			self.text:settext(song_get_main_title(info.song_info))
 			self.text:diffuse(solar_colors.uf_text())
@@ -624,6 +615,39 @@ function sick_wheel_item_interface:set(info)
 	end
 end
 
+local recent_limit= 64
+local function add_song_to_recent(song, recent)
+	local song_name= song_get_dir(song)
+	local shifted= recent[1]
+	recent[1]= song
+	if not shifted then return end
+	if song_get_dir(shifted) == song_name then return end
+	for i= 2, #recent+1 do
+		if recent[i] and song_get_dir(recent[i]) == song_name then
+			recent[i]= shifted
+			return
+		else
+			shifted, recent[i]= recent[i], shifted
+		end
+	end
+	if recent[recent_limit+1] then recent[recent_limit+1]= nil end
+end
+
+local function make_bucket_from_recent(recent, name)
+	return {
+		is_special= true,
+		bucket_info= {
+			name= {
+				value= name, disp_name= get_string_wrapper("MusicWheel", name),
+				source= {
+					name, "make from recent",
+					get_names= generic_get_wrapper("GetDisplayMainTitle")}},
+			contents= recent}}
+end
+
+local random_recent= {}
+local played_recent= {}
+
 local function make_random_decision(random_el)
 	local candidates= random_el.candidate_set
 	local choice= 1
@@ -633,6 +657,7 @@ local function make_random_decision(random_el)
 	-- This is a check to make sure the thing being picked is a song or course.
 	if candidates[choice].GetDisplayFullTitle then
 		random_el.chosen= candidates[choice]
+		add_song_to_recent(random_el.chosen, random_recent)
 	else
 		random_el.chosen= nil
 	end
@@ -657,7 +682,7 @@ function music_whale_interface:create_actors(x)
 	return Def.ActorFrame(args)
 end
 
-function music_whale_interface:find_actors(container)
+function music_whale_interface:find_actors()
 	self.song_set= bucket_man.filtered_songs
 	self.cursor_song= gamestate_get_curr_song()
 	if music_whale_state then
@@ -673,13 +698,13 @@ function music_whale_interface:find_actors(container)
 		end
 		self:sort_songs(music_whale_state.cur_sort_info)
 	else
-		self:sort_songs(global_sort_info[1])
+		self:sort_songs(get_sort_info()[1])
 	end
 end
 
 function music_whale_interface:sort_songs(si)
 	self.current_sort_name= si.name
-	function sort_work()
+	local function sort_work()
 		self.cur_sort_info= si
 		self.sorted_songs= bucket_man:sort_songs(si)
 		self.disp_stack= {}
@@ -775,33 +800,32 @@ function music_whale_interface:add_player_randoms(disp_bucket, player_number)
 				bucket_traverse(
 					self.curr_bucket.contents or self.curr_bucket, nil, candy_filter)
 			end
+			local function ritem_name(type_name)
+				return sn .. get_string_wrapper("MusicWheel", type_name)
+			end
 			if #prev_easier > 0 then
 				disp_bucket[#disp_bucket+1]= {
-					name= sn .. "Random Easier", is_random= true,
-					disp_name= sn .. get_string_wrapper("MusicWheel", "Random Easier"),
-					candidate_set= prev_easier
-				}
+					name= sn .. "Random Easier", is_special= true,
+					disp_name= ritem_name("Random Easier"),
+					random_info= {candidate_set= prev_easier}}
 			end
 			if #prev_same > 0 then
 				disp_bucket[#disp_bucket+1]= {
-					name= sn .. "Random Same", is_random= true,
-					disp_name= sn .. get_string_wrapper("MusicWheel", "Random Same"),
-					candidate_set= prev_same
-				}
+					name= sn .. "Random Same", is_special= true,
+					disp_name= ritem_name("Random Same"),
+					random_info= {candidate_set= prev_same}}
 			end
 			if #prev_harder > 0 then
 				disp_bucket[#disp_bucket+1]= {
-					name= sn .. "Random Harder", is_random= true,
-					disp_name= sn .. get_string_wrapper("MusicWheel", "Random Harder"),
-					candidate_set= prev_harder
-				}
+					name= sn .. "Random Harder", is_special= true,
+					disp_name= ritem_name("Random Harder"),
+					random_info= {candidate_set= prev_harder}}
 			end
 			if #prev_sbd > 0 then
 				disp_bucket[#disp_bucket+1]= {
-					name= sn .. "Random SB", is_random= true,
-					disp_name= sn .. get_string_wrapper("MusicWheel", "Random") .. sbd_str,
-					candidate_set= prev_sbd
-				}
+					name= sn .. "Random SB", is_special= true,
+					disp_name= ritem_name("Random") .. sbd_str,
+					random_info= {candidate_set= prev_sbd}}
 			end
 		end
 	end
@@ -816,8 +840,9 @@ function music_whale_interface:add_randoms(bucket)
 		self.curr_bucket.contents or self.curr_bucket, nil, add_to_candidates)
 	if #candidates > 0 then
 		bucket[#bucket+1]= {
-			name= "Random", disp_name= get_string_wrapper("MusicWheel", "Random"),
-			is_random= true, candidate_set= candidates }
+			name= "Random", is_special= true,
+			disp_name= get_string_wrapper("MusicWheel", "Random"),
+			random_info= {candidate_set= candidates}}
 	end
 	if not GAMESTATE:IsCourseMode() then
 		self:add_player_randoms(bucket, PLAYER_1)
@@ -840,9 +865,19 @@ function music_whale_interface:add_special_items_to_bucket(bucket)
 		end
 		if prev_picked_song then
 			bucket[#bucket+1]= {
-				name= "Previous Song",
+				name= "Previous Song", is_special= true,
 				disp_name= get_string_wrapper("MusicWheel", "PrevSong"),
 				is_prev= true, song_info= prev_picked_song}
+		end
+		if #self.disp_stack == 0 then
+			if #random_recent > 0 then
+				bucket[#bucket+1]=
+					make_bucket_from_recent(random_recent, "Recent from Random")
+			end
+			if #played_recent > 0 then
+				bucket[#bucket+1]=
+					make_bucket_from_recent(played_recent, "Recently played")
+			end
 		end
 		self:add_randoms(bucket)
 		bucket[#bucket+1]= last_el
@@ -854,7 +889,7 @@ function music_whale_interface:remove_special_items_from_bucket(bucket)
 	local i= 1
 	while i <= #bucket and bucket[i] do
 		local v= bucket[i]
-		if v.is_random or v.is_prev then
+		if v.is_special then
 			table.remove(bucket, i)
 		else
 			i= i + 1
@@ -872,6 +907,8 @@ function music_whale_interface:set_display_bucket(bucket, pos)
 			if v.el.GetBackgroundPath then
 				disp_bucket[#disp_bucket+1]= {song_info= v.el}
 			end
+		elseif v.GetBackgroundPath then
+			disp_bucket[#disp_bucket+1]= {song_info= v}
 		elseif v.get_names then
 			disp_bucket[#disp_bucket+1]= {sort_info= v}
 		else
@@ -964,10 +1001,11 @@ end
 
 function music_whale_interface:set_stuff_from_curr_element()
 	local curr_element= self.sick_wheel:get_info_at_focus_pos()
-	if curr_element.is_random then
-		make_random_decision(curr_element)
-		if curr_element.chosen then
-			gamestate_set_curr_song(curr_element.chosen)
+	if not curr_element then return end
+	if curr_element.random_info then
+		make_random_decision(curr_element.random_info)
+		if curr_element.random_info.chosen then
+			gamestate_set_curr_song(curr_element.random_info.chosen)
 		else
 			gamestate_set_curr_song(nil)
 		end
@@ -997,11 +1035,12 @@ function music_whale_interface:interact_with_element()
 		end
 	elseif curr_element.sort_info then
 		self:sort_songs(curr_element.sort_info)
-	elseif (curr_element.song_info or curr_element.is_random) and
+	elseif (curr_element.song_info or curr_element.random_info) and
 	gamestate_get_curr_song() then
 		local cur_song= gamestate_get_curr_song()
+		add_song_to_recent(cur_song, played_recent)
 		local alt_cursor_songs= {}
-		if not curr_element.is_random then
+		if not curr_element.random_info then
 			local function gather_adjacent_songs(s)
 				alt_cursor_songs[#alt_cursor_songs+1]= s.el
 			end
@@ -1012,7 +1051,7 @@ function music_whale_interface:interact_with_element()
 			cursor_song= cur_song,
 			alt_cursor_songs= alt_cursor_songs
 		}
-		if curr_element.is_random or curr_element.is_prev then
+		if curr_element.random_info or curr_element.is_prev then
 			music_whale_state.on_random= curr_element.name
 			music_whale_state.depth_to_random= #self.disp_stack
 			--Trace("music_whale_state.depth_to_random: " .. music_whale_state.depth_to_random)

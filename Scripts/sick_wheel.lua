@@ -16,21 +16,6 @@ function table.rotate_left(t, r)
 	return new_t
 end
 
-local function make_random_decision(random_el)
-	local candidates= random_el.candidate_set
-	local choice= 1
-	if #candidates > 1 then
-		choice= MersenneTwister.Random(1, #candidates)
-	end
-	-- This is a check to make sure the thing being picked is a song or course.
-	if (type(candidates[choice]) == "Song" or
-		type(candidates[choice]) == "Course") then
-		random_el.chosen= candidates[choice]
-	else
-		random_el.chosen= nil
-	end
-end
-
 local sick_wheel= {}
 sick_wheel_mt= { __index= sick_wheel }
 

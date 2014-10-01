@@ -48,6 +48,9 @@ local tex_pos_time= 0
 
 local unskewed_verts= {}
 local skewed_verts= {}
+local function random_var()
+	return math.random(max_var*2+1) - max_var - 1
+end
 for x= -1, xq+1 do
 	unskewed_verts[x]= {}
 	skewed_verts[x]= {}
@@ -55,8 +58,7 @@ for x= -1, xq+1 do
 		if x > 0 and x < xq+1 and y > 0 and y < yq+1 then
 			if max_var > 0 then
 				skewed_verts[x][y]= {
-					(spx * x) + math.random(-max_var, max_var),
-					(spy * y) + math.random(-max_var, max_var)
+					(spx * x) + random_var(), (spy * y) + random_var(),
 				}
 			else
 				skewed_verts[x][y]= {(spx * x), (spy * y)}
