@@ -56,6 +56,16 @@ local function make_extra_for_bool_val(name, on, off)
 	}
 end
 
+local function sub_bool_conf(sub_name, name, on, off)
+	return {
+		name= name,
+		true_text= on,
+		false_text= off,
+		get= function() return config_data[sub_name][name] end,
+		set= function(pn, value) config_data[sub_name][name]= value end
+	}
+end
+
 local reward_options= {
 	{name= "default_credit_time", meta= options_sets.adjustable_float,
 	 args= time_conf("default_credit_time", 0, 1, 2)},
@@ -166,6 +176,23 @@ local function key_set()
 	tops:AddInputCallback(tempback)
 end
 
+local im_options= {
+	{name= "im_have_style", meta= options_sets.boolean_option,
+	 args= sub_bool_conf("initial_menu_ops", "style_choice", "On", "Off")},
+	{name= "im_have_playmode", meta= options_sets.boolean_option,
+	 args= sub_bool_conf("initial_menu_ops", "playmode_choice", "On", "Off")},
+	{name= "im_have_profile", meta= options_sets.boolean_option,
+	 args= sub_bool_conf("initial_menu_ops", "profile_choice", "On", "Off")},
+	{name= "im_have_smops", meta= options_sets.boolean_option,
+	 args= sub_bool_conf("initial_menu_ops", "stepmania_ops", "On", "Off")},
+	{name= "im_have_consops", meta= options_sets.boolean_option,
+	 args= sub_bool_conf("initial_menu_ops", "consensual_ops", "On", "Off")},
+	{name= "im_have_edit", meta= options_sets.boolean_option,
+	 args= sub_bool_conf("initial_menu_ops", "edit_choice", "On", "Off")},
+	{name= "im_have_exit", meta= options_sets.boolean_option,
+	 args= sub_bool_conf("initial_menu_ops", "exit_choice", "On", "Off")},
+}
+
 local consensual_options= {
 	{name= "set_config_key", meta= options_sets.settable_thing,
 	 args= {get= key_get, set= key_set}},
@@ -177,6 +204,7 @@ local consensual_options= {
 	 args= make_extra_for_conf_val("transition_split_max", 0, 0, 1)},
 	{name= "transition_meta_var_max", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("transition_meta_var_max", 0, 0, 1)},
+	{name= "initial_menu_choices", meta= options_sets.menu, args= im_options},
 }
 
 local menu_items= {

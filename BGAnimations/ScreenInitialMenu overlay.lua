@@ -45,7 +45,7 @@ local function set_two_player()
 end
 
 local style_menu_init= {
-	name= "Style", eles= {
+	name= "style_choice", eles= {
 		{ name= "Single", init= check_one_player, set= set_one_player,
 			unset= noop_false},
 		{ name= "Versus", init= check_two_player, set= set_two_player,
@@ -68,7 +68,7 @@ local function set_play_nonstop()
 end
 
 local playmode_menu_init= {
-	name= "Playmode", eles= {
+	name= "playmode_choice", eles= {
 		{ name= "Regular", init= check_play_regular, set= set_play_regular,
 			unset= noop_false},
 --		{ name= "Nonstop", init= check_play_nonstop, set= set_play_nonstop,
@@ -131,13 +131,16 @@ profile_menus[PLAYER_2]:initialize(PLAYER_2)
 set_option_set_metatables()
 
 local main_menu= setmetatable({}, options_sets.menu)
-main_menu:initialize(
-	nil, {
-		{ name= "Play" },
-		{ name= "Style" },
-		{ name= "Playmode" },
-		{ name= "Profile" },
-	}, true)
+local menu_options= {{name= "Play"}}
+do
+	local menu_config= misc_config:get_data().initial_menu_ops
+	for i, op_name in ipairs(sorted_initial_menu_ops) do
+		if menu_config[op_name] and op_name ~= "playmode_choice" then
+			menu_options[#menu_options+1]= {name= op_name}
+		end
+	end
+end
+main_menu:initialize(nil, menu_options, true)
 local choosing_menu= 1
 local choosing_style= 2
 local choosing_playmode= 3
@@ -146,9 +149,9 @@ local choosing_states= {
 	[PLAYER_1]= choosing_menu, [PLAYER_2]= choosing_menu }
 local cursor_poses= { [PLAYER_1]= 1, [PLAYER_2]= 1 }
 local menu_name_to_number= {
-	["Style"]= choosing_style,
-	["Playmode"]= choosing_playmode,
-	["Profile"]= choosing_profile,
+	["style_choice"]= choosing_style,
+	["playmode_choice"]= choosing_playmode,
+	["profile_choice"]= choosing_profile,
 }
 local all_menus= { main_menu, style_menu, playmode_menu, profile_menus }
 --for i, m in ipairs(all_menus) do
@@ -182,11 +185,34 @@ local cursors= {
 	[PLAYER_2]= setmetatable({}, amv_cursor_mt)
 }
 
+local star_xs= {[PLAYER_1]= SCREEN_WIDTH * .25, [PLAYER_2]= SCREEN_WIDTH * .75}
+local star_rad= SCREEN_HEIGHT*.25
+local star_rot= 45
+if april_fools then star_rot= 720 end
+local star_points= 511
+local star_y= SCREEN_HEIGHT*.5
+local stars= {setmetatable({}, star_amv_mt), setmetatable({}, star_amv_mt)}
+local function rescale_stars()
+	local pad= 16
+	local radius= ((SCREEN_WIDTH - display_frames[1].w) / 4) - pad
+	local scale_factor= DISPLAY:GetDisplayHeight() / SCREEN_HEIGHT
+	local circ= radius * math.pi * 2
+	star_points= math.round(circ * scale_factor * 1)
+	local apmul= 1
+	if april_fools then apmul= 4 end
+	stars[1]:repoint(star_points, radius * apmul)
+	stars[2]:repoint(star_points, radius * apmul)
+	star_xs[PLAYER_1]= radius+pad
+	star_xs[PLAYER_2]= SCREEN_WIDTH - (radius+pad)
+	stars[1]:move(star_xs[PLAYER_1])
+	stars[2]:move(star_xs[PLAYER_2])
+end
+
 local function create_actors()
 	local args= {Name= "Displays"}
 	for i, frame in ipairs(display_frames) do
 		args[#args+1]= frame:create_actors(
-			i .. "_frame", 1, 0, 0, solar_colors.f_text(), solar_colors.bg(),
+			i .. "_frame", 1, 0, 0, solar_colors.f_text(), solar_colors.bg(.5),
 			SCREEN_CENTER_X, SCREEN_CENTER_Y)
 	end
 	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
@@ -194,8 +220,8 @@ local function create_actors()
 			rpn .. "_cursor", 0, 0, 0, 0, 1, solar_colors[rpn]())
 	end
 	args[#args+1]= menu_display:create_actors(
-		"Menu", SCREEN_CENTER_X, SCREEN_CENTER_Y - 0, 4, disp_width, 24, 1,
-		true, true)
+		"Menu", SCREEN_CENTER_X, SCREEN_CENTER_Y - 0, #menu_options, disp_width,
+		24, 1, true, true)
 	args[#args+1]= style_display:create_actors(
 		"Style", SCREEN_CENTER_X, SCREEN_CENTER_Y - 132, 3, disp_width, 24, 1,
 		false, true)
@@ -204,7 +230,7 @@ local function create_actors()
 		false, true)
 	for k, prod in pairs(profile_displays) do
 		args[#args+1]= prod:create_actors(
-			ToEnumShortString(k) .. "_profiles", prod_xs[k], SCREEN_CENTER_Y - 48,
+			ToEnumShortString(k) .. "_profiles", prod_xs[k], star_y - (24 * 2.75),
 			5, disp_width, 24, 1, false, true)
 	end
 	return Def.ActorFrame(args)
@@ -219,17 +245,23 @@ local function find_actors(container)
 	playmode_display:set_underline_color(solar_colors.violet())
 	playmode_menu:set_display(playmode_display)
 	playmode_display:hide()
-	for k, prod in pairs(profile_displays) do
-		prod:set_underline_color(solar_colors[k]())
-		profile_menus[k]:set_display(prod)
-		prod:hide()
-	end
-	for i, frame in ipairs(display_frames) do
+	local function size_display_frame(i, frame)
 		all_displays[i]:scroll(1)
 		local disp_cont= all_displays[i].container
 		frame:resize_to_outline(disp_cont, 8)
 		frame:move(disp_cont:GetX(), disp_cont:GetY() + frame.h/2-18)
 		frame:hide()
+	end
+	size_display_frame(1, display_frames[1])
+	rescale_stars()
+	for k, prod in pairs(profile_displays) do
+		prod.container:x(star_xs[k])
+		prod:set_underline_color(solar_colors[k]())
+		profile_menus[k]:set_display(prod)
+		prod:hide()
+	end
+	for i, frame in ipairs(display_frames) do
+		size_display_frame(i, frame)
 	end
 end
 
@@ -346,10 +378,18 @@ local function interpret_code(pn, code)
 						"Player " .. ToEnumShortString(other_player[pn]) .. " is unready.")
 					SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
 				end
+			elseif extra == "stepmania_ops" then
+				trans_new_screen("ScreenOptionsService")
+			elseif extra == "consensual_ops" then
+				trans_new_screen("ScreenConsService")
+			elseif extra == "edit_choice" then
+				
+			elseif extra == "exit_choice" then
+				trans_new_screen("ScreenExit")
 			else
 				local new_menu= menu_name_to_number[extra]
 				if all_menus[new_menu] then
-					if extra == "Profile" then
+					if extra == "profile_choice" then
 						profile_menus[pn]:initialize(pn)
 						profile_menus[pn]:set_display(profile_displays[pn])
 					end
@@ -403,26 +443,6 @@ local function update_cursor_pos()
 	end
 end
 
-local star_rad= SCREEN_HEIGHT*.25
-local star_rot= 45
-if april_fools then star_rot= 720 end
-local star_points= 511
-local star_y= SCREEN_HEIGHT*.5
-local stars= {setmetatable({}, star_amv_mt), setmetatable({}, star_amv_mt)}
-local function rescale_stars()
-	local pad= 16
-	local radius= ((SCREEN_WIDTH - display_frames[1].w) / 4) - pad
-	local scale_factor= DISPLAY:GetDisplayHeight() / SCREEN_HEIGHT
-	local circ= radius * math.pi * 2
-	star_points= math.round(circ * scale_factor * 1)
-	local apmul= 1
-	if april_fools then apmul= 4 end
-	stars[1]:repoint(star_points, radius * apmul)
-	stars[2]:repoint(star_points, radius * apmul)
-	stars[1]:move(radius+pad)
-	stars[2]:move(SCREEN_WIDTH - (radius+pad))
-end
-
 local function input(event)
 	if event.type == "InputEventType_Release" then return false end
 	if event.DeviceInput.button == "DeviceButton_n" then
@@ -454,7 +474,6 @@ local star_args= {
 local args= {
 	InitCommand= function(self)
 		find_actors(self)
-		rescale_stars()
 		update_cursor_pos()
 		april_spin(self)
 	end,

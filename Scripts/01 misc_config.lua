@@ -26,6 +26,26 @@ local default_config= {
 	transition_meta_var_max= 64,
 
 	config_menu_key= "DeviceButton_z",
+
+	initial_menu_ops= {
+		style_choice= true,
+		playmode_choice= true,
+		profile_choice= true,
+		stepmania_ops= true,
+		consensual_ops= true,
+		edit_choice= true,
+		exit_choice= true,
+	},
+}
+
+sorted_initial_menu_ops= {
+	"style_choice",
+	"playmode_choice",
+	"profile_choice",
+	"stepmania_ops",
+	"consensual_ops",
+	"edit_choice",
+	"exit_choice",
 }
 
 misc_config= create_setting("misc config", "misc_config.lua", default_config, -1)

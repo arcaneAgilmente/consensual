@@ -1046,6 +1046,9 @@ function music_whale_interface:interact_with_element()
 			end
 			bucket_traverse(self.curr_bucket, nil, gather_adjacent_songs)
 		end
+		-- TODO:  Save off the names and sort factors of the buckets in the
+		-- display stack and use that to find the way back to the same spot after
+		-- gameplay.
 		music_whale_state= {
 			cur_sort_info= self.cur_sort_info,
 			cursor_song= cur_song,
