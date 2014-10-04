@@ -177,8 +177,10 @@ local function key_set()
 end
 
 local im_options= {
-	{name= "im_have_style", meta= options_sets.boolean_option,
-	 args= sub_bool_conf("initial_menu_ops", "style_choice", "On", "Off")},
+	{name= "im_have_single", meta= options_sets.boolean_option,
+	 args= sub_bool_conf("initial_menu_ops", "single_choice", "On", "Off")},
+	{name= "im_have_versus", meta= options_sets.boolean_option,
+	 args= sub_bool_conf("initial_menu_ops", "versus_choice", "On", "Off")},
 	{name= "im_have_playmode", meta= options_sets.boolean_option,
 	 args= sub_bool_conf("initial_menu_ops", "playmode_choice", "On", "Off")},
 	{name= "im_have_profile", meta= options_sets.boolean_option,

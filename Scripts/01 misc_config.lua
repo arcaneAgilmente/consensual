@@ -28,6 +28,8 @@ local default_config= {
 	config_menu_key= "DeviceButton_z",
 
 	initial_menu_ops= {
+		single_choice= true,
+		versus_choice= true,
 		style_choice= true,
 		playmode_choice= true,
 		profile_choice= true,
@@ -39,6 +41,8 @@ local default_config= {
 }
 
 sorted_initial_menu_ops= {
+	"single_choice",
+	"versus_choice",
 	"style_choice",
 	"playmode_choice",
 	"profile_choice",

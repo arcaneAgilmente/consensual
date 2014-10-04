@@ -18,7 +18,6 @@ local num_songs= SONGMAN:GetNumSongs()
 local num_groups= SONGMAN:GetNumSongGroups()
 local frame_helper= setmetatable({}, frame_helper_mt)
 
-local num_players= 1
 local playmode= "PlayMode_Regular"
 local function get_prof_choice(pn)
 	return PREFSMAN:GetPreference("DefaultLocalProfileID" .. ToEnumShortString(pn))
@@ -29,30 +28,6 @@ end
 
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
-
-local function check_one_player()
-	return num_players == 1
-end
-local function set_one_player()
-	num_players= 1
-end
-local function check_two_player()
-	return num_players == 2
-end
-local function set_two_player()
-	if kyzentun_birthday then return end
-	num_players= 2
-end
-
-local style_menu_init= {
-	name= "style_choice", eles= {
-		{ name= "Single", init= check_one_player, set= set_one_player,
-			unset= noop_false},
-		{ name= "Versus", init= check_two_player, set= set_two_player,
-			unset= noop_false},
-}}
-local style_menu= setmetatable({}, options_sets.mutually_exclusive_special_functions)
-style_menu:initialize(nil, style_menu_init)
 
 local function check_play_regular()
 	return playmode == "Playmode_Regular"
@@ -131,7 +106,7 @@ profile_menus[PLAYER_2]:initialize(PLAYER_2)
 set_option_set_metatables()
 
 local main_menu= setmetatable({}, options_sets.menu)
-local menu_options= {{name= "Play"}}
+local menu_options= {}
 do
 	local menu_config= misc_config:get_data().initial_menu_ops
 	for i, op_name in ipairs(sorted_initial_menu_ops) do
@@ -142,25 +117,22 @@ do
 end
 main_menu:initialize(nil, menu_options, true)
 local choosing_menu= 1
-local choosing_style= 2
 local choosing_playmode= 3
 local choosing_profile= 4
 local choosing_states= {
 	[PLAYER_1]= choosing_menu, [PLAYER_2]= choosing_menu }
 local cursor_poses= { [PLAYER_1]= 1, [PLAYER_2]= 1 }
 local menu_name_to_number= {
-	["style_choice"]= choosing_style,
 	["playmode_choice"]= choosing_playmode,
 	["profile_choice"]= choosing_profile,
 }
-local all_menus= { main_menu, style_menu, playmode_menu, profile_menus }
+local all_menus= { main_menu, playmode_menu, profile_menus }
 --for i, m in ipairs(all_menus) do
 --	Trace("Menu " .. i .. " " .. tostring(m))
 --end
 
 local disp_width= (SCREEN_WIDTH / 4) - 8
 local menu_display= setmetatable({}, option_display_mt)
-local style_display= setmetatable({}, option_display_mt)
 local playmode_display= setmetatable({}, option_display_mt)
 local profile_displays= {
 	[PLAYER_1]= setmetatable({}, option_display_mt),
@@ -171,7 +143,7 @@ local prod_xs= {
 	[PLAYER_2]= SCREEN_CENTER_X + SCREEN_WIDTH / 4,
 }
 local all_displays= {
-	menu_display, style_display, playmode_display
+	menu_display, playmode_display
 }
 for k, v in pairs(profile_displays) do
 	all_displays[#all_displays+1]= v
@@ -222,11 +194,8 @@ local function create_actors()
 	args[#args+1]= menu_display:create_actors(
 		"Menu", SCREEN_CENTER_X, SCREEN_CENTER_Y - 0, #menu_options, disp_width,
 		24, 1, true, true)
-	args[#args+1]= style_display:create_actors(
-		"Style", SCREEN_CENTER_X, SCREEN_CENTER_Y - 132, 3, disp_width, 24, 1,
-		false, true)
 	args[#args+1]= playmode_display:create_actors(
-		"Playmode", SCREEN_CENTER_X, SCREEN_CENTER_Y + 120, 3, disp_width, 24, 1,
+		"Playmode", SCREEN_CENTER_X, SCREEN_CENTER_Y - 132, 3, disp_width, 24, 1,
 		false, true)
 	for k, prod in pairs(profile_displays) do
 		args[#args+1]= prod:create_actors(
@@ -239,9 +208,6 @@ end
 local function find_actors(container)
 	container= container:GetChild("Displays")
 	main_menu:set_display(menu_display)
-	style_display:set_underline_color(solar_colors.violet())
-	style_menu:set_display(style_display)
-	style_display:hide()
 	playmode_display:set_underline_color(solar_colors.violet())
 	playmode_menu:set_display(playmode_display)
 	playmode_display:hide()
@@ -295,6 +261,25 @@ local fail_message_mt= {
 
 local fail_message= setmetatable({}, fail_message_mt)
 
+local function finalize_and_exit(pns)
+	SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
+	GAMESTATE:LoadProfiles()
+	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
+		local prof= PROFILEMAN:GetProfile(rpn)
+		if prof then
+			if prof ~= PROFILEMAN:GetMachineProfile() then
+				cons_players[rpn]:set_ops_from_profile(prof)
+				load_favorites(pn_to_profile_slot(rpn))
+				load_tags(pn_to_profile_slot(rpn))
+			end
+		end
+	end
+	set_time_remaining_to_default()
+	prev_picked_song= nil
+	bucket_man:initialize()
+	trans_new_screen("ScreenConsSelectMusic")
+end
+
 -- Players have to be joined before Screen:Finish can be called, but Screen:Finish can fail for various reasons, and joining uses up credits.
 -- So this function exists to check the things that can cause Screen:Finish to fail, so a failed attempt doesn't use up credits.
 local function play_will_succeed(pns)
@@ -309,6 +294,36 @@ local function play_will_succeed(pns)
 	return true
 end
 
+local function check_both_ready(presser)
+	if choosing_states[PLAYER_1] == choosing_states[PLAYER_2] and
+	cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] then
+		return true
+	else
+		fail_message:show_message(
+			"Player " .. ToEnumShortString(other_player[presser]) .. " is unready.")
+		return false
+	end
+end
+
+local function attempt_play(style, pns, presser)
+	if check_both_ready(presser) and play_will_succeed(pns) then
+		local join_success= true
+		for i, rpn in ipairs(pns) do
+			if not cons_join_player(rpn) then
+				join_failed= false
+				break
+			end
+		end
+		if join_success then
+			set_current_style(style)
+			set_current_playmode(playmode)
+			finalize_and_exit(pns)
+			return
+		end
+	end
+	SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
+end
+
 local function interpret_code(pn, code)
 	local current_menu= all_menus[choosing_states[pn]]
 	if current_menu == profile_menus then
@@ -321,63 +336,14 @@ local function interpret_code(pn, code)
 	current_menu.cursor_pos= cursor_poses[pn]
 	local handled, extra= current_menu:interpret_code(code)
 	cursor_poses[pn]= current_menu.cursor_pos
-	local function finalize_and_exit(pns)
-		SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-		GAMESTATE:LoadProfiles()
-		for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
-			local prof= PROFILEMAN:GetProfile(rpn)
-			if prof then
-				if prof ~= PROFILEMAN:GetMachineProfile() then
-					cons_players[rpn]:set_ops_from_profile(prof)
-					load_favorites(pn_to_profile_slot(rpn))
-					load_tags(pn_to_profile_slot(rpn))
-				end
-			end
-		end
-		set_time_remaining_to_default()
-		prev_picked_song= nil
-		bucket_man:initialize()
-		trans_new_screen("ScreenConsSelectMusic")
-	end
 	--Trace("(" .. tostring(handled) .. ") (" .. tostring(extra) .. ")")
 	if handled then
 		if extra then
 			extra= extra.name
-			if extra == "Play" then
-				--Trace("Attempting to start play.")
-				if choosing_states[PLAYER_1] == choosing_states[PLAYER_2] and
-					cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] then
-					if num_players == 1 then
-						--Trace("Single player: " .. pn)
-						if play_will_succeed{pn} and cons_join_player(pn) then
-							set_current_style("single")
-							set_current_playmode(playmode)
-							finalize_and_exit{pn}
-						else
-							SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
-							--Trace("Failed to join player.")
-							--Trace("CanJoin: " .. tostring(GAMESTATE:PlayersCanJoin()))
-							--Trace("IsJoined: " .. tostring(GAMESTATE:IsSideJoined(pn)))
-						end
-						--Trace("IsJoined: " .. tostring(GAMESTATE:IsSideJoined(pn)))
-					else
-						--Trace("Versus")
-						if play_will_succeed{PLAYER_1, PLAYER_2} then
-							for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
-								cons_join_player(rpn)
-							end
-							set_current_style("versus")
-							set_current_playmode(playmode)
-							finalize_and_exit{PLAYER_1, PLAYER_2}
-						else
-							SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
-						end
-					end
-				else
-					fail_message:show_message(
-						"Player " .. ToEnumShortString(other_player[pn]) .. " is unready.")
-					SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
-				end
+			if extra == "single_choice" then
+				attempt_play("single", {pn}, pn)
+			elseif extra == "versus_choice" then
+				attempt_play("versus", {PLAYER_1, PLAYER_2}, pn)
 			elseif extra == "stepmania_ops" then
 				trans_new_screen("ScreenOptionsService")
 			elseif extra == "consensual_ops" then
