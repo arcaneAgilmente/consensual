@@ -95,9 +95,9 @@ local default_config= {
 }
 
 machine_pain_setting= create_setting("machine pain config", "pain_config.lua", default_config, 2)
-profile_pain_setting= create_setting("player pain config", "pain_config.lua", default_config[1], 1)
-
 machine_pain_setting:load()
+profile_pain_setting= create_setting("player pain config", "pain_config.lua", machine_pain_setting:get_data()[1], 1)
+
 
 function get_default_pain_config(level)
 	local machine_data= machine_pain_setting:get_data()
