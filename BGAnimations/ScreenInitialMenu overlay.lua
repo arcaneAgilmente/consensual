@@ -117,8 +117,8 @@ do
 end
 main_menu:initialize(nil, menu_options, true)
 local choosing_menu= 1
-local choosing_playmode= 3
-local choosing_profile= 4
+local choosing_playmode= 2
+local choosing_profile= 3
 local choosing_states= {
 	[PLAYER_1]= choosing_menu, [PLAYER_2]= choosing_menu }
 local cursor_poses= { [PLAYER_1]= 1, [PLAYER_2]= 1 }
