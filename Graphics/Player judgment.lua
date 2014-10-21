@@ -284,7 +284,7 @@ local args= {
 			local firsts= stage_stats.firsts
 			if firsts then
 				if not firsts[this_tns] then
-					firsts[this_tns]= STATSMAN:GetCurStageStats():GetStepsSeconds()
+					firsts[this_tns]= get_seconds()
 				end
 			end
 			local disp_judge= this_tns
@@ -300,8 +300,7 @@ local args= {
 					fake_score.judge_counts[disp_judge] + 1
 				fake_score.dp= fake_score.dp + tns_values[disp_judge]
 				fake_score.step_timings[#fake_score.step_timings+1]= {
-					time= STATSMAN:GetCurStageStats():GetStepsSeconds(),
-					judge= disp_judge, offset= disp_offset}
+					time= get_seconds(), judge= disp_judge, offset= disp_offset}
 			end
 			local rev_disp= tns_reverse[disp_judge]
 			if fake_score.combo_is_misses then

@@ -93,9 +93,12 @@ local default_config= {
 	}},
 
 	{"song_progress_bar", {
-		 {"frame", "rev_bg"},
-		 {"bg", "bg"},
-		 {"progression", "percent"},
+		 {"frame", "rev_bg", .5},
+		 {"bg", "bg", .5},
+		 {"text", "text"},
+		 {"stroke", "bg"},
+		 {"length", "percent"},
+		 {"progression", "percent", .5},
 	}},
 
 	{"gameplay", {

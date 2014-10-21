@@ -17,8 +17,17 @@ local field_height= receptor_max - receptor_min
 local line_spacing= 24
 local h_line_spacing= line_spacing / 2
 
-local judge_spacing= line_spacing
-local judge_y= SCREEN_BOTTOM - (judge_spacing * (#feedback_judgements + 3))
+-- SCREEN_WIDTH - life_bar_width - score_feedback_width
+-- spb_width is also used as the width of the title.
+local spb_width= SCREEN_WIDTH - 48 - 32
+local spb_height= 16
+local spb_x= SCREEN_CENTER_X
+local spb_y= SCREEN_BOTTOM - (spb_height / 2) - 1
+local spb_time_off= spb_height + 4
+local spb_time_y= spb_y - spb_time_off
+
+local judge_spacing= line_spacing * .75
+local judge_y= spb_time_y - (line_spacing * 2) - (judge_spacing * #feedback_judgements)
 local judge_centers= {
 	[PLAYER_1]= { SCREEN_CENTER_X - (SCREEN_CENTER_X / 2), judge_y},
 	[PLAYER_2]= { SCREEN_CENTER_X + (SCREEN_CENTER_X / 2), judge_y}
@@ -64,7 +73,7 @@ function judge_feedback_interface:create_actors(name, fx, fy, player_number)
 		setmetatable(new_element, text_and_number_interface_mt)
 		args[#args+1]= new_element:create_actors(
 			feedback_judgements[n], {
-				sy= start_y + judge_spacing * n, tx= tx, nx= nx,
+				sy= start_y + judge_spacing * n, tx= tx, nx= nx, tz= .75, nz= .75,
 				tc= judge_to_color(feedback_judgements[n]),
 				nc= judge_to_color(feedback_judgements[n]),
 				text_section= "JudgementNames",
@@ -319,7 +328,7 @@ local numerical_score_feedback_mt= {
 }}
 
 local bpm_feedback_interface= {}
-local bpm_y= SCREEN_BOTTOM - line_spacing
+local bpm_y= spb_time_y
 local bpm_centers= {
 	[PLAYER_1]= { SCREEN_CENTER_X - (SCREEN_CENTER_X / 2), bpm_y},
 	[PLAYER_2]= { SCREEN_CENTER_X + (SCREEN_CENTER_X / 2), bpm_y}
@@ -349,30 +358,28 @@ end
 
 local feedback_things= { [PLAYER_1]= {}, [PLAYER_2]= {}}
 
--- SCREEN_WIDTH - life_bar_width - score_feedback_width
--- spb_width is also used as the width of the title.
-local spb_width= SCREEN_WIDTH - 48 - 32
-local spb_height= 16
-local spb_x= SCREEN_CENTER_X
-local spb_y= SCREEN_BOTTOM - (spb_height / 2)
-
 local song_progress_bar_interface= {}
 local song_progress_bar_interface_mt= { __index= song_progress_bar_interface }
 function song_progress_bar_interface:create_actors()
 	self.name= "song_progress"
 	self.frame= setmetatable({}, frame_helper_mt)
+	self.text_color= fetch_color("song_progress_bar.text")
+	self.stroke_color= fetch_color("song_progress_bar.stroke")
+	self.progress_colors= fetch_color("song_progress_bar.progression")
+	self.length_colors= fetch_color("song_progress_bar.length")
 	return Def.ActorFrame{
 		Name= self.name, InitCommand= function(subself)
 			subself:xy(spb_x, spb_y)
 			self.container= subself
 			self.filler= subself:GetChild("filler")
+			self.time= subself:GetChild("time")
 			self.song_first_second= 0
 			self.song_len= 1
 		end,
 		self.frame:create_actors(
 			"frame", .5, spb_width, spb_height,
-			Alpha(fetch_color("song_progress_bar.frame"), .5),
-			Alpha(fetch_color("song_progress_bar.bg"), .5),
+			fetch_color("song_progress_bar.frame"),
+			fetch_color("song_progress_bar.bg"),
 			0, 0),
 		Def.Quad{
 			Name= "filler", InitCommand=
@@ -384,7 +391,9 @@ function song_progress_bar_interface:create_actors()
 					self:SetHeight(spb_height-1)
 					self:zoomx(0)
 				end
-		}
+		},
+		normal_text("time", "", nil, fetch_color("song_progress_bar.stroke"),
+		0, -spb_time_off)
 	}
 end
 
@@ -398,14 +407,25 @@ function song_progress_bar_interface:set_from_song()
 	end
 end
 
-do
-	local progress_colors= fetch_color("song_progress_bar.progression")
-	function song_progress_bar_interface:update()
-		local cur_seconds= GAMESTATE:GetCurMusicSeconds()
-		local zoom= (cur_seconds - self.song_first_second) / self.song_len
-		local cur_color= color_in_set(progress_colors, math.ceil(zoom * #progress_colors), false, false, false)
-		self.filler:diffuse(Alpha(cur_color, .5))
-		self.filler:zoomx(zoom)
+function song_progress_bar_interface:update()
+	local cur_seconds= GAMESTATE:GetCurMusicSeconds() - self.song_first_second
+	local zoom= cur_seconds / self.song_len
+	local cur_color= color_in_set(self.progress_colors, math.ceil(zoom * #self.progress_colors), false, false, false)
+	self.filler:diffuse(cur_color)
+	self.filler:zoomx(zoom)
+	cur_seconds= math.floor(cur_seconds)
+	if cur_seconds ~= self.prev_second then
+		self.prev_second= cur_seconds
+		local parts= {
+			{secs_to_str(cur_seconds), Alpha(cur_color, 1)},
+			{" / ", self.text_color},
+			{secs_to_str(self.song_len), self.text_color},
+		}
+		if self.song_len > 120 then
+			parts[3][2]= color_in_set(
+				self.length_colors, math.ceil((self.song_len-120)/15), false, false, false)
+		end
+		set_text_from_parts(self.time, parts)
 	end
 end
 local song_progress_bar= setmetatable({}, song_progress_bar_interface_mt)
@@ -764,7 +784,7 @@ local function make_special_actors_for_players()
 	end
 	args[#args+1]= normal_text(
 		"songtitle", "", fetch_color("gameplay.song_name"), nil, SCREEN_CENTER_X,
-		SCREEN_BOTTOM - (line_spacing*2), 1, center, {
+		spb_time_y - line_spacing, 1, center, {
 			OnCommand= cmd(playcommand, "Set"),
 			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
 			SetCommand= function(self)

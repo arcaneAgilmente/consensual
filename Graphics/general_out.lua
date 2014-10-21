@@ -55,7 +55,7 @@ for x= -1, xq+1 do
 	unskewed_verts[x]= {}
 	skewed_verts[x]= {}
 	for y= -1, yq+1 do
-		if x > 0 and x < xq+1 and y > 0 and y < yq+1 then
+		if x >= 0 and x < xq+1 and y >= 0 and y < yq+1 then
 			if max_var > 0 then
 				skewed_verts[x][y]= {
 					(spx * x) + random_var(), (spy * y) + random_var(),
