@@ -46,7 +46,7 @@ sorted_initial_menu_ops= {
 	"profile_choice",
 	"stepmania_ops",
 	"consensual_ops",
-	"edit_choice",
+--	"edit_choice", -- coming soon
 	"exit_choice",
 }
 
