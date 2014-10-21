@@ -4,6 +4,10 @@ options_sets.tags_menu= {
 			self.player_number= player_number
 			self.have_up_el= have_up_el
 			self.in_machine_tag_mode= false
+			if not player_using_profile(player_number) then
+				self.in_machine_tag_mode= true
+				self.machine_only= true
+			end
 			self:reset_info()
 			self:update()
 			self.cursor_pos= 1
@@ -17,12 +21,14 @@ options_sets.tags_menu= {
 				self.real_info_set[#self.real_info_set+1]= {text="Exit Tags menu"}
 			end
 			self.real_info_set[#self.real_info_set+1]= {text= "Reload tags"}
-			if self.in_machine_tag_mode then
-				self.prof_slot= "ProfileSlot_Machine"
-				self.real_info_set[#self.real_info_set+1]= {text= "Edit Player tags"}
-			else
-				self.prof_slot= pn_to_profile_slot(self.player_number)
-				self.real_info_set[#self.real_info_set+1]= {text="Edit Machine tags"}
+			if not self.machine_only then
+				if self.in_machine_tag_mode then
+					self.prof_slot= "ProfileSlot_Machine"
+					table.insert(self.real_info_set, {text= "Edit Player tags"})
+				else
+					self.prof_slot= pn_to_profile_slot(self.player_number)
+					table.insert(self.real_info_set, {text= "Edit Machine tags"})
+				end
 			end
 			self.tags_offset= #self.real_info_set
 			self.tag_set= usable_tags[self.prof_slot] or {}
@@ -37,9 +43,22 @@ options_sets.tags_menu= {
 				self.display:set_info_set(self.info_set)
 			end
 		end,
+		set_status= function(self)
+			if not self.display.no_heading then
+				self.display:set_heading("Tags")
+				if self.in_machine_tag_mode then
+					self.display:set_display("Machine")
+				else
+					self.display:set_display("Player")
+				end
+			end
+		end,
 		interpret_start= function(self)
 			if self.cursor_pos == 1 and self.have_up_el then return false end
 			local menu_pos= self.cursor_pos - self.tags_offset
+			if self.machine_only and menu_pos < 1 then
+				menu_pos= menu_pos - 1
+			end
 			if menu_pos == -2 then
 				return true, true
 			end

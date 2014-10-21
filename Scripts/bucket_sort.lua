@@ -1,5 +1,5 @@
 local min_bucket_size= 32
-local max_bucket_size= 96
+local max_bucket_size= 64
 
 local invalid_sort_item_name= "invalid_sort_item_name"
 local bad_name_source_factor= {
@@ -94,23 +94,49 @@ local function item_cmp_wrapper(sort_depth)
 	end
 end
 
+local function simple_copy(source)
+	local ret= {}
+	for i, v in ipairs(source) do
+		ret[i]= v
+	end
+	return ret
+end
+
+local function copy_name_set(source)
+	local ret= {}
+	for i, name in ipairs(source) do
+		if #name.names > 1 then
+			ret[i]= {source= name.source, names= simple_copy(name.names)}
+		else
+			ret[i]= name
+		end
+	end
+	return ret
+end
+
 local function add_item_to_uns_buckets(uns, item, sort_depth, name_depth)
 	local source= item.name_set[sort_depth].source
 	if not source.uses_depth then
 		name_depth= -1
 	end
 	local depth_remains= -1
+	local multi_names= #item.name_set[sort_depth].names > 1
 	for i, name in ipairs(item.name_set[sort_depth].names) do
 		local bucket_name, remain= depth_clip_name(name, name_depth)
 		depth_remains= math.max(depth_remains, remain)
 		local bucket= uns[bucket_name]
+		local split_item= item
+		if multi_names then
+			split_item= {name_set= copy_name_set(item.name_set), el= item.el}
+			split_item.name_set[sort_depth].names= {name}
+		end
 		if bucket then
-			bucket.contents[#bucket.contents+1]= item
+			bucket.contents[#bucket.contents+1]= split_item
 		else
 			-- bucket creation marker
 			uns[bucket_name]= {
 				from_adduns= true,
-				name= {value= bucket_name, source= source}, contents= {item}}
+				name= {value= bucket_name, source= source}, contents= {split_item}}
 		end
 	end
 	return depth_remains
@@ -235,6 +261,15 @@ local function convert_elements_to_items(els, sfs)
 				for i, n in ipairs(names) do
 					names[i]= n:lower()
 				end
+			end
+			table.sort(names)
+			local i= 1
+			while i < #names do
+				local curr= names[i]
+				while curr == names[i+1] do
+					table.remove(names, i+1)
+				end
+				i= i + 1
 			end
 			name_set[#name_set+1]= {source= sf, names= names}
 		end
@@ -608,7 +643,7 @@ end
 
 -- bucket_search params:
 -- (
---   set= {bucket, ...} -- the set of buckets returned by bucket_sort
+--   set= {bucket, ...}, -- the set of buckets returned by bucket_sort
 --   match_element= element, -- used to fetch the names to find the element
 --   final_compare= function, -- passed a candidate element and match_element
 --     to determine if the candidate matches.
@@ -653,6 +688,92 @@ function bucket_search(set, match_element, final_compare, default_to_brute)
 	end
 	-- This is not an error situation, false leads are possible.
 	return -1
+end
+
+-- bucket_search_for_item params:
+-- (
+--   set= {bucket, ...}, -- the set of buckets returned by bucket_sort
+--   match_item= item, -- an item from a bucket
+-- )
+-- This requires no compare function or brute search option because it uses
+-- the names the item provides.  If the search fails, the item doesn't exist
+-- in the tree.
+function bucket_search_for_item(set, match_item)
+	local function get_bucket_source(bucket)
+		return bucket.name.source.name
+	end
+	local function find_same_source_depth(name_set, compare_to)
+		local depth= 1
+		while name_set[depth]
+		and name_set[depth].source.name ~= compare_to do
+			depth= depth + 1
+		end
+		return depth
+	end
+	local function get_last_name(name_set)
+		return name_set[#name_set].names[1]
+	end
+	local sub_search_reports= {}
+	local match_last_name= get_last_name(match_item.name_set)
+	local not_in= ""
+	for i, item in ipairs(set) do
+		if item.contents then
+			-- TODO:  This probably doesn't work right if a sort_factor occurs
+			-- multiple times in the list of sort_factors passed to bucket_sort.
+			local depth= find_same_source_depth(
+				match_item.name_set, get_bucket_source(item))
+			local names= match_item.name_set[depth]
+			local reason= ""
+			local in_bucket= false
+			if names then
+				names= names.names
+				local con_range= item.contents_name_range
+				if con_range then
+					local con_depth= find_same_source_depth(
+						match_item.name_set, con_range[1].source.name)
+					local con_names= match_item.name_set[con_depth]
+					if con_names then
+						con_names= con_names.names
+						in_bucket= cmp_names_to_range_begin(con_names, con_range[1].value)
+							and cmp_names_to_range_end(con_names, con_range[2].value)
+						reason= "range(" .. con_names[1] .. " in " ..
+							con_range[1].value .. ", " .. con_range[2].value .. ")"
+					else
+						reason= "range(no source)"
+					end
+				else
+					in_bucket= cmp_names_to_single_name(names, item.name.value)
+					reason= "single(" .. item.name.value .. ")"
+				end
+			else
+				reason= "no source"
+			end
+			local name_reason= item.name.value .. ": " .. reason
+			if in_bucket then
+--				Trace(item.name.value .. ": inside(): " .. reason)
+				local sub_ret= {bucket_search_for_item(item.contents, match_item)}
+				if sub_ret[1] == -1 then
+--					Trace("not inside")
+				else
+					return i, unpack(sub_ret)
+				end
+			else
+--				Trace(name_reason)
+				if not_in == "" then
+					not_in= name_reason
+				else
+					not_in= not_in .. ", " .. name_reason
+				end
+			end
+		else
+--			Trace("match(" .. match_last_name .. ", " ..
+--							get_last_name(item.name_set) .. ")")
+			if match_last_name == get_last_name(item.name_set) then
+				return i
+			end
+		end
+	end
+	return -1, "Not in set:  ", not_in
 end
 
 -- bucket_traverse params:

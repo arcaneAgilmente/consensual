@@ -1,9 +1,14 @@
+-- TODO:  Make it possible to configure the number of levels and not have
+-- 200+ lines of default config in here.
 local default_flag_set= {
 	{
 		eval= {
 			banner= true,
 			best_scores= false,
 			chart_info= true,
+			color_combo= false,
+			color_life_by_value= true,
+			color_life_by_combo= false,
 			combo_graph= true,
 			dance_points= true,
 			judge_list= false,
@@ -38,6 +43,7 @@ local default_flag_set= {
 			same_random= false,
 			score_random= false,
 			straight_floats= false,
+			verbose_bpm= false,
 		}
 	},
 	{
@@ -45,6 +51,9 @@ local default_flag_set= {
 			banner= true,
 			best_scores= true,
 			chart_info= true,
+			color_combo= false,
+			color_life_by_value= true,
+			color_life_by_combo= false,
 			combo_graph= true,
 			score_splash= true,
 			dance_points= true,
@@ -80,6 +89,7 @@ local default_flag_set= {
 			same_random= true,
 			score_random= false,
 			straight_floats= false,
+			verbose_bpm= false,
 		}
 	},
 	{
@@ -87,6 +97,9 @@ local default_flag_set= {
 			banner= true,
 			best_scores= true,
 			chart_info= true,
+			color_combo= true,
+			color_life_by_value= false,
+			color_life_by_combo= true,
 			combo_graph= true,
 			score_splash= true,
 			dance_points= true,
@@ -121,6 +134,7 @@ local default_flag_set= {
 			harder_random= true,
 			same_random= true,
 			score_random= false,
+			verbose_bpm= false,
 		}
 	},
 	{
@@ -128,6 +142,9 @@ local default_flag_set= {
 			banner= true,
 			best_scores= true,
 			chart_info= true,
+			color_combo= true,
+			color_life_by_value= true,
+			color_life_by_combo= true,
 			combo_graph= true,
 			score_splash= true,
 			dance_points= true,
@@ -162,6 +179,7 @@ local default_flag_set= {
 			same_random= true,
 			score_random= true,
 			straight_floats= true,
+			verbose_bpm= false,
 		}
 	}
 }
@@ -174,9 +192,12 @@ sorted_flag_names= {
 	 "offset",
 	 "score_early_late",
 	 "lock_per_arrow",
+	 "color_combo",
+	 "color_life_by_value",
+	 "color_life_by_combo",
 	 "pct_column",
-	 "session_column",
 	 "song_column",
+	 "session_column",
 	 "sum_column",
 	 "best_scores",
 	 "profile_data",
@@ -205,6 +226,7 @@ sorted_flag_names= {
 	 "same_random",
 	 "score_random",
 	 "straight_floats",
+	 "verbose_bpm",
 	}
 }
 sorted_eval_flag_names= sorted_flag_names[1]
@@ -212,8 +234,6 @@ sorted_gameplay_flag_names= sorted_flag_names[2]
 sorted_interface_flag_names= sorted_flag_names[3]
 
 machine_flag_setting= create_setting("machine flag config", "flag_config.lua", default_flag_set, -1)
-profile_flag_setting= create_setting("player flag config", "flag_config.lua", default_flag_set[1], -1)
-
 machine_flag_setting:load()
 
 function get_default_flag_config(level)
@@ -224,6 +244,8 @@ function get_default_flag_config(level)
 		return DeepCopy(machine_data[1])
 	end
 end
+
+profile_flag_setting= create_setting("player flag config", "flag_config.lua", get_default_flag_config(1), -1)
 
 function set_player_flag_to_level(pn, level)
 	local config= get_default_flag_config(level)
@@ -310,7 +332,12 @@ local default_config= {
 	sigil_data= {detail= 16, size= 150},
 	dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false},
 	mine_effect= sorted_mine_effect_names[1],
+	-- TODO:  Make a system similar to the flags levels for options_level,
+	-- rating_cap, combo_splash_threshold, and combo_graph_threshold.
+	options_level= 1,
+	rating_cap= 5,
 	combo_splash_threshold= "TapNoteScore_W3",
+	combo_graph_threshold= "TapNoteScore_W3",
 	preferred_style= "single",
 }
 

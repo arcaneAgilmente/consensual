@@ -7,8 +7,6 @@ local feedback_judgements= {
 	"TapNoteScore_W3", "TapNoteScore_W2", "TapNoteScore_W1"
 }
 
-local bg_is_bright= PREFSMAN:GetPreference("BGBrightness") > .25
-
 local screen_gameplay= false
 
 local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
@@ -52,11 +50,9 @@ function judge_feedback_interface:create_actors(name, fx, fy, player_number)
 		InitCommand= function(subself)
 			self.container= subself
 			subself:xy(fx, fy)
-			if bg_is_bright then
-				for i, tani in ipairs(self.elements) do
-					tani.text:strokecolor(solar_colors.bg())
-					tani.number:strokecolor(solar_colors.bg())
-				end
+			for i, tani in ipairs(self.elements) do
+				tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
+				tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
 			end
 		end
 	}
@@ -69,8 +65,8 @@ function judge_feedback_interface:create_actors(name, fx, fy, player_number)
 		args[#args+1]= new_element:create_actors(
 			feedback_judgements[n], {
 				sy= start_y + judge_spacing * n, tx= tx, nx= nx,
-				tc= judgement_colors[feedback_judgements[n]],
-				nc= judgement_colors[feedback_judgements[n]],
+				tc= judge_to_color(feedback_judgements[n]),
+				nc= judge_to_color(feedback_judgements[n]),
 				text_section= "JudgementNames",
 				tt= feedback_judgements[n]})
 		self.elements[#self.elements+1]= new_element
@@ -113,7 +109,7 @@ function sigil_feedback_interface:create_actors(name, fx, fy, player_number)
 	if not fx then fx= 0 end
 	if not fy then fy= 0 end
 	self.sigil= setmetatable({}, sigil_controller_mt)
-	return self.sigil:create_actors(name, fx, fy, solar_colors[player_number](), player_data.detail, player_data.size)
+	return self.sigil:create_actors(name, fx, fy, pn_to_color(player_number), player_data.detail, player_data.size)
 end
 
 function sigil_feedback_interface:update(player_stage_stats)
@@ -181,14 +177,14 @@ function score_feedback_interface:update(player_stage_stats)
 	if fake_score then
 		for i, fj in ipairs(feedback_judgements) do
 			if fake_score.judge_counts[fj] > 0 then
-				set_color(judgement_colors[fj])
+				set_color(judge_to_color(fj))
 				break
 			end
 		end
 	else
 		for i, fj in ipairs(feedback_judgements) do
 			if player_stage_stats:GetTapNoteScores(fj) > 0 then
-				set_color(judgement_colors[fj])
+				set_color(judge_to_color(fj))
 				break
 			end
 		end
@@ -221,9 +217,7 @@ local numerical_score_feedback_mt= {
 				OnCommand= function(subself)
 					local mdp= STATSMAN:GetCurStageStats():GetPlayerStageStats(self.player_number):GetPossibleDancePoints()
 					if self.pct then
-						if bg_is_bright then
-							self.pct:strokecolor(solar_colors.bg())
-						end
+						self.pct:strokecolor(fetch_color("gameplay.text_stroke"))
 						self.precision= math.max(
 							2, math.ceil(math.log(mdp) / math.log(10))-2)
 						self.fmat= "%." .. self.precision .. "f%%"
@@ -261,23 +255,21 @@ local numerical_score_feedback_mt= {
 						self.curr_dp= subself:GetChild("curr_dp")
 						self.slash_dp= subself:GetChild("slash_dp")
 						self.max_dp= subself:GetChild("max_dp")
-						if bg_is_bright then
-							self.curr_dp:strokecolor(solar_colors.bg())
-							self.slash_dp:strokecolor(solar_colors.bg())
-							self.max_dp:strokecolor(solar_colors.bg())
-						end
+						self.curr_dp:strokecolor(fetch_color("gameplay.text_stroke"))
+						self.slash_dp:strokecolor(fetch_color("gameplay.text_stroke"))
+						self.max_dp:strokecolor(fetch_color("gameplay.text_stroke"))
 					end,
 					normal_text(
-						"curr_dp", "0", solar_colors.f_text(), -10, 0, 1, right),
+						"curr_dp", "0", fetch_color("text"), nil, -10, 0, 1, right),
 					normal_text(
-						"slash_dp", "/", solar_colors.f_text(), 0, 0, 1),
+						"slash_dp", "/", fetch_color("text"), nil, 0, 0, 1),
 					normal_text(
-						"max_dp", "0", solar_colors.f_text(), 10, 0, 1, left),
+						"max_dp", "0", fetch_color("text"), nil, 10, 0, 1, left),
 				}
 			end
 			if flags.pct_score then
 				args[#args+1]= normal_text(
-					"pct", "", solar_colors.f_text(), 0, 0, 1, right)
+					"pct", "", fetch_color("text"), nil, 0, 0, 1, right)
 			end
 			return Def.ActorFrame(args)
 		end,
@@ -295,18 +287,18 @@ local numerical_score_feedback_mt= {
 				fake_score= cons_players[self.player_number].fake_score
 				adp= fake_score.dp
 			end
-			local text_color= solar_colors.f_text()
+			local text_color= fetch_color("text")
 			if fake_score then
 				for i, fj in ipairs(feedback_judgements) do
 					if fake_score.judge_counts[fj] > 0 then
-						text_color= judgement_colors[fj]
+						text_color= judge_to_color(fj)
 						break
 					end
 				end
 			else
 				for i, fj in ipairs(feedback_judgements) do
 					if pss:GetTapNoteScores(fj) > 0 then
-						text_color= judgement_colors[fj]
+						text_color= judge_to_color(fj)
 						break
 					end
 				end
@@ -341,10 +333,8 @@ function bpm_feedback_interface:create_actors(name, fx, fy, player_number)
 		Name= self.name, InitCommand= function(subself)
 			subself:xy(fx, fy)
 			self.container= subself
-			if bg_is_bright then
-				self.tani.text:strokecolor(solar_colors.bg())
-				self.tani.number:strokecolor(solar_colors.bg())
-			end
+			self.tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
+			self.tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
 		end,
 		self.tani:create_actors(
 			"tani", { tx= -4, nx= 4, tt= "BPM: ", text_section= "ScreenGameplay"
@@ -380,12 +370,14 @@ function song_progress_bar_interface:create_actors()
 			self.song_len= 1
 		end,
 		self.frame:create_actors(
-			"frame", .5, spb_width, spb_height, solar_colors.f_text(.5),
-			solar_colors.bg(.5), 0, 0),
+			"frame", .5, spb_width, spb_height,
+			Alpha(fetch_color("song_progress_bar.frame"), .5),
+			Alpha(fetch_color("song_progress_bar.bg"), .5),
+			0, 0),
 		Def.Quad{
 			Name= "filler", InitCommand=
 				function(self)
-					self:diffuse(solar_colors.green())
+					self:diffuse(fetch_color("song_progress_bar.progression.too_low"))
 					self:x(spb_width * -.5)
 					self:horizalign(left)
 					self:SetWidth(spb_width)
@@ -407,20 +399,12 @@ function song_progress_bar_interface:set_from_song()
 end
 
 do
-	local progress_colors= {
-		solar_colors.green(.5),
-		solar_colors.yellow(.5),
-		solar_colors.orange(.5),
-		solar_colors.red(.5),
-		solar_colors.magenta(.5),
-		solar_colors.violet(.5),
-		solar_colors.blue(.5),
-		solar_colors.cyan(.5)
-	}
+	local progress_colors= fetch_color("song_progress_bar.progression")
 	function song_progress_bar_interface:update()
 		local cur_seconds= GAMESTATE:GetCurMusicSeconds()
 		local zoom= (cur_seconds - self.song_first_second) / self.song_len
-		self.filler:diffuse(convert_percent_to_color(zoom, .5))
+		local cur_color= color_in_set(progress_colors, math.ceil(zoom * #progress_colors), false, false, false)
+		self.filler:diffuse(Alpha(cur_color, .5))
 		self.filler:zoomx(zoom)
 	end
 end
@@ -769,19 +753,17 @@ local function make_special_actors_for_players()
 			local rating= cur_steps:GetMeter()
 			local info_text= author .. ": " .. difficulty .. ": " .. rating
 			a[#a+1]= normal_text(
-				"author", info_text, solar_colors.f_text(),
+				"author", info_text, fetch_color("gameplay.chart_info"), nil,
 				author_centers[v][1], author_centers[v][2], 1, center,
 				{ OnCommand= function(self)
 						width_limit_text(self, spb_width/2 - 48)
-						if bg_is_bright then
-							self:strokecolor(solar_colors.bg())
-						end
+						self:strokecolor(fetch_color("gameplay.text_stroke"))
 			end })
 		end
 		args[#args+1]= Def.ActorFrame(a)
 	end
 	args[#args+1]= normal_text(
-		"songtitle", "", solar_colors.f_text(), SCREEN_CENTER_X,
+		"songtitle", "", fetch_color("gameplay.song_name"), nil, SCREEN_CENTER_X,
 		SCREEN_BOTTOM - (line_spacing*2), 1, center, {
 			OnCommand= cmd(playcommand, "Set"),
 			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
@@ -791,9 +773,7 @@ local function make_special_actors_for_players()
 					local title= cur_song:GetDisplayFullTitle()
 					self:settext(title)
 					width_limit_text(self, spb_width)
-					if bg_is_bright then
-						self:strokecolor(solar_colors.bg())
-					end
+					self:strokecolor(fetch_color("gameplay.text_stroke"))
 				end
 			end
 	})
@@ -802,51 +782,9 @@ local function make_special_actors_for_players()
 end
 
 local function find_read_bpm_for_player_steps(player_number)
-	local steps= GAMESTATE:GetCurrentSteps(player_number)
-	if steps:GetDisplayBPMType() == "DisplayBPM_Specified" and
-	-- DDR worshippers like to give DDR simfiles Konami's false display bpms.
-	not steps_are_konami_trash(steps) then
-		local max_bpm= steps:GetDisplayBpms()[2]
-		return max_bpm
-	else
-		local timing_data= GAMESTATE:GetCurrentSteps(player_number):GetTimingData()
-		local bpmsand= timing_data:GetBPMsAndTimes()
-		if type(bpmsand[1]) == "string" then
-			for i, s in ipairs(bpmsand) do
-				local sand= split("=", s)
-				bpmsand[i]= {tonumber(sand[1]), tonumber(sand[2])}
-			end
-		end
-		local totals= {}
-		local num_beats= timing_data:GetBeatFromElapsedTime(GAMESTATE:GetCurrentSong():GetLastSecond())
-		local highest_sustained= 0
-		local sustain_limit= 32
-		for i, s in ipairs(bpmsand) do
-			local end_beat= 0
-			if bpmsand[i+1] then
-				end_beat= bpmsand[i+1][1]
-			else
-				end_beat= num_beats
-			end
-			local len= (end_beat - s[1])
-			if s[2] > highest_sustained and len > sustain_limit then
-				highest_sustained= s[2]
-			end
-			totals[s[2]]= len + (totals[s[2]] or 0)
-		end
-		local tot= 0
-		local most_common= false
-		for k, v in pairs(totals) do
-			local minutes_duration= v / k
-			if not most_common or minutes_duration > most_common[2] then
-				most_common= {k, minutes_duration}
-			end
-			tot= tot + (k * v)
-		end
-		local average= tot / num_beats
-		local max_bpm= most_common[1]
-		return max_bpm
-	end
+	local bpms= get_display_bpms(GAMESTATE:GetCurrentSteps(player_number),
+															 GAMESTATE:GetCurrentSong())
+	return bpms[2]
 end
 
 local mods_before_mine= {}
@@ -860,16 +798,22 @@ local function set_speed_from_speed_info(player)
 	speed_info.prev_bps= nil
 	local mode_functions= {
 		x= function(speed)
+				 player.preferred_options:XMod(speed)
+				 player.stage_options:XMod(speed)
 				 player.song_options:XMod(speed)
 				 player.current_options:XMod(speed)
 			 end,
 		C= function(speed)
+				 player.preferred_options:CMod(speed)
+				 player.stage_options:CMod(speed)
 				 player.song_options:CMod(speed)
 				 player.current_options:CMod(speed)
 			 end,
 		m= function(speed)
 				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
 				 local real_speed= (speed / read_bpm) / rate_coordinator:get_current_rate()
+				 player.preferred_options:XMod(real_speed)
+				 player.stage_options:XMod(real_speed)
 				 player.song_options:XMod(real_speed)
 				 player.current_options:XMod(real_speed)
 				 --player.song_options:MMod(speed)
@@ -879,6 +823,8 @@ local function set_speed_from_speed_info(player)
 				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
 				 local real_speed= (speed / read_bpm) / rate_coordinator:get_current_rate()
 				 player.dspeed_mult= real_speed
+				 player.preferred_options:XMod(real_speed)
+				 player.stage_options:XMod(real_speed)
 				 player.song_options:XMod(real_speed)
 				 player.current_options:XMod(real_speed)
 				 if math.abs(player.dspeed.max - player.dspeed.min) < .01 then
@@ -954,7 +900,6 @@ local unacc_reset_votes= 0
 
 return Def.ActorFrame {
 	Name= "SGPbgf",
-	--Def.Quad{InitCommand=cmd(FullScreen;diffuse,solar_colors.yellow())},
 	make_special_actors_for_players(),
 	Def.Actor{
 		Name= "timer actor",

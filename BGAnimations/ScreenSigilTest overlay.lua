@@ -34,14 +34,14 @@ local args= {
 	OnCommand= function(self)
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
 	end,
-	sigil:create_actors("sigil", SCREEN_CENTER_X, SCREEN_CENTER_Y, solar_colors.cyan(), 64, 300),
+	sigil:create_actors("sigil", SCREEN_CENTER_X, SCREEN_CENTER_Y, fetch_color("accent.cyan"), 64, 300),
 	Def.BitmapText{
 		Name= "sigil_status",
 		Font= "Common Normal",
 		InitCommand= function(self)
 			self:xy(SCREEN_CENTER_X, 16)
 			sigil_status= self
-			self:diffuse(solar_colors.f_text())
+			self:diffuse(fetch_color("text"))
 		end
 	},
 	Def.BitmapText{
@@ -58,7 +58,7 @@ local args= {
 		InitCommand= function(self)
 			self:xy(SCREEN_CENTER_X, 40)
 			self:settext("&left; &down; &up; &right; &downleft; &upleft; &upright; &downright; &center; &start; &select; &back; &menuleft; &menudown; &menuup; &menuright;")
-			self:strokecolor(solar_colors.magenta())
+			self:strokecolor(fetch_color("accent.magenta"))
 		end
 	},
 }

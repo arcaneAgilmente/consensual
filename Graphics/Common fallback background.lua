@@ -1,1 +1,1 @@
-return Def.Quad{ InitCommand=cmd(FullScreen;diffuse,solar_colors.bg()) }
+return Def.Quad{ InitCommand=cmd(FullScreen;diffuse,fetch_color("bg")) }

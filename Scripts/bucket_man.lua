@@ -68,6 +68,10 @@ local function step_artist(song)
 	end
 end
 
+local function by_words(song)
+	return split_string_to_words(song:GetDisplayMainTitle())
+end
+
 local function any_meter(song)
 	if song.GetStepsByStepsType then
 		local curr_style= GAMESTATE:GetCurrentStyle()
@@ -236,6 +240,9 @@ local group_sort= {
 local shared_sort_factors= {
 	group_sort,
 	title_sort,
+	-- Fun fact:  Implemented 2 days before Anime Banzai 2014, just to show off.
+	{ name= "Word In Title", get_names= by_words, uses_depth= true,
+		can_join= noop_true, insensitive_names= true, returns_multiple= true},
 }
 
 local song_sort_factors= {
@@ -247,7 +254,7 @@ local song_sort_factors= {
 	{ name= "Length", get_names= length},
 	-- Disabled, causes stepmania to eat all ram and hang.
 	-- Left in as disabled so it's known to not work.
---	{ name= "Step Artist", get_names= step_artist, returns_multiple= true},
+	{ name= "Step Artist", get_names= step_artist, returns_multiple= true},
 }
 
 local course_sort_factors= {
@@ -533,7 +540,14 @@ end
 
 function bucket_man_interface:sort_songs(sort_info)
 	sort_info= sort_info or self.cur_sort_info
+	update_rating_cap()
 	self:filter_songs(song_short_and_uncensored)
+	-- TODO:  The case where the player manages to set their rating cap to
+	-- filter out all songs should be handled better.
+	if #self.filtered_songs < 1 then
+		disable_rating_cap()
+		self:filter_songs(song_short_and_uncensored)
+	end
 	if sort_info.pre_sort_func then
 		sort_info.pre_sort_func(sort_info.pre_sort_arg)
 	end
@@ -561,8 +575,8 @@ function sick_wheel_item_interface:create_actors(name)
 			self.text= subself:GetChild("text")
 			self.number= subself:GetChild("number")
 		end,
-		normal_text("text", "", solar_colors.uf_text(), 4, 0, 1, left),
-		normal_text("number", "", solar_colors.uf_text(), -4, 0, 1, right),
+		normal_text("text", "", fetch_color("text"), nil, 4, 0, 1, left),
+		normal_text("number", "", fetch_color("text"), nil, -4, 0, 1, right),
 	}
 end
 
@@ -587,27 +601,30 @@ function sick_wheel_item_interface:set(info)
 	self.number:settext("")
 	if info.bucket_info then
 		if self.info.is_current_group then
-			self.text:diffuse(solar_colors.cyan())
+			self.text:diffuse(fetch_color("music_wheel.current_group"))
 		else
-			self.text:diffuse(solar_colors.violet())
+			self.text:diffuse(fetch_color("music_wheel.group"))
 		end
 		self.text:settext(bucket_disp_name(info.bucket_info))
 		self.number:settext(#info.bucket_info.contents)
 	elseif info.random_info then
 		self.text:settext(info.disp_name)
-		self.text:diffuse(solar_colors.red())
+		self.text:diffuse(fetch_color("music_wheel.random"))
 --		self.number:settext(#info.candidate_set) -- sticks out too much.
 	elseif info.song_info then
 		if info.is_prev then
 			self.text:settext(info.disp_name)
-			self.text:diffuse(solar_colors.f_text())
+			self.text:diffuse(fetch_color("music_wheel.prev_song"))
 		else
 			self.text:settext(song_get_main_title(info.song_info))
-			self.text:diffuse(solar_colors.uf_text())
+			self.text:diffuse(fetch_color("music_wheel.song"))
+		end
+		if check_censor_list(info.song_info) then
+			self.text:diffuse(fetch_color("music_wheel.censored_song"))
 		end
 	elseif info.sort_info then
 		self.text:settext(info.sort_info.name)
-		self.text:diffuse(solar_colors.yellow())
+		self.text:diffuse(fetch_color("music_wheel.sort"))
 	else
 		Warn("Tried to display bad element in display bucket.")
 		rec_print_table(info)
@@ -634,6 +651,14 @@ local function add_song_to_recent(song, recent)
 end
 
 local function make_bucket_from_recent(recent, name)
+	local i= 1
+	while i <= #recent do
+		if check_censor_list(recent[i]) then
+			table.remove(recent, i)
+		else
+			i= i + 1
+		end
+	end
 	return {
 		is_special= true,
 		bucket_info= {
@@ -663,9 +688,9 @@ local function make_random_decision(random_el)
 	end
 end
 
-local music_whale_interface= {}
-music_whale_interface_mt= { __index= music_whale_interface }
-function music_whale_interface:create_actors(x)
+local music_whale= {}
+music_whale_mt= { __index= music_whale }
+function music_whale:create_actors(x)
 	wheel_x= x
 	self.sick_wheel= setmetatable({}, sick_wheel_mt)
 	self.name= "MusicWheel"
@@ -682,10 +707,11 @@ function music_whale_interface:create_actors(x)
 	return Def.ActorFrame(args)
 end
 
-function music_whale_interface:find_actors()
+function music_whale:find_actors()
 	self.song_set= bucket_man.filtered_songs
 	self.cursor_song= gamestate_get_curr_song()
 	if music_whale_state then
+		self.cursor_item= music_whale_state.cursor_item
 		if song_short_enough(music_whale_state.cursor_song) then
 			self.cursor_song= music_whale_state.cursor_song
 		else
@@ -702,31 +728,38 @@ function music_whale_interface:find_actors()
 	end
 end
 
-function music_whale_interface:sort_songs(si)
+function music_whale:sort_songs(si)
 	self.current_sort_name= si.name
 	local function sort_work()
 		self.cur_sort_info= si
 		self.sorted_songs= bucket_man:sort_songs(si)
 		self.disp_stack= {}
 		self.display_bucket= nil
-		if self.cursor_song and #self.sorted_songs > 0 then
+		if self.cursor_song or self.cursor_item and #self.sorted_songs > 0 then
 			local function final_compare(a, b)
 				return a == b
 			end
-			local search_path= {
-				bucket_search(self.sorted_songs, self.cursor_song, final_compare, true)}
+			local search_path= {}
+			if self.cursor_item then
+				search_path= {
+					bucket_search_for_item(self.sorted_songs, self.cursor_item)}
+				if search_path[1] == -1 then
+--					Trace("Failed to find cursor item, searching for song:  " .. table.concat(search_path, ", "))
+					search_path= {bucket_search(self.sorted_songs, self.cursor_song,
+																			final_compare, true)}
+				end
+			else
+				search_path= {bucket_search(self.sorted_songs, self.cursor_song,
+																		final_compare, true)}
+			end
 			if music_whale_state and music_whale_state.on_random then
-				--Trace("music_whale_state.on_random, truncating path. " .. music_whale_state.depth_to_random)
 				while #search_path > music_whale_state.depth_to_random+1 do
-					--Trace("Removing " .. search_path[#search_path])
 					search_path[#search_path]= nil
 				end
 			end
 			if search_path[1] ~= -1 then
 				self:follow_search_path(search_path, 1, self.sorted_songs)
 				if music_whale_state and music_whale_state.on_random then
-					--Trace("followed path done.")
-					--print_table(self.display_bucket)
 					self:nav_to_named_element(music_whale_state.on_random)
 					music_whale_state.on_random= nil
 				end
@@ -751,13 +784,17 @@ function music_whale_interface:sort_songs(si)
 	play_sample_music()
 end
 
-function music_whale_interface:resort_for_new_style()
+function music_whale:resort_for_new_style()
+	-- TODO:  This is being over used in places that don't actually change the
+	-- style settings.  For efficiency, there should probably be special
+	-- functions that only do the necessary work.
 	self.cursor_song= gamestate_get_curr_song()
+	self.cursor_item= self.sick_wheel:get_info_at_focus_pos().item
 	bucket_man:style_filter_songs()
 	self:sort_songs(self.cur_sort_info)
 end
 
-function music_whale_interface:add_player_randoms(disp_bucket, player_number)
+function music_whale:add_player_randoms(disp_bucket, player_number)
 	if GetPreviousPlayerSteps and GAMESTATE:IsPlayerEnabled(player_number) then
 		local prev_steps= GetPreviousPlayerSteps(player_number)
 		local sn= ToEnumShortString(player_number)
@@ -778,6 +815,7 @@ function music_whale_interface:add_player_randoms(disp_bucket, player_number)
 			local interface_flags= cons_players[player_number].flags.interface
 			local function candy_filter(item)
 				local song= item.el
+				if check_censor_list(song) then return end
 				local steps_list= get_filtered_sorted_steps_list(song)
 				for i, v in ipairs(steps_list) do
 					local meter= v:GetMeter()
@@ -831,9 +869,10 @@ function music_whale_interface:add_player_randoms(disp_bucket, player_number)
 	end
 end
 
-function music_whale_interface:add_randoms(bucket)
+function music_whale:add_randoms(bucket)
 	local candidates= {}
 	local function add_to_candidates(el)
+		if check_censor_list(el.el) then return end
 		candidates[#candidates+1]= el.el
 	end
 	bucket_traverse(
@@ -850,7 +889,7 @@ function music_whale_interface:add_randoms(bucket)
 	end
 end
 
-function music_whale_interface:add_special_items_to_bucket(bucket)
+function music_whale:add_special_items_to_bucket(bucket)
 	if self.current_sort_name ~= "Sort Menu" then
 		-- The last element in the bucket is the special element for the current
 		-- group.  It can't be added here because the name of the current display
@@ -863,7 +902,7 @@ function music_whale_interface:add_special_items_to_bucket(bucket)
 			-- For the case where we are at the top level.
 			last_el= nil
 		end
-		if prev_picked_song then
+		if prev_picked_song and not check_censor_list(prev_picked_song) then
 			bucket[#bucket+1]= {
 				name= "Previous Song", is_special= true,
 				disp_name= get_string_wrapper("MusicWheel", "PrevSong"),
@@ -885,7 +924,7 @@ function music_whale_interface:add_special_items_to_bucket(bucket)
 	end
 end
 
-function music_whale_interface:remove_special_items_from_bucket(bucket)
+function music_whale:remove_special_items_from_bucket(bucket)
 	local i= 1
 	while i <= #bucket and bucket[i] do
 		local v= bucket[i]
@@ -897,7 +936,7 @@ function music_whale_interface:remove_special_items_from_bucket(bucket)
 	end
 end
 
-function music_whale_interface:set_display_bucket(bucket, pos)
+function music_whale:set_display_bucket(bucket, pos)
 	self.curr_bucket= bucket
 	local disp_bucket= {}
 	for i, v in ipairs(bucket.contents or bucket) do
@@ -905,7 +944,7 @@ function music_whale_interface:set_display_bucket(bucket, pos)
 			disp_bucket[#disp_bucket+1]= {bucket_info= v}
 		elseif v.el then
 			if v.el.GetBackgroundPath then
-				disp_bucket[#disp_bucket+1]= {song_info= v.el}
+				disp_bucket[#disp_bucket+1]= {song_info= v.el, item= v}
 			end
 		elseif v.GetBackgroundPath then
 			disp_bucket[#disp_bucket+1]= {song_info= v}
@@ -927,7 +966,7 @@ function music_whale_interface:set_display_bucket(bucket, pos)
 	--print_table(self.display_bucket)
 end
 
-function music_whale_interface:follow_search_path(path, path_index, set)
+function music_whale:follow_search_path(path, path_index, set)
 	local sindex= path[path_index]
 	--Trace("follow_search_path: " .. path_index .. " out of " .. #path)
 	if sindex then
@@ -942,8 +981,8 @@ function music_whale_interface:follow_search_path(path, path_index, set)
 	end
 end
 
-function music_whale_interface:nav_to_named_element(name)
-	--Trace("music_whale_interface.nav_to_named_element")
+function music_whale:nav_to_named_element(name)
+	--Trace("music_whale.nav_to_named_element")
 	--print_table(self.display_bucket)
 	for i, v in ipairs(self.display_bucket) do
 		if v.name and v.name == name then
@@ -965,14 +1004,14 @@ function music_whale_interface:nav_to_named_element(name)
 	end
 end
 
-function music_whale_interface:push_onto_disp_stack()
+function music_whale:push_onto_disp_stack()
 	self:remove_special_items_from_bucket(self.display_bucket)
 	self.disp_stack[#self.disp_stack+1]= {
 		b= self.display_bucket, c= self.curr_bucket,
 		p= self.sick_wheel.info_pos }
 end
 
-function music_whale_interface:pop_from_disp_stack()
+function music_whale:pop_from_disp_stack()
 	if #self.disp_stack > 0 then
 		local prev_bucket= self.disp_stack[#self.disp_stack]
 		self.disp_stack[#self.disp_stack]= nil
@@ -984,22 +1023,49 @@ function music_whale_interface:pop_from_disp_stack()
 	end
 end
 
-function music_whale_interface:scroll_left()
+function music_whale:save_disp_state()
+	local state= {}
+	for i, disp in ipairs(self.disp_stack) do
+		state[#state+1]= {
+			name= disp.b.name,
+			combined_name_range= disp.b.combined_name_range,
+			contents_name_range= disp.b.contents_name_range,
+			from_adduns= disp.b.from_adduns,
+			from_split= disp.b.from_split,
+			from_similar= disp.b.from_similar,
+		}
+	end
+	return state
+end
+
+function music_whale:restore_disp_state(state)
+	local i= 1
+	local curr_set= self.sorted_songs
+	while i <= #state do
+		local disp= state[i]
+		local sort_factor_matches= false
+		for b, bucket in ipairs(curr_set) do
+			
+		end
+	end
+end
+
+function music_whale:scroll_left()
 	self.sick_wheel:scroll_by_amount(-1)
 	self:set_stuff_from_curr_element()
 end
 
-function music_whale_interface:scroll_right()
+function music_whale:scroll_right()
 	self.sick_wheel:scroll_by_amount(1)
 	self:set_stuff_from_curr_element()
 end
 
-function music_whale_interface:scroll_amount(a)
+function music_whale:scroll_amount(a)
 	self.sick_wheel:scroll_by_amount(a)
 	self:set_stuff_from_curr_element()
 end
 
-function music_whale_interface:set_stuff_from_curr_element()
+function music_whale:set_stuff_from_curr_element()
 	local curr_element= self.sick_wheel:get_info_at_focus_pos()
 	if not curr_element then return end
 	if curr_element.random_info then
@@ -1023,7 +1089,7 @@ function music_whale_interface:set_stuff_from_curr_element()
 	end
 end
 
-function music_whale_interface:interact_with_element()
+function music_whale:interact_with_element()
 	local curr_element= self.sick_wheel:get_info_at_focus_pos()
 	if curr_element.bucket_info then
 		if curr_element.is_current_group then
@@ -1052,7 +1118,8 @@ function music_whale_interface:interact_with_element()
 		music_whale_state= {
 			cur_sort_info= self.cur_sort_info,
 			cursor_song= cur_song,
-			alt_cursor_songs= alt_cursor_songs
+			cursor_item= curr_element.item,
+			alt_cursor_songs= alt_cursor_songs,
 		}
 		if curr_element.random_info or curr_element.is_prev then
 			music_whale_state.on_random= curr_element.name
@@ -1066,14 +1133,15 @@ function music_whale_interface:interact_with_element()
 	end
 end
 
-function music_whale_interface:close_group()
+function music_whale:close_group()
 	self:pop_from_disp_stack()
 end
 
-function music_whale_interface:show_sort_list()
+function music_whale:show_sort_list()
 	if self.current_sort_name ~= "Sort Menu" then
 		self.current_sort_name= "Sort Menu"
 		self.cursor_song= gamestate_get_curr_song()
+		self.cursor_item= nil
 		self:push_onto_disp_stack()
 		self:set_display_bucket(get_sort_info(), 1)
 	end

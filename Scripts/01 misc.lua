@@ -73,6 +73,15 @@ function pow_ten_force(val)
 	return 10^math.round(math.log10(val))
 end
 
+function lerp(a, b, t)
+	return a + ((b-a) * t)
+end
+
+function colerp(a, b, t)
+	return {lerp(a[1], b[1], t), lerp(a[2], b[2], t), lerp(a[3], b[3], t),
+					lerp(a[4], b[4], t)}
+end
+
 -- Usage:  Pass in an ActorFrame to print all the children of.
 function print_children(a)
 	local aname= a:GetName()
@@ -391,52 +400,86 @@ function song_get_main_title(song)
 	return song[get_main_title](song)
 end
 
-function steps_get_bpms(strail)
-	local bpms= {}
-	if GAMESTATE:IsCourseMode() then
-		for i, entry in ipairs(strail:GetTrailEntries()) do
-			local ebpms= entry:GetSteps():GetDisplayBpms()
-			bpms[#bpms+1]= ebpms[1]
-			if ebpms[1] ~= ebpms[2] then
-				bpms[#bpms+1]= ebpms[2]
+function put_bpm_in_disp_pair(disp_pair, bpm)
+	if lte_nil(bpm, disp_pair[1]) then
+		disp_pair[1]= bpm
+	end
+	if gte_nil(bpm, disp_pair[2]) then
+		disp_pair[2]= bpm
+	end
+end
+
+function get_display_bpms(steps, song)
+	local bpms= steps:GetDisplayBpms()
+	if steps:GetDisplayBPMType() ~= "DisplayBPM_Specified" or bpms[2] < 1
+	-- DDR worshippers like to give DDR simfiles Konami's false display bpms.
+	or steps_are_konami_trash(steps) then
+		bpms= {}
+		local timing_data= steps:GetTimingData()
+		local bpmsand= timing_data:GetBPMsAndTimes()
+		if type(bpmsand[1]) == "string" then
+			for i, s in ipairs(bpmsand) do
+				local sand= split("=", s)
+				bpmsand[i]= {tonumber(sand[1]), tonumber(sand[2])}
 			end
 		end
-	else
-		bpms= strail:GetDisplayBpms()
-	end
-	table.sort(bpms)
-	local ib= 2
-	while bpms[ib] do
-		if bpms[ib] == bpms[ib-1] then
-			table.remove(bpms, ib)
-		else
-			ib= ib+1
+		local totals= {}
+		local num_beats= timing_data:GetBeatFromElapsedTime(song:GetLastSecond())
+		local highest_sustained= 0
+		local sustain_limit= 32
+		local max_bpm= false
+		for i, s in ipairs(bpmsand) do
+--			put_bpm_in_disp_pair(bpms, s[2])
+			if gte_nil(s[2], max_bpm) then
+				max_bpm= s[2]
+			end
+			local end_beat= 0
+			if bpmsand[i+1] then
+				end_beat= bpmsand[i+1][1]
+			else
+				end_beat= num_beats
+			end
+			local len= (end_beat - s[1])
+			if s[2] > highest_sustained and len > sustain_limit then
+				highest_sustained= s[2]
+			end
+			totals[s[2]]= len + (totals[s[2]] or 0)
 		end
+		local tot= 0
+		local most_common= false
+		for k, v in pairs(totals) do
+			local minutes_duration= v / k
+			if not most_common or minutes_duration > most_common[2] then
+				most_common= {k, minutes_duration}
+			end
+			tot= tot + (k * v)
+		end
+		local average= tot / num_beats
+		put_bpm_in_disp_pair(bpms, most_common[1])
 	end
 	return bpms
 end
 
-function steps_get_bpms_as_text(strail)
-	local bpms= steps_get_bpms(strail)
-	local bpm_text= ""
-	local low, high= false, false
-	for i, v in ipairs(bpms) do
-		if not low or v < low then
-			low= v
+function steps_get_bpms(strail, song)
+	local bpms= {}
+	if GAMESTATE:IsCourseMode() then
+		for i, entry in ipairs(strail:GetTrailEntries()) do
+			local ebpms= get_display_bpms(entry:GetSteps(), entry:GetSong())
+			put_bpm_in_disp_pair(bpms, ebpms[1])
+			put_bpm_in_disp_pair(bpms, ebpms[2])
 		end
-		if not high or v > high then
-			high= v
-		end
-		if i > 1 then
-			bpm_text= bpm_text .. "-"
-		end
-		bpm_text= bpm_text .. ("%.0f"):format(v)
+	else
+		bpms= get_display_bpms(strail, song)
 	end
-	local short_text= ("%.0f"):format(low)
-	if low ~= high then
-		short_text= short_text .. "-" .. ("%.0f"):format(high)
-	end
-	return short_text
+	return bpms
+end
+
+function format_bpm(bpm)
+	return ("%.0f"):format(bpm)
+end
+
+function format_xmod(xmod)
+	return ("%.2f"):format(xmod)
 end
 
 function steps_are_konami_trash(steps)
@@ -631,6 +674,8 @@ convert_code_name_to_display_text= {
 	unjoin="Unjoin Other",
 }
 
+local fade_time= 1
+-- TODO:  Add a system for adding attract/bg music lists.
 function play_sample_music()
 	if GAMESTATE:IsCourseMode() then return end
 	local song= GAMESTATE:GetCurrentSong()
@@ -638,18 +683,14 @@ function play_sample_music()
 		local songpath= song:GetMusicPath()
 		local sample_start= song:GetSampleStart()
 		local sample_len= song:GetSampleLength()
---		Trace("Playing sample: " .. tostring(songpath) .. " " ..
---				sample_start .. " - " .. sample_len)
 		if songpath and sample_start and sample_len then
 			SOUND:PlayMusicPart(songpath, sample_start,
-													sample_len, 0, 0, true, true)
+													sample_len, fade_time, fade_time, true, true)
 		else
-			SOUND:PlayMusicPart("", 0, 0)
---			Trace("Something was invalid.")
+			SOUND:PlayMusicPart("", 0, 0, fade_time, fade_time)
 		end
 	else
-		SOUND:PlayMusicPart("", 0, 0)
---		Trace("No current song to play sample.")
+		SOUND:PlayMusicPart("", 0, 0, fade_time, fade_time)
 	end
 end
 

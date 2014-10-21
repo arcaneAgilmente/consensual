@@ -230,8 +230,9 @@ local hider_params= {
 		self:xy(_screen.cx, _screen.cy)
 	end,
 	hider_frame:create_actors(
-		"frame", 1, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0),
-	normal_text("text", "", solar_colors.f_text(), 0, 0, 1,
+		"frame", 1, 0, 0, fetch_color("rev_bg"), fetch_color("help.bg"), 0, 0),
+	normal_text(
+		"text", "", fetch_color("help.text"), fetch_color("help.stroke"), 0,0,1,
 		center, {InitCommand= function(self) hider_text= self
 			self:wrapwidthpixels(SCREEN_WIDTH-20) end}),
 }
@@ -320,7 +321,8 @@ return Def.ActorFrame{
 			prompt_frame:resize(xmx-xmn+20, ymx-ymn+20)
 		end,
 		prompt_frame:create_actors(
-			"ppf", 1, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0),
-		normal_text("ppt", "Press key.", solar_colors.green(), 0, 0, 1),
+			"ppf", 1, 0, 0, fetch_color("prompt.frame"), fetch_color("prompt.bg"),
+			0, 0),
+		normal_text("ppt", "Press key.", fetch_color("prompt.text"), nil, 0, 0, 1),
 	},
 }

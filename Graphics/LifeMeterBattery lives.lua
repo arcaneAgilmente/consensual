@@ -7,10 +7,11 @@ local function recalc_verts(self, life_meter)
 	local lx= -12
 	local rx= 12
 	local verts= {}
+	local life_colors= fetch_color("gameplay.lifemeter.battery")
 	for l= 1, life_limit do
-		local col= convert_wrapping_number_to_color(l*2)
+		local col= color_in_set(life_colors, l, true)
 		if l > life_remain then
-			col= solar_colors.bg()
+			col= life_colors.lost_life
 		end
 		local highy= -(l * lh)
 		local lowy= lh-(l * lh)

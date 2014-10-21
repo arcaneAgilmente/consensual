@@ -11,9 +11,6 @@ function cons_player:clear_init(player_number)
 	self.song_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Song")
 	self.stage_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Stage")
 	self.preferred_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Preferred")
-	self.rating_cap= 4
-	-- Temporarily make simple the default until this theme is used somewhere that the options menu should be hidden from normal players.
-	self.rating_cap= -1
 	self.judge_totals= {}
 	self:set_speed_info_from_poptions()
 	self.dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false}
@@ -44,38 +41,47 @@ function cons_player:clear_mods()
 end
 
 function cons_player:noob_mode()
-	self.rating_cap= -1
+	-- TODO:  Test whether this accidentally overrides player_config.
+	-- Move rating_cap and options_level to somethign similar to
+	-- profile_flag_setting so the machine owner can configure what each level
+	-- sets.
+	self.rating_cap= 5
+	self.options_level= 1
 	self.flags= set_player_flag_to_level(self.player_number, 1)
 	self.pain_config= set_player_pain_to_level(self.player_number, 1)
 end
 
 function cons_player:simple_options_mode()
-	self.rating_cap= -1
+	self.rating_cap= 10
+	self.options_level= 2
 	self.flags= set_player_flag_to_level(self.player_number, 2)
 	self.pain_config= set_player_pain_to_level(self.player_number, 2)
 end
 
 function cons_player:all_options_mode()
-	self.rating_cap= -1
+	self.rating_cap= 15
+	self.options_level= 3
 	self.flags= set_player_flag_to_level(self.player_number, 3)
 	self.pain_config= set_player_pain_to_level(self.player_number, 3)
 end
 
 function cons_player:excessive_options_mode()
 	self.rating_cap= -1
+	self.options_level= 4
 	self.flags= set_player_flag_to_level(self.player_number, 4)
 	self.pain_config= set_player_pain_to_level(self.player_number, 4)
 end
 
 function cons_player:kyzentun_mode()
 	self.rating_cap= -1
+	self.options_level= 5
 	self.kyzentun= true
 	local styletype= GAMESTATE:GetCurrentStyle():GetStyleType()
-	local new_speed= false
+	local new_speed= {speed= 1000, mode= "m"}
+	self.preferred_options:Distant(1.5)
 	if styletype == "StyleType_OnePlayerTwoSides" then
-		new_speed= { speed= 500, mode= "m" }
-	else
-		new_speed= { speed= 1000, mode= "m" }
+		self.preferred_options:Distant(1.2)
+		new_speed= {speed= 500, mode= "m"}
 	end
 	if self.speed_info then
 		self.speed_info.speed= new_speed.speed
@@ -83,17 +89,12 @@ function cons_player:kyzentun_mode()
 	else
 		self.speed_info= new_speed
 	end
-	self.preferred_options:Distant(1.5)
+	self.preferred_options:NoteSkin("uswshadow3dsm5")
 	self.flags= set_player_flag_to_level(self.player_number, 4)
 	self.pain_config= set_player_pain_to_level(self.player_number, 4)
-end
-
--- If the rating cap is less than or equal to 0, it has the special meaning of "no cap".
-function cons_player:rating_is_over_cap(rating)
-	if not rating then return true end
-	if type(rating) ~= "number" then return true end
-	if self.rating_cap <= 0 then return false end
-	return rating > self.rating_cap
+	self.combo_splash_threshold= "TapNoteScore_Miss"
+	self.combo_graph_threshold= "TapNoteScore_Miss"
+	self.sigil_data.detail= 32
 end
 
 function cons_player:combo_qual_reset()
@@ -364,8 +365,47 @@ function song_short_enough(s)
 	end
 end
 
+local censoring_on= true
+function toggle_censoring()
+	censoring_on= not censoring_on
+end
+
+local chart_rating_cap= -1
+function update_rating_cap()
+	local old_cap= chart_rating_cap
+	chart_rating_cap= 0
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		if cons_players[pn].rating_cap < 0 then
+			chart_rating_cap= -1
+		else
+			chart_rating_cap= math.max(cons_players[pn].rating_cap, chart_rating_cap)
+		end
+	end
+	return old_cap ~= chart_rating_cap
+end
+
+function disable_rating_cap()
+	chart_rating_cap= -1
+end
+
 function song_short_and_uncensored(song)
-	return not check_censor_list(song) and song_short_enough(song)
+	local show= song_short_enough(song)
+	if censoring_on and check_censor_list(song) then
+		show= false
+	end
+	if show and chart_rating_cap > 0 then
+		local steps_list= get_filtered_sorted_steps_list(song)
+		local playable_steps= false
+		local i= 1
+		while not playable_steps and i <= #steps_list do
+			if steps_list[i]:GetMeter() <= chart_rating_cap then
+				playable_steps= true
+			end
+			i= i+1
+		end
+		show= playable_steps
+	end
+	return show
 end
 
 function time_short_enough(t)
@@ -523,4 +563,12 @@ function SaveProfileCustom(profile, dir)
 		player_config:save(prof_slot)
 		style_config:save(prof_slot)
 	end
+end
+
+function player_using_profile(pn)
+	return PROFILEMAN:IsPersistentProfile(pn)
+end
+
+function ops_level(pn)
+	return cons_players[pn].options_level
 end

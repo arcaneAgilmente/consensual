@@ -5,6 +5,12 @@ local default_config= {{}, {}}
 -- style, but is necessary because Steps do not have a StyleType or other
 -- direct way to figure out what style they're meant for.
 stepstype_to_style= {}
+local function supported_style(name)
+	-- TODO:  Fix the fact that solo only requires one person, but cannot be
+	-- played when two people are joined.
+	return name == "single" or name == "double"
+--	return name ~= "couple-edit" and name ~= "couple" and name ~= "routine"
+end
 for i, style in ipairs(styles_for_game) do
 	local stepstype= style:GetStepsType()
 	local stame= style:GetName()
@@ -18,7 +24,7 @@ for i, style in ipairs(styles_for_game) do
 			name= stame, stype= stype, for_players= for_players, for_sides= for_sides}
 	end
 	-- unsupported styles:
-	if stame ~= "couple-edit" and stame ~= "couple" and stame ~= "routine" then
+	if supported_style(stame) then
 		if stype:find("OnePlayer") then
 			table.insert(
 				default_config[1], {style= stame, stepstype= stepstype, visible= true})

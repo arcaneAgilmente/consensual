@@ -3,6 +3,8 @@ local lg_thickness= 40
 local banner_container= false
 local banner_image= false
 local reward_time= 0
+local eval_stroke= fetch_color("evaluation.stroke")
+local graph_colors= fetch_color("evaluation.graphs")
 do
 	local conversions= {
 		{1, 60, ""}, {60, 60, ":"}, {3600, 24, ":"}, {86400, 365, "/"},
@@ -119,12 +121,11 @@ end
 
 local number_set_mt= {
 	__index= {
-		create_actors= function(self, name, x, y, sx, sy, dx, dy, elz, ela, elc,
-														elw)
-			x= x or 0
-			y= y or 0
-			sx= sx or 0
-			sy= sy or 0
+		create_actors= function(self, name, dx, dy, elz, ela, elc, elw)
+			local x= 0
+			local y= 0
+			local sx= 0
+			local sy= 0
 			dx= dx or 0
 			dy= dy or 0
 			elz= elz or 1
@@ -149,7 +150,8 @@ local number_set_mt= {
 				local im= i-1
 				self.els[i]= "n"..i
 				args[#args+1]= normal_text(
-					self.els[i], "", nil, sx + (dx * im), sy + (dy * im), elz, ela)
+					self.els[i], "", nil, eval_stroke,
+					sx + (dx*im), sy + (dy*im), elz, ela)
 			end
 			return Def.ActorFrame(args)
 		end,
@@ -158,7 +160,7 @@ local number_set_mt= {
 			for i, el in ipairs(self.els) do
 				if number_data[i] then
 					local number= number_data[i].number or ""
-					local color= number_data[i].color or solar_colors.f_text()
+					local color= number_data[i].color or fetch_color("text")
 					local zoom= (number_data[i].zoom or 1) * self.elz
 					self.elzooms[i]= zoom
 					el:settext(number)
@@ -196,13 +198,19 @@ local best_score_mt= {
 			}
 			self.fh= setmetatable({}, frame_helper_mt)
 			args[#args+1]= self.fh:create_actors(
-				"frame", .5, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
+				"frame", .5, 0, 0,
+				fetch_color("evaluation.best_score.frame"),
+				fetch_color("evaluation.best_score.bg"), 0, 0)
 			local bt= get_string_wrapper("ScreenEvaluation", score_name)
-			args[#args+1]= normal_text("best_text", bt, nil, 0, 0, z*.5)
-			args[#args+1]= normal_text("rank", "", nil, 0, -24*.5*z, z*.5)
+			args[#args+1]= normal_text(
+				"best_text", bt, fetch_color("evaluation.best_score.text"),
+				eval_stroke, 0,0,z*.5)
+			args[#args+1]= normal_text(
+				"rank", "", nil, eval_stroke, 0, -24*.5*z, z*.5)
 			self.score= setmetatable({}, text_and_number_interface_mt)
 			args[#args+1]= self.score:create_actors(
 				"score", {sy= 24*.5*z, tx= -40, nx= 40, tz= .5*z, nz= .5*z, ta= left,
+									tc= fetch_color("evaluation.best_score.text"),
 									na= right, tt= "", nt= ""})
 			return Def.ActorFrame(args)
 		end,
@@ -241,20 +249,22 @@ local best_score_mt= {
 						if rank == 0 then
 							self.rank:visible(false)
 						else
-							self.rank:settext("#"..rank)
-							self.rank:diffuse(convert_percent_to_color((9 - rank) / 8))
+							self.rank:settext("Rank: #"..rank)
+							self.rank:diffuse(number_to_color(
+								rank, false, true, "evaluation.best_score.rank_colors"))
 							self.rank:visible(true)
 						end
 						self.score:set_text(highest_score:GetName())
 						local pct= math.floor(highest_score:GetPercentDP() * 10000) * .01
 						self.score:set_number(("%.2f%%"):format(pct))
+						self.score.number:diffuse(color_for_score(pct*.01))
 						local name_width= 80 - self.score.number:GetZoomedWidth() - 4
 						width_clip_text(self.score.text, name_width)
 						self.score:unhide()
 						self.fh:unhide()
 						local fxmn, fxmx, fymn, fymx=
 							rec_calc_actor_extent(self.container)
-						local fw= fxmx - fxmn + 2
+						local fw= fxmx - fxmn + 4
 						local fh= fymx - fymn + 4
 						local fx= fxmn + (fw / 2)
 						local fy= fymn + (fh / 2)
@@ -299,23 +309,34 @@ local banner_info_mt= {
 					banner_container= subself
 					subself:xy(SCREEN_CENTER_X, SCREEN_TOP + 12)
 				end,
+				Def.Quad{
+					Name= "banner_bg", InitCommand= function(subself)
+						self.banner_bg= subself
+						subself:diffuse(fetch_color("bg"))
+					end
+				},
 				Def.Sprite{
 					Name= "banner",
-					InitCommand= function(self)
-						banner_image= self
-						self:xy(0, 56)
-						if cur_song then
-							self:LoadFromSongBanner(cur_song)
-							scale_to_fit(self, 256, 80)
+					InitCommand= function(subself)
+						banner_image= subself
+						subself:xy(0, 56)
+						self.banner_bg:xy(0, 56)
+						if cur_song and cur_song:HasBanner() then
+							subself:LoadFromSongBanner(cur_song)
+							scale_to_fit(subself, 256, 80)
+							self.banner_bg:setsize(
+								subself:GetZoomedWidth()+2, subself:GetZoomedHeight()+2)
 						else
-							self:visible(false)
+							subself:visible(false)
+							self.banner_bg:visible(false)
 						end
 					end
 				},
 				normal_text(
-					"song_name", song_name, solar_colors.f_text(), 0, 0, 1, center,
+					"song_name", song_name, fetch_color("evaluation.song_name"),
+					eval_stroke, 0, 0, 1, center,
 					{ OnCommand= function(self)
-							local limit= SCREEN_WIDTH - ((cg_thickness+lg_thickness)*2) - 16
+							local limit= _screen.w - ((cg_thickness+lg_thickness)*2) - 16
 							width_limit_text(self, limit)
 					end
 				})
@@ -343,14 +364,22 @@ local reward_time_mt= {
 					self.remain_time= subself:GetChild("remain_time")
 				end
 			}
+			local reward_colors= fetch_color("evaluation.reward")
 			self.frame= setmetatable({}, frame_helper_mt)
-			args[#args+1]= self.frame:create_actors("frame", .5, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
-			args[#args+1]= normal_text("used_text", "", solar_colors.uf_text(), 0, 0, .5)
-			args[#args+1]= normal_text("used_amount", "", solar_colors.f_text(), 0, 0, 1)
-			args[#args+1]= normal_text("reward_text", "", solar_colors.uf_text(), 0, 0, .5)
-			args[#args+1]= normal_text("reward_amount", "", solar_colors.f_text(), 0, 0, 1)
-			args[#args+1]= normal_text("remain_text", "", solar_colors.uf_text(), 0, 0, .5)
-			args[#args+1]= normal_text("remain_time", "", solar_colors.f_text(), 0, 0, 1)
+			args[#args+1]= self.frame:create_actors(
+				"frame", .5, 0, 0, reward_colors.frame, reward_colors.bg, 0, 0)
+			args[#args+1]= normal_text(
+				"used_text", "", reward_colors.used_label, eval_stroke, 0, 0, .5)
+			args[#args+1]= normal_text(
+				"used_amount", "", reward_colors.used_amount, eval_stroke, 0, 0, 1)
+			args[#args+1]= normal_text(
+				"reward_text", "", reward_colors.reward_label, eval_stroke, 0, 0, .5)
+			args[#args+1]= normal_text(
+				"reward_amount", "", reward_colors.reward_amount, eval_stroke, 0, 0, 1)
+			args[#args+1]= normal_text(
+				"remain_text", "", reward_colors.remain_label, eval_stroke, 0, 0, .5)
+			args[#args+1]= normal_text(
+				"remain_time", "", reward_colors.remain_amount, eval_stroke, 0, 0, 1)
 			return Def.ActorFrame(args)
 		end,
 		hide= function(self) self.container:visible(false) end,
@@ -388,84 +417,133 @@ local reward_time_mt= {
 			width_limit_text(self.remain_time, width, 1)
 			self.remain_time:y(next_y)
 			local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(self.container)
-			local fw= fxmx - fxmn + 2
-			local fh= fymx - fymn + 4
-			local fx= fxmn + (fw / 2)
-			local fy= fymn + (fh / 2)
-			self.frame:move(fx, fy-1)
-			self.frame:resize(fw, fh)
+			local fw= fxmx - fxmn + 6
+			local fh= fymx - fymn + 6
+			--local fx= fxmn + (fw / 2) - 4
+			local fx= 0
+			local fy= fymn + (fh / 2) - 2
+			self.frame:move(fx, fy)
+			self.frame:resize(width+8, fh)
 		end
 }}
 
 local reward_indicator= setmetatable({}, reward_time_mt)
-
 local feedback_judgements= {
 	"TapNoteScore_W1", "TapNoteScore_W2", "TapNoteScore_W3",
 	"TapNoteScore_W4", "TapNoteScore_W5", "TapNoteScore_Miss"
 }
-
 local holdnote_names= {
-	"HoldNoteScore_Held", "HoldNoteScore_LetGo"
+	"HoldNoteScore_Held", "HoldNoteScore_LetGo", "HoldNoteScore_MissedHold"
 }
+-- +1 for column label
+-- +1 for max_combo
+local scrows= #feedback_judgements + #holdnote_names + 2
 
 local life_graph_mt= {
 	__index= {
-		create_actors= function(self, pstats, firsts, gx, gy, gw, gh, reflect)
-			--local length= song_get_length(gamestate_get_curr_song())
-			local length= gameplay_end_time - gameplay_start_time
-			local samples= 100
-			local sample_resolution= gh / samples
-			local seconds_per_sample= length / samples
-			--Trace("Getting life record over length " .. tostring(length))
-			local life_record= pstats:GetLifeRecord(length, samples)
-			local actor_info= {}
-			local verts= {}
-			local first_color= judgement_colors["TapNoteScore_W1"]
-			if reflect then
-				verts[1]= {{gw, 0, 0}, first_color}
-				verts[2]= {{gw * .5, 0, 0}, first_color}
-			else
-				verts[1]= {{gw * .5, 0, 0}, first_color}
-				verts[2]= {{0, 0, 0}, first_color}
-			end
-			for i, v in ipairs(life_record) do
-				local sy= i * sample_resolution
-				local sv= life_record[i]
-				local ss= i * seconds_per_sample
-				local sample_color= judgement_colors["TapNoteScore_W1"]
-				for i, v in ipairs(feedback_judgements) do
-					if firsts[v] then
-						if ss >= firsts[v] then
-							sample_color= judgement_colors[v]
-						end
-					end
-				end
-				if reflect then
-					verts[#verts+1]= {{gw, sy, 0}, sample_color}
-					verts[#verts+1]= {{gw * (1 - sv), sy, 0}, sample_color}
-				else
-					verts[#verts+1]= {{gw * sv, sy, 0}, sample_color}
-					verts[#verts+1]= {{0, sy, 0}, sample_color}
-				end
-			end
+		create_actors= function(self, pstats, pn, firsts, gx,gy, gw, gh, reflect)
+			self.pstats= pstats
+			self.pn= pn
+			self.firsts= firsts
+			self.gw= gw
+			self.gh= gh
+			self.reflect= reflect
 			return Def.ActorMultiVertex{
 				Name= "lgraph",
 				InitCommand= function(subself)
 					self.container= subself
-					subself:xy(gx - gw/2, gy - gh/2)
-					subself:SetVertices(verts)
+					subself:xy(gx - gw/2, gy)
 					subself:SetDrawState{Mode="DrawMode_QuadStrip"}
 				end
 			}
 		end,
 		hide= function(self) self.container:visible(false) end,
 		unhide= function(self) self.container:visible(true) end,
+		set= function(self)
+			--local length= song_get_length(gamestate_get_curr_song())
+			local length= gameplay_end_time - gameplay_start_time
+			local samples= 100
+			local sample_resolution= self.gh / samples
+			local seconds_per_sample= length / samples
+			--Trace("Getting life record over length " .. tostring(length))
+			local life_record= self.pstats:GetLifeRecord(length, samples)
+			local actor_info= {}
+			local verts= {}
+			local top_color= graph_colors.color
+			local bot_color= graph_colors.color
+			local flags= cons_players[self.pn].flags.eval
+			local half_color= fetch_color("accent.blue")
+			local full_color= fetch_color("accent.red")
+			local graph_color= fetch_color("evaluation.graphs.color")
+			local function combo_color(time)
+				local ret= judge_to_color("TapNoteScore_W1")
+				for i, v in ipairs(feedback_judgements) do
+					if self.firsts[v] then
+						if time >= self.firsts[v] then
+							ret= judge_to_color(v)
+						end
+					end
+				end
+				return ret
+			end
+			local function life_color(sample)
+				if sample <= .5 then
+					return half_color
+				elseif sample >= 1 then
+					return full_color
+				end
+				sample= (sample - .5) * 2
+				return colerp(half_color, full_color, sample)
+			end
+			local function set_colors(time, sample)
+				if flags.color_life_by_value then
+					if flags.color_life_by_combo then
+						top_color= life_color(sample)
+						bot_color= combo_color(time)
+					else
+						top_color= life_color(sample)
+						bot_color= life_color(sample)
+					end
+				else
+					if flags.color_life_by_combo then
+						top_color= combo_color(time)
+						bot_color= combo_color(time)
+					else
+						top_color= graph_color
+						bot_color= graph_color
+					end
+				end
+			end
+			set_colors(0, .5)
+			if self.reflect then
+				verts[1]= {{self.gw, 0, 0}, bot_color}
+				verts[2]= {{self.gw * .5, 0, 0}, top_color}
+			else
+				verts[1]= {{self.gw * .5, 0, 0}, top_color}
+				verts[2]= {{0, 0, 0}, bot_color}
+			end
+			for i, v in ipairs(life_record) do
+				local sy= i * sample_resolution
+				local sv= life_record[i]
+				local ss= i * seconds_per_sample
+				set_colors(ss, sv)
+				if self.reflect then
+					verts[#verts+1]= {{self.gw, sy, 0}, bot_color}
+					verts[#verts+1]= {{self.gw * (1 - sv), sy, 0}, top_color}
+				else
+					verts[#verts+1]= {{self.gw * sv, sy, 0}, top_color}
+					verts[#verts+1]= {{0, sy, 0}, bot_color}
+				end
+			end
+			self.container:SetVertices(verts)
+		end
 }}
 
 local combo_graph_mt= {
 	__index= {
-		create_actors= function(self, name, x, y, w, h)
+		create_actors= function(self, name, pn, x, y, w, h)
 			self.name= name
+			self.player_number= pn
 			self.w= w or 12
 			self.h= h or SCREEN_HEIGHT
 			return Def.ActorMultiVertex{
@@ -484,29 +562,38 @@ local combo_graph_mt= {
 			local pix_per_sec= self.h / length
 			local true_disp_height= DISPLAY:GetDisplayHeight()
 			local min_sex= length / true_disp_height
+			--min_sex= 0
 			local verts= {}
 			local prev_time= 0
 			for i, tim in ipairs(step_timings) do
 				if tnss_that_affect_combo[tim.judge] and
 				(tim.time - prev_time > min_sex or prev_time == 0) then
-					local color= judgement_colors[tim.judge]
+					local color= judge_to_color(tim.judge)
+					if not cons_players[self.player_number].flags.eval.color_combo then
+						color= fetch_color("evaluation.graphs.color")
+					end
+					if TapNoteScore:Compare(tim.judge,
+						cons_players[self.player_number].combo_graph_threshold) < 0 then
+						color= fetch_color("evaluation.graphs.bg")
+					end
 					local y= tim.time * pix_per_sec
 					prev_time= tim.time
 					verts[#verts+1]= {{-self.w, y, 0}, color}
 					verts[#verts+1]= {{self.w, y, 0}, color}
 				end
 			end
-			if #verts > 2 and #verts % 2 == 0 then
+			if #verts > 2 then
 				self.container:SetVertices(verts)
 				self.container:SetDrawState{Num= #verts}
 			end
 		end
 }}
 
+local report_scale= .9
 local score_report_mt= {
 	__index= {
 		create_actors= function(self, name)
-			self.scale= .9
+			self.scale= report_scale
 			self.spacing= 24 * self.scale
 			self.name= name
 			self.pct_col= setmetatable({}, number_set_mt)
@@ -526,19 +613,21 @@ local score_report_mt= {
 				-- Create actors assuming all stats will be displayed.
 				-- The set function will fill in/position the ones that are enabled.
 				-- This will allow us to toggle the visibility flags on this screen.
-				normal_text("chart_info", "", nil, 0, 0, self.scale),
-				normal_text("score", "", nil, 0, 0, self.scale),
-				normal_text("dp", "", nil, 0, 0, self.scale*.5),
-				normal_text("offavgms", "", nil, 0, 0, self.scale),
-				normal_text("offms", "", nil, 0, 0, self.scale*.5),
+				normal_text("chart_info", "",
+					fetch_color("evaluation.score_report.chart_info"),
+					eval_stroke, 0,0,self.scale),
+				normal_text("score", "", nil, eval_stroke, 0, 0, self.scale),
+				normal_text("dp", "", nil, eval_stroke, 0, 0, self.scale*.5),
+				normal_text("offavgms", "", nil, eval_stroke, 0, 0, self.scale),
+				normal_text("offms", "", nil, eval_stroke, 0, 0, self.scale*.5),
 				self.pct_col:create_actors(
-					"pct", 0, 0, 0, 0, 0, self.spacing, self.scale, center, 10),
+					"pct", 0, self.spacing, self.scale, center, scrows),
 				self.song_col:create_actors(
-					"song", 0, 0, 0, 0, 0, self.spacing, self.scale, center, 10),
+					"song", 0, self.spacing, self.scale, center, scrows),
 				self.session_col:create_actors(
-					"session", 0, 0, 0, 0, 0, self.spacing, self.scale, center, 10),
+					"session", 0, self.spacing, self.scale, center, scrows),
 				self.sum_col:create_actors(
-					"sum", 0, 0, 0, 0, 0, self.spacing, self.scale, center, 10),
+					"sum", 0, self.spacing, self.scale, center, scrows),
 			}
 			return Def.ActorFrame(args)
 		end,
@@ -611,11 +700,11 @@ local score_report_mt= {
 				end
 				local offscore= offround(offset_total)
 				local offavg= offavground(offset_total / offs_judged)
-				local offcolor= solar_colors.f_text()
+				local offcolor= fetch_color("text")
 				local wa_window= PREFSMAN:GetPreference("TimingWindowSecondsW1")*1000
-				if offavg <= wa_window then
-					local perfection_pct= 1 - (offavg / wa_window)
-					offcolor= convert_percent_to_color(perfection_pct)
+				if math.abs(offavg) <= wa_window then
+					local perfection_pct= 1 - (math.abs(offavg) / wa_window)
+					offcolor= percent_to_color(math.abs(perfection_pct))
 				end
 				local ms_text= " "..get_string_wrapper("ScreenEvaluation", "ms")
 				local avg_text= " "..get_string_wrapper("ScreenEvaluation", "avg")
@@ -639,11 +728,11 @@ local score_report_mt= {
 			do -- columns
 				local pct_data= {{}}
 				local song_data= {
-					{number= "Song", color= solar_colors.uf_text(), zoom= .5}}
+					{number= "Song", color= fetch_color("evaluation.score_report.column_heads"), zoom= .5}}
 				local session_data= {
-					{number= "Session", color= solar_colors.uf_text(), zoom= .5}}
+					{number= "Session", color= fetch_color("evaluation.score_report.column_heads"), zoom= .5}}
 				local sum_data= {
-					{number= "Sum", color= solar_colors.uf_text(), zoom= .5}}
+					{number= "Sum", color= fetch_color("evaluation.score_report.column_heads"), zoom= .5}}
 				local judge_totals= {}
 				local early_counts= {}
 				local late_counts= {}
@@ -670,7 +759,7 @@ local score_report_mt= {
 						return math.round((num/den)*100) .. "%"
 					end
 					for i, fj in ipairs(judge_names) do
-						local jcolor= judgement_colors[fj]
+						local jcolor= judge_to_color(fj)
 						local earnum= early_counts[fj] or 0
 						local latnum= late_counts[fj] or 0
 						local sessear= session_score.judge_counts.early[fj]
@@ -702,7 +791,8 @@ local score_report_mt= {
 						end
 
 						pct_data[#pct_data+1]= {
-							number= pctstr, color= solar_colors.f_text(), zoom= .5}
+							number= pctstr, color=
+								fetch_color("evaluation.score_report.pct_column"), zoom= .5}
 						song_data[#song_data+1]= {
 							number= numstr, color= jcolor, zoom= numz}
 						session_data[#session_data+1]= {
@@ -719,9 +809,10 @@ local score_report_mt= {
 					local pcent= tostring(math.round(percent * 100)) .. "%"
 					if judge_totals[1] <= 0 or max_combo == 0 then pcent= "" end
 					pct_data[#pct_data+1]= {
-						number= pcent, color= solar_colors.f_text(), zoom= .5}
+						number= pcent, color=
+							fetch_color("evaluation.score_report.pct_column"), zoom= .5}
 					song_data[#song_data+1]= {
-						number= max_combo, color= convert_percent_to_color(percent),
+						number= max_combo, color= percent_to_color(percent, false, true),
 						zoom= 1}
 				end
 				local column_slots= {}
@@ -778,7 +869,6 @@ function profile_report_interface:create_actors(player_number)
 	end
 	local args= {
 		Name= self.name, InitCommand= function(subself)
-			subself:y(36)
 			subself:diffusealpha(difa)
 			self.container= subself
 		end
@@ -786,7 +876,7 @@ function profile_report_interface:create_actors(player_number)
 	local pro= PROFILEMAN:GetProfile(player_number)
 	if pro then
 		args[#args+1]= normal_text(
-			"pname", pro:GetDisplayName(), nil, 0, -24)
+			"pname", pro:GetDisplayName(), nil, eval_stroke, 0, 0)
 		local things_in_list= {}
 		do
 			local goal_seconds= pro:GetGoalSeconds()
@@ -823,7 +913,7 @@ function profile_report_interface:create_actors(player_number)
 					name= "Goal Calories", number= num:format(goal_calories)}
 				things_in_list[#things_in_list+1]= {
 					name= "Goal Percent", number= percent:format(goal_pct),
-					color= convert_percent_to_color(goal_pct/100)}
+					color= percent_to_color(goal_pct/100)}
 			end
 			things_in_list[#things_in_list+1]= {
 				name= "Total Calories", number= num:format(total_calories)}
@@ -844,10 +934,7 @@ function profile_report_interface:create_actors(player_number)
 			local toasts= pro:GetNumToasties()
 			local songs= pro:GetNumTotalSongsPlayed()
 			local toast_pct= toasts / songs
-			local color= solar_colors.f_text()
-			if toast_pct > .75 then
-				color= convert_percent_to_color((toast_pct-.75)*4)
-			end
+			local color= percent_to_color((toast_pct-.75)*4)
 			things_in_list[#things_in_list+1]= {
 				name= "Toasties", number= pro:GetNumToasties(), color= color}
 		end
@@ -886,12 +973,13 @@ function profile_report_interface:create_actors(player_number)
 			name= "Lifts", number= pro:GetTotalLifts() }
 		local sep= 90
 		for i, thing in ipairs(things_in_list) do
-			local y= spacing * (i - 1)
+			local y= spacing * (i) + 12
 			args[#args+1]= normal_text(
 				thing.name .. "t", get_string_wrapper("ScreenEvaluation", thing.name),
-				nil, -sep, y, .5, left)
+				nil, eval_stroke, -sep, y, .5, left)
 			args[#args+1]= normal_text(
-				thing.name .. "n", thing.number, thing.color, sep, y, .5, right)
+				thing.name .. "n", thing.number, thing.color, eval_stroke,
+				sep, y, .5, right)
 		end
 	end
 	return Def.ActorFrame(args)
@@ -906,7 +994,7 @@ local judge_key_mt= {
 			local args= {
 				Name= "judge_list", InitCommand= function(subself)
 					self.container= subself
-					subself:xy(_screen.cx, 240)
+					subself:xy(_screen.cx, 270)
 					self.name_set:set(self.name_data)
 					local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(
 						self.name_set.container)
@@ -925,22 +1013,25 @@ local judge_key_mt= {
 				frame_pad= 1
 			end
 			args[#args+1]= self.frame:create_actors(
-				"frame", frame_pad, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0)
+				"frame", frame_pad, 0, 0,
+				fetch_color("evaluation.judge_key.frame"),
+				fetch_color("evaluation.judge_key.bg"),
+				0, 0)
 			for i, v in ipairs(feedback_judgements) do
 				self.name_data[#self.name_data+1]= {
 					number= get_string_wrapper("ShortJudgmentNames", v),
-					color= judgement_colors[v], zoom= .5}
+					color= judge_to_color(v), zoom= .5*report_scale}
 			end
 			for i, v in ipairs(holdnote_names) do
 				self.name_data[#self.name_data+1]= {
 					number= get_string_wrapper("ShortJudgmentNames", v),
-					color= judgement_colors[v], zoom= .5}
+					color= judge_to_color(v), zoom= .5*report_scale}
 			end
 			self.name_data[#self.name_data+1]= {
 				number= get_string_wrapper("ShortJudgmentNames", "MaxCombo"),
-				color= solar_colors.f_text(), zoom= .5}
+				color= fetch_color("text"), zoom= .5*report_scale}
 			args[#args+1]= self.name_set:create_actors(
-				"names", 0, 0, 0, 0, 0, 24, 1, center, #self.name_data)
+				"names", 0, 24*report_scale, 1, center, #self.name_data)
 			return Def.ActorFrame(args)
 		end,
 		hide= function(self) self.container:visible(false) end,
@@ -953,9 +1044,9 @@ local cg_centers= { [PLAYER_1]= {SCREEN_LEFT + cg_thickness/2, 0},
 	[PLAYER_2]= {SCREEN_RIGHT - cg_thickness/2, 0}}
 local lg_centers= {
 	[PLAYER_1]= {
-		SCREEN_LEFT + lg_thickness/2 + cg_thickness, SCREEN_CENTER_Y },
+		SCREEN_LEFT + lg_thickness/2 + cg_thickness, 0 },
 	[PLAYER_2]= {
-		SCREEN_RIGHT - lg_thickness/2 - cg_thickness, SCREEN_CENTER_Y }}
+		SCREEN_RIGHT - lg_thickness/2 - cg_thickness, 0 }}
 
 local life_graphs= {
 	[PLAYER_1]= setmetatable({}, life_graph_mt),
@@ -981,6 +1072,7 @@ local function update_bestiality()
 			life_graph= {life_graphs[pn]},
 			combo_graph= {combo_graphs[pn]},
 		}
+		hide_things.life_graph[1]:set()
 		for name, value in pairs(cons_players[pn].flags.eval) do
 			if hide_things[name] then
 				for ti, thing in ipairs(hide_things[name]) do
@@ -1022,33 +1114,42 @@ local special_menu_displays= {
 	[PLAYER_2]= setmetatable({}, option_display_mt),
 }
 
-local song_props_menu_items= {
+local privileged_props= false
+local function privileged(pn)
+	return privileged_props
+end
+
+local song_props= {
 	{name= "exit_menu"},
-	{name= "prof_favor_inc"},
-	{name= "prof_favor_dec"},
-	{name= "mach_favor_inc"},
-	{name= "mach_favor_dec"},
-	{name= "censor"},
-	{name= "edit_tags"},
-	{name= "edit_flags"},
-	{name= "end_credit"},
+	{name= "prof_favor_inc", req_func= player_using_profile},
+	{name= "prof_favor_dec", req_func= player_using_profile},
+	{name= "mach_favor_inc", level= 3},
+	{name= "mach_favor_dec", level= 3},
+	{name= "censor", req_func= privileged},
+	{name= "uncensor", req_func= privileged},
+	{name= "edit_tags", level= 3},
+	{name= "edit_flags", level= 2},
+	{name= "end_credit", level= 4},
 }
 
 local special_menus= {
 	{
 		[PLAYER_1]= setmetatable({}, options_sets.menu),
 		[PLAYER_2]= setmetatable({}, options_sets.menu),
+		level= 2,
 	},{
 		[PLAYER_1]= setmetatable({}, options_sets.tags_menu),
 		[PLAYER_2]= setmetatable({}, options_sets.tags_menu),
+		level= 3,
 	},{
 		[PLAYER_1]= setmetatable({}, options_sets.special_functions),
 		[PLAYER_2]= setmetatable({}, options_sets.special_functions),
+		level= 2,
 }}
 local menu_args= {
 	{
-		[PLAYER_1]= {PLAYER_1, song_props_menu_items, true},
-		[PLAYER_2]= {PLAYER_2, song_props_menu_items, true},
+		[PLAYER_1]= {PLAYER_1, song_props, true},
+		[PLAYER_2]= {PLAYER_2, song_props, true},
 	},{
 		[PLAYER_1]= {PLAYER_1, false},
 		[PLAYER_2]= {PLAYER_2, false},
@@ -1125,7 +1226,8 @@ local function set_special_menu(pn, spid)
 		special_menu_displays[pn]:hide()
 		player_cursors[pn]:hide()
 		if showing_profile_on_other_side then
-			if cons_players[pn].flags.eval.profile_data then
+			if cons_players[pn].flags.eval.profile_data
+			and PROFILEMAN:IsPersistentProfile(pn) then
 				profile_reports[pn].container:diffusealpha(1)
 				size_frame_to_report(frame_helpers[other_player[pn]],
 														 profile_reports[pn].container, 1)
@@ -1186,7 +1288,7 @@ local function filter_input_for_menus(pn, code, press)
 		keys_down[pn][code]= down_map[press]
 	end
 	if spid == 0 then
-		if code == "Select" then
+		if code == "Select" and (ops_level(pn) >= 2 or privileged(pn)) then
 			if press == "InputEventType_FirstPress" then
 				select_press_times[pn]= GetTimeSinceStart()
 			elseif press == "InputEventType_Release" then
@@ -1200,10 +1302,11 @@ local function filter_input_for_menus(pn, code, press)
 				end
 			end
 		elseif code == "Start" and press == "InputEventType_FirstPress" then
-			if keys_down[pn].MenuLeft then
+			if keys_down[pn].MenuLeft and (ops_level(pn) >= 2 or privileged(pn)) then
 				set_special_menu(pn, 1)
 				handled= true
-			elseif keys_down[pn].MenuRight then
+			elseif keys_down[pn].MenuRight and player_using_profile(pn)
+			and ops_level(pn) >= 2 then
 				perform_screenshot(pn)
 			else
 				SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
@@ -1212,6 +1315,20 @@ local function filter_input_for_menus(pn, code, press)
 		end
 	else
 		local next_sp= spid + 1
+		local next_valid= false
+		while not next_valid do
+			if not special_menus[next_sp] then
+				next_sp= 0
+				next_valid= true
+			else
+				if special_menus[next_sp].level > ops_level(pn)
+				and not privileged(pn) then
+					next_sp= next_sp + 1
+				else
+					next_valid= true
+				end
+			end
+		end
 		if next_sp > #special_menus then next_sp= 0 end
 		if code == "Select" and press == "InputEventType_Release" then
 			set_special_menu(pn, next_sp)
@@ -1252,12 +1369,12 @@ local function make_graph_actors()
 		local args= { Name= player_number .. "_graphs" }
 		local lg_pos= lg_centers[player_number]
 		args[#args+1]= life_graphs[player_number]:create_actors(
-			pstats, cons_players[player_number].stage_stats.firsts,
+			pstats, player_number, cons_players[player_number].stage_stats.firsts,
 			lg_pos[1], lg_pos[2], lg_thickness, SCREEN_HEIGHT,
 			player_number == PLAYER_2)
 		local cg_pos= cg_centers[player_number]
 		args[#args+1]= combo_graphs[player_number]:create_actors(
-			"cgraph", cg_pos[1], cg_pos[2], 12, SCREEN_HEIGHT)
+			"cgraph", player_number, cg_pos[1], cg_pos[2], 12, SCREEN_HEIGHT)
 		outer_args[#outer_args+1]= Def.ActorFrame(args)
 	end
 	return Def.ActorFrame(outer_args)
@@ -1265,14 +1382,16 @@ end
 
 local player_xs= { [PLAYER_1]= SCREEN_RIGHT * .25,
                    [PLAYER_2]= SCREEN_RIGHT * .75 }
+local report_y= SCREEN_TOP+160
 
 local function make_player_specific_actors()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
 	local all_actors= { Name= "players" }
 	for k, v in pairs(enabled_players) do
-		local args= { Name= v, InitCommand=cmd(x,player_xs[v];y,SCREEN_TOP+160;vertalign,top) }
+		local args= { Name= v, InitCommand=cmd(x,player_xs[v];y,report_y;vertalign,top) }
 		args[#args+1]= frame_helpers[v]:create_actors(
-			"frame", 2, 0, 0, solar_colors[v](), solar_colors.bg(), 0, 0)
+			"frame", 2, 0, 0, pn_to_color(v),
+			fetch_color("evaluation.score_report.bg"), 0, 0)
 		args[#args+1]= score_reports[v]:create_actors(v)
 		if #enabled_players > 1 then
 			args[#args+1]= profile_reports[v]:create_actors(v)
@@ -1289,18 +1408,19 @@ local function make_player_specific_actors()
 	if #enabled_players == 1 then
 		local this= enabled_players[1]
 		local other= other_player[this]
-		local args= { Name= other, InitCommand=cmd(x,player_xs[other];y,SCREEN_TOP+120;vertalign,top) }
+		local args= { Name= other, InitCommand=cmd(x,player_xs[other];y,report_y;vertalign,top) }
 		args[#args+1]= frame_helpers[other]:create_actors(
-			"frame", 2, 0, 0, solar_colors[this](), solar_colors.bg(), 0, 0)
+			"frame", 2, 0, 0, pn_to_color(this),
+			fetch_color("evaluation.score_report.bg"), 0, 0)
 		args[#args+1]= profile_reports[this]:create_actors(this)
 		args[#args+1]= special_menu_displays[this]:create_actors(
-			"menu", 0, 16, 12, 160, 24, 1, true, true)
+			"menu", 0, 0, 12, 160, 24, 1, true, true)
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
 	end
 	-- In its own loop to make sure they're above all other actors.
 	for i, pn in ipairs(enabled_players) do
 		all_actors[#all_actors+1]= player_cursors[pn]:create_actors(
-			pn .."_cursor", 0, 0, 0, 0, 1, solar_colors[pn]())
+			pn .."_cursor", 0, 0, 0, 0, 1, pn_to_color(pn))
 	end
 	return Def.ActorFrame(all_actors)
 end
@@ -1353,7 +1473,7 @@ local function find_actors(self)
 			menu_set[v]:initialize(unpack(menu_args[i][v]))
 			menu_set[v]:set_display(special_menu_displays[v])
 		end
-		special_menu_displays[v]:set_underline_color(solar_colors[v]())
+		special_menu_displays[v]:set_underline_color(pn_to_color(v))
 		special_menu_displays[v]:set_el_geo(width, nil, nil)
 		special_menu_displays[v]:hide()
 		set_special_menu(v, 0)
@@ -1532,6 +1652,17 @@ local function input(event)
 	local pn= event.PlayerNumber
 	local code= event.GameButton
 	local press= event.type
+	if press == "InputEventType_FirstPress"
+	and event.DeviceInput.button == "DeviceButton_c" then
+		privileged_props= not privileged_props
+		for i, player in ipairs(GAMESTATE:GetEnabledPlayers()) do
+			local was_hidden= special_menus[1][player].display.hidden
+			special_menus[1][player]:recheck_levels(true)
+			if was_hidden then
+				special_menus[1][player].display:hide()
+			end
+		end
+	end
 	if not pn or not GAMESTATE:IsPlayerEnabled(pn) then return end
 	if filter_input_for_menus(pn, code, press) then return end
 	if press ~= "InputEventType_Release" then return end
@@ -1544,7 +1675,9 @@ local function input(event)
 			score_data_viewing_indices[pn]= score_data_viewing_indices[pn] + 1
 		end
 		local view_min= -1
-		if showing_profile_on_other_side or not cons_players[pn].flags.eval.profile_data then
+		if showing_profile_on_other_side
+		or not PROFILEMAN:IsPersistentProfile(pn)
+		or not cons_players[pn].flags.eval.profile_data then
 			view_min= 0
 		end
 		local view_max= #score_datas[pn]
@@ -1568,7 +1701,7 @@ local help_args= {
 		InitCommand= function(self)
 			self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
 			self:setsize(SCREEN_WIDTH, SCREEN_HEIGHT)
-			self:diffuse(solar_colors.bg(.75))
+			self:diffuse(fetch_color("help.bg"))
 		end
 	},
 }
@@ -1588,7 +1721,9 @@ do
 		local or_word= " "..THEME:GetString("Common", "or").." "
 		local code_text= table.concat(help_codes[name], or_word)
 		help_args[#help_args+1]= normal_text(
-			name .. "_help", help .. " " .. code_text, nil, pos[1], pos[2], .75)
+			name .. "_help", help .. " " .. code_text,
+			fetch_color("help.text"), fetch_color("help.stroke"),
+			pos[1], pos[2], .75)
 	end
 end
 local function maybe_help()
@@ -1605,7 +1740,7 @@ return Def.ActorFrame{
 	end,
 	banner_info:create_actors(),
 	make_player_specific_actors(),
-	reward_indicator:create_actors("reward", SCREEN_CENTER_X, SCREEN_TOP+120),
+	reward_indicator:create_actors("reward", SCREEN_CENTER_X, SCREEN_TOP+150),
 	judge_key:create_actors(),
 	make_graph_actors(),
 	Def.Actor{

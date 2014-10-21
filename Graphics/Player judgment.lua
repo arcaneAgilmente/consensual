@@ -7,7 +7,6 @@ local tani_params= {
 	sy= 60, tx= 8, nx= -8, ta= left, na= right, text_section= "Combo"
 }
 local OffsetQuad
-local bg_is_bright= PREFSMAN:GetPreference("BGBrightness") > .25
 
 local JudgeCmds = {
 	TapNoteScore_W1 = THEME:GetMetric( "Judgment", "JudgmentW1Command" );
@@ -103,6 +102,19 @@ local tns_cont_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToContinu
 local tns_maint_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToMaintainCombo")]
 local tns_inc_miss_combo= tns_reverse[THEME:GetMetric("Gameplay", "MaxScoreToIncrementMissCombo")]
 
+local get_seconds= function() return 0 end
+-- GetStepsSeconds is recently added, in an attempt to make life and combo
+-- graphs match better.
+if StageStats.GetStepsSeconds then
+	get_seconds= function()
+		return STATSMAN:GetCurStageStats():GetStepsSeconds()
+	end
+else
+	get_seconds= function()
+		return GAMESTATE:GetCurMusicSeconds()
+	end
+end
+
 local function add_to_col(col_score, judge, max_value, offset)
 	local step_value= tns_values[judge]
 	if not step_value then return end
@@ -110,8 +122,7 @@ local function add_to_col(col_score, judge, max_value, offset)
 	col_score.mdp= col_score.mdp + max_value
 	col_score.judge_counts[judge]= col_score.judge_counts[judge] + 1
 	col_score.step_timings[#col_score.step_timings+1]= {
-		time= GAMESTATE:GetCurMusicSeconds(),
-		judge= judge, offset= offset}
+		time= get_seconds(), judge= judge, offset= offset}
 end
 
 local function add_tn_to_col(col_score, tapnote, max_value)
@@ -150,9 +161,9 @@ local function set_combo_stuff(param)
 	tani:set_number(("%i"):format(wombo))
 	if combo_qual then
 		if combo_qual.worst_tns then
-			local color= judgement_colors[combo_qual.worst_tns]
+			local color= judge_to_color(combo_qual.worst_tns)
 			if toast and toast.remaining > 0 then
-				color= judgement_colors[toast.judge]
+				color= judge_to_color(toast.judge)
 			end
 			if color then
 				tani.text:diffuse(color)
@@ -169,8 +180,10 @@ end
 
 local args= {
 	Name= "Judgement",
-	normal_text("Judgment", "", solar_colors.f_text(), 0, 0, 1, center, {
-								ResetCommand= cmd(xy,0,0;finishtweening;stopeffect;visible,false)}),
+	normal_text(
+		"Judgment", "", nil, fetch_color("gameplay.text_stroke"), 0, 0, 1,
+		center, {
+			ResetCommand= cmd(xy,0,0;finishtweening;stopeffect;visible,false)}),
 	tani:create_actors("tani", tani_params),
 	Def.Quad{
 		Name= "offset",
@@ -187,11 +200,8 @@ local args= {
 								 OffsetQuad= self:GetChild("offset")
 								 Judgment:visible(false)
 								 tani:hide()
-								 if bg_is_bright then
-									 Judgment:strokecolor(solar_colors.bg())
-									 tani.text:strokecolor(solar_colors.bg())
-									 tani.number:strokecolor(solar_colors.bg())
-								 end
+								 tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
+								 tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
 							 end,
 	ToastyAchievedMessageCommand=
 		function(self,params)
@@ -274,7 +284,7 @@ local args= {
 			local firsts= stage_stats.firsts
 			if firsts then
 				if not firsts[this_tns] then
-					firsts[this_tns]= GAMESTATE:GetCurMusicSeconds()
+					firsts[this_tns]= STATSMAN:GetCurStageStats():GetStepsSeconds()
 				end
 			end
 			local disp_judge= this_tns
@@ -290,7 +300,7 @@ local args= {
 					fake_score.judge_counts[disp_judge] + 1
 				fake_score.dp= fake_score.dp + tns_values[disp_judge]
 				fake_score.step_timings[#fake_score.step_timings+1]= {
-					time= GAMESTATE:GetCurMusicSeconds(),
+					time= STATSMAN:GetCurStageStats():GetStepsSeconds(),
 					judge= disp_judge, offset= disp_offset}
 			end
 			local rev_disp= tns_reverse[disp_judge]
@@ -335,14 +345,14 @@ local args= {
 				if cons_players[player].flags.gameplay.offset then
 					OffsetQuad:finishtweening()
 					OffsetQuad:SetWidth(disp_offset * offset_scaler)
-					OffsetQuad:diffuse(judgement_colors[disp_judge])
+					OffsetQuad:diffuse(judge_to_color(disp_judge))
 					OffsetQuad:visible(true)
 					OffsetQuad:linear(1)
 					OffsetQuad:diffusealpha(0)
 				end
 				Judgment:playcommand("Reset")
 				Judgment:settext(get_string_wrapper("JudgementNames", text):upper())
-				Judgment:diffuse(judgement_colors[disp_judge])
+				Judgment:diffuse(judge_to_color(disp_judge))
 				Judgment:visible(true)
 				JudgeCmds[disp_judge](Judgment)
 			end

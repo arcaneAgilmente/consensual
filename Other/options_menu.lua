@@ -37,7 +37,7 @@ local option_item_mt= {
 						self.underline= subself:GetChild("underline")
 						self.underline:horizalign(center)
 					end,
-					normal_text("text", "", nil, nil, nil, self.zoom),
+					normal_text("text", "", nil, fetch_color("stroke"), nil, nil, self.zoom),
 					Def.Quad{
 						Name= "underline", InitCommand= cmd(y,underline_offset;horizalign,left;SetHeight,underline_thickness)
 					}
@@ -126,11 +126,11 @@ option_display_mt= {
 				}
 				local next_y= 0
 				if not no_heading then
-					args[#args+1]= normal_text("heading", "")
+					args[#args+1]= normal_text("heading", "", nil, fetch_color("stroke"))
 					next_y= next_y + line_height
 				end
 				if not no_display then
-					args[#args+1]= normal_text("display", "", nil, 0, line_height)
+					args[#args+1]= normal_text("display", "", nil, fetch_color("stroke"), 0, line_height)
 					next_y= next_y + line_height
 				end
 				if (not no_heading) or (not no_display) then
@@ -301,14 +301,38 @@ options_sets.menu= {
 				end
 			end
 			self.cursor_pos= 1
+			if self.player_number then
+				self.curr_level= ops_level(self.player_number)
+			end
+			self.shown_data= {}
 			for i, d in ipairs(self.menu_data) do
-				self.info_set[#self.info_set+1]= {text= d.name}
-				if d.args and type(d.args) == "table" then
-					d.args.name= d.name
+				local show= true
+				if self.player_number and d.level then
+					if d.level > 0 then
+						show= d.level <= self.curr_level
+					else
+						show= -d.level == self.curr_level
+					end
+				end
+				if d.req_func then
+					show= show and d.req_func(self.player_number)
+				end
+				if show then
+					self.shown_data[#self.shown_data+1]= self.menu_data[i]
+					self.info_set[#self.info_set+1]= {text= d.name}
+					if d.args and type(d.args) == "table" then
+						d.args.name= d.name
+					end
 				end
 			end
 			if self.display then
 				self.display:set_info_set(self.info_set)
+			end
+		end,
+		recheck_levels= function(self, force)
+			if force or self.player_number and self.curr_level ~=
+			ops_level(self.player_number) then
+				self:reset_info()
 			end
 		end,
 		set_status= function(self)
@@ -325,9 +349,9 @@ options_sets.menu= {
 			end
 		end,
 		interpret_start= function(self)
-			local data= self.menu_data[self.cursor_pos-1]
+			local data= self.shown_data[self.cursor_pos-1]
 			if self.no_up then
-				data= self.menu_data[self.cursor_pos]
+				data= self.shown_data[self.cursor_pos]
 			end
 			if data then
 				return true, data
@@ -698,10 +722,7 @@ menu_stack_mt= {
 			self.name= name
 			self.player_number= player_number
 			self.options_set_stack= {}
-			local pcolor= solar_colors.violet()
-			if player_number then
-				pcolor= solar_colors[player_number]()
-			end
+			local pcolor= pn_to_color(player_number)
 			local args= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
@@ -765,9 +786,11 @@ menu_stack_mt= {
 				local next_display= 1
 				if almost_top_set then
 					almost_top_set:set_display(self.displays[1])
+					almost_top_set:recheck_levels()
 					next_display= 2
 				end
 				top_set:set_display(self.displays[next_display])
+				top_set:recheck_levels()
 				next_display= next_display + 1
 				if self.displays[next_display] then
 					self.displays[next_display]:hide()

@@ -52,59 +52,81 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	profiles[pn]= PROFILEMAN:GetProfile(pn)
 end
 
-local bpm_displayer_interface= {}
-local bpm_displayer_interface_mt= { __index= bpm_displayer_interface }
-function bpm_displayer_interface:create_actors(name, player_number, x, y)
-	self.name= name
-	self.player_number= player_number
-	rate_coordinator:add_to_notify(self)
-	local bpm_text= self:bpm_text()
-	local args= {
-		Name=name,
-		InitCommand= function(subself)
-			self.container= subself
-			subself:xy(x, y)
-		end
-	}
-	self.tani= setmetatable({}, text_and_number_interface_mt)
-	args[#args+1]= self.tani:create_actors(
-		"itani", { tx= -4, nx= 4, tt= "BPM", nt= bpm_text })
-	return Def.ActorFrame(args)
-end
-
-function bpm_displayer_interface:bpm_text()
-	local bpm_text= ""
-	local short_text= ""
-	local steps= gamestate_get_curr_steps(self.player_number)
-	if steps then
-		local bpms= steps_get_bpms(steps)
-		local curr_rate= rate_coordinator:get_current_rate()
-		local low, high= false, false
-		for i, v in ipairs(bpms) do
-			if not low or v < low then
-				low= v
+local bpm_disps= {}
+local bpm_disp_mt= {
+	__index= {
+		create_actors= function(self, name, player_number, x, y)
+			self.name= name
+			self.player_number= player_number
+			rate_coordinator:add_to_notify(self)
+			local args= {
+				Name=name, InitCommand= function(subself)
+					self.container= subself
+					self.text= subself:GetChild("bpm")
+					self.text:maxwidth(sect_width-16)
+					subself:xy(x, y)
+					self:bpm_text()
+				end,
+				normal_text("bpm", "", fetch_color("text"), fetch_color("stroke"))
+			}
+			return Def.ActorFrame(args)
+		end,
+		bpm_text= function(self)
+			-- TODO:  Find a way to call bpm_text when verbose_bpm changes.
+			local steps= gamestate_get_curr_steps(self.player_number)
+			if steps then
+				local bpms= steps_get_bpms(steps, gamestate_get_curr_song())
+				local curr_rate= rate_coordinator:get_current_rate()
+				bpms[1]= bpms[1] * curr_rate
+				bpms[2]= bpms[2] * curr_rate
+				local parts= {{"BPM: ", fetch_color("text")}}
+				local function add_bpms_to_parts(parts, a, b, color_func)
+					parts[#parts+1]= {format_bpm(a), color_func(a)}
+					parts[#parts+1]= {" to ", fetch_color("text")}
+					parts[#parts+1]= {format_bpm(b), color_func(b)}
+				end
+				if cons_players[self.player_number].flags.interface.verbose_bpm then
+					local mode= cons_players[self.player_number].speed_info.mode
+					local speed= cons_players[self.player_number].speed_info.speed
+					if mode == "x" then
+						local xmod= {" * "..format_xmod(speed).." = ",fetch_color("text")}
+						if bpms[1] == bpms[2] then
+							local rbpm= bpms[1]
+							parts[#parts+1]= {format_bpm(rbpm), color_for_bpm(rbpm)}
+							parts[#parts+1]= xmod
+							parts[#parts+1]= {format_bpm(rbpm * speed), color_for_read_speed(rbpm*speed)}
+						else
+							add_bpms_to_parts(parts, bpms[1], bpms[2], color_for_bpm)
+							parts[#parts+1]= xmod
+							add_bpms_to_parts(
+								parts, bpms[1] * speed, bpms[2] * speed, color_for_read_speed)
+						end
+					else
+						if bpms[1] == bpms[2] then
+							parts[#parts+1]= {format_bpm(bpms[1]), color_for_bpm(bpms[1])}
+						else
+							add_bpms_to_parts(parts, bpms[1], bpms[2], color_for_bpm)
+						end
+						parts[#parts+1]= {" (" .. mode, fetch_color("text")}
+						parts[#parts+1]= {format_bpm(speed), color_for_read_speed(speed)}
+						parts[#parts+1]= {")", fetch_color("text")}
+					end
+				else
+					if bpms[1] == bpms[2] then
+						parts[#parts+1]= {format_bpm(bpms[1]), color_for_bpm(bpms[1])}
+					else
+						add_bpms_to_parts(parts, bpms[1], bpms[2], color_for_bpm)
+					end
+				end
+				set_text_from_parts(self.text, parts)
 			end
-			if not high or v > high then
-				high= v
+		end,
+		notify_of_rate_change= function(self)
+			if self.container then
+				self:bpm_text()
 			end
-			if i > 1 then
-				bpm_text= bpm_text .. "-"
-			end
-			bpm_text= bpm_text .. ("%.0f"):format(v * curr_rate)
-		end
-		short_text= ("%.0f"):format(low * curr_rate)
-		if low ~= high then
-			short_text= short_text .. "-" .. ("%.0f"):format(high * curr_rate)
-		end
-	end
-	return short_text
-end
-
-function bpm_displayer_interface:notify_of_rate_change()
-	if self.container then
-		self.tani:set_number(self:bpm_text())
-	end
-end
+		end,
+}}
 
 dofile(THEME:GetPathO("", "options_menu.lua"))
 
@@ -118,8 +140,14 @@ options_sets.speed= {
 				self.info_set= {
 					up_element(), {text= ""}, {text= ""}, {text= ""}, {text= ""},
 					{text= "Xmod"}, {text= "Cmod"}, {text= "Mmod"},
-					{text= "CXmod"}, {text= "Driven"}, {text= "Alt Driven"}
 				}
+				if cons_players[player_number].options_level >= 3 then
+					self.info_set[#self.info_set+1]= {text= "CXmod"}
+				end
+				if cons_players[player_number].options_level >= 4 then
+					self.info_set[#self.info_set+1]= {text= "Driven"}
+					self.info_set[#self.info_set+1]= {text= "Alt Driven"}
+				end
 				local speed_info= cons_players[player_number]:get_speed_info()
 				self.current_speed= speed_info.speed
 				self:set_mode_data_work(speed_info.mode)
@@ -135,6 +163,7 @@ options_sets.speed= {
 				local spi= cons_players[self.player_number].speed_info
 				spi.mode= self.mode
 				spi.speed= self.current_speed
+				bpm_disps[self.player_number]:bpm_text()
 			end,
 		update_speed_text=
 			function(self)
@@ -161,17 +190,8 @@ options_sets.speed= {
 			function(self, new_mode)
 				local function get_song_speed()
 					--Trace("Speed pn: " .. tostring(self.player_number))
-					local bpms= steps_get_bpms(gamestate_get_curr_steps(self.player_number))
-					-- A song will only have 1 or 2 bpms, depending on how its
-					-- displaybpm is set.
-					-- A course probably has more than one bpm.
-					-- This is a placeholder until I fix TimingData.GetBPMsAndTimes to
-					-- not return strings.
-					if #bpms > 2 then
-						return bpms[1]
-					else
-						return bpms[2] or bpms[1]
-					end
+					local bpms= steps_get_bpms(gamestate_get_curr_steps(self.player_number), gamestate_get_curr_song())
+					return bpms[2] or bpms[1]
 				end
 				if new_mode == "x" then
 					-- You might think this is redundant, because "of course the current mode isn't x", but set_mode_data_work is also used in initializing.
@@ -494,6 +514,10 @@ options_sets.steps_list= {
 				local steps= self.steps_list[spos]
 				if steps then
 					cons_set_current_steps(self.player_number, steps)
+					GAMESTATE:SetPreferredDifficulty(
+						self.player_number, steps:GetDifficulty())
+					set_preferred_style(
+						self.player_number, stepstype_to_style[steps:GetStepsType()].name)
 					local steps_info= self.info_set[self.player_choice+1]
 					steps_info.underline= false
 					self.display:set_element_info(self.player_choice+1, steps_info)
@@ -578,9 +602,9 @@ local function set_clear_for_player(player_number)
 	-- SM5 will crash if a noteskin is not applied after clearing all mods.
 	-- Apply the default noteskin first in case Cel doesn't exist.
 	local default_noteskin= THEME:GetMetric("Common", "DefaultNoteSkinName")
-	local prev_note, succeeded= self.song_options:NoteSkin("uswcelsm5")
+	local prev_note, succeeded= cons_players[player_number].song_options:NoteSkin("uswcelsm5")
 	if not succeeded then
-		prev_note, succeeded= self.song_options:NoteSkin(default_noteskin)
+		prev_note, succeeded= cons_players[player_number].song_options:NoteSkin(default_noteskin)
 		if not succeeded then
 			Warn("Failed to set default noteskin when clearing player options.  Please do not delete the default noteskin.")
 		end
@@ -604,32 +628,28 @@ local function extra_for_adj_float_mod(mod_name, is_angle)
 		scale= -1,
 		max_scale= 1,
 		is_angle= is_angle,
-		initial_value=
-			function(player_number)
-				return mod_player(player_number, mod_name)
-			end,
-		set=
-			function(player_number, value)
-				mod_player(player_number, mod_name, value)
-			end,
-		scale_to_text=
-			function(player_number, value)
-				if cons_players[player_number].flags.interface.straight_floats then
-					return value
-				else
-					return value * 100
-				end
-			end,
-		val_to_text=
-			function(player_number, value)
-				if cons_players[player_number].flags.interface.straight_floats then
-					if value == -0 then return "0" end
-					return tostring(value)
-				else
-					if value == -0 then return "0%" end
-					return (value * 100) .. "%"
-				end
+		initial_value= function(player_number)
+			return mod_player(player_number, mod_name)
+		end,
+		set= function(player_number, value)
+			mod_player(player_number, mod_name, value)
+		end,
+		scale_to_text= function(player_number, value)
+			if cons_players[player_number].flags.interface.straight_floats then
+				return value
+			else
+				return value * 100
 			end
+		end,
+		val_to_text= function(player_number, value)
+			if cons_players[player_number].flags.interface.straight_floats then
+				if value == -0 then return "0" end
+				return tostring(value)
+			else
+				if value == -0 then return "0%" end
+				return (value * 100) .. "%"
+			end
+		end
 	}
 end
 
@@ -645,14 +665,12 @@ local function extra_for_dspeed_min(name)
 		scale= -1,
 		max_scale= 1,
 		reset_value= (SCREEN_CENTER_Y + receptor_min) / -center_effect_size,
-		initial_value=
-			function(player_number)
-				return cons_players[player_number].dspeed.min
-			end,
-		set=
-			function(player_number, value)
-				cons_players[player_number].dspeed.min= value
-			end,
+		initial_value= function(player_number)
+			return cons_players[player_number].dspeed.min
+		end,
+		set= function(player_number, value)
+			cons_players[player_number].dspeed.min= value
+		end,
 	}
 end
 
@@ -668,14 +686,12 @@ local function extra_for_dspeed_max(name)
 		scale= -1,
 		max_scale= 1,
 		reset_value= (SCREEN_CENTER_Y + receptor_max) / center_effect_size,
-		initial_value=
-			function(player_number)
-				return cons_players[player_number].dspeed.max
-			end,
-		set=
-			function(player_number, value)
-				cons_players[player_number].dspeed.max= value
-			end,
+		initial_value= function(player_number)
+			return cons_players[player_number].dspeed.max
+		end,
+		set= function(player_number, value)
+			cons_players[player_number].dspeed.max= value
+		end,
 	}
 end
 
@@ -685,18 +701,15 @@ local function extra_for_sigil_detail()
 		min_scale= 0,
 		scale= 0,
 		max_scale= 1,
-		initial_value=
-			function(player_number)
-				return cons_players[player_number].sigil_data.detail
-			end,
-		validator=
-			function(value)
-				return value >= 1 and value <= 32
-			end,
-		set=
-			function(player_number, value)
-				cons_players[player_number].sigil_data.detail= value
-			end,
+		initial_value= function(player_number)
+			return cons_players[player_number].sigil_data.detail
+		end,
+		validator= function(value)
+			return value >= 1 and value <= 32
+		end,
+		set= function(player_number, value)
+			cons_players[player_number].sigil_data.detail= value
+		end,
 	}
 end
 
@@ -706,18 +719,15 @@ local function extra_for_sigil_size()
 		min_scale= 0,
 		scale= 1,
 		max_scale= 2,
-		initial_value=
-			function(player_number)
-				return cons_players[player_number].sigil_data.size
-			end,
-		validator=
-			function(value)
-				return value >= 1 and value <= SCREEN_WIDTH/2
-			end,
-		set=
-			function(player_number, value)
-				cons_players[player_number].sigil_data.size= value
-			end,
+		initial_value= function(player_number)
+			return cons_players[player_number].sigil_data.size
+		end,
+		validator= function(value)
+			return value >= 1 and value <= SCREEN_WIDTH/2
+		end,
+		set= function(player_number, value)
+			cons_players[player_number].sigil_data.size= value
+		end,
 	}
 end
 
@@ -743,26 +753,23 @@ local function extra_for_lives()
 		min_scale= 0,
 		scale= 0,
 		max_scale= 4,
-		initial_value=
-			function(player_number)
-				if PlayerOptions.BatteryLives then
-					return mod_player(player_number, "BatteryLives")
-				else
-					return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives()
-				end
-			end,
-		validator=
-			function(value)
-				return value >= 1
-			end,
-		set=
-			function(player_number, value)
-				if PlayerOptions.BatteryLives then
-					mod_player(player_number, "BatteryLives", value)
-				else
-					return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives(value)
-				end
+		initial_value= function(player_number)
+			if PlayerOptions.BatteryLives then
+				return mod_player(player_number, "BatteryLives")
+			else
+				return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives()
 			end
+		end,
+		validator= function(value)
+			return value >= 1
+		end,
+		set= function(player_number, value)
+			if PlayerOptions.BatteryLives then
+				mod_player(player_number, "BatteryLives", value)
+			else
+				return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives(value)
+			end
+		end
 	}
 end
 
@@ -772,18 +779,15 @@ local function extra_for_haste()
 		min_scale= -2,
 		scale= 0,
 		max_scale= 0,
-		initial_value=
-			function(player_number)
-				return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste()
-			end,
-		validator=
-			function(value)
-				return value >= -1 and value <= 1
-			end,
-		set=
-			function(player_number, value)
-				GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste(value)
-			end
+		initial_value= function(player_number)
+			return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste()
+		end,
+		validator= function(value)
+			return value >= -1 and value <= 1
+		end,
+		set= function(player_number, value)
+			GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste(value)
+		end
 	}
 end
 
@@ -799,6 +803,35 @@ local function extra_for_bg_bright()
 		end,
 		set= function(pn, value)
 			PREFSMAN:SetPreference("BGBrightness", value)
+		end
+	}
+end
+
+local function extra_for_ops_level()
+	return {
+		name= "Options Level",
+		min_scale= 0, scale= 0, max_scale= 0,
+		initial_value= function(pn)
+			return cons_players[pn].options_level
+		end,
+		validator= function(value)
+			return value >= 1 and value <= 4
+		end,
+		set= function(pn, value)
+			cons_players[pn].options_level= value
+		end
+	}
+end
+
+local function extra_for_rating_cap()
+	return {
+		name= "Rating Cap",
+		min_scale= 0, scale= 0, max_scale= 0,
+		initial_value= function(pn)
+			return cons_players[pn].rating_cap
+		end,
+		set= function(pn, value)
+			cons_players[pn].rating_cap= value
 		end
 	}
 end
@@ -901,17 +934,16 @@ end
 
 local args= {}
 local menus= {}
-local bpm_disps= {}
 local frames= {}
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	local menu= setmetatable({}, menu_stack_mt)
-	local bpm= setmetatable({}, bpm_displayer_interface_mt)
+	local bpm= setmetatable({}, bpm_disp_mt)
 	local frame= setmetatable({}, frame_helper_mt)
 	local mx, my= 0, 0
 	if pn == PLAYER_2 then
 		mx= sect_width
 	end
-	local pcolor= solar_colors[pn]()
+	local pcolor= pn_to_color(pn)
 	local pname= pn
 	local pro= PROFILEMAN:GetProfile(pn)
 	if pro and pro:GetDisplayName() ~= "" then
@@ -922,9 +954,9 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 			self:xy(mx, my)
 		end,
 		frame:create_actors(
-			"frame", 2, sect_width, sect_height, pcolor, solar_colors.bg(),
+			"frame", 2, sect_width, sect_height, pcolor, fetch_color("bg"),
 			sect_width/2, sect_height/2),
-		normal_text("name", pname, pcolor, 8, line_height / 2, 1, left),
+		normal_text("name", pname, pcolor, nil, 8, line_height / 2, 1, left),
 		bpm:create_actors("bpm", pn, sect_width/2, line_height*1.5),
 	}
 	args[#args+1]= menu:create_actors(
@@ -991,7 +1023,7 @@ local floaty_mods= {
 	{ name= "Visibility", meta= options_sets.menu,
 		args= make_menu_of_float_set(visibility_mods) },
 	{ name= "Side Swap", meta= options_sets.adjustable_float,
-		args= extra_for_sideswap() },
+		args= extra_for_sideswap(), level= 5 },
 }
 
 local chart_mods= {
@@ -1056,6 +1088,7 @@ local unacceptable_options= {
 }
 
 local combo_threshold_options= {}
+local combo_graph_threshold_options= {}
 for i, tns in ipairs{
 	"TapNoteScore_Miss", "TapNoteScore_W5", "TapNoteScore_W4",
 	"TapNoteScore_W3", "TapNoteScore_W2", "TapNoteScore_W1"} do
@@ -1067,33 +1100,32 @@ for i, tns in ipairs{
 			cons_players[pn].combo_splash_threshold= tns
 		end,
 	}
+	combo_graph_threshold_options[#combo_graph_threshold_options+1]= {
+		name= tns, unset= noop_nil, init= function(pn)
+			return tns == cons_players[pn].combo_graph_threshold
+		end,
+		set= function(pn)
+			cons_players[pn].combo_graph_threshold= tns
+		end,
+	}
 end
 
 local special= {
-	{ name= "Distortion", meta= options_sets.special_functions,
+	{ name= "Distortion", meta= options_sets.special_functions, level= 5,
 		args= {
 			eles= {
 				{ name= "On", init= function() return global_distortion_mode end,
 					set= function() global_distortion_mode= true end,
 					unset= function() global_distortion_mode= false end}}}},
-	{ name= "Color palette", meta= options_sets.special_functions,
-		args= {
-			eles= {
-				{ name= "Light", init= noop_false,
-					set= solar_colors.set_light_map,
-					unset= noop_nil},
-				{ name= "Dark", init= noop_false,
-					set= solar_colors.set_dark_map,
-					unset= noop_nil}}}},
-	{ name= "Next Screen", meta= options_sets.special_functions,
+	{ name= "Next Screen", meta= options_sets.special_functions, level= 4,
 		args= {
 			eles= {
 				{ name= "Select Music", init= noop_false, set= function()
 						SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
 						trans_new_screen("ScreenConsSelectMusic")
 				end, unset= noop_nil}}}},
-	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options},
-	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions,
+	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options, level= 4},
+	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions, level= 4,
 		args= {eles= {
 						 generic_fake_judge_element("Random"),
 						 generic_fake_judge_element("TapNoteScore_Miss"),
@@ -1103,17 +1135,21 @@ local special= {
 						 generic_fake_judge_element("TapNoteScore_W2"),
 						 generic_fake_judge_element("TapNoteScore_W1"),
 			 }}},
-	{ name= "BG Brightness", meta= options_sets.adjustable_float,
+	{ name= "BG Brightness", meta= options_sets.adjustable_float, level= 2,
 		args= extra_for_bg_bright()},
-	{ name= "Mine Effects",
+	{ name= "Mine Effects", level= 3,
 		meta= options_sets.mutually_exclusive_special_functions,
 		args= { eles= mine_effect_eles }},
 	song_bools("Assist", {"AssistClap", "AssistMetronome", "SaveScore", }),
 --	{ name= "Song Options", meta= options_sets.menu, args= song_options},
-	{ name= "Driven Min", meta= options_sets.adjustable_float,
+	{ name= "Driven Min", meta= options_sets.adjustable_float, level= 4,
 		args= extra_for_dspeed_min("Driven Min")},
-	{ name= "Driven Max", meta= options_sets.adjustable_float,
+	{ name= "Driven Max", meta= options_sets.adjustable_float, level= 4,
 		args= extra_for_dspeed_max("Driven Max")},
+	{ name= "Options Level", meta= options_sets.adjustable_float,
+		args= extra_for_ops_level(), level= 1},
+	{ name= "Rating Cap", meta= options_sets.adjustable_float,
+		args= extra_for_rating_cap(), level= 2},
 	-- TODO?  Add support for these?
 	--"StaticBackground", "RandomBGOnly", "SaveReplay" }),
 }
@@ -1147,6 +1183,8 @@ local decorations= {
 		args= { eles= interface_flag_eles}},
 	{ name= "Combo Splash Threshold", meta= options_sets.mutually_exclusive_special_functions,
 		args= {eles= combo_threshold_options, disallow_unset= true}},
+	{ name= "Combo Graph Threshold", meta= options_sets.mutually_exclusive_special_functions,
+		args= {eles= combo_graph_threshold_options, disallow_unset= true}},
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
 	{ name= "Sigil Size", meta= options_sets.adjustable_float,
@@ -1187,18 +1225,24 @@ else
 end
 
 local base_options= {
-	{ name= "Speed", meta= options_sets.speed},
+	{ name= "Speed", meta= options_sets.speed, level= 1},
 	{ name= "Perspective", meta= options_sets.menu,
-		args= make_menu_of_float_set(perspective_mods) },
-	{ name= "Playback Options", meta= options_sets.menu, args= playback_options},
-	{ name= "Steps", meta= options_sets.steps_list},
-	{ name= "Decorations", meta= options_sets.menu, args= decorations},
-	{ name= "Special", meta= options_sets.menu, args= special},
-	{ name= "Profile Options", meta= options_sets.menu, args= profile_options},
-	{ name= "Life Options", meta= options_sets.menu, args= life_options},
-	{ name= "Song tags", meta= options_sets.tags_menu, args= true},
-	{ name= "Chart mods", meta= options_sets.menu, args= chart_mods},
-	{ name= "Floaty mods", meta= options_sets.menu, args= floaty_mods},
+		args= make_menu_of_float_set(perspective_mods), level= 1},
+	{ name= "Playback Options", meta= options_sets.menu, args= playback_options,
+		level= 3},
+	{ name= "Steps", meta= options_sets.steps_list, level= 1},
+	{ name= "Noteskin", meta= options_sets.noteskins, level= -1},
+	{ name= "Options Level", meta= options_sets.adjustable_float,
+		args= extra_for_ops_level(), level= -1},
+	{ name= "Decorations", meta= options_sets.menu, args= decorations, level= 2},
+	{ name= "Special", meta= options_sets.menu, args= special, level= 2},
+	{ name= "Profile Options", meta= options_sets.menu, args= profile_options,
+		level= 1, req_func= player_using_profile},
+	{ name= "Life Options", meta= options_sets.menu, args= life_options,
+		level= 4},
+	{ name= "Song tags", meta= options_sets.tags_menu, args= true, level= 4},
+	{ name= "Chart mods", meta= options_sets.menu, args= chart_mods, level= 2},
+	{ name= "Floaty mods", meta= options_sets.menu, args= floaty_mods, level= 2},
 	--{ name= "Clear", meta= options_sets.special_functions,
 	--	args= { eles= {{name= "clearall", init= noop_false,
 	--									set= set_clear_for_player, unset= noop_false}}}},

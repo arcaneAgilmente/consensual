@@ -1,30 +1,66 @@
 local text_and_number_interface= {}
-do
-	function normal_text(name, text, color, tx, ty, z, align, commands)
-		color = color or solar_colors.f_text()
-		tx= tx or 0
-		ty= ty or 0
-		z= z or 1
-		align= align or center
-		local passed_init= commands and commands.InitCommand
-		commands= commands or {}
-		commands.Name= name
-		commands.Text= text
-		commands.InitCommand= function(self)
-														self:xy(tx,ty)
-														self:diffuse(color)
-														self:zoom(z)
-														self:horizalign(align)
-														maybe_distort_text(self)
-														if passed_init then passed_init(self) end
-													end
-		return LoadFont("Common Normal") .. commands
-	end
 
+function normal_text(name, text, color, stroke, tx, ty, z, align, commands)
+	color= color or fetch_color("text")
+	tx= tx or 0
+	ty= ty or 0
+	z= z or 1
+	align= align or center
+	local passed_init= commands and commands.InitCommand
+	commands= commands or {}
+	commands.Name= name
+	commands.Text= text
+	commands.InitCommand= function(self)
+		self:xy(tx,ty)
+		self:zoom(z)
+		self:diffuse(color)
+		if stroke then self:strokecolor(stroke) end
+		self:horizalign(align)
+		maybe_distort_text(self)
+		if passed_init then passed_init(self) end
+	end
+	return LoadFont("Common Normal") .. commands
+end
+
+function set_text_from_parts(self, parts)
+	self:ClearAttributes()
+	local full_text= ""
+	for i, part in ipairs(parts) do
+		full_text= full_text .. part[1]
+	end
+	self:settext(full_text)
+	local curr_pos= 0
+	for i, part in ipairs(parts) do
+		local part_len= #part[1]
+		self:AddAttribute(curr_pos, {Length= part_len, Diffuse= part[2]})
+		curr_pos= curr_pos + part_len
+	end
+end
+
+function attributed_text(name, x, y, z, align, parts, commands)
+	local ret=  Def.BitmapText{
+		Name= name, Font= "Common Normal", InitCommand= function(self)
+			self:xy(x, y)
+			self:zoom(z)
+			self:horizalign(align)
+			set_text_from_parts(self, parts)
+			maybe_distort_text(self)
+			if commands.InitCommand then commands.InitCommand(self) end
+		end
+	}
+	for k, v in pairs(commands) do
+		if k ~= "InitCommand" then
+			ret[k]= v
+		end
+	end
+	return ret
+end
+
+do
 	local default_params= {
-		sx= 0, sy= 0, tx= 0, ty= 0, tz= 1, tc= solar_colors.f_text(), tt= "",
+		sx= 0, sy= 0, tx= 0, ty= 0, tz= 1, tc= fetch_color("text"), tt= "",
 		ta= right, na= left, tf= "Common Normal", nf= "Common Normal",
-		text_section= "Misc", nx= 0, ny= 0, nz= 1, nc= solar_colors.f_text(),
+		text_section= "Misc", nx= 0, ny= 0, nz= 1, nc= fetch_color("text"),
 		nt= "0" }
 
 	function text_and_number_interface:create_actors(name, params)
@@ -195,21 +231,19 @@ function width_clip_limit_text(text, limit, natural_zoom)
 	end
 end
 
+local function is_delim(c)
+	return c == " " or c == "_" or c == "-" or c == "."
+end
+
 function split_string_to_words(s)
 	local words= {}
-	local cur_word_start= 1
 	s= tostring(s)
-	for i= 1, #s do
-		local c= s:sub(i, i)
-		-- The "i-1 > cur_word_start" condition is there to make sure that a word
-		-- is never shorter than one letter.
-		if c == " " or c == "_" or c == "-" or c == "." and i-1 > cur_word_start then
-			words[#words+1]= s:sub(cur_word_start, i-1)
-			cur_word_start= i+1
-			-- Yeah, this doesn't handle double space conditions well.
-		end
+	for word in s:gmatch("[%w']+") do
+		words[#words+1]= word
 	end
-	words[#words+1]= s:sub(cur_word_start)
+	if #words < 1 then
+		words[1]= s
+	end
 	return words
 end
 
@@ -293,7 +327,7 @@ amv_cursor_mt= {
 			w= w or 0
 			h= h or 0
 			t= t or 0
-			color= color or solar_colors.violet()
+			color= color or fetch_color("player.both")
 			self.name= name
 			self.w= w
 			self.h= h
@@ -418,7 +452,7 @@ frame_helper_mt= {
 
 function credit_reporter(x, y, show_credits)
 	return normal_text(
-		"credit", "Credits", solar_colors.violet(), x, y, 1, center,
+		"credit", "Credits", fetch_color("credits"), nil, x, y, 1, center,
 		{ OnCommand= cmd(playcommand, "set"),
 			CoinsChangedMessageCommand= cmd(playcommand, "set"),
 			setCommand= function(self)
@@ -453,8 +487,8 @@ function chart_info_text(steps)
 end
 
 function chart_info(steps, x, y, z)
-	return normal_text("chart_info", chart_info_text(steps),
-										 solar_colors.f_text(), x, y, z or 1, center)
+	return normal_text(
+		"chart_info", chart_info_text(steps), nil, nil, x, y, z or 1, center)
 end
 
 -- Because somebody decided stepmania's scaletofit should change the position

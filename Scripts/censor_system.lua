@@ -12,6 +12,12 @@ function add_to_censor_list(song)
 	censored_songs[song_get_dir(song)]= true
 end
 
+function remove_from_censor_list(song)
+	if not song then return end
+	censor_config:set_dirty()
+	censored_songs[song_get_dir(song)]= nil
+end
+
 function check_censor_list(song)
 	if not song then return end
 	local ret= censored_songs[song_get_dir(song)]

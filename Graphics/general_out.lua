@@ -4,7 +4,7 @@ if conf_data.transition_split_max <= 0 or conf_data.transition_split_min <= 0 th
 		StartTransitioningCommand= function(self)
 			self:xy(_screen.cx, _screen.cy)
 			self:setsize(_screen.w, _screen.h)
-			self:diffuse(solar_colors.bg(0))
+			self:diffuse(Alpha(fetch_color("bg"), 0))
 			self:linear(1)
 			self:diffusealpha(1)
 		end
@@ -131,7 +131,7 @@ return Def.ActorFrame{
 	Def.Quad{
 		Name= "transcover",
 		StartTransitioningCommand= function(self)
-			self:diffuse(solar_colors.bg(0))
+			self:diffuse(Alpha(fetch_color("bg"), 0))
 			self:xy(_screen.cx, _screen.cy)
 			self:setsize(_screen.w, _screen.h)
 			self:sleep(tex_load_time+vert_set_time+(tex_pos_time*2))

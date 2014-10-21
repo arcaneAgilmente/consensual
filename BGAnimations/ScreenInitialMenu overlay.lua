@@ -184,12 +184,14 @@ local function create_actors()
 	local args= {Name= "Displays"}
 	for i, frame in ipairs(display_frames) do
 		args[#args+1]= frame:create_actors(
-			i .. "_frame", 1, 0, 0, solar_colors.f_text(), solar_colors.bg(.5),
+			i .. "_frame", 1, 0, 0,
+			fetch_color("initial_menu.frame"),
+			Alpha(fetch_color("initial_menu.menu_bg"), .5),
 			SCREEN_CENTER_X, SCREEN_CENTER_Y)
 	end
 	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
 		args[#args+1]= cursors[rpn]:create_actors(
-			rpn .. "_cursor", 0, 0, 0, 0, 1, solar_colors[rpn]())
+			rpn .. "_cursor", 0, 0, 0, 0, 1, pn_to_color(rpn))
 	end
 	args[#args+1]= menu_display:create_actors(
 		"Menu", SCREEN_CENTER_X, SCREEN_CENTER_Y - 0, #menu_options, disp_width,
@@ -208,7 +210,7 @@ end
 local function find_actors(container)
 	container= container:GetChild("Displays")
 	main_menu:set_display(menu_display)
-	playmode_display:set_underline_color(solar_colors.violet())
+	playmode_display:set_underline_color(fetch_color("player.both"))
 	playmode_menu:set_display(playmode_display)
 	playmode_display:hide()
 	local function size_display_frame(i, frame)
@@ -222,7 +224,7 @@ local function find_actors(container)
 	rescale_stars()
 	for k, prod in pairs(profile_displays) do
 		prod.container:x(star_xs[k])
-		prod:set_underline_color(solar_colors[k]())
+		prod:set_underline_color(pn_to_color(k))
 		profile_menus[k]:set_display(prod)
 		prod:hide()
 	end
@@ -243,8 +245,11 @@ local fail_message_mt= {
 					self.text= subself:GetChild("text")
 					self.container:diffusealpha(0)
 				end,
-				self.frame:create_actors("frame", 1, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0),
-				normal_text("text", "")
+				self.frame:create_actors(
+					"frame", 1, 0, 0,
+					fetch_color("initial_menu.cant_play.frame"),
+					fetch_color("initial_menu.cant_play.bg"), 0, 0),
+				normal_text("text", "", fetch_color("initial_menu.cant_play.text"))
 			}
 		end,
 		show_message= function(self, message)
@@ -431,11 +436,17 @@ local star_args= {
 	Name= "Star frame",
 	stars[1]:create_actors(
 		"lstar", SCREEN_WIDTH * .25, star_y, star_rad, 0, star_points,
-		solar_colors[PLAYER_1](), 8, star_rot),
+		pn_to_color(PLAYER_1), 8, star_rot),
 	stars[2]:create_actors(
 		"rstar", SCREEN_WIDTH * .75, star_y, star_rad, math.pi, star_points,
-		solar_colors[PLAYER_2](), 8, -star_rot),
+		pn_to_color(PLAYER_2), 8, -star_rot),
 }
+
+local hms= {}
+local function hms_update(self)
+	hms:settext(hms_timestamp())
+	hms:diffuse(color_in_set(fetch_color("hours"), Hour(), true, false, false))
+end
 
 local args= {
 	InitCommand= function(self)
@@ -456,16 +467,20 @@ local args= {
 		InitCommand= function(self)
 									 self:xy(SCREEN_CENTER_X, SCREEN_TOP)
 								 end,
-		normal_text("songs", num_songs .. " Songs", solar_colors.uf_text(), 0, 12),
-		normal_text("groups", num_groups .. " Groups", solar_colors.uf_text(), 0, 36),
+		normal_text("songs", num_songs .. " Songs", fetch_color("initial_menu.song_count"), nil, 0, 12),
+		normal_text("groups", num_groups .. " Groups", fetch_color("initial_menu.song_count"), nil, 0, 36),
 	},
+  Def.ActorFrame{
+		Name="time", InitCommand= function(self)
+			hms= self:GetChild("hms")
+			self:SetUpdateFunction(hms_update)
+		end,
+		normal_text(
+			"hms", "", fetch_color("text"), fetch_color("stroke"),
+			_screen.cx, SCREEN_BOTTOM-24),
+  },
 	credit_reporter(SCREEN_CENTER_X, SCREEN_TOP+60, true),
-	fail_message:create_actors("why", SCREEN_CENTER_X, SCREEN_CENTER_Y),
-}
-
-args[#args+1]= Def.LogDisplay{
-	Name= "FakeError",
-	ReplaceLinesWhenHidden= true,
+	fail_message:create_actors("why", SCREEN_CENTER_X, SCREEN_CENTER_Y-48),
 }
 
 return Def.ActorFrame(args)

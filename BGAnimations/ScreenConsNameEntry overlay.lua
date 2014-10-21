@@ -83,7 +83,7 @@ local keyboard_mt= {
 					self.cursors[pn]= setmetatable({}, amv_cursor_mt)
 					self.cursor_poses[pn]= {1, 1}
 					args[#args+1]= self.cursors[pn]:create_actors(
-						"cursor"..pn, 0, 0, 0, 0, 1, solar_colors[pn]())
+						"cursor"..pn, 0, 0, 0, 0, 1, pn_to_color(pn))
 				end
 				for i, r in ipairs(rows) do
 					local keyw= (SCREEN_WIDTH-self.key_spacing) / #r
@@ -96,7 +96,7 @@ local keyboard_mt= {
 					for c, v in ipairs(r) do
 						local cx= xmin + (keyw * (c-1))
 						local cy= (i-1) * row_height
-						args[#args+1]= normal_text("key"..i.."c"..c, v, nil, cx, cy)
+						args[#args+1]= normal_text("key"..i.."c"..c, v, nil, nil, cx, cy)
 					end
 				end
 				return Def.ActorFrame(args)
@@ -193,6 +193,9 @@ local name_display_mt= {
 				self.max_len= 10
 				local profile= PROFILEMAN:GetProfile(player_number)
 				local player_name= profile:GetLastUsedHighScoreName()
+				if not player_using_profile(player_number) then
+					player_name= ""
+				end
 				local args= {
 					Name= name,
 					InitCommand= function(subself)
@@ -207,10 +210,10 @@ local name_display_mt= {
 				if player_number == PLAYER_2 then
 					time_x= time_x * -1
 				end
-				args[#args+1]= normal_text("text", player_name, color, 0, 0, 1)
+				args[#args+1]= normal_text("text", player_name, color, nil, 0, 0, 1)
 				args[#args+1]= normal_text(
 					"time", secs_to_str(cons_players[player_number].credit_time),
-					color, time_x, 0, 1)
+					color, nil, time_x, 0, 1)
 				args[#args+1]= Def.Quad{
 					Name= "cursor", InitCommand= cmd(xy, 0, 12; diffuse, color;
 																					 setsize, 12, 2)}
@@ -218,7 +221,7 @@ local name_display_mt= {
 			end,
 		add_text=
 			function(self, new_text)
-				if self.shift then new_text= new_text:upper() end
+				if self.shift then new_text= new_text:upper() self:toggle_shift() end
 				--Trace("Adding '" .. new_text .. "' to name.")
 				local cur_text= self.text:GetText()
 				if #cur_text < self.max_len then
@@ -339,15 +342,19 @@ local score_display_mt= {
 					end
 				}
 				local next_y= line_height / 2
-				args[#args+1]= normal_text("timeframe", "", nil, 0, next_y, tz)
+				args[#args+1]= normal_text(
+					"timeframe", "", fetch_color("score_list.time"), nil, 0,next_y, tz)
 				next_y= next_y + banner_height + line_height
 				local why= self:banner_center_y()
 				-- The arrows used to indicate that there are scores to scroll
 				-- through need to be placed at the same y as the banner.
 				args[#args+1]= Def.Sprite{InitCommand=cmd(y,why),Name="banner"}
-				args[#args+1]= normal_text("title", "", nil, 0, next_y, tz)
+				args[#args+1]= normal_text(
+					"title", "", fetch_color("score_list.song_name"), nil, 0,next_y,tz)
 				next_y= next_y + line_height
-				args[#args+1]= normal_text("chart_info", "", nil, 0, next_y, tz)
+				args[#args+1]= normal_text(
+					"chart_info","", fetch_color("score_list.chart_info"), nil, 0,
+					next_y, tz)
 				next_y= next_y + line_height
 				local score_entries= 10
 				self.tanis= {}
@@ -358,16 +365,16 @@ local score_display_mt= {
 					tani_params.sy= (line_height * (s-1)) + next_y
 					self.tanis[s]= setmetatable({}, text_and_number_interface_mt)
 					local quad_y= tani_params.sy
-					if s % 2 == 1 then
-						args[#args+1]= Def.Quad{
-							Name= "shadow" .. s,
-							InitCommand= function(self)
-								self:y(quad_y)
-								self:SetHeight(line_height)
-								self:SetWidth(entry_width)
-								self:diffuse(solar_colors.bg_shadow())
-							end}
-					end
+					local quad_color= color_in_set(
+						fetch_color("score_list.entry_bg"), s, true)
+					args[#args+1]= Def.Quad{
+						Name= "shadow" .. s,
+						InitCommand= function(self)
+							self:y(quad_y)
+							self:SetHeight(line_height)
+							self:SetWidth(entry_width)
+							self:diffuse(quad_color)
+					end}
 					args[#args+1]= self.tanis[s]:create_actors("entry"..s, tani_params)
 				end
 				return Def.ActorFrame(args)
@@ -557,15 +564,15 @@ else
 	args[#args+1]= arrow_amv(
 		"left_arrow", SCREEN_LEFT + arrow_width + arrow_pad,
 		arrow_y, arrow_width, arrow_height, arrow_detail,
-		solar_colors.uf_text())
+		fetch_color("score_list.arrows"))
 	args[#args+1]= arrow_amv(
 		"right_arrow", SCREEN_RIGHT - arrow_width - arrow_pad,
 		arrow_y, -arrow_width, arrow_height, arrow_detail,
-		solar_colors.uf_text())
+		fetch_color("score_list.arrows"))
 end
 for pn, nd in pairs(name_displays) do
 	args[#args+1]= nd:create_actors("nd"..pn, nd_poses[pn][1], nd_poses[pn][2],
-																	solar_colors[pn](), pn)
+																	pn_to_color(pn), pn)
 end
 
 return Def.ActorFrame(args)

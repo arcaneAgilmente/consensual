@@ -1,4 +1,6 @@
-local music_wheel= setmetatable({}, music_whale_interface_mt)
+GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(1)
+
+local music_wheel= setmetatable({}, music_whale_mt)
 local auto_scrolling= nil
 local next_auto_scroll_time= 0
 local time_before_auto_scroll= .15
@@ -99,17 +101,20 @@ local std_items_mt= {
 				Name= name, InitCommand= function(subself)
 					self.container= subself
 					self.bg= subself:GetChild("bg")
-					self.tani.number:strokecolor(solar_colors.bg())
-					self.tani.text:strokecolor(solar_colors.bg())
+					self.tani.number:strokecolor(
+						fetch_color("steps_selector.number_stroke"))
+					self.tani.text:strokecolor(
+						fetch_color("steps_selector.name_stroke"))
 				end,
 				Def.Quad{
 					Name= "bg", InitCommand= cmd(setsize, std_item_w, std_item_h)
 				},
 				self.tani:create_actors(
 					"text", {
-						tx= -24, tz= 1, ta= left, tc= solar_colors.uf_text(),
-						text_section= "",
-						nx= 24, nz= 1, na= right, nc= solar_colors.f_text()})
+						tx= -24, tz= 1, ta= left, text_section= "",
+						tc= fetch_color("steps_selector.name_color"),
+						nx= 24, nz= 1, na= right,
+						nc= fetch_color("steps_selector.name_color")}),
 			}
 		end,
 		transform= function(self, item_index, num_items, is_focus)
@@ -137,8 +142,7 @@ local std_items_mt= {
 				width_limit_text(self.tani.text, 18)
 				width_limit_text(self.tani.number, 30)
 				self.tani:unhide()
-				self.bg:diffuse(difficulty_colors[info:GetDifficulty()] or
-													solar_colors.violet())
+				self.bg:diffuse(diff_to_color(info:GetDifficulty()))
 				self.bg:diffusealpha(1)
 				self.container:visible(true)
 			else
@@ -167,7 +171,7 @@ function steps_display_interface:create_actors(name)
 		local new_curs= {}
 		setmetatable(new_curs, amv_cursor_mt)
 		args[#args+1]= new_curs:create_actors(
-			v .. "curs", 0, 0, std_item_w+4, std_item_h+4, 2, solar_colors[v]())
+			v .. "curs", 0, 0, std_item_w+4, std_item_h+4, 2, pn_to_color(v))
 		cursors[v]= new_curs
 	end
 	self.cursors= cursors
@@ -262,18 +266,32 @@ local special_menu_displays= {
 	[PLAYER_2]= setmetatable({}, option_display_mt),
 }
 
-local song_props_menu_items= {
+local privileged_props= false
+local function privileged(pn)
+	return privileged_props
+end
+local song_props= {
 	{name= "exit_menu"},
-	{name= "prof_favor_inc"},
-	{name= "prof_favor_dec"},
-	{name= "mach_favor_inc"},
-	{name= "mach_favor_dec"},
-	{name= "censor"},
-	{name= "edit_tags"},
-	{name= "edit_pain"},
-	{name= "edit_styles"},
-	{name= "end_credit"},
+	{name= "prof_favor_inc", req_func= player_using_profile},
+	{name= "prof_favor_dec", req_func= player_using_profile},
+	{name= "mach_favor_inc", level= 3},
+	{name= "mach_favor_dec", level= 3},
+	{name= "censor", req_func= privileged},
+	{name= "uncensor", req_func= privileged},
+	{name= "toggle_censoring", req_func= privileged},
+	{name= "edit_tags", level= 3},
+	{name= "edit_pain", level= 4},
+	{name= "edit_styles", level= 2},
+	{name= "end_credit", level= 4},
 }
+
+local function censor_item(item, depth)
+	add_to_censor_list(item.el)
+end
+
+local function uncensor_item(item, depth)
+	remove_from_censor_list(item.el)
+end
 
 local song_props_menus= {
 	[PLAYER_1]= setmetatable({}, options_sets.menu),
@@ -755,8 +773,10 @@ local code_functions= {
 			adjust_difficulty(pn, 1, "down")
 		end,
 		open_special= function(pn)
-			stop_auto_scrolling()
-			set_special_menu(pn, 2)
+			if ops_level(pn) >= 2 or privileged(pn) then
+				stop_auto_scrolling()
+				set_special_menu(pn, 2)
+			end
 		end,
 		close_group= function(pn)
 			stop_auto_scrolling()
@@ -785,7 +805,8 @@ local function handle_triggered_codes(pn, key_pressed, button, press_type)
 		if ctext then
 			if convert_code_name_to_display_text[v] then
 				ctext:settext(convert_code_name_to_display_text[v])
-				ctext:DiffuseAndStroke(solar_colors.bg(0),solar_colors.f_text())
+				ctext:DiffuseAndStroke(
+					Alpha(fetch_color("stroke"), 0), fetch_color("text"))
 				ctext:finishtweening()
 				local w= ctext:GetWidth()
 				local h= ctext:GetHeight()
@@ -802,6 +823,9 @@ local function handle_triggered_codes(pn, key_pressed, button, press_type)
 		if code_functions[v] then code_functions[v](pn) end
 		if cons_players[pn] and cons_players[pn][v] then
 			cons_players[pn][v](cons_players[pn])
+			if update_rating_cap() then
+				music_wheel:resort_for_new_style()
+			end
 			pain_displays[pn]:fetch_config()
 			pain_displays[pn]:update_all_items()
 		end
@@ -817,6 +841,17 @@ local function input(event)
 	local pn= event.PlayerNumber
 	local key_pressed= event.GameButton
 	local press_type= event.type
+	if press_type == "InputEventType_FirstPress"
+	and event.DeviceInput.button == "DeviceButton_c" then
+		privileged_props= not privileged_props
+		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
+			local was_hidden= special_menu_displays[pn].hidden
+			song_props_menus[pn]:recheck_levels(true)
+			if was_hidden then
+				special_menu_displays[pn]:hide()
+			end
+		end
+	end
 	if not pn then return end
 	if GAMESTATE:IsSideJoined(pn) then
 		if entering_song then
@@ -830,13 +865,16 @@ local function input(event)
 				pressed_since_menu_change[pn]= {}
 				set_special_menu(pn, next_menu)
 			end
-			local function common_select_handler(next_menu, attempt)
+			local function common_select_handler(next_menu, attempt, level)
 				if key_pressed == "Select" then
 					if press_type == "InputEventType_Release"
 					and pressed_since_menu_change[pn].Select then
 						if attempt then
 							attempt()
 						else
+							if level and level > ops_level(pn) then
+								next_menu= 1
+							end
 							common_menu_change(next_menu)
 						end
 						pressed_since_menu_change[pn].Select= false
@@ -849,7 +887,7 @@ local function input(event)
 					handle_triggered_codes(pn, event.button, key_pressed, press_type)
 				end,
 				function()
-					if common_select_handler(3) then return end
+					if common_select_handler(3, nil, 3) then return end
 					if press_type == "InputEventType_Release" then return end
 					local handled, extra= song_props_menus[pn]:interpret_code(key_pressed)
 					if handled and extra then
@@ -862,6 +900,34 @@ local function input(event)
 						elseif extra.name == "edit_pain" then
 							pain_displays[pn]:enter_edit_mode()
 							common_menu_change(5)
+						elseif extra.name == "censor" then
+							if gamestate_get_curr_song() then
+								add_to_censor_list(gamestate_get_curr_song())
+								music_wheel:resort_for_new_style()
+							else
+								local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
+								if bucket.bucket_info and not bucket.is_special then
+									bucket_traverse(bucket.bucket_info.contents, nil, censor_item)
+									music_wheel:resort_for_new_style()
+								end
+							end
+							common_menu_change(1)
+						elseif extra.name == "uncensor" then
+							if gamestate_get_curr_song() then
+								remove_from_censor_list(gamestate_get_curr_song())
+								music_wheel:resort_for_new_style()
+							else
+								local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
+								if bucket.bucket_info and not bucket.is_special then
+									bucket_traverse(bucket.bucket_info.contents, nil, uncensor_item)
+									music_wheel:resort_for_new_style()
+								end
+							end
+							common_menu_change(1)
+						elseif extra.name == "toggle_censoring" then
+							toggle_censoring()
+							music_wheel:resort_for_new_style()
+							common_menu_change(1)
 						elseif interpret_common_song_props_code(pn, extra.name) then
 							common_menu_change(1)
 						end
@@ -958,32 +1024,70 @@ local function get_code_texts_for_game()
 	return ret
 end
 
+local to_open= THEME:GetString("SelectMusic", "to_open")
+local function exp_text(exp_name, x, y, attrib_color)
+	local str= THEME:GetString("SelectMusic", exp_name)
+	return normal_text(
+		exp_name, str .. " " .. to_open, fetch_color("help.text"), fetch_color("help.stroke"), x, y, .75, left, {
+			InitCommand= function(self)
+				self:AddAttribute(0, {Length=#str, Diffuse= fetch_color(attrib_color)})
+			end
+	})
+end
+
 local help_args= {
 	HideTime= misc_config:get_data().select_music_help_time,
 	Def.Quad{
 		InitCommand= function(self)
 			self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
 			self:setsize(SCREEN_WIDTH, SCREEN_HEIGHT)
-			self:diffuse(solar_colors.bg(.75))
+			self:diffuse(fetch_color("help.bg"))
 		end
 	},
+	exp_text("group_exp", 8, 12, "music_wheel.group"),
+	exp_text("current_group_exp", 8, 36, "music_wheel.current_group"),
+	exp_text("song_exp", 8, 60, "music_wheel.song"),
+	Def.ActorFrame{
+		Name= "diffex", InitCommand= cmd(xy, 156, 195),
+		-- TODO?  duplicate the actual entry in the steps_display that is being
+		-- covered.
+		Def.Quad{
+			InitCommand= function(self)
+				self:diffuse(fetch_color("accent.yellow"))
+				self:setsize(std_item_w, std_item_h)
+			end
+		},
+		normal_text(
+			"style", "S", fetch_color("help.text"), fetch_color("help.stroke"),
+				-24, 0, 1, left),
+		normal_text(
+			"number", "5", fetch_color("help.text"), fetch_color("help.stroke"),
+				24, 0, 1, right),
+		normal_text(
+			"diff", THEME:GetString("SelectMusic", "difficulty"),
+			fetch_color("help.text"), fetch_color("help.stroke"), -32,0,.75, right),
+	},
+	normal_text(
+		"dismiss", THEME:GetString("SelectMusic", "dismiss_help"),
+		fetch_color("help.text"), fetch_color("help.stroke"), _screen.cx,
+		SCREEN_BOTTOM - 28, 1.5),
 }
 do
-	local menu_help_start= 288
+	local menu_help_start= 300
 	local code_positions= {
-		change_song= {wheel_x, 24},
-		play_song= {wheel_x, 48},
-		sort_mode= {wheel_x, 168, true},
-		close_group= {wheel_x, 288, true},
-		diff_up= {8, 168},
-		diff_down= {8, 192},
+		change_song= {wheel_x-24, 24},
+		play_song= {wheel_x-24, 56},
+		sort_mode= {wheel_x-24, 168, true},
+		close_group= {wheel_x-24, 288, true},
+		diff_up= {8, 229},
+		diff_down= {8, 253},
 	}
 	if misc_config:get_data().ssm_advanced_help then
 		code_positions.open_special= {8, menu_help_start}
-		code_positions.noob_mode= {8, menu_help_start+48}
-		code_positions.simple_options_mode= {8, menu_help_start+72}
-		code_positions.all_options_mode= {8, menu_help_start+96}
-		code_positions.excessive_options_mode= {8, menu_help_start+120}
+		code_positions.noob_mode= {8, menu_help_start+24}
+		code_positions.simple_options_mode= {8, menu_help_start+48}
+		code_positions.all_options_mode= {8, menu_help_start+72}
+		code_positions.excessive_options_mode= {8, menu_help_start+96}
 	end
 	local game_codes= get_code_texts_for_game()
 	for code_name, code_set in pairs(game_codes) do
@@ -1002,7 +1106,8 @@ do
 				end
 			end
 			help_args[#help_args+1]= normal_text(
-				code_name .. "_help", help .. " " .. code_text, nil, pos[1], pos[2],
+				code_name .. "_help", help .. " " .. code_text,
+				fetch_color("help.text"), fetch_color("help.stroke"), pos[1], pos[2],
 					.75, left)
 		end
 	end
@@ -1018,13 +1123,13 @@ return Def.ActorFrame {
 	InitCommand= function(self)
 		self:SetUpdateFunction(Update)
 		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
-			song_props_menus[pn]:initialize(pn, song_props_menu_items, true)
+			song_props_menus[pn]:initialize(pn, song_props, true)
 			song_props_menus[pn]:set_display(special_menu_displays[pn])
 			tag_menus[pn]:initialize(pn)
 			tag_menus[pn]:set_display(special_menu_displays[pn])
 			visible_styles_menus[pn]:initialize(pn, make_visible_style_data(pn), true)
 			visible_styles_menus[pn]:set_display(special_menu_displays[pn])
-			special_menu_displays[pn]:set_underline_color(solar_colors[pn]())
+			special_menu_displays[pn]:set_underline_color(pn_to_color(pn))
 			special_menu_displays[pn]:hide()
 			update_pain(pn)
 		end
@@ -1140,7 +1245,7 @@ return Def.ActorFrame {
 			end
 		end
 	},
-	normal_text("SongName", "", solar_colors.f_text(),
+	normal_text("SongName", "", fetch_color("music_select.song_name"), nil,
 							title_x, title_y, 1, left,
 							{ CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
 								CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
@@ -1167,9 +1272,9 @@ return Def.ActorFrame {
 											self:visible(false)
 										end
 									end }),
-	normal_text("length", "", solar_colors.f_text(), SCREEN_LEFT + 4,
-							title_y + 24, 1, left, {
-								CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
+	normal_text("length", "", fetch_color("music_select.song_length"), nil,
+							SCREEN_LEFT + 4, title_y + 24, 1, left,
+							{ CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
 								CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
 								SetCommand=
 									function(self)
@@ -1183,8 +1288,8 @@ return Def.ActorFrame {
 										end
 									end
 							}),
-	normal_text("remain", "", solar_colors.uf_text(), SCREEN_LEFT + 4,
-							title_y + 48, 1, left, {
+	normal_text("remain", "", fetch_color("music_select.remaining_time"), nil,
+							SCREEN_LEFT + 4, title_y + 48, 1, left, {
 								OnCommand=
 									function(self)
 										local remstr= secs_to_str(get_time_remaining())
@@ -1208,34 +1313,51 @@ return Def.ActorFrame {
 				end
 			end,
 	},
-	normal_text("code_text", "", solar_colors.f_text(0), 0, 0, .75),
-	normal_text("sort", "Sort", solar_colors.uf_text(), sort_text_x,
-							SCREEN_TOP + 12),
-	normal_text("sort_text", "NO SORT", solar_colors.f_text(), sort_text_x,
-							SCREEN_TOP + 36),
-	normal_text("sort_text2", "", solar_colors.f_text(), sort_text_x,
-							SCREEN_TOP + 60),
-	normal_text("sort_prop", "", solar_colors.uf_text(), sort_text_x,
-							SCREEN_TOP + 84, 1, center, {
+	normal_text("code_text", "", Alpha(fetch_color("text"), 0), nil, 0, 0, .75),
+	normal_text("sort", "Sort", fetch_color("music_wheel.sort_head"), nil,
+							sort_text_x, SCREEN_TOP + 12),
+	normal_text("sort_text", "NO SORT", fetch_color("music_wheel.sort_type"),
+							nil, sort_text_x, SCREEN_TOP + 36),
+	normal_text("sort_text2", "", fetch_color("music_wheel.sort_type"), nil,
+							sort_text_x, SCREEN_TOP + 60),
+	normal_text("sort_prop", "", fetch_color("music_wheel.sort_value"), nil,
+							sort_text_x, SCREEN_TOP + 84, 1, center, {
 								CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
 								CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
 								SetCommand= function(self)
-									local song= gamestate_get_curr_song()
-									if song and music_wheel.current_sort_name ~= "Group" and
-										music_wheel.current_sort_name ~= "Title" and
-									music_wheel.current_sort_name ~= "Length" then
-										-- TODO:  Extract the correct sort_factor from the current
-										-- bucket and use it instead?
-										self:settext(music_wheel.cur_sort_info.get_names(song)[1])
-										width_limit_text(self, sort_width)
-										self:visible(true)
-									else
-										self:visible(false)
+									local item= music_wheel.sick_wheel:get_info_at_focus_pos()
+									local name= ""
+									if item.bucket_info then
+										name= item.bucket_info.name.value
+									elseif item.random_info then
+										if music_wheel.curr_bucket.name then
+											name= music_wheel.curr_bucket.name.value
+										end
+									elseif item.song_info then
+										-- TODO?  If support is ever added for building a custom
+										-- list of sort_factors, this needs to change, probably.
+										-- The last entry in the name set is the title, because
+										-- that is forced.
+										if item.item then
+											local ns= item.item.name_set
+											name= ns[#ns-1].names[1]
+										elseif music_wheel.curr_bucket.name then
+											name= music_wheel.curr_bucket.name.value
+										end
+									elseif item.sort_info then
+										if music_wheel.curr_bucket.name then
+											name= music_wheel.curr_bucket.name.value
+										end
 									end
+									self:settext(name)
+									width_limit_text(self, sort_width)
+									self:visible(true)
 								end
 	}),
-	player_cursors[PLAYER_1]:create_actors("P1_cursor", 0, 0, 0, 0, 1, solar_colors[PLAYER_1]()),
-	player_cursors[PLAYER_2]:create_actors("P2_cursor", 0, 0, 0, 0, 1, solar_colors[PLAYER_2]()),
+	player_cursors[PLAYER_1]:create_actors(
+		"P1_cursor", 0, 0, 0, 0, 1, pn_to_color(PLAYER_1)),
+	player_cursors[PLAYER_2]:create_actors(
+		"P2_cursor", 0, 0, 0, 0, 1, pn_to_color(PLAYER_2)),
 	credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
 	Def.ActorFrame{
 		Name= "options message",
@@ -1249,8 +1371,10 @@ return Def.ActorFrame {
 								 options_message_frame_helper:resize(xmx-xmn+20, ymx-ymn+20)
 							 end,
 		options_message_frame_helper:create_actors(
-			"omf", 2, 0, 0, solar_colors.rbg(), solar_colors.bg(), 0, 0),
-		normal_text("omm", "Press start for options.", solar_colors.green(), 0, 0, 2),
+			"omf", 2, 0, 0, fetch_color("prompt.frame"), fetch_color("prompt.bg"),
+			0, 0),
+		normal_text("omm","Press &Start; for options.",fetch_color("prompt.text"),
+								nil, 0, 0, 2),
 	},
 	maybe_help(),
 }

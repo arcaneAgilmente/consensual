@@ -1,1 +1,1 @@
-return Def.Quad{InitCommand=cmd(diffuse,solar_colors.bg())}
+return Def.Quad{InitCommand=cmd(diffuse,fetch_color("gameplay.lifemeter.time.bg"))}

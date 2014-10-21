@@ -102,14 +102,14 @@ options_sets.pain_menu= {
 			self.player_number= player_number
 			self.frame= setmetatable({}, frame_helper_mt)
 			args[#args+1]= self.frame:create_actors(
-				"frame", .5, 80, 68, solar_colors.rbg(), solar_colors.bg(), 0, 24)
+				"frame", .5, 80, 68, fetch_color("rev_bg"), fetch_color("bg"), 0, 24)
 			self.own_display= setmetatable({}, option_display_mt)
 			args[#args+1]= self.own_display:create_actors(
 				"display", 0, 0, 5, 80, 12, .5, true, true)
 			args[#args+1]= arrow_amv(
-				"dec_arrow", -10, 0, 6, 12, 4, solar_colors.uf_text())
+				"dec_arrow", -10, 0, 6, 12, 4, fetch_color("text_other"))
 			args[#args+1]= arrow_amv(
-				"inc_arrow", 10, 0, -6, 12, 4, solar_colors.uf_text())
+				"inc_arrow", 10, 0, -6, 12, 4, fetch_color("text_other"))
 			self.cursor= setmetatable({}, amv_cursor_mt)
 			args[#args+1]= self.cursor:create_actors(
 				"cursor", 0, 0, 0, 12, .5, pn_to_color(player_number))
@@ -396,11 +396,11 @@ pain_display_mt= {
 			self.frame_main= setmetatable({}, frame_helper_mt)
 			shadow_args[#shadow_args+1]= self.frame_main:create_actors(
 				"frame", 2, el_w, frame_height, pn_to_color(player_number),
-				solar_colors.bg(), 0, 0)
+				fetch_color("bg"), 0, 0)
 			self.shadows= {}
 			for i= 1, self.disp_row_limit do
-				local scolor= solar_colors.bg_shadow()
-				if i % 2 == 1 then scolor= solar_colors.bg() end
+				local scolor= fetch_color("bg_shadow")
+				if i % 2 == 1 then scolor= fetch_color("bg") end
 				shadow_args[#shadow_args+1]= Def.Quad{
 					Name= "q"..i, InitCommand= function(subself)
 						self.shadows[#self.shadows+1]= subself
@@ -711,8 +711,7 @@ pain_display_mt= {
 			end
 			if item_config.bpm then
 				item:set_text("BPM")
-				item:set_number(steps_get_bpms_as_text(steps))
-				item.number:diffuse(solar_colors.f_text())
+				set_bmt_to_bpms(item.number, steps_get_bpms(steps, song))
 			elseif item_config.meter then
 				item:set_text(steps_to_string(steps))
 				item:set_number(steps:GetMeter())
@@ -728,7 +727,7 @@ pain_display_mt= {
 				local rval= radars:GetValue(item_config.radar_category)
 				if rval == math.floor(rval) then
 					item:set_number(rval)
-					item.number:diffuse(solar_colors.f_text())
+					item.number:diffuse(fetch_color("text"))
 				else
 					item:set_number(("%.2f"):format(rval))
 					item.number:diffuse(color_percent_above(rval, .5))
@@ -762,6 +761,7 @@ pain_display_mt= {
 			elseif item_config.bpm then
 				item:set_text("BPM")
 				item:set_number("XXX")
+				item.number:ClearAttributes()
 			elseif item_config.meter then
 				item:set_text("Meter")
 				item:set_number("XX")
@@ -779,8 +779,8 @@ pain_display_mt= {
 				item:set_text("")
 				item:set_number("")
 			end
-			item.text:diffuse(solar_colors.f_text())
-			item.number:diffuse(solar_colors.f_text())
+			item.text:diffuse(fetch_color("text"))
+			item.number:diffuse(fetch_color("text"))
 		end,
 		edit_mode_update_all= function(self)
 			self.used_rows= math.max(#self.config[1], #self.config[2])

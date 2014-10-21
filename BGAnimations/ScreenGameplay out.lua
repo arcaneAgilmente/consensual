@@ -6,10 +6,10 @@ local feedback_judgements= {
 local function player_combo_color(pn, luma)
 	return function()
 		local firsts= cons_players[pn].stage_stats.firsts
-		local ret_color= judgement_colors.TapNoteScore_W1
+		local ret_color= judge_to_color("TapNoteScore_W1")
 		for i, j in ipairs(feedback_judgements) do
 			if firsts[j] then
-				ret_color= judgement_colors[j]
+				ret_color= judge_to_color(j)
 			end
 		end
 		return Color.Alpha(adjust_luma(ret_color, luma), .75)
@@ -120,7 +120,8 @@ for i, pn in ipairs(enabled) do
 end
 args[#args+1]= random_grow_circle(
 	"normal_exit", _screen.cx, _screen.cy,
-	adjust_luma(solar_colors.violet(.75), .25),
-	adjust_luma(solar_colors.violet(.75), .015625), .125, _screen.w, "splash")
+	adjust_luma(Alpha(fetch_color("gameplay.failed"), .75), .25),
+	adjust_luma(Alpha(fetch_color("gameplay.failed"), .75), .015625),
+		.125, _screen.w, "splash")
 
 return Def.ActorFrame(args)

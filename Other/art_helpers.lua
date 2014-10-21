@@ -17,7 +17,7 @@ function arrow_amv(name, x, y, width, height, detail, color)
 	width= width or 4
 	height= height or 8
 	detail= detail or 4
-	color= color or solar_colors.f_text()
+	color= color or fetch_color("text")
 	local radius= height / 2
 	local ratio= width / radius
 	return Def.ActorMultiVertex{
@@ -70,7 +70,7 @@ star_amv_mt= {
 			self.r= r or 24
 			self.a= a or 0
 			self.points= points or 5
-			self.color= color or solar_colors.magenta()
+			self.color= color or fetch_color("accent.magenta")
 			self.shift_time= time or 8
 			self.rot= 0
 			self.rot_step= rot_step or 90
@@ -325,7 +325,7 @@ dance_pad_mt= {
 						self:xy(x, y)
 						self:SetWidth(w)
 						self:SetHeight(h)
-						self:diffuse(solar_colors.rbg())
+						self:diffuse(fetch_color("rev_bg"))
 				end}
 			end
 			local function pad_half(name, x, y)
@@ -337,7 +337,7 @@ dance_pad_mt= {
 						InitCommand= function(self)
 							self:SetWidth(panel_width * 3 + sepw)
 							self:SetHeight(panel_width * 3 + sepw)
-							self:diffuse(solar_colors.bg())
+							self:diffuse(fetch_color("bg"))
 					end},
 					sep("sep1", 0, panel_width * -1.5, panel_width * 3, sepw),
 					sep("sep2", 0, panel_width * -.5, panel_width * 3, sepw),
@@ -361,7 +361,7 @@ dance_pad_mt= {
 							self:xy(px, py)
 							self:SetWidth(panel_width)
 							self:SetHeight(panel_width)
-							self:diffuse(solar_colors.rbg_shadow(0))
+							self:diffuse(Alpha(fetch_color("rev_bg_shadow"), 0))
 					end}
 					if p == 5 then
 						args[#args+1]= circle_amv(

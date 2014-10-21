@@ -4,18 +4,14 @@ local args= {
 	}
 }
 
-local time_colors= {
-	solar_colors.red(), solar_colors.blue(), solar_colors.violet(),
-	solar_colors.yellow(), solar_colors.magenta(), solar_colors.orange(),
-	solar_colors.green(), solar_colors.cyan(),
-}
+local time_colors= fetch_color("accent")
 
 local hold_colors= {
-	solar_colors.green(), solar_colors.magenta()
+	fetch_color("accent.green"), fetch_color("accent.magenta")
 }
 
 local player_colors= {
-	solar_colors.bg(), solar_colors.red(), solar_colors.cyan()
+	fetch_color("bg"), fetch_color("player.p1"), fetch_color("player.p2")
 }
 
 local function simple_star(name, x, y, t, c)
@@ -123,16 +119,17 @@ for y, pc in ipairs(player_colors) do
 	args[#args+1]= simple_star(
 		y.."mine", xs + (xsp * (#time_colors + #hold_colors)), ypos, 12, pc)
 	args[#args+1]= simple_star(
-		y.."mine", xs + (xsp * (#time_colors + #hold_colors)), ypos, 4, solar_colors.magenta())
+		y.."mine", xs + (xsp * (#time_colors + #hold_colors)), ypos, 4,
+		fetch_color("accent.magenta"))
 end
 local othery= ys + (#player_colors*2 * ysp)
 for x, tc in ipairs(time_colors) do
 	args[#args+1]= noteskin_arrow_amv(
-		"fake"..x, xs + ((x-1)*xsp), othery, 0, 64, tc, solar_colors.f_text())
+		"fake"..x, xs + ((x-1)*xsp), othery, 0, 64, tc, fetch_color("text"))
 end
 args[#args+1]= noteskin_arrow_amv(
 	"receptor", xs + (#time_colors*xsp), othery, 0, 64,
-	solar_colors.f_text(), solar_colors.uf_text())
+	fetch_color("text"), fetch_color("text_other")
 
 args[#args+1]= noteskin_arrow_amv(
 	"explosion", xs+((#time_colors+1)*xsp), othery, 0, 64,
