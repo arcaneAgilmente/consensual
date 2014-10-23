@@ -95,6 +95,7 @@ options_sets.pain_menu= {
 					self.container:visible(false)
 					self.info_set= {}
 					self:set_display(self.own_display)
+					self.cursor:refit(nil, nil, 0, 12)
 					self.display:set_underline_color(pn_to_color(self.player_number))
 				end
 			}
@@ -110,9 +111,10 @@ options_sets.pain_menu= {
 				"dec_arrow", -10, 0, 6, 12, 4, fetch_color("text_other"))
 			args[#args+1]= arrow_amv(
 				"inc_arrow", 10, 0, -6, 12, 4, fetch_color("text_other"))
-			self.cursor= setmetatable({}, amv_cursor_mt)
+			self.cursor= setmetatable({}, cursor_mt)
 			args[#args+1]= self.cursor:create_actors(
-				"cursor", 0, 0, 0, 12, .5, pn_to_color(player_number))
+				"cursor", 0, 0, .5, pn_to_color(player_number),
+				fetch_color("player.hilight"), true, ud_menus())
 			self.cursor_pos= 1
 			self.depth= 1
 			self.mode= 1
@@ -365,6 +367,7 @@ pain_display_mt= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
 					self.container= subself
+					self.cursor:refit(nil, nil, 0, 12)
 					self.cursor:hide()
 					self:hide()
 				end,
@@ -433,9 +436,10 @@ pain_display_mt= {
 				self.right_items[r]= setmetatable({}, text_and_number_interface_mt)
 				el_args[#el_args+1]=self.right_items[r]:create_actors("ritem"..r,tani_args)
 			end
-			self.cursor= setmetatable({}, amv_cursor_mt)
+			self.cursor= setmetatable({}, cursor_mt)
 			el_args[#el_args+1]= self.cursor:create_actors(
-				"cursor", 0, 0, 0, 12, .5, pn_to_color(player_number))
+				"cursor", 0, 0, .5, pn_to_color(player_number),
+				fetch_color("player.hilight"), true, ud_menus())
 			self.cursor_pos= {1, 1}
 			self.mode= 1
 			self.menu= setmetatable({}, options_sets.pain_menu)

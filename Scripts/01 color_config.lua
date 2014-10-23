@@ -27,6 +27,7 @@ local default_config= {
 		 {"both", "accent.violet"},
 		 {"p1", "accent.red"},
 		 {"p2", "accent.cyan"},
+		 {"hilight", "rev_bg"},
 	}},
 
 	{"judgment", {
@@ -96,13 +97,13 @@ local default_config= {
 		 {"frame", "rev_bg", .5},
 		 {"bg", "bg", .5},
 		 {"text", "text"},
-		 {"stroke", "bg"},
+		 {"stroke", "stroke"},
 		 {"length", "percent"},
 		 {"progression", "percent", .5},
 	}},
 
 	{"gameplay", {
-		 {"text_stroke", "bg"},
+		 {"text_stroke", "stroke"},
 		 {"chart_info", "text"},
 		 {"song_name", "text"},
 		 {"failed", "accent.magenta"},
@@ -171,21 +172,21 @@ local default_config= {
 				{"bg", "bg", .875},
 				{"column_heads", "text_other"},
 				{"pct_column", "text"},
-				{"stroke", "bg"},
+				{"stroke", "stroke"},
 		 }},
 		 {"graphs", {
 				{"color", "accent.violet"},
 				{"bg", "bg", .875},
 		 }},
 		 {"song_name", "text"},
-		 {"stroke", "bg"},
+		 {"stroke", "stroke"},
 		 {"bg", "bg", .5},
 	}},
 
 	{"help", {
 		 {"bg", "bg", .75},
 		 {"text", "text"},
-		 {"stroke", "bg"},
+		 {"stroke", "stroke"},
 	}},
 
 	{"music_select", {
@@ -215,8 +216,8 @@ local default_config= {
 	}},
 
 	{"steps_selector", {
-		 {"number_stroke", "bg"},
-		 {"name_stroke", "bg"},
+		 {"number_stroke", "stroke"},
+		 {"name_stroke", "stroke"},
 		 {"number_color", "text"},
 		 {"name_color", "text_other"},
 	}},
@@ -291,12 +292,6 @@ local function lookup_color_reference(refstring, lookup_chain)
 					"' could not be resolved at '" .. part .. lookup_str)
 			lua.ReportScriptError("name_parts: '" .. table.concat(name_parts, "', '") .. "'")
 			lua.ReportScriptError("group: " .. list_group(current_group))
-			return default_color
-		end
-		if type(result) ~= "table" then
-			lua.ReportScriptError(
-				"Color name reference '" .. refstring ..
-					"' pointed to bad color entry at '" .. part .. lookup_str)
 			return default_color
 		end
 		local eltype= type(result)

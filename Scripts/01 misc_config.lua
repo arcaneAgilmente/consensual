@@ -25,6 +25,10 @@ local default_config= {
 	transition_split_max= 64,
 	transition_meta_var_max= 64,
 
+	menus_have_ud= true,
+
+	seconds_per_clock_change= 3600,
+
 	config_menu_key= "DeviceButton_z",
 
 	initial_menu_ops= {
@@ -52,6 +56,10 @@ sorted_initial_menu_ops= {
 
 misc_config= create_setting("misc config", "misc_config.lua", default_config, -1)
 misc_config:load()
+
+function ud_menus()
+	return misc_config:get_data().menus_have_ud
+end
 
 -- Planned but unimplemented:  (doable on request)
 --	menu_grace_time= 0, -- The amount of time the player can spend on a menu screen before time starts being deducted from their play time.

@@ -18,6 +18,7 @@ local heart_entry_mt= {
 				InitCommand= function(subself)
 					subself:xy(x, y)
 					self.container= subself
+					self.cursor:refit(nil, nil, 16, 24)
 					self.rate= subself:GetChild("rate")
 				end
 			}
@@ -49,9 +50,10 @@ local heart_entry_mt= {
 					"num" .. i, num, nil, nil, self.numpad_poses[i][1],
 					self.numpad_poses[i][2])
 			end
-			self.cursor= setmetatable({}, amv_cursor_mt)
+			self.cursor= setmetatable({}, cursor_mt)
 			args[#args+1]= self.cursor:create_actors(
-				"cursor", 0, 0, 16, 24, 1, pn_to_color(pn))
+				"cursor", 0, 0, 1, pn_to_color(pn), fetch_color("player.hilight"),
+				true, ud_menus())
 			self.cursor_pos= 5
 			return Def.ActorFrame(args)
 		end,

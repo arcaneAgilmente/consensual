@@ -153,8 +153,8 @@ for i, disp in ipairs(all_displays) do
 	display_frames[i]= setmetatable({}, frame_helper_mt)
 end
 local cursors= {
-	[PLAYER_1]= setmetatable({}, amv_cursor_mt),
-	[PLAYER_2]= setmetatable({}, amv_cursor_mt)
+	[PLAYER_1]= setmetatable({}, cursor_mt),
+	[PLAYER_2]= setmetatable({}, cursor_mt)
 }
 
 local star_xs= {[PLAYER_1]= SCREEN_WIDTH * .25, [PLAYER_2]= SCREEN_WIDTH * .75}
@@ -189,10 +189,6 @@ local function create_actors()
 			Alpha(fetch_color("initial_menu.menu_bg"), .5),
 			SCREEN_CENTER_X, SCREEN_CENTER_Y)
 	end
-	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
-		args[#args+1]= cursors[rpn]:create_actors(
-			rpn .. "_cursor", 0, 0, 0, 0, 1, pn_to_color(rpn))
-	end
 	args[#args+1]= menu_display:create_actors(
 		"Menu", SCREEN_CENTER_X, SCREEN_CENTER_Y - 0, #menu_options, disp_width,
 		24, 1, true, true)
@@ -203,6 +199,11 @@ local function create_actors()
 		args[#args+1]= prod:create_actors(
 			ToEnumShortString(k) .. "_profiles", prod_xs[k], star_y - (24 * 2.75),
 			5, disp_width, 24, 1, false, true)
+	end
+	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
+		args[#args+1]= cursors[rpn]:create_actors(
+			rpn .. "_cursor", 0, 0, 1, pn_to_color(rpn),
+			fetch_color("player.hilight"), true, ud_menus())
 	end
 	return Def.ActorFrame(args)
 end
@@ -414,9 +415,15 @@ local function update_cursor_pos()
 	end
 end
 
+local currents= {1, 2, 3}
+local goals= {2, 4, 6}
+local speeds= {1, 1, 1}
+
+
 local function input(event)
 	if event.type == "InputEventType_Release" then return false end
 	if event.DeviceInput.button == "DeviceButton_n" then
+		trans_new_screen("ScreenMiscTest")
 	end
 	if event.DeviceInput.button == "DeviceButton_x" and event.type == "InputEventType_FirstPress" then
 		gen_name_only_test_data()
@@ -443,9 +450,21 @@ local star_args= {
 }
 
 local hms= {}
+local hset= fetch_color("hours")
+local function get_hour_indices()
+	local curr_second= (Hour() * 3600) + (Minute() * 60) + Second()
+	local sec_per= misc_config:get_data().seconds_per_clock_change
+	local curr_index= math.floor(curr_second / sec_per)
+	local next_index= curr_index + 1
+	local percent= (curr_second - (curr_index * sec_per)) / sec_per
+	return curr_index, next_index, percent
+end
 local function hms_update(self)
 	hms:settext(hms_timestamp())
-	hms:diffuse(color_in_set(fetch_color("hours"), Hour(), true, false, false))
+	local curr_index, next_index, percent= get_hour_indices()
+	local hour_curr= color_in_set(hset, curr_index, true, false, false)
+	local hour_next= color_in_set(hset, next_index, true, false, false)
+	hms:diffuse(lerp_color(percent, hour_curr, hour_next))
 end
 
 local args= {

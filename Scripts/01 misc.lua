@@ -73,13 +73,36 @@ function pow_ten_force(val)
 	return 10^math.round(math.log10(val))
 end
 
-function lerp(a, b, t)
-	return a + ((b-a) * t)
-end
+if outdated_sm or not lerp then
+	outdated_sm= true
+	lua.ReportScriptError("This theme uses functions added after beta 4.  Consider upgrading to a nightly build made after 2014-10-23.  http://smnightly.katzepower.com/")
+	function lerp(percent, start, goal)
+		return (percent * (goal - start)) + start
+	end
 
-function colerp(a, b, t)
-	return {lerp(a[1], b[1], t), lerp(a[2], b[2], t), lerp(a[3], b[3], t),
-					lerp(a[4], b[4], t)}
+	function lerp_color(percent, start, goal)
+		return {
+			lerp(percent, start[1], goal[1]),
+			lerp(percent, start[2], goal[2]),
+			lerp(percent, start[3], goal[3]),
+			lerp(percent, start[4], goal[4]),
+		}
+	end
+
+	function approach(current, goal, speed)
+		if current == goal then return current end
+		local diff= goal - current
+		local abs_diff= math.abs(diff)
+		if speed > abs_diff then return goal end
+		return current + (speed * (diff / abs_diff))
+	end
+
+	function multiapproach(currents, goals, speeds)
+		for i= 1, #currents do
+			currents[i]= approach(currents[i], goals[i], speeds[i])
+		end
+		return currents
+	end
 end
 
 -- Usage:  Pass in an ActorFrame to print all the children of.

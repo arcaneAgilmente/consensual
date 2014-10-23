@@ -160,6 +160,7 @@ function steps_display_interface:create_actors(name)
 			self.container= subself
 			subself:xy(4+(std_item_w/2), 195)
 			for k, v in pairs(self.cursors) do
+				v:refit(nil, nil, std_item_w+4, std_item_h+4)
 				if not GAMESTATE:IsPlayerEnabled(k) then
 					v:hide()
 				end
@@ -169,9 +170,10 @@ function steps_display_interface:create_actors(name)
 	local cursors= {}
 	for i, v in ipairs(all_player_indices) do
 		local new_curs= {}
-		setmetatable(new_curs, amv_cursor_mt)
+		setmetatable(new_curs, cursor_mt)
 		args[#args+1]= new_curs:create_actors(
-			v .. "curs", 0, 0, std_item_w+4, std_item_h+4, 2, pn_to_color(v))
+			v .. "curs", 0, 0, 2, pn_to_color(v), fetch_color("player.hilight"),
+			false, true)
 		cursors[v]= new_curs
 	end
 	self.cursors= cursors
@@ -322,8 +324,8 @@ local visible_styles_menus= {
 }
 
 local player_cursors= {
-	[PLAYER_1]= setmetatable({}, amv_cursor_mt),
-	[PLAYER_2]= setmetatable({}, amv_cursor_mt)
+	[PLAYER_1]= setmetatable({}, cursor_mt),
+	[PLAYER_2]= setmetatable({}, cursor_mt)
 }
 
 local in_special_menu= {[PLAYER_1]= 1, [PLAYER_2]= 1}
@@ -1355,9 +1357,11 @@ return Def.ActorFrame {
 								end
 	}),
 	player_cursors[PLAYER_1]:create_actors(
-		"P1_cursor", 0, 0, 0, 0, 1, pn_to_color(PLAYER_1)),
+		"P1_cursor", 0, 0, 1, pn_to_color(PLAYER_1),
+		fetch_color("player.hilight"), true, false),
 	player_cursors[PLAYER_2]:create_actors(
-		"P2_cursor", 0, 0, 0, 0, 1, pn_to_color(PLAYER_2)),
+		"P2_cursor", 0, 0, 1, pn_to_color(PLAYER_2),
+		fetch_color("player.hilight"), true, false),
 	credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
 	Def.ActorFrame{
 		Name= "options message",

@@ -319,7 +319,226 @@ function create_frame_quads(label, pad, fw, fh, outer_color, inner_color, fx, fy
 	}
 end
 
-amv_cursor_mt= {
+local pulse_cycle= 1
+local move_time= 0.1
+local arrow_h= 8
+local vert_speed= 512
+cursor_mt= {
+	__index= {
+		create_actors= function(self, name, x, y, t, main, hilight, lrarr, udarr)
+			self.main_color= main or fetch_color("player.both")
+			self.hilight_color= hilight or fetch_color("player.hilight")
+			self.x= x
+			self.x= y
+			self.w= 0
+			self.h= 0
+			self.t= t
+			self.hw= 0
+			self.hh= 0
+			self.parts= {}
+			self.part_ranges= {}
+			self.currents= {}
+			self.goals= {}
+			self.update= function(frame, delta)
+				self.pulse_time= self.pulse_time + delta
+				self.curr_color= lerp_color(self.pulse_time / pulse_cycle, self.start_color, self.goal_color)
+				-- I think something is causing a negative delta.
+				self.curr_thick= math.abs(lerp(self.pulse_time / pulse_cycle, self.start_thick, self.goal_thick))
+				local speeds= {}
+				for i= 1, #self.currents do
+					speeds[i]= math.abs(vert_speed * delta)
+				end
+				multiapproach(self.currents, self.goals, speeds)
+				for i= 1, #self.parts do
+					self:update_part(i, self.parts[i])
+				end
+				if self.pulse_time > pulse_cycle then
+					self:reverse_pulse()
+				end
+			end
+			self:start_pulse()
+			local args= {
+				Name= "cursor", InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					subself:SetUpdateFunction(self.update)
+				end,
+				Def.ActorMultiVertex{
+					Name= "outline", InitCommand= function(subself)
+						self.parts[#self.parts+1]= subself
+						subself:SetDrawState{Mode= "DrawMode_LineStrip"}
+						self:add_approaches(7)
+						subself:SetNumVertices(7)
+					end,
+					RefitCommand= function(subself, param)
+						self:set_verts_for_part(
+							param[1], {
+							0, -self.hh, self.hw, -self.hh, self.hw, self.hh,
+							0, self.hh, -self.hw, self.hh, -self.hw, -self.hh,
+							0, -self.hh,
+						})
+					end,
+					LeftCommand= function(subself)
+						subself:SetDrawState{First= 4}
+					end,
+					RightCommand= function(subself)
+						subself:SetDrawState{First= 1, Num= 4}
+					end,
+					FullCommand= function(subself)
+						subself:SetDrawState{First= 1, Num= -1}
+					end
+				},
+			}
+			if lrarr then
+				args[#args+1]= Def.ActorMultiVertex{
+					Name= "arrows", InitCommand= function(subself)
+						self.parts[#self.parts+1]= subself
+						subself:SetDrawState{Mode= "DrawMode_Triangles"}
+						self:add_approaches(6)
+						subself:SetNumVertices(6)
+					end,
+					RefitCommand= function(subself, param)
+						local base_x= self.hw
+						self:set_verts_for_part(param[1], {
+							base_x, -arrow_h, base_x, arrow_h, base_x+arrow_h, 0,
+							-base_x, -arrow_h, -base_x, arrow_h, -base_x-arrow_h, 0,
+						})
+					end,
+					LeftCommand= function(subself)
+						subself:SetDrawState{First= 4}
+					end,
+					RightCommand= function(subself)
+						subself:SetDrawState{First= 1, Num= 3}
+					end,
+					FullCommand= function(subself)
+						subself:SetDrawState{First= 1, Num= -1}
+					end
+				}
+			end
+			if udarr then
+				args[#args+1]= Def.ActorMultiVertex{
+					Name= "arrows", InitCommand= function(subself)
+						self.parts[#self.parts+1]= subself
+						subself:SetDrawState{Mode= "DrawMode_Triangles"}
+						self:add_approaches(6)
+						subself:SetNumVertices(6)
+					end,
+					RefitCommand= function(subself, param)
+						local base_y= self.hh
+						self:set_verts_for_part(param[1], {
+							-arrow_h, base_y, arrow_h, base_y, 0, base_y + arrow_h,
+							arrow_h, -base_y, -arrow_h, -base_y, 0, -base_y - arrow_h,
+						})
+					end,
+					LeftCommand= function(subself, param)
+						local base_y= self.hh
+						self:set_verts_for_part(param[1], {
+							-arrow_h, base_y, 0, base_y, 0, base_y + arrow_h,
+							0, -base_y, -arrow_h, -base_y, 0, -base_y - arrow_h,
+						})
+					end,
+					RightCommand= function(subself, param)
+						local base_y= self.hh
+						self:set_verts_for_part(param[1], {
+							0, base_y, arrow_h, base_y, 0, base_y + arrow_h,
+							arrow_h, -base_y, 0, -base_y, 0, -base_y - arrow_h,
+						})
+					end,
+					FullCommand= function(subself, param)
+						subself:playcommand("Refit", param)
+					end
+				}
+			end
+			return Def.ActorFrame(args)
+		end,
+		start_pulse= function(self)
+			self.start_color= self.main_color
+			self.goal_color= self.hilight_color
+			self.start_thick= self.t*2
+			self.goal_thick= self.t
+			self.pulse_time= 0
+		end,
+		reverse_pulse= function(self)
+			self.start_color, self.goal_color= self.goal_color, self.start_color
+			self.start_thick, self.goal_thick= self.goal_thick, self.start_thick
+			self.pulse_time= 0
+		end,
+		add_approaches= function(self, vert_count)
+			table.insert(self.part_ranges, {#self.currents, vert_count})
+			for i, tab in ipairs{self.currents, self.goals} do
+				for v= 1, vert_count*2 do
+					table.insert(tab, 0)
+				end
+			end
+		end,
+		update_part= function(self, id, part)
+			local range= self.part_ranges[id]
+			local start= range[1]
+			local currs= self.currents
+			local verts= {}
+			for v= 0, range[2]-1 do
+				local i= start+(v*2)
+				table.insert(verts, {{currs[i+1], currs[i+2], 0}, self.curr_color})
+			end
+			part:SetVertices(verts)
+			part:SetLineWidth(self.curr_thick)
+		end,
+		set_verts_for_part= function(self, id, verts)
+			local start= self.part_ranges[id][1]
+			local goals= self.goals
+			for v= 1, #verts do
+				goals[start+v]= verts[v]
+			end
+		end,
+		refit= function(self, nx, ny, nw, nh)
+			nx= nx or self.container:GetX()
+			ny= ny or self.container:GetY()
+			local new_size= ((nw and (self.w ~= nw)) or (nh and (self.h ~= nh)))
+			self.x= nx
+			self.y= ny
+			self.w= nw or self.w
+			self.h= nh or self.h
+			self.hw= self.w/2
+			self.hh= self.h/2
+			local secs_into_pulse= self.container:GetSecsIntoEffect()
+			local remain= pulse_cycle - secs_into_pulse
+			self.container:stoptweening()
+			self.container:linear(move_time)
+			self.container:xy(nx, ny)
+			if new_size then
+				for i= 1, #self.parts do
+					self.parts[i]:playcommand("Refit", {i})
+				end
+			end
+		end,
+		left_half= function(self)
+			for i= 1, #self.parts do
+				self.parts[i]:playcommand("Left", {i})
+			end
+		end,
+		right_half= function(self)
+			for i= 1, #self.parts do
+				self.parts[i]:playcommand("Right", {i})
+			end
+		end,
+		un_half= function(self)
+			for i= 1, #self.parts do
+				self.parts[i]:playcommand("Full", {i})
+			end
+		end,
+		hide= function(self)
+			for i= 1, #self.parts do
+				self.parts[i]:visible(false)
+			end
+		end,
+		unhide= function(self)
+			for i= 1, #self.parts do
+				self.parts[i]:visible(true)
+			end
+		end
+}}
+
+amv_outline_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, w, h, t, color)
 			x= x or 0
@@ -382,15 +601,6 @@ amv_cursor_mt= {
 			self.t= thickness
 			self.container:SetLineWidth(thickness)
 		end,
-		left_half= function(self)
-			self.container:SetDrawState{First= 4}
-		end,
-		right_half= function(self)
-			self.container:SetDrawState{First= 1, Num= 4}
-		end,
-		un_half= function(self)
-			self.container:SetDrawState{First= 1, Num= -1}
-		end,
 		hide= function(self)
 			self.container:visible(false)
 		end,
@@ -408,7 +618,7 @@ frame_helper_mt= {
 			self.y= fy
 			self.w= fw
 			self.h= fh
-			self.outer= setmetatable({}, amv_cursor_mt)
+			self.outer= setmetatable({}, amv_outline_mt)
 			return Def.ActorFrame{
 				Name= name,
 				InitCommand= function(subself)

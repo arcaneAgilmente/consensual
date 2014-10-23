@@ -493,7 +493,7 @@ local life_graph_mt= {
 					return full_color
 				end
 				sample= (sample - .5) * 2
-				return colerp(half_color, full_color, sample)
+				return lerp_color(sample, half_color, full_color)
 			end
 			local function set_colors(time, sample)
 				if flags.color_life_by_value then
@@ -1159,8 +1159,8 @@ local menu_args= {
 }}
 
 local player_cursors= {
-	[PLAYER_1]= setmetatable({}, amv_cursor_mt),
-	[PLAYER_2]= setmetatable({}, amv_cursor_mt)
+	[PLAYER_1]= setmetatable({}, cursor_mt),
+	[PLAYER_2]= setmetatable({}, cursor_mt)
 }
 
 local score_reports= { [PLAYER_1]= {}, [PLAYER_2]= {}}
@@ -1420,7 +1420,8 @@ local function make_player_specific_actors()
 	-- In its own loop to make sure they're above all other actors.
 	for i, pn in ipairs(enabled_players) do
 		all_actors[#all_actors+1]= player_cursors[pn]:create_actors(
-			pn .."_cursor", 0, 0, 0, 0, 1, pn_to_color(pn))
+			pn .."_cursor", 0, 0, 1, pn_to_color(pn),
+			fetch_color("player.hilight"), true, ud_menus())
 	end
 	return Def.ActorFrame(all_actors)
 end

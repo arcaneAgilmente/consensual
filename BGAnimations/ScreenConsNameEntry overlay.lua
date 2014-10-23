@@ -1,5 +1,4 @@
-local keyboard_special_names= {"down", "up", "shift", "backspace",
-															 "sc_left", "sc_right", "screenshot", "enter"}
+local keyboard_special_names= {"down", "up", "shift", "backspace", "enter"}
 local keyboard_num_rows= 4
 local keyboard_mt= {
 	__index={
@@ -68,7 +67,7 @@ local keyboard_mt= {
 							end
 						end
 						for r, row in ipairs(self.key_actors) do
-							local keyw= (SCREEN_WIDTH-self.key_spacing) / #row
+							local keyw= ((SCREEN_WIDTH-self.key_spacing) / #row) - 24
 							for c, key in ipairs(row) do
 								width_limit_text(key, keyw, 1)
 							end
@@ -80,10 +79,11 @@ local keyboard_mt= {
 				self.cursor_poses= {}
 				local enabled_players= GAMESTATE:GetEnabledPlayers()
 				for i, pn in ipairs(enabled_players) do
-					self.cursors[pn]= setmetatable({}, amv_cursor_mt)
+					self.cursors[pn]= setmetatable({}, cursor_mt)
 					self.cursor_poses[pn]= {1, 1}
 					args[#args+1]= self.cursors[pn]:create_actors(
-						"cursor"..pn, 0, 0, 0, 0, 1, pn_to_color(pn))
+						"cursor"..pn, 0, 0, 1, pn_to_color(pn),
+						fetch_color("player.hilight"), true, true)
 				end
 				for i, r in ipairs(rows) do
 					local keyw= (SCREEN_WIDTH-self.key_spacing) / #r
@@ -264,7 +264,12 @@ local name_display_mt= {
 }}
 
 local combined_play_history= {}
+local screenshot_added= false
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+	if player_using_profile(pn) and not screenshot_added then
+		table.insert(keyboard_special_names, #keyboard_special_names, "screenshot")
+		screenshot_added= true
+	end
 	for h, history_entry in ipairs(cons_players[pn].play_history) do
 		local already_in_combined_history= false
 		for c, cph_ent in ipairs(combined_play_history) do
@@ -304,6 +309,8 @@ if disps_on_screen < min_on_screen and #combined_play_history >= min_on_screen t
 end
 local all_scores_on_screen= #combined_play_history <= disps_on_screen
 if not all_scores_on_screen then
+	table.insert(keyboard_special_names, 5, "sc_left")
+	table.insert(keyboard_special_names, 6, "sc_right")
 	recalc_sizes_to_fit_width(SCREEN_WIDTH - (arrow_width*2) - (arrow_pad*4))
 end
 

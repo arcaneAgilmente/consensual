@@ -226,7 +226,7 @@ option_set_general_mt= {
 		interpret_code=
 			function(self, code)
 				local funs= {
-					MenuUp= function(self)
+					MenuLeft= function(self)
 								if self.cursor_pos > 1 then
 									self.cursor_pos= self.cursor_pos - 1
 								else
@@ -235,7 +235,7 @@ option_set_general_mt= {
 								self.display:scroll(self.cursor_pos)
 								return true
 							end,
-					MenuDown= function(self)
+					MenuRight= function(self)
 									if self.cursor_pos < #self.info_set then
 										self.cursor_pos= self.cursor_pos + 1
 									else
@@ -266,8 +266,10 @@ option_set_general_mt= {
 				}
 				-- This breaks the feature of left being usable as back on the up
 				-- element, but I don't think that's important.
-				funs.MenuLeft= funs.MenuUp
-				funs.MenuRight= funs.MenuDown
+				if ud_menus() then
+					funs.MenuUp= funs.MenuLeft
+					funs.MenuDown= funs.MenuRight
+				end
 				if funs[code] then return funs[code](self) end
 				return false
 			end
@@ -727,6 +729,7 @@ menu_stack_mt= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
 					self.container= subself
+					self.cursor:refit(nil, nil, 20, line_height)
 					for i, disp in ipairs(self.displays) do
 						disp:set_underline_color(pcolor)
 					end
@@ -737,7 +740,7 @@ menu_stack_mt= {
 				setmetatable({}, option_display_mt)}
 			local sep= width / #self.displays
 			local off= sep / 2
-			self.cursor= setmetatable({}, amv_cursor_mt)
+			self.cursor= setmetatable({}, cursor_mt)
 			local disp_el_width_limit= width / 2 - 8
 			for i, disp in ipairs(self.displays) do
 				args[#args+1]= disp:create_actors(
@@ -745,7 +748,8 @@ menu_stack_mt= {
 					elements, disp_el_width_limit, line_height, 1)
 			end
 			args[#args+1]= self.cursor:create_actors(
-				"cursor", sep, 0, 20, line_height, 1, pcolor)
+				"cursor", sep, 0, 1, pcolor, fetch_color("player.hilight"), true,
+				ud_menus())
 			return Def.ActorFrame(args)
 		end,
 		push_options_set_stack= function(
