@@ -325,11 +325,13 @@ local arrow_h= 8
 local vert_speed= 512
 cursor_mt= {
 	__index= {
-		create_actors= function(self, name, x, y, t, main, hilight, lrarr, udarr)
+		create_actors= function(
+				self, name, x, y, t, main, hilight, lrarr, udarr, align)
 			self.main_color= main or fetch_color("player.both")
 			self.hilight_color= hilight or fetch_color("player.hilight")
 			self.x= x
 			self.x= y
+			self.align= align or 0
 			self.w= 0
 			self.h= 0
 			self.t= t
@@ -487,7 +489,11 @@ cursor_mt= {
 			local start= self.part_ranges[id][1]
 			local goals= self.goals
 			for v= 1, #verts do
-				goals[start+v]= verts[v]
+				if v % 2 == 1 then
+					goals[start+v]= verts[v] + self.align * self.w
+				else
+					goals[start+v]= verts[v]
+				end
 			end
 		end,
 		refit= function(self, nx, ny, nw, nh)

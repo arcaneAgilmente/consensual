@@ -199,10 +199,16 @@ end
 
 local cons_player_mt= { __index= cons_player}
 
-cons_players= {}
-for k, v in pairs(all_player_indices) do
-	cons_players[v]= {}
-	setmetatable(cons_players[v], cons_player_mt)
+if cons_players then
+	for k, v in pairs(all_player_indices) do
+		setmetatable(cons_players[v], cons_player_mt)
+	end
+else
+	cons_players= {}
+	for k, v in pairs(all_player_indices) do
+		cons_players[v]= {}
+		setmetatable(cons_players[v], cons_player_mt)
+	end
 end
 
 function options_allowed()

@@ -558,7 +558,11 @@ function bucket_man_interface:sort_songs(sort_info)
 	return self.sorted_songs
 end
 
-bucket_man= setmetatable({}, bucket_man_interface_mt)
+if bucket_man then
+	setmetatable(bucket_man, bucket_man_interface_mt)
+else
+	bucket_man= setmetatable({}, bucket_man_interface_mt)
+end
 
 local wheel_x= 0
 local wheel_y= SCREEN_TOP + 12
@@ -582,7 +586,7 @@ end
 
 function sick_wheel_item_interface:transform(item_index, num_items, is_focus)
 	local move_time= .1
-	local width_limit= SCREEN_RIGHT - wheel_x - 8
+	local width_limit= SCREEN_RIGHT - wheel_x - 16
 	self.container:finishtweening()
 	self.container:linear(move_time)
 	self.container:x(0)
@@ -660,7 +664,7 @@ local function make_bucket_from_recent(recent, name)
 		end
 	end
 	return {
-		is_special= true,
+		is_special= true, is_recent= true,
 		bucket_info= {
 			name= {
 				value= name, disp_name= get_string_wrapper("MusicWheel", name),
@@ -902,23 +906,29 @@ function music_whale:add_special_items_to_bucket(bucket)
 			-- For the case where we are at the top level.
 			last_el= nil
 		end
-		if prev_picked_song and not check_censor_list(prev_picked_song) then
-			bucket[#bucket+1]= {
-				name= "Previous Song", is_special= true,
-				disp_name= get_string_wrapper("MusicWheel", "PrevSong"),
-				is_prev= true, song_info= prev_picked_song}
-		end
-		if #self.disp_stack == 0 then
+		if not self.in_recent then
+			if prev_picked_song and not check_censor_list(prev_picked_song) then
+				bucket[#bucket+1]= {
+					name= "Previous Song", is_special= true,
+					disp_name= get_string_wrapper("MusicWheel", "PrevSong"),
+					is_prev= true, song_info= prev_picked_song}
+			end
 			if #random_recent > 0 then
+				self.random_recent_pos= #bucket+1
 				bucket[#bucket+1]=
 					make_bucket_from_recent(random_recent, "Recent from Random")
+			else
+				self.random_recent_pos= nil
 			end
 			if #played_recent > 0 then
+				self.played_recent_pos= #bucket+1
 				bucket[#bucket+1]=
 					make_bucket_from_recent(played_recent, "Recently played")
+			else
+				self.played_recent_pos= nil
 			end
+			self:add_randoms(bucket)
 		end
-		self:add_randoms(bucket)
 		bucket[#bucket+1]= last_el
 		--Trace("Added special items.")
 	end
@@ -1065,11 +1075,27 @@ function music_whale:scroll_amount(a)
 	self:set_stuff_from_curr_element()
 end
 
+function music_whale:update_recent_items()
+	if self.random_recent_pos then
+		local items= self.sick_wheel:get_items_by_info_index(self.random_recent_pos)
+		for i, item in ipairs(items) do
+			item:set(item.info)
+		end
+	elseif false then -- TODO:  This doesn't work smoothly.
+		local new_pos= self.sick_wheel:maybe_wrap_index(
+			self.sick_wheel.info_pos, 0, self.display_bucket)
+		table.insert(self.display_bucket, make_bucket_from_recent(random_recent, "Recent from Random"))
+		self.random_recent_pos= #self.display_bucket
+		self.sick_wheel:set_info_set(self.display_bucket, new_pos + self.focus_pos)
+	end
+end
+
 function music_whale:set_stuff_from_curr_element()
 	local curr_element= self.sick_wheel:get_info_at_focus_pos()
 	if not curr_element then return end
 	if curr_element.random_info then
 		make_random_decision(curr_element.random_info)
+		self:update_recent_items()
 		if curr_element.random_info.chosen then
 			gamestate_set_curr_song(curr_element.random_info.chosen)
 		else
@@ -1093,9 +1119,15 @@ function music_whale:interact_with_element()
 	local curr_element= self.sick_wheel:get_info_at_focus_pos()
 	if curr_element.bucket_info then
 		if curr_element.is_current_group then
+			self.in_recent= false
 			self:pop_from_disp_stack()
 		else
 			self:push_onto_disp_stack()
+			if curr_element.is_recent then
+				self.in_recent= true
+			else
+				self.in_recent= false
+			end
 			self:set_display_bucket(curr_element.bucket_info, 0)
 			play_sample_music()
 		end

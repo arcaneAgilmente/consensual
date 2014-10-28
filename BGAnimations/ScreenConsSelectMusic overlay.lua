@@ -381,15 +381,17 @@ local function update_player_cursors()
 			num_enabled= num_enabled + 1
 			local cursed_item= false
 			local function fit_cursor_to_menu(menu)
+				player_cursors[pn].align= 0
 				cursed_item= menu:get_cursor_element()
 				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item.container)
 				local xp, yp= rec_calc_actor_pos(cursed_item.container)
 				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
 			end
 			if in_special_menu[pn] == 1 then
+				player_cursors[pn].align= .5
 				cursed_item= music_wheel.sick_wheel:get_actor_item_at_focus_pos().text
 				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item)
-				local xp= wheel_x + ((xmx - xmn) / 2) + 4
+				local xp= wheel_x + 2
 				player_cursors[pn]:refit(xp, wheel_cursor_y, xmx - xmn + 4, ymx - ymn + 4)
 			elseif in_special_menu[pn] == 2 then
 				fit_cursor_to_menu(song_props_menus[pn])
@@ -1358,10 +1360,10 @@ return Def.ActorFrame {
 	}),
 	player_cursors[PLAYER_1]:create_actors(
 		"P1_cursor", 0, 0, 1, pn_to_color(PLAYER_1),
-		fetch_color("player.hilight"), true, false),
+		fetch_color("player.hilight"), true, false, .5),
 	player_cursors[PLAYER_2]:create_actors(
 		"P2_cursor", 0, 0, 1, pn_to_color(PLAYER_2),
-		fetch_color("player.hilight"), true, false),
+		fetch_color("player.hilight"), true, false, .5),
 	credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
 	Def.ActorFrame{
 		Name= "options message",
