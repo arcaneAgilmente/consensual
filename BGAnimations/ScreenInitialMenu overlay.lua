@@ -503,6 +503,22 @@ local args= {
 			"hms", "", fetch_color("text"), fetch_color("stroke"),
 			_screen.cx, SCREEN_BOTTOM-24),
   },
+	Def.BitmapText{
+		Font= "Common Normal", Text= get_string_wrapper("Common", "special_day"),
+		InitCommand= function(self)
+			self:zoom(.5)
+			self:xy(_screen.cx, SCREEN_BOTTOM-60)
+			self:wrapwidthpixels((SCREEN_WIDTH-32)*2)
+			self:vertspacing(-8)
+			self:diffuse(fetch_color("text"))
+			self:strokecolor(fetch_color("stroke"))
+			if special_day then
+				self:visible(true)
+			else
+				self:visible(false)
+			end
+		end
+	},
 	credit_reporter(SCREEN_CENTER_X, SCREEN_TOP+60, true),
 	fail_message:create_actors("why", SCREEN_CENTER_X, SCREEN_CENTER_Y-48),
 }

@@ -328,6 +328,7 @@ function aprf_check()
 	else
 		kyzentun_birthday= false
 	end
+	special_day= kyzentun_birthday or april_fools
 end
 aprf_check()
 
