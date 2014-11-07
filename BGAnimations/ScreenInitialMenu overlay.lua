@@ -354,6 +354,8 @@ local function interpret_code(pn, code)
 				trans_new_screen("ScreenOptionsService")
 			elseif extra == "consensual_ops" then
 				trans_new_screen("ScreenConsService")
+			elseif extra == "color_config" then
+				trans_new_screen("ScreenColorConfig")
 			elseif extra == "edit_choice" then
 				
 			elseif extra == "exit_choice" then
@@ -424,6 +426,9 @@ local function input(event)
 	if event.type == "InputEventType_Release" then return false end
 	if event.DeviceInput.button == "DeviceButton_n" then
 		trans_new_screen("ScreenMiscTest")
+	end
+	if event.DeviceInput.button == misc_config:get_data().color_config_key then
+		trans_new_screen("ScreenColorConfig")
 	end
 	if event.DeviceInput.button == "DeviceButton_x" and event.type == "InputEventType_FirstPress" then
 		gen_name_only_test_data()

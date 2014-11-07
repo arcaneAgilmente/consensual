@@ -335,7 +335,7 @@ local default_config= {
 	-- TODO:  Make a system similar to the flags levels for options_level,
 	-- rating_cap, combo_splash_threshold, and combo_graph_threshold.
 	options_level= 1,
-	rating_cap= 5,
+	rating_cap= -1,
 	combo_splash_threshold= "TapNoteScore_W3",
 	combo_graph_threshold= "TapNoteScore_W3",
 	preferred_style= "single",

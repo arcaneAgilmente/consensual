@@ -208,7 +208,8 @@ function rec_print_table(t, indent, depth_remaining)
 			Trace(indent .. k .. ": table")
 			rec_print_table(v, indent .. "  ", depth_remaining - 1)
 		else
-			Trace(indent .. k .. ": " .. tostring(v))
+			Trace(indent .. "(" .. type(k) .. ")" .. k .. ": " ..
+							"(" .. type(v) .. ")" .. tostring(v))
 		end
 	end
 	Trace(indent .. "end")
@@ -276,21 +277,21 @@ function force_table_elements_to_match_type(candidate, must_match, depth_remaini
 	end
 end
 
-function get_string_wrapper(section, string)
+function get_string_wrapper(section, str)
 	--Trace("get_string_wrapper:  Searching section \"" .. tostring(section)
-	--   .. "\" for string \"" .. tostring(string) .. "\"")
-	if not string then return "" end
+	--   .. "\" for string \"" .. tostring(str) .. "\"")
+	if not str then return "" end
 	if section then
-		if string ~= "" and section ~= "" and
-			THEME:HasString(section, string) then
-			return THEME:GetString(section, string)
+		if str ~= "" and section ~= "" and
+			THEME:HasString(section, str) then
+			return THEME:GetString(section, str)
 		else
 			--Trace("Emptry string, empty section, or string not found.")
-			return string
+			return str
 		end
 	else
 		--Trace("Empty section.")
-		return string
+		return str
 	end
 end
 

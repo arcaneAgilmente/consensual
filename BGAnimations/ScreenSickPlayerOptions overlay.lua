@@ -747,6 +747,22 @@ local function extra_for_sideswap()
 	}
 end
 
+local function extra_for_chuunibyou()
+	return {
+		name= "Chuunibyuou",
+		min_scale= -2,
+		scale= 0,
+		max_scale= 5,
+		initial_value= function(pn)
+			return cons_players[pn].chuunibyou or 0
+		end,
+		validator= noop_true,
+		set= function(pn, value)
+			cons_players[pn].chuunibyou= value
+		end
+	}
+end
+
 local function extra_for_lives()
 	return {
 		name= "Battery Lives",
@@ -1024,6 +1040,8 @@ local floaty_mods= {
 		args= make_menu_of_float_set(visibility_mods) },
 	{ name= "Side Swap", meta= options_sets.adjustable_float,
 		args= extra_for_sideswap(), level= 5 },
+	{ name= "Chuunibyou", meta= options_sets.adjustable_float,
+		args= extra_for_chuunibyou(), level= 4},
 }
 
 local chart_mods= {

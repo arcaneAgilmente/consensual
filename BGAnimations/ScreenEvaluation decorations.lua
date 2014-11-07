@@ -1584,6 +1584,7 @@ do
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
 	local highest_score= 0
 	local curstats= STATSMAN:GetCurStageStats()
+	local stage_seed= 0
 	for i, v in ipairs(enabled_players) do
 		if not GAMESTATE:IsEventMode() then
 			local play_history= cons_players[v].play_history
@@ -1613,6 +1614,7 @@ do
 		highest_score= math.max(highest_score,
 			pstats:GetActualDancePoints() / pstats:GetPossibleDancePoints())
 		--save_column_scores(v)
+		stage_seed= cons_players[v].session_stats[0].stage_seed
 		add_column_score_to_session(v, cons_players[v].session_stats, 0, score_datas[v][0])
 		for ic= 1, #cons_players[v].column_scores do
 			crunch_combo_data_for_column(cons_players[v].column_scores[ic])
@@ -1621,7 +1623,9 @@ do
 		cons_players[v].unacceptable_score.enabled= nil
 	end
 	reward_time= convert_score_to_time(highest_score)
-	reduce_time_remaining(-reward_time)
+	if GAMESTATE:GetStageSeed() ~= stage_seed then
+		reduce_time_remaining(-reward_time)
+	end
 	unacc_reset_count= nil
 end
 
@@ -1654,7 +1658,7 @@ local function input(event)
 	local code= event.GameButton
 	local press= event.type
 	if press == "InputEventType_FirstPress"
-	and event.DeviceInput.button == "DeviceButton_c" then
+	and event.DeviceInput.button == misc_config:get_data().censor_privilege_key then
 		privileged_props= not privileged_props
 		for i, player in ipairs(GAMESTATE:GetEnabledPlayers()) do
 			local was_hidden= special_menus[1][player].display.hidden

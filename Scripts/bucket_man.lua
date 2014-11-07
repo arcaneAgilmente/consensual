@@ -605,30 +605,30 @@ function sick_wheel_item_interface:set(info)
 	self.number:settext("")
 	if info.bucket_info then
 		if self.info.is_current_group then
-			self.text:diffuse(fetch_color("music_wheel.current_group"))
+			self.text:diffuse(fetch_color("music_select.music_wheel.current_group"))
 		else
-			self.text:diffuse(fetch_color("music_wheel.group"))
+			self.text:diffuse(fetch_color("music_select.music_wheel.group"))
 		end
 		self.text:settext(bucket_disp_name(info.bucket_info))
 		self.number:settext(#info.bucket_info.contents)
 	elseif info.random_info then
 		self.text:settext(info.disp_name)
-		self.text:diffuse(fetch_color("music_wheel.random"))
+		self.text:diffuse(fetch_color("music_select.music_wheel.random"))
 --		self.number:settext(#info.candidate_set) -- sticks out too much.
 	elseif info.song_info then
 		if info.is_prev then
 			self.text:settext(info.disp_name)
-			self.text:diffuse(fetch_color("music_wheel.prev_song"))
+			self.text:diffuse(fetch_color("music_select.music_wheel.prev_song"))
 		else
 			self.text:settext(song_get_main_title(info.song_info))
-			self.text:diffuse(fetch_color("music_wheel.song"))
+			self.text:diffuse(fetch_color("music_select.music_wheel.song"))
 		end
 		if check_censor_list(info.song_info) then
-			self.text:diffuse(fetch_color("music_wheel.censored_song"))
+			self.text:diffuse(fetch_color("music_select.music_wheel.censored_song"))
 		end
 	elseif info.sort_info then
 		self.text:settext(info.sort_info.name)
-		self.text:diffuse(fetch_color("music_wheel.sort"))
+		self.text:diffuse(fetch_color("music_select.music_wheel.sort"))
 	else
 		Warn("Tried to display bad element in display bucket.")
 		rec_print_table(info)

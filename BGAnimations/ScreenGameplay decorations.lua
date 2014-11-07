@@ -8,6 +8,7 @@ local feedback_judgements= {
 }
 
 local screen_gameplay= false
+local song_opts= GAMESTATE:GetSongOptionsObject("ModsLevel_Current")
 
 local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
 local receptor_max= THEME:GetMetric("Player", "ReceptorArrowsYReverse")
@@ -45,6 +46,59 @@ local side_swap_vals= {}
 local swap_on_xs= {}
 local side_toggles= {}
 local side_actors= {}
+local next_chuunibyou= {[PLAYER_1]= 0, [PLAYER_2]= 0}
+local chuunibyou_state= {[PLAYER_1]= true, [PLAYER_2]= true}
+local chuunibyou_sides= {}
+do
+	local enabled= GAMESTATE:GetEnabledPlayers()
+	if #enabled == 1 then
+		chuunibyou_sides= {
+			[true]= player_sides[enabled[1]],
+			[false]= player_sides[other_player[enabled[1]]]
+		}
+	else
+		chuunibyou_sides= {
+			[true]= player_sides[PLAYER_1],
+			[false]= player_sides[PLAYER_2]
+		}
+		if gamestate_get_curr_steps(enabled[1]) ==
+		gamestate_get_curr_steps(enabled[2]) then
+			local opsa= cons_players[enabled[1]].preferred_options
+			local opsb= cons_players[enabled[2]].preferred_options
+			local checklist= {
+				"Boost", "Brake", "Wave", "Expand", "Boomerang", "Hidden",
+				"HiddenOffset", "Sudden", "SuddenOffset", "Skew", "Tilt", "Beat",
+				"Bumpy","Drunk", "Tipsy", "Tornado", "Mini", "Tiny", "Reverse",
+				"Alternate", "Centered", "Cross", "Flip", "Invert", "Split",
+				"Xmode", "Blind", "Dark", "Blink", "RandomVanish", "Stealth",
+				"Mirror", "Backwards", "Left", "Right", "Shuffle", "SoftShuffle",
+				"SuperShuffle", "Big", "BMRize", "Echo", "Floored", "Little",
+				"Planted", "AttackMines", "Quick", "Skippy", "Stomp", "Twister",
+				"Wide", "HoldRolls", "NoJumps","NoHands","NoQuads", "NoStretch",
+				"NoLifts", "NoFakes", "NoMines",
+			}
+			local same_mods= true
+			local speeda= cons_players[enabled[1]].speed_info
+			local speedb= cons_players[enabled[2]].speed_info
+			if speeda.speed ~= speedb.speed or speeda.mode ~= speedb.mode then
+				same_mods= false
+			end
+			if same_mods then
+				for i= 1, #checklist do
+					if opsa[checklist[1]](opsa) ~= opsb[checklist[1]](opsb) then
+						same_mods= false
+						break
+					end
+				end
+			end
+			if not same_mods then
+				chuunibyou_state[enabled[2]]= not chuunibyou_state[enabled[2]]
+			end
+		else
+			chuunibyou_state[enabled[2]]= not chuunibyou_state[enabled[2]]
+		end
+	end
+end
 
 local judge_feedback_interface= {}
 function judge_feedback_interface:create_actors(name, fx, fy, player_number)
@@ -363,10 +417,10 @@ local song_progress_bar_interface_mt= { __index= song_progress_bar_interface }
 function song_progress_bar_interface:create_actors()
 	self.name= "song_progress"
 	self.frame= setmetatable({}, frame_helper_mt)
-	self.text_color= fetch_color("song_progress_bar.text")
-	self.stroke_color= fetch_color("song_progress_bar.stroke")
-	self.progress_colors= fetch_color("song_progress_bar.progression")
-	self.length_colors= fetch_color("song_progress_bar.length")
+	self.text_color= fetch_color("gameplay.song_progress_bar.text")
+	self.stroke_color= fetch_color("gameplay.song_progress_bar.stroke")
+	self.progress_colors= fetch_color("gameplay.song_progress_bar.progression")
+	self.length_colors= fetch_color("gameplay.song_progress_bar.length")
 	return Def.ActorFrame{
 		Name= self.name, InitCommand= function(subself)
 			subself:xy(spb_x, spb_y)
@@ -378,13 +432,13 @@ function song_progress_bar_interface:create_actors()
 		end,
 		self.frame:create_actors(
 			"frame", .5, spb_width, spb_height,
-			fetch_color("song_progress_bar.frame"),
-			fetch_color("song_progress_bar.bg"),
+			fetch_color("gameplay.song_progress_bar.frame"),
+			fetch_color("gameplay.song_progress_bar.bg"),
 			0, 0),
 		Def.Quad{
 			Name= "filler", InitCommand=
 				function(self)
-					self:diffuse(fetch_color("song_progress_bar.progression.too_low"))
+					self:diffuse(fetch_color("gameplay.song_progress_bar.progression.too_low"))
 					self:x(spb_width * -.5)
 					self:horizalign(left)
 					self:SetWidth(spb_width)
@@ -392,7 +446,7 @@ function song_progress_bar_interface:create_actors()
 					self:zoomx(0)
 				end
 		},
-		normal_text("time", "", nil, fetch_color("song_progress_bar.stroke"),
+		normal_text("time", "", nil, fetch_color("gameplay.song_progress_bar.stroke"),
 		0, -spb_time_off)
 	}
 end
@@ -401,14 +455,16 @@ function song_progress_bar_interface:set_from_song()
 	local song= GAMESTATE:GetCurrentSong()
 	if song then
 		self.song_first_second= song:GetFirstSecond()
-		self.song_len= song:GetLastSecond() - self.song_first_second
+		self.song_len= (song:GetLastSecond() - self.song_first_second) *
+			song_opts:MusicRate()
 	else
 		Trace("Current song is nil on ScreenGameplay")
 	end
 end
 
 function song_progress_bar_interface:update()
-	local cur_seconds= GAMESTATE:GetCurMusicSeconds() - self.song_first_second
+	local cur_seconds= (GAMESTATE:GetCurMusicSeconds() -self.song_first_second)
+		* song_opts:MusicRate() * screen_gameplay:GetHasteRate()
 	local zoom= cur_seconds / self.song_len
 	local cur_color= color_in_set(self.progress_colors, math.ceil(zoom * #self.progress_colors), false, false, false)
 	self.filler:diffuse(cur_color)
@@ -670,9 +726,9 @@ local function Update(self)
 				player.current_options:XMod(xmod)
 			end
 		end
+		local song_pos= GAMESTATE:GetPlayerState(v):GetSongPosition()
 		if speed_info.mode == "D" then
 			local this_bps= screen_gameplay:GetTrueBPS(v)
-			local song_pos= GAMESTATE:GetPlayerState(v):GetSongPosition()
 			local discard, approach= player.song_options:Centered()
 			if approach == 0 then
 				if not song_pos:GetFreeze() and not song_pos:GetDelay() then
@@ -700,6 +756,13 @@ local function Update(self)
 				if player.current_options:Centered() >= player.dspeed.max then
 					dspeed_reset(player)
 				end
+			end
+		end
+		if player.chuunibyou and player.chuunibyou > 0 then
+			if song_pos:GetSongBeat() > next_chuunibyou[v] then
+				chuunibyou_state[v]= not chuunibyou_state[v]
+				side_actors[v]:x(chuunibyou_sides[chuunibyou_state[v]])
+				next_chuunibyou[v]= next_chuunibyou[v] + player.chuunibyou
 			end
 		end
 		if (side_swap_vals[v] or 0) > 1 then
@@ -982,14 +1045,14 @@ return Def.ActorFrame {
 						speed_info.prev_bps= nil
 					end
 					set_speed_from_speed_info(cons_players[v])
+					side_actors[v]=
+						screen_gameplay:GetChild("Player" .. ToEnumShortString(v))
 					if cons_players[v].side_swap or force_swap then
 						side_swap_vals[v]= cons_players[v].side_swap or
 							cons_players[other_player[v]].side_swap
 						local mod_res= side_swap_vals[v] % 1
 						if mod_res == 0 then mod_res= 1 end
 						swap_on_xs[v]= player_sides[v] + (side_diffs[v] * mod_res)
-						side_actors[v]=
-							screen_gameplay:GetChild("Player" .. ToEnumShortString(v))
 						side_actors[v]:x(swap_on_xs[v])
 						side_toggles[v]= true
 					end

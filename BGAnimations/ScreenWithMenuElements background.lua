@@ -1,1 +1,12 @@
-return Def.Quad{InitCommand=cmd(FullScreen;diffuse,fetch_color("bg"))}
+local common_bg= false
+function update_common_bg_colors()
+	common_bg:diffuse(fetch_color("bg"))
+end
+
+return Def.Quad{
+	InitCommand= function(self)
+		common_bg= self
+		self:FullScreen()
+		self:diffuse(fetch_color("bg"))
+	end
+}

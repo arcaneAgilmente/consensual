@@ -5,6 +5,12 @@ This theme is only tested on the tip of the github repository.  It should work o
 Many parts are explained through on-screen help layers that appear after a delay.
 The help layers appear after set amounts of time, configured in the Consensual service screen.  Defaults are 10 seconds for Select Music, 60 seconds for Evaluation, and 10 seconds for Consensual service.
 
+Options Level:  An Options Level setting exists for controlling what options a profile can access.  The default is 1, and the max is 4.  The setting is stored with other settings for a profile.
+
+Rating Cap:  A Rating Cap setting exists for hiding songs that do not have a sufficiently easy chart.  If a song does not have at least one chart below the rating cap of the profiles of the players that are playing, it will not show up on the music wheel.  Setting the Rating Cap to -1 will turn it off.
+
+Options Level and Rating Cap can both be set through the different pad codes on Select Music, or through the Options screen before playing a song.
+
 Initial screen:
 2 player mode is under Style->Versus.
 Double mode doesn't have a specific menu option because this theme supports changing style on SelectMusic.
@@ -81,6 +87,9 @@ Favorites are saved in PROFILEDIR/favorites.lua.
 Song censoring system:
 Songs that are marked as censored are filtered out of the song list.
 The list of censored songs is saved in Save/censor_list.lua
+Choosing to censor or uncensor a group will apply to all songs inside that group.
+Censoring can be toggled on or off through the menu on Select Music.
+Even when censoring is off, censored songs will not show up in the Random or Recently Played groups.
 
 Song tagging system:
 Songs can have tags applied to them, and be sorted by tag.  Each profile has separate tag settings.

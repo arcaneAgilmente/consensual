@@ -16,6 +16,7 @@ local default_config= {
 	select_music_help_time= 10,
 	evaluation_help_time= 60,
 	service_help_time= 10,
+	color_help_time= 5,
 	ssm_advanced_help= true,
 
 	gameplay_reset_limit= 5,
@@ -30,6 +31,8 @@ local default_config= {
 	seconds_per_clock_change= 3600,
 
 	config_menu_key= "DeviceButton_z",
+	color_config_key= "DeviceButton_b",
+	censor_privilege_key= "DeviceButton_c",
 
 	initial_menu_ops= {
 		single_choice= true,
@@ -38,6 +41,7 @@ local default_config= {
 		profile_choice= true,
 		stepmania_ops= true,
 		consensual_ops= true,
+		color_config= true,
 		edit_choice= true,
 		exit_choice= true,
 	},
@@ -50,6 +54,7 @@ sorted_initial_menu_ops= {
 	"profile_choice",
 	"stepmania_ops",
 	"consensual_ops",
+	"color_config",
 --	"edit_choice", -- coming soon
 	"exit_choice",
 }

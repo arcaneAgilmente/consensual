@@ -102,9 +102,9 @@ local std_items_mt= {
 					self.container= subself
 					self.bg= subself:GetChild("bg")
 					self.tani.number:strokecolor(
-						fetch_color("steps_selector.number_stroke"))
+						fetch_color("music_select.steps_selector.number_stroke"))
 					self.tani.text:strokecolor(
-						fetch_color("steps_selector.name_stroke"))
+						fetch_color("music_select.steps_selector.name_stroke"))
 				end,
 				Def.Quad{
 					Name= "bg", InitCommand= cmd(setsize, std_item_w, std_item_h)
@@ -112,9 +112,9 @@ local std_items_mt= {
 				self.tani:create_actors(
 					"text", {
 						tx= -24, tz= 1, ta= left, text_section= "",
-						tc= fetch_color("steps_selector.name_color"),
+						tc= fetch_color("music_select.steps_selector.name_color"),
 						nx= 24, nz= 1, na= right,
-						nc= fetch_color("steps_selector.name_color")}),
+						nc= fetch_color("music_select.steps_selector.name_color")}),
 			}
 		end,
 		transform= function(self, item_index, num_items, is_focus)
@@ -846,7 +846,7 @@ local function input(event)
 	local key_pressed= event.GameButton
 	local press_type= event.type
 	if press_type == "InputEventType_FirstPress"
-	and event.DeviceInput.button == "DeviceButton_c" then
+	and event.DeviceInput.button == misc_config:get_data().censor_privilege_key then
 		privileged_props= not privileged_props
 		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
 			local was_hidden= special_menu_displays[pn].hidden
@@ -1048,9 +1048,9 @@ local help_args= {
 			self:diffuse(fetch_color("help.bg"))
 		end
 	},
-	exp_text("group_exp", 8, 12, "music_wheel.group"),
-	exp_text("current_group_exp", 8, 36, "music_wheel.current_group"),
-	exp_text("song_exp", 8, 60, "music_wheel.song"),
+	exp_text("group_exp", 8, 12, "music_select.music_wheel.group"),
+	exp_text("current_group_exp", 8, 36, "music_select.music_wheel.current_group"),
+	exp_text("song_exp", 8, 60, "music_select.music_wheel.song"),
 	Def.ActorFrame{
 		Name= "diffex", InitCommand= cmd(xy, 156, 195),
 		-- TODO?  duplicate the actual entry in the steps_display that is being
@@ -1318,13 +1318,17 @@ return Def.ActorFrame {
 			end,
 	},
 	normal_text("code_text", "", Alpha(fetch_color("text"), 0), nil, 0, 0, .75),
-	normal_text("sort", "Sort", fetch_color("music_wheel.sort_head"), nil,
+	normal_text("sort", "Sort",
+							fetch_color("music_select.music_wheel.sort_head"), nil,
 							sort_text_x, SCREEN_TOP + 12),
-	normal_text("sort_text", "NO SORT", fetch_color("music_wheel.sort_type"),
+	normal_text("sort_text", "NO SORT",
+							fetch_color("music_select.music_wheel.sort_type"),
 							nil, sort_text_x, SCREEN_TOP + 36),
-	normal_text("sort_text2", "", fetch_color("music_wheel.sort_type"), nil,
+	normal_text("sort_text2", "",
+							fetch_color("music_select.music_wheel.sort_type"), nil,
 							sort_text_x, SCREEN_TOP + 60),
-	normal_text("sort_prop", "", fetch_color("music_wheel.sort_value"), nil,
+	normal_text("sort_prop", "",
+							fetch_color("music_select.music_wheel.sort_value"), nil,
 							sort_text_x, SCREEN_TOP + 84, 1, center, {
 								CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
 								CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),

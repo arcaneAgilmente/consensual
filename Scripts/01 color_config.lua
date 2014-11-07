@@ -1,3 +1,10 @@
+unchangeable_color= {
+	text= color("#93a1a1"),
+	bg= color("#002b36"),
+	cursor= color("#6c71c4"),
+	hilight= color("#fdf6e3"),
+}
+
 local default_config= {
 	-- Color Scheme:  Solarized (http://ethanschoonover.com/solarized)
 	{"bg", color("#002b36")},
@@ -31,15 +38,6 @@ local default_config= {
 	}},
 
 	{"judgment", {
-		 {"1", "accent.red"},
-		 {"2", "accent.cyan"},
-		 {"3", "accent.red"},
-		 {"4", "accent.red"},
-		 {"5", "accent.violet"},
-		 {"6", "accent.blue"},
-		 {"7", "accent.green"},
-		 {"8", "accent.yellow"},
-		 {"9", "accent.cyan"},
 		 {"HoldNoteScore_LetGo", "accent.red"},
 		 {"HoldNoteScore_Held", "accent.cyan"},
 		 {"HoldNoteScore_MissedHold", "accent.orange"},
@@ -80,26 +78,37 @@ local default_config= {
 	{"speed", "percent"},
 	{"hours", "percent"},
 
-	{"music_wheel", {
-		 {"current_group", "accent.cyan"},
-		 {"group", "accent.violet"},
-		 {"random", "accent.red"},
-		 {"censored_song", "accent.orange"},
-		 {"prev_song", "text"},
-		 {"song", "text_other"},
-		 {"sort", "accent.yellow"},
+	{"help", {
+		 {"bg", "bg", .75},
+		 {"text", "text"},
+		 {"stroke", "stroke"},
+	}},
+
+	{"music_select", {
+		 {"song_name", "text"},
+		 {"song_length", "text"},
+		 {"remaining_time", "text_other"},
 		 {"sort_head", "text_other"},
 		 {"sort_type", "text"},
 		 {"sort_value", "text_other"},
-	}},
-
-	{"song_progress_bar", {
-		 {"frame", "rev_bg", .5},
-		 {"bg", "bg", .5},
-		 {"text", "text"},
-		 {"stroke", "stroke"},
-		 {"length", "percent"},
-		 {"progression", "percent", .5},
+		 {"music_wheel", {
+				{"current_group", "accent.cyan"},
+				{"group", "accent.violet"},
+				{"random", "accent.red"},
+				{"censored_song", "accent.orange"},
+				{"prev_song", "text"},
+				{"song", "text_other"},
+				{"sort", "accent.yellow"},
+				{"sort_head", "text_other"},
+				{"sort_type", "text"},
+				{"sort_value", "text_other"},
+		 }},
+		 {"steps_selector", {
+				{"number_stroke", "stroke"},
+				{"name_stroke", "stroke"},
+				{"number_color", "text"},
+				{"name_color", "text_other"},
+		 }},
 	}},
 
 	{"gameplay", {
@@ -120,6 +129,14 @@ local default_config= {
 				{"time", {
 					 {"bg", "bg"},
 				}},
+		 }},
+		 {"song_progress_bar", {
+				{"frame", "rev_bg", .5},
+				{"bg", "bg", .5},
+				{"text", "text"},
+				{"stroke", "stroke"},
+				{"length", "percent"},
+				{"progression", "percent", .5},
 		 }},
 	}},
 
@@ -183,21 +200,6 @@ local default_config= {
 		 {"bg", "bg", .5},
 	}},
 
-	{"help", {
-		 {"bg", "bg", .75},
-		 {"text", "text"},
-		 {"stroke", "stroke"},
-	}},
-
-	{"music_select", {
-		 {"song_name", "text"},
-		 {"song_length", "text"},
-		 {"remaining_time", "text_other"},
-		 {"sort_head", "text_other"},
-		 {"sort_type", "text"},
-		 {"sort_value", "text_other"},
-	}},
-
 	{"prompt", {
 		 {"frame", "rev_bg"},
 		 {"bg", "bg"},
@@ -215,12 +217,6 @@ local default_config= {
 		 }},
 	}},
 
-	{"steps_selector", {
-		 {"number_stroke", "stroke"},
-		 {"name_stroke", "stroke"},
-		 {"number_color", "text"},
-		 {"name_color", "text_other"},
-	}},
 }
 
 color_config= create_setting("color config", "color_config.lua", default_config, 0)
@@ -230,6 +226,26 @@ local default_color= color("#000000")
 
 local function convert_name(name)
 	return (name ~= "nan" and tonumber(name)) or name
+end
+
+function is_color(t)
+	return type(t) == "table" and #t == 4 and type(t[1]) == "number"
+	and type(t[2]) == "number" and type(t[3]) == "number"
+	and type(t[4]) == "number"
+end
+
+local cdig= "[0-9a-fA-F]"
+local opcdig= cdig.."?"
+local cmatch_str= "^#"..cdig:rep(6)..opcdig:rep(2).."$"
+function is_color_not_ref(s)
+	if type(s) ~= "string" then return nil end
+	if s:match(cmatch_str) and (#s == 7 or #s == 9) then return color(s) end
+	return nil
+end
+function is_color_string(s)
+	if type(s) ~= "string" then return nil end
+	return is_color_not_ref(s)
+		or lookup_color_reference(s, true, true)
 end
 
 function recursive_alpha(group, alpha)
@@ -274,45 +290,107 @@ local function split_name(refstring)
 			cur_part_start= i+1
 		end
 	end
-	if cur_part_start < #refstring then
+	if cur_part_start <= #refstring then
 		parts[#parts+1]= refstring:sub(cur_part_start)
 	end
 	return parts
 end
 
-local function lookup_color_reference(refstring, lookup_chain)
+local function maybe_report_lookup_error(err, no_default, silent)
+	if not silent then lua.ReportScriptError(err) end
+	if no_default then return nil, err end
+	return default_color, err
+end
+function lookup_color_reference(refstring, no_default, silent, lookup_chain, depth)
+	lookup_chain= lookup_chain or ""
+	depth= depth or 1
+	if depth > 10 then
+		return maybe_report_lookup_error(
+			"Reference chains cannot be more than 10 deep.\n" ..
+			"Lookup chain: " .. lookup_chain, no_default, silent)
+	end
 	local name_parts= split_name(refstring)
 	local current_group= color_config:get_data()
 	local lookup_str= "'.  Lookup chain: " .. lookup_chain
 	for i, part in ipairs(name_parts) do
 		local result= lookup_named_element(current_group, part)
 		if not result then
-			lua.ReportScriptError(
+			return maybe_report_lookup_error(
 				"Color name reference '" .. refstring ..
-					"' could not be resolved at '" .. part .. lookup_str)
-			lua.ReportScriptError("name_parts: '" .. table.concat(name_parts, "', '") .. "'")
-			lua.ReportScriptError("group: " .. list_group(current_group))
-			return default_color
+					"' could not be resolved at '" .. part .. lookup_str, no_default,
+				silent)
+					-- .. "\n" ..
+					-- "name_parts: '" .. table.concat(name_parts, "', '") .. "'\n" ..
+					-- "group: " .. list_group(current_group), no_default, silent)
 		end
 		local eltype= type(result)
 		if eltype == "table" then
 			current_group= result
 		elseif eltype == "string" then
-			return lookup_color_reference(result, lookup_chain .. " -> " .. refstring)
+			return lookup_color_reference(
+				result, no_default, silent, lookup_chain.." -> "..refstring, depth+1)
 		else
-			lua.ReportScriptError(
-				"Color name reference '" .. refstring ..
-					"' pointed to bad color at '" .. part .. lookup_str)
-			return default_color
+			return maybe_report_lookup_error(
+				"Color name reference '" ..refstring.. "' pointed to bad color at '"
+					.. part .. lookup_str, no_default, silent)
 		end
 	end
 	if not current_group then
-		lua.ReportScriptError(
+		return maybe_report_lookup_error(
 			"Color name reference could not be resolved:  '" .. refstring ..
-				lookup_str)
-		return default_color
+				lookup_str, no_default, silent)
 	end
 	return current_group
+end
+
+function fetch_default_color_setting(name)
+	local name_parts= split_name(name)
+	local current_group= default_config
+	for i, part in ipairs(name_parts) do
+		local result= lookup_named_element(current_group, part)
+		if type(result) == "string" and i < #name_parts then
+			result= lookup_color_reference(result, true, true)
+		end
+		if not result then
+			return nil
+		end
+		current_group= result
+	end
+	return current_group
+end
+
+local function check_group_for_reference(check_group, name)
+	for i= 1, #check_group do
+		if type(check_group[i][2]) == "table" then
+			if not is_color(check_group[i][2]) then
+				local sub_ret= check_group_for_reference(check_group[i][2], name)
+				if sub_ret then return true end
+			end
+		elseif check_group[i][2] == name then
+			return true
+		end
+	end
+	return false
+end
+function color_is_referenced(name)
+	local current_group= color_config:get_data()
+	return check_group_for_reference(current_group, name)
+end
+
+function color_can_be_removed(name)
+	if color_is_referenced(name) then return false end
+	if not fetch_default_color_setting(name) then return true end
+	local name_parts= split_name(name)
+	local end_part= convert_name(name_parts[#name_parts])
+	if type(end_part) ~= "number" then return false end
+	return end_part > 1
+end
+
+function sanity_check_color_config()
+	-- ScreenColorConfig took the route of preventing all actions that would
+	-- compromise the sanity of the configuration, so this function isn't
+	-- actually needed.
+	return true
 end
 
 local function rec_resolve_references(refgroup, colgroup, alpha, lineage)
@@ -321,7 +399,7 @@ local function rec_resolve_references(refgroup, colgroup, alpha, lineage)
 			if type(value[1]) == "string" then
 				local colname= convert_name(value[1])
 				if type(value[2]) == "string" then
-					local resolved= lookup_color_reference(value[2], "")
+					local resolved= lookup_color_reference(value[2])
 					if type(resolved[1]) == "table" then
 						colgroup[colname]= {}
 						rec_resolve_references(
@@ -359,14 +437,56 @@ local function rec_resolve_references(refgroup, colgroup, alpha, lineage)
 	end
 end
 
-function resolve_color_references()
-	resolved_colors= {}
-	rec_resolve_references(color_config:get_data(), resolved_colors, 1, "")
+local function maybe_resolve(a)
+	if type(a) == "string" then
+		return is_color_not_ref(a) or lookup_color_reference(a, true, true)
+	end
+	return a
 end
-resolve_color_references()
-function print_resolved_colors()
-	Trace("Resolved colors:")
-	rec_print_table(resolved_colors)
+local function color_similarity_test(left, right)
+	if is_color(left) then
+		return is_color(right), "New reference does not refer to a color."
+	end
+	if is_color(right) then
+		return false, "Old item does not refer to a color."
+	end
+	return true, ""
+end
+local function resolved_groups_are_similar(left, right)
+	if #left > 0 then
+		if #right < 1 then
+			return false, "New group does not have required list of numbers."
+		end
+	end
+	for name, value in pairs(left) do
+		if type(convert_name(name)) == "string" then
+			if right[name] then
+				local color_passed, err= color_similarity_test(
+					left[name], right[name])
+				if not color_passed then return false, err end
+				if is_color(left[name]) then return true, "" end
+				local group_passed, errg= resolved_groups_are_similar(
+					left[name], right[name])
+				if not group_passed then return false, errg end
+			else
+				return false, "New group must have '" .. name .. "' member."
+			end
+		end
+	end
+	return true, ""
+end
+function groups_are_similar(a, b)
+	local left= maybe_resolve(a)
+	local right= maybe_resolve(b)
+	if not left or not right then return false, "One reference is nil." end
+	local color_passed, err= color_similarity_test(left, right)
+	if not color_passed then return false, err end
+	if is_color(left) then return true, "" end
+	local left_resolved= {}
+	local right_resolved= {}
+	rec_resolve_references(left, left_resolved, 1, "")
+	rec_resolve_references(right, right_resolved, 1, "")
+	return resolved_groups_are_similar(left_resolved, right_resolved)
 end
 
 function fetch_color(name, alpha)
@@ -390,6 +510,28 @@ function fetch_color(name, alpha)
 		end
 	end
 	return ret
+end
+
+function resolve_color_references()
+	resolved_colors= {}
+	rec_resolve_references(color_config:get_data(), resolved_colors, 1, "")
+	local judgment= fetch_color("judgment")
+	local tns_reverse= TapNoteScore:Reverse()
+	local hns_reverse= HoldNoteScore:Reverse()
+	for name, col in pairs(judgment) do
+		if type(name) == "string" then
+			if tns_reverse[name] then
+				judgment[tns_reverse[name]]= col
+			elseif hns_reverse[name] then
+				judgment[hns_reverse[name]]= col
+			end
+		end
+	end
+end
+resolve_color_references()
+function print_resolved_colors()
+	Trace("Resolved colors:")
+	rec_print_table(resolved_colors)
 end
 
 function pn_to_color(pn)

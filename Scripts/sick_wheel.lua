@@ -28,6 +28,7 @@ end
 function sick_wheel:create_actors(name, num_items, item_metatable, mx, my)
 	self.name= name
 	self.info_pos= 1
+	self.info_map= {}
 	self.num_items= num_items
 	assert(item_metatable, "A metatable for items to be put in the wheel must be provided.")
 	check_metatable(item_metatable)
@@ -68,32 +69,38 @@ local function calc_start(self, info, pos)
 	return pos
 end
 
+local function call_item_set(self, item_index, info_index)
+	self.info_map[item_index]= info_index
+	self.items[item_index]:set(self.info_set[info_index])
+end
+
 local function internal_scroll(self, start_pos)
 	local shift_amount= start_pos - self.info_pos
 	if math.abs(shift_amount) < #self.items then
 		self.items= table.rotate_left(self.items, shift_amount)
+		self.info_map= table.rotate_left(self.info_map, shift_amount)
 		self.info_pos= start_pos
 		if shift_amount < 0 then
 			local absa= math.abs(shift_amount)
 			for n= 1, absa+1 do
 				if self.items[n] then
 					local info_index= self:maybe_wrap_index(self.info_pos, n, self.info_set)
-					self.items[n]:set(self.info_set[info_index])
+					call_item_set(self, n, info_index)
 				end
 			end
 		elseif shift_amount > 0 then
 			for n= #self.items - shift_amount, #self.items do
 				if self.items[n] then
 					local info_index= self:maybe_wrap_index(self.info_pos, n, self.info_set)
-					self.items[n]:set(self.info_set[info_index])
+					call_item_set(self, n, info_index)
 				end
 			end
 		end
 	else
 		self.info_pos= start_pos
-		for i, v in ipairs(self.items) do
+		for i= 1, #self.items do
 			local info_index= self:maybe_wrap_index(self.info_pos, i, self.info_set)
-			v:set(self.info_set[info_index])
+			call_item_set(self, i, info_index)
 		end
 	end
 	for i, v in ipairs(self.items) do
@@ -107,17 +114,17 @@ function sick_wheel:set_info_set(info, pos)
 	self.info_pos= start_pos
 	for n= 1, #self.items do
 		local index= self:maybe_wrap_index(start_pos, n, info)
-		self.items[n]:set(info[index])
+		call_item_set(self, n, index)
 	end
 	internal_scroll(self, start_pos)
 end
 
 function sick_wheel:set_element_info(element, info)
-	local old_info= self.info_set[element]
 	self.info_set[element]= info
-	local items_to_update= self:find_item_by_info(old_info)
-	for i, item in ipairs(items_to_update) do
-		item:set(info)
+	for i= 1, #self.items do
+		if self.info_map[i] == element then
+			call_item_set(self, i, element)
+		end
 	end
 end
 
@@ -141,7 +148,13 @@ function sick_wheel:get_actor_item_at_focus_pos()
 end
 
 function sick_wheel:get_items_by_info_index(index)
-	return self:find_item_by_info(self.info_set[index])
+	local ret= {}
+	for i= 1, #self.items do
+		if self.info_map[i] == index then
+			ret[#ret+1]= self.items[i]
+		end
+	end
+	return ret
 end
 
 function sick_wheel:find_item_by_info(info)

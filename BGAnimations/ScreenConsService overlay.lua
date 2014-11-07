@@ -98,6 +98,8 @@ local help_options= {
 	 args= time_conf("evaluation_help_time", -3, 0, 2)},
 	{name= "service_help_time", meta= options_sets.adjustable_float,
 	 args= time_conf("service_help_time", -3, 0, 2)},
+	{name= "color_help_time", meta= options_sets.adjustable_float,
+	 args= time_conf("color_help_time", -3, 0, 2)},
 }
 
 local flag_slot_options= {}
@@ -156,24 +158,30 @@ end
 
 local press_prompt= {}
 local on_press_prompt= false
-local function key_get()
-	return ToEnumShortString(config_data.config_menu_key)
+local function key_get(key_name)
+	return function() return ToEnumShortString(config_data[key_name]) end
 end
 
-local function key_set()
-	press_prompt:visible(true)
-	on_press_prompt= true
-	local tops= SCREENMAN:GetTopScreen()
-	local tempback= noop_false
-	tempback= function(event)
-		if event.type == "InputEventType_FirstPress" then
-			config_data.config_menu_key= event.DeviceInput.button
-			tops:RemoveInputCallback(tempback)
-			press_prompt:visible(false)
-			on_press_prompt= 2
+local function key_set(key_name)
+	return function()
+		press_prompt:visible(true)
+		on_press_prompt= true
+		local tops= SCREENMAN:GetTopScreen()
+		local tempback= noop_false
+		tempback= function(event)
+			if event.type == "InputEventType_FirstPress" then
+				config_data[key_name]= event.DeviceInput.button
+				tops:RemoveInputCallback(tempback)
+				press_prompt:visible(false)
+				on_press_prompt= 2
+			end
 		end
+		tops:AddInputCallback(tempback)
 	end
-	tops:AddInputCallback(tempback)
+end
+
+local function key_get_set(key_name)
+	return {get= key_get(key_name), set= key_set(key_name)}
 end
 
 local im_options= {
@@ -189,6 +197,8 @@ local im_options= {
 	 args= sub_bool_conf("initial_menu_ops", "stepmania_ops", "On", "Off")},
 	{name= "im_have_consops", meta= options_sets.boolean_option,
 	 args= sub_bool_conf("initial_menu_ops", "consensual_ops", "On", "Off")},
+	{name= "im_have_colconf", meta= options_sets.boolean_option,
+	 args= sub_bool_conf("initial_menu_ops", "color_config", "On", "Off")},
 	{name= "im_have_edit", meta= options_sets.boolean_option,
 	 args= sub_bool_conf("initial_menu_ops", "edit_choice", "On", "Off")},
 	{name= "im_have_exit", meta= options_sets.boolean_option,
@@ -197,7 +207,11 @@ local im_options= {
 
 local consensual_options= {
 	{name= "set_config_key", meta= options_sets.settable_thing,
-	 args= {get= key_get, set= key_set}},
+	 args= key_get_set("config_menu_key")},
+	{name= "set_color_key", meta= options_sets.settable_thing,
+	 args= key_get_set("color_config_key")},
+	{name= "set_censor_privilege_key", meta= options_sets.settable_thing,
+	 args= key_get_set("censor_privilege_key")},
 	{name= "set_have_select", meta= options_sets.boolean_option,
 	 args= make_extra_for_bool_val("have_select_button", "Yes", "No")},
 	{name= "set_ud_menus", meta= options_sets.boolean_option,
@@ -227,39 +241,11 @@ local secondary_menu= {}
 local on_main_menu= true
 local return_on_start= false
 
-local hider_frame= setmetatable({}, frame_helper_mt)
-local hider_text= {}
-local hider_params= {
-	Name="help", InitCommand= function(self)
-		self:xy(_screen.cx, _screen.cy)
-	end,
-	hider_frame:create_actors(
-		"frame", 1, 0, 0, fetch_color("rev_bg"), fetch_color("help.bg"), 0, 0),
-	normal_text(
-		"text", "", fetch_color("help.text"), fetch_color("help.stroke"), 0,0,1,
-		center, {InitCommand= function(self) hider_text= self
-			self:wrapwidthpixels(SCREEN_WIDTH-20) end}),
-}
-
-local function update_hider_time()
-	if config_data.service_help_time > 0 then
-		hider_params.HideTime= config_data.service_help_time
-	else
-		hider_params.HideTime= 2^16
-	end
-end
-update_hider_time()
-
-local function update_hider_text()
+local helper= setmetatable({}, updatable_help_mt)
+local function update_help()
 	local item_name= config_menu:get_cursor_item_name()
-	if item_name ~= "" then
-		if THEME:HasString("ConsService", item_name) then
-			local help= THEME:GetString("ConsService", item_name)
-			hider_text:settext(help)
-		end
-	end
-	local xmn, xmx, ymn, ymx= rec_calc_actor_extent(hider_text)
-	hider_frame:resize(xmx-xmn+20, ymx-ymn+20)
+	helper:update_text(item_name)
+	helper:update_hide_time(config_data.service_help_time)
 end
 
 local prompt_frame= setmetatable({}, frame_helper_mt)
@@ -291,8 +277,7 @@ local function input(event)
 					trans_new_screen("ScreenInitialMenu")
 				end
 			end
-			update_hider_time()
-			update_hider_text()
+			update_help()
 		end
 		return false
 	end
@@ -303,7 +288,7 @@ return Def.ActorFrame{
 	InitCommand= function(self)
 		config_menu:push_options_set_stack(options_sets.menu, menu_items, "Exit Menu")
 		config_menu:update_cursor_pos()
-		update_hider_text()
+		update_help()
 	end,
 	OnCommand= function(self)
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
@@ -311,7 +296,7 @@ return Def.ActorFrame{
 	config_menu:create_actors(
 		"menu", 0, 16, _screen.w, _screen.h, _screen.h / 24 - 3, nil),
 	pain_display:create_actors("pain", _screen.w*.75, 80, nil, 184, .625),
-	Def.AutoHider(hider_params),
+	helper:create_actors("helper", config_data.service_help_time, "ConsService", ""),
 	Def.ActorFrame{
 		Name= "press prompt",
 		InitCommand= function(self)

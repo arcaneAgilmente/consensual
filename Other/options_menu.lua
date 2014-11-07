@@ -24,92 +24,198 @@ local line_height= 24
 
 local option_item_mt= {
 	__index= {
-		create_actors=
-			function(self, name, height)
-				self.name= name
-				self.zoom= 1
-				self.width= SCREEN_WIDTH
-				return Def.ActorFrame{
-					Name= name,
-					InitCommand= function(subself)
-						self.container= subself
-						self.text= subself:GetChild("text")
-						self.underline= subself:GetChild("underline")
-						self.underline:horizalign(center)
-					end,
-					normal_text("text", "", nil, fetch_color("stroke"), nil, nil, self.zoom),
-					Def.Quad{
-						Name= "underline", InitCommand= cmd(y,underline_offset;horizalign,left;SetHeight,underline_thickness)
-					}
+		create_actors= function(self, name, height)
+			self.name= name
+			self.zoom= 1
+			self.width= SCREEN_WIDTH
+			self.prev_index= 1
+			self.translation_section= "OptionNames"
+			return Def.ActorFrame{
+				Name= name,
+				InitCommand= function(subself)
+					self.container= subself
+					self.text= subself:GetChild("text")
+					self.underline= subself:GetChild("underline")
+					self.underline:horizalign(center)
+				end,
+				normal_text("text", "", nil, fetch_color("stroke"), nil, nil, self.zoom),
+				Def.Quad{
+					Name= "underline", InitCommand= cmd(y,underline_offset;horizalign,left;SetHeight,underline_thickness)
 				}
-			end,
-		set_geo=
-			function(self, width, height, zoom)
-				self.width= width
-				self.zoom= zoom
-				self.height= height
-				self.text:zoom(zoom)
-				self.underline:y(height/2)
-			end,
-		set_underline_color=
-			function(self, color)
-				self.underline:diffuse(color)
-			end,
-		transform=
-			function(self, item_index, num_items, is_focus)
-				local changing_edge=
-					((self.prev_index == 1 and item_index == num_items) or
-				 (self.prev_index == num_items and item_index == 1))
-				if changing_edge then
-					self.container:diffusealpha(0)
-				end
-				self.container:finishtweening()
-				self.container:linear(move_time)
-				self.container:xy(0, (item_index - 1) *
-												(self.height or self.text:GetZoomedHeight()))
-				self.container:linear(move_time)
-				self.container:diffusealpha(1)
-				self.prev_index= item_index
-			end,
-		set=
-			function(self, info)
-				self.info= info
-				if info then
-					self:set_text(info.text)
-					self:set_underline(info.underline)
+			}
+		end,
+		set_geo= function(self, width, height, zoom)
+			self.width= width
+			self.zoom= zoom
+			self.height= height
+			self.text:zoom(zoom)
+			self.underline:y(height/2)
+		end,
+		set_underline_color= function(self, color)
+			self.underline:diffuse(color)
+		end,
+		set_text_colors= function(self, main, stroke)
+			self.text:diffuse(main)
+			self.text:strokecolor(stroke)
+		end,
+		transform= function(self, item_index, num_items, is_focus)
+			local changing_edge= math.abs(item_index-self.prev_index)>num_items/2
+			if changing_edge then
+				self.container:diffusealpha(0)
+			end
+			self.container:finishtweening()
+			self.container:linear(move_time)
+			self.container:xy(0, (item_index - 1) *
+													(self.height or self.text:GetZoomedHeight()))
+			self.container:linear(move_time)
+			self.container:diffusealpha(1)
+			self.prev_index= item_index
+		end,
+		set= function(self, info)
+			self.info= info
+			if info then
+				self:set_text(info.text)
+				self:set_underline(info.underline)
+			else
+				self.text:settext("")
+				self:set_underline(false)
+			end
+		end,
+		set_underline= function(self, u)
+			if u then
+				self.underline:accelerate(0.25)
+				self.underline:zoom(1)
+			else
+				self.underline:decelerate(0.25)
+				self.underline:zoom(0)
+			end
+		end,
+		set_text= function(self, t)
+			self.text:settext(get_string_wrapper(self.translation_section, t))
+			width_limit_text(self.text, self.width, self.zoom)
+			self.underline:SetWidth(self.text:GetZoomedWidth())
+		end,
+		get_cursor_fit= function(self)
+			local ret= {0, 0, 0, self.height + 4}
+			if self.text:GetText() ~= "" then
+				ret[3]= self.text:GetWidth() + 4
+			end
+			return ret
+		end,
+}}
+
+local option_item_value_mt= {
+	__index= {
+		create_actors= function(self, name, height)
+			self.name= name
+			self.zoom= 1
+			self.width= SCREEN_WIDTH
+			self.prev_index= 1
+			self.translation_section= "OptionNames"
+			return Def.ActorFrame{
+				Name= name, InitCommand= function(subself)
+					self.container= subself
+					self.text= subself:GetChild("text")
+					self.value= subself:GetChild("value")
+				end,
+				Def.Quad{
+					Name= "example", InitCommand= function(subself)
+						self.value_example= subself
+						subself:visible(false)
+						subself:horizalign(left)
+					end
+				},
+				normal_text("text", "", nil, nil, nil, nil, nil, left),
+				normal_text("value", "", nil, nil, nil, nil, nil, right),
+			}
+		end,
+		set_geo= function(self, width, height, zoom)
+			self.width= width
+			self.height= height
+			self.zoom= zoom
+			self.text:zoom(zoom)
+			self.text:x(-width/2)
+			self.value:zoom(zoom)
+			self.value:x(width/2)
+			self.value_example:x(width/2 + 4)
+			self.value_example:setsize(height * 2, height)
+		end,
+		set_text_colors= function(self, main, stroke)
+			self.text:diffuse(main)
+			self.text:strokecolor(stroke)
+			self.value:diffuse(main)
+			self.value:strokecolor(stroke)
+		end,
+		transform= option_item_mt.__index.transform,
+		set= function(self, info)
+			self.info= info
+			if info then
+				self.text:zoom(self.zoom)
+				self.text:settext(get_string_wrapper(self.translation_section, info.text))
+				self.value:zoom(self.zoom)
+				self.value:settext(get_string_wrapper(self.translation_section, info.value))
+				local ex_color= is_color_string(info.value)
+				if ex_color then
+					self.value_example:diffuse(ex_color)
+					self.value_example:visible(true)
 				else
-					self.text:settext("")
-					self:set_underline(false)
+					self.value_example:visible(false)
 				end
-			end,
-		set_underline=
-			function(self, u)
-				if u then
-					self.underline:accelerate(0.25)
-					self.underline:zoom(1)
+				local twidth= self.text:GetZoomedWidth()
+				local vwidth= self.value:GetZoomedWidth()
+				if twidth + vwidth + 16 > self.width then
+					if vwidth > 0 then
+						-- w1 * z1 + w2 * z2 + 16 = w3
+						-- z1 = z2
+						-- z1 * (w1 + w2) + 16 = w3
+						-- z1 * (w1 + w2) = w3 - 16
+						-- z1 = (w3 - 16) / (w1 + w2)
+						local z= (self.width - 16) / (twidth + vwidth)
+						self.text:zoomx(z)
+						self.value:zoomx(z)
+					else
+						width_limit_text(self.text, self.width, self.zoom)
+					end
+				end
+			else
+				self.text:settext("")
+				self.value:settext("")
+				self.value_example:visible(false)
+			end
+		end,
+		get_cursor_fit= function(self)
+			local ret= {0, 0, 0, self.height + 4}
+			if self.text:GetText() ~= "" then
+				ret[1]= self.text:GetX()
+				ret[3]= self.text:GetWidth()
+			end
+			if self.value:GetText() ~= "" then
+				if ret[3] > 0 then
+					ret[3]= self.value:GetX() - self.text:GetX()
 				else
-					self.underline:decelerate(0.25)
-					self.underline:zoom(0)
+					ret[1]= -self.value:GetWidth()
+					ret[3]= self.value:GetX()
 				end
-			end,
-		set_text=
-			function(self, t)
-				self.text:settext(get_string_wrapper("OptionNames", t))
-				width_limit_text(self.text, self.width, self.zoom)
-				self.underline:SetWidth(self.text:GetZoomedWidth())
-			end,
+			end
+			if ret[1] ~= 0 then ret[1]= ret[1] - 2 end
+			ret[3]= ret[3] + 4
+			return ret
+		end,
+		set_underline_color= noop_nil,
+		set_underline= noop_nil,
 }}
 
 option_display_mt= {
 	__index= {
 		create_actors=
-			function(self, name, x, y, el_count, el_width, el_height, el_zoom, no_heading, no_display)
+			function(self, name, x, y, el_count, el_width, el_height, el_zoom, no_heading, no_display, value_style)
 				self.name= name
 				self.el_width= el_width or SCREEN_WIDTH
 				self.el_height= el_height or 24
 				self.el_zoom= el_zoom or 1
 				self.no_heading= no_heading
 				self.no_display= no_display
+				self.translation_section= "OptionNames"
 				local args= {
 					Name= name,
 					InitCommand= function(subself)
@@ -137,8 +243,13 @@ option_display_mt= {
 					next_y= next_y + line_height * .5
 				end
 				self.sick_wheel= setmetatable({disable_wrapping= true}, sick_wheel_mt)
-				args[#args+1]= self.sick_wheel:create_actors(
-					"wheel", el_count, option_item_mt, 0, next_y)
+				if value_style then
+					args[#args+1]= self.sick_wheel:create_actors(
+						"wheel", el_count, option_item_value_mt, 0, next_y)
+				else
+					args[#args+1]= self.sick_wheel:create_actors(
+						"wheel", el_count, option_item_mt, 0, next_y)
+				end
 				return Def.ActorFrame(args)
 			end,
 		set_underline_color=
@@ -147,6 +258,27 @@ option_display_mt= {
 					item:set_underline_color(color)
 				end
 			end,
+		set_text_colors= function(self, main, stroke)
+			local function set_one(one)
+				one:diffuse(main)
+				one:strokecolor(stroke)
+			end
+			if not self.no_heading then
+				set_one(self.heading)
+			end
+			if not self.no_display then
+				set_one(self.display)
+			end
+			for i, item in ipairs(self.sick_wheel.items) do
+				item:set_text_colors(main, stroke)
+			end
+		end,
+		set_translation_section= function(self, section)
+			self.translation_section= section
+			for i= 1, #self.sick_wheel.items do
+				self.sick_wheel.items[i].translation_section= section
+			end
+		end,
 		set_el_geo= function(self, width, height, zoom)
 			self.el_width= width or self.el_width
 			self.el_height= height or self.el_height
@@ -161,7 +293,7 @@ option_display_mt= {
 		set_heading=
 			function(self, h)
 				if not self.no_heading then
-					self.heading:settext(get_string_wrapper("OptionNames", h))
+					self.heading:settext(get_string_wrapper(self.translation_section, h))
 					width_limit_text(self.heading, self.el_width, self.el_zoom)
 				end
 			end,
@@ -220,9 +352,14 @@ option_set_general_mt= {
 				if self.display then
 					return self.display:get_element(self.cursor_pos)
 				else
+					lua.ReportScriptError("menu has no display to fetch cursor element from.")
 					return nil
 				end
 			end,
+		scroll_to_pos= function(self, pos)
+			self.cursor_pos= ((pos-1) % #self.info_set) + 1
+			self.display:scroll(self.cursor_pos)
+		end,
 		interpret_code=
 			function(self, code)
 				local funs= {
@@ -287,7 +424,7 @@ options_sets.menu= {
 	__index= {
 		initialize= function(self, player_number, initializer_args, no_up, up_text)
 			self.menu_data= initializer_args
-			self.name= initializer_args.name
+			self.name= initializer_args.name or ""
 			self.player_number= player_number
 			self.no_up= no_up
 			self.up_text= up_text
@@ -295,6 +432,7 @@ options_sets.menu= {
 		end,
 		reset_info= function(self)
 			self.info_set= {}
+			self.shown_data= {}
 			if not self.no_up then
 				if self.up_text then
 					self.info_set[#self.info_set+1]= {text= self.up_text}
@@ -306,30 +444,68 @@ options_sets.menu= {
 			if self.player_number then
 				self.curr_level= ops_level(self.player_number)
 			end
-			self.shown_data= {}
-			for i, d in ipairs(self.menu_data) do
-				local show= true
-				if self.player_number and d.level then
-					if d.level > 0 then
-						show= d.level <= self.curr_level
-					else
-						show= -d.level == self.curr_level
-					end
-				end
-				if d.req_func then
-					show= show and d.req_func(self.player_number)
-				end
-				if show then
-					self.shown_data[#self.shown_data+1]= self.menu_data[i]
-					self.info_set[#self.info_set+1]= {text= d.name}
-					if d.args and type(d.args) == "table" then
-						d.args.name= d.name
-					end
-				end
-			end
+			self:update_info(self.menu_data)
 			if self.display then
 				self.display:set_info_set(self.info_set)
 			end
+		end,
+		id_plus_up= function(self, id)
+			if self.no_up then return id end
+			return id + 1
+		end,
+		id_minus_up= function(self, id)
+			if self.no_up then return id end
+			return id - 1
+		end,
+		update_info= function(self, new_menu_data)
+			local next_shown= 1
+			Trace("Updating menu: " .. self.name)
+			for i, data in ipairs(new_menu_data) do
+				local show= true
+				if self.player_number and data.level then
+					if data.level > 0 then
+						show= data.level <= self.curr_level
+					else
+						show= -data.level == self.curr_level
+					end
+				end
+				if data.req_func then
+					show= show and data.req_func(self.player_number)
+				end
+				if show then
+					local disp_slot= self:id_plus_up(next_shown)
+					self.shown_data[next_shown]= data
+					if self.info_set[disp_slot] then
+						self.info_set[disp_slot].text= data.name
+						self.info_set[disp_slot].value= data.value
+					else
+						self.info_set[disp_slot]= {text= data.name, value= data.value}
+					end
+					if data.args and type(data.args) == "table" then
+						data.args.name= data.name
+					end
+					if self.display then
+						self.display:set_element_info(
+							disp_slot, self.info_set[disp_slot])
+					end
+					next_shown= next_shown + 1
+				end
+			end
+			while #self.shown_data >= next_shown do
+				local index= #self.shown_data
+				self.shown_data[index]= nil
+				self.info_set[self:id_plus_up(index)]= nil
+				if self.display then
+					self.display:set_element_info(self:id_plus_up(index), nil)
+				end
+			end
+			if self.cursor_pos > #self.info_set then
+				self.cursor_pos= #self.info_set
+				if self.display then
+					self:scroll_to_pos(self.cursor_pos)
+				end
+			end
+			self.menu_data= new_menu_data
 		end,
 		recheck_levels= function(self, force)
 			if force or self.player_number and self.curr_level ~=
@@ -351,10 +527,7 @@ options_sets.menu= {
 			end
 		end,
 		interpret_start= function(self)
-			local data= self.shown_data[self.cursor_pos-1]
-			if self.no_up then
-				data= self.shown_data[self.cursor_pos]
-			end
+			local data= self.shown_data[self:id_minus_up(self.cursor_pos)]
 			if data then
 				return true, data
 			else
@@ -362,9 +535,9 @@ options_sets.menu= {
 			end
 		end,
 		get_item_name= function(self, pos)
-			pos= pos or self.cursor_pos-1
-			if self.menu_data[pos] then
-				return self.menu_data[pos].name
+			pos= self:id_minus_up(pos or self.cursor_pos)
+			if self.shown_data[pos] then
+				return self.shown_data[pos].name
 			end
 			return ""
 		end
