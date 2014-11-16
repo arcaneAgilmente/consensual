@@ -512,11 +512,12 @@ function steps_are_konami_trash(steps)
 	return fname and fname:find("DDR") and not fname:find("Encore")
 end
 
-function steps_get_author(steps)
+function steps_get_author(steps, song)
+	local author= ""
 	if steps.GetAuthorCredit then
 		-- All three of these are plausible places for the author name.
 		-- The correct place.
-		local author= steps:GetAuthorCredit()
+		author= steps:GetAuthorCredit()
 		if not author or author == "" then
 			-- The wrong place.
 			author= steps:GetChartName()
@@ -528,10 +529,13 @@ function steps_get_author(steps)
 		if steps_are_konami_trash(steps) then
 			author = "Konami Shuffle"
 		end
-		return author
 	else
-		return ""
+		author= song:GetScripter()
 	end
+	if author == "" or author:find("Copied From") then
+		author= song:GetGroupName()
+	end
+	return author
 end
 
 function gamestate_get_curr_song()

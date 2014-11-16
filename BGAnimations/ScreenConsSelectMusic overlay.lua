@@ -1,5 +1,6 @@
 GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(1)
 
+
 local music_wheel= setmetatable({}, music_whale_mt)
 local auto_scrolling= nil
 local next_auto_scroll_time= 0
@@ -284,6 +285,7 @@ local song_props= {
 	{name= "edit_tags", level= 3},
 	{name= "edit_pain", level= 4},
 	{name= "edit_styles", level= 2},
+	{name= "convert_xml"},
 	{name= "end_credit", level= 4},
 }
 
@@ -931,6 +933,16 @@ local function input(event)
 						elseif extra.name == "toggle_censoring" then
 							toggle_censoring()
 							music_wheel:resort_for_new_style()
+							common_menu_change(1)
+						elseif extra.name == "convert_xml" then
+							local cong= GAMESTATE:GetCurrentSong()
+							if cong then
+								if convert_xml_bgs then
+									convert_xml_bgs(cong:GetSongDir())
+								else
+									lua.ReportScriptError("Converting xml scripted simfiles is an abandoned project.  See http://www.stepmania.com/forums/news/show/1121 to learn why.")
+								end
+							end
 							common_menu_change(1)
 						elseif interpret_common_song_props_code(pn, extra.name) then
 							common_menu_change(1)

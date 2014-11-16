@@ -455,7 +455,7 @@ function song_progress_bar_interface:set_from_song()
 	local song= GAMESTATE:GetCurrentSong()
 	if song then
 		self.song_first_second= song:GetFirstSecond()
-		self.song_len= (song:GetLastSecond() - self.song_first_second) *
+		self.song_len= (song:GetLastSecond() - self.song_first_second) /
 			song_opts:MusicRate()
 	else
 		Trace("Current song is nil on ScreenGameplay")
@@ -464,7 +464,7 @@ end
 
 function song_progress_bar_interface:update()
 	local cur_seconds= (GAMESTATE:GetCurMusicSeconds() -self.song_first_second)
-		* song_opts:MusicRate() * screen_gameplay:GetHasteRate()
+		/ (song_opts:MusicRate() * screen_gameplay:GetHasteRate())
 	local zoom= cur_seconds / self.song_len
 	local cur_color= color_in_set(self.progress_colors, math.ceil(zoom * #self.progress_colors), false, false, false)
 	self.filler:diffuse(cur_color)
@@ -825,13 +825,7 @@ local function make_special_actors_for_players()
 		end
 		if flags.chart_info then
 			local cur_steps= gamestate_get_curr_steps(v)
-			local author= steps_get_author(cur_steps)
-			if GAMESTATE:IsCourseMode() then
-				author= GAMESTATE:GetCurrentCourse():GetScripter()
-			end
-			if not author or author == "" then
-				author= "Uncredited"
-			end
+			local author= steps_get_author(cur_steps, gamestate_get_curr_song())
 			local difficulty= steps_to_string(cur_steps)
 			local rating= cur_steps:GetMeter()
 			local info_text= author .. ": " .. difficulty .. ": " .. rating

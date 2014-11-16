@@ -30,24 +30,24 @@ dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 
 local function check_play_regular()
-	return playmode == "Playmode_Regular"
+	return playmode == "PlayMode_Regular"
 end
 local function set_play_regular()
-	playmode= "Playmode_Regular"
+	playmode= "PlayMode_Regular"
 end
 local function check_play_nonstop()
-	return playmode == "Playmode_Nonstop"
+	return playmode == "PlayMode_Nonstop"
 end
 local function set_play_nonstop()
-	playmode= "Playmode_Regular" -- Disabled until course mode is worth supporting.
+	playmode= "PlayMode_Nonstop" -- Disabled until course mode is worth supporting.
 end
 
 local playmode_menu_init= {
 	name= "playmode_choice", eles= {
 		{ name= "Regular", init= check_play_regular, set= set_play_regular,
 			unset= noop_false},
---		{ name= "Nonstop", init= check_play_nonstop, set= set_play_nonstop,
-		--			unset= noop_false},
+		{ name= "Nonstop", init= check_play_nonstop, set= set_play_nonstop,
+			unset= noop_false},
 }}
 local playmode_menu= setmetatable({}, options_sets.mutually_exclusive_special_functions)
 playmode_menu:initialize(nil, playmode_menu_init)
@@ -110,7 +110,7 @@ local menu_options= {}
 do
 	local menu_config= misc_config:get_data().initial_menu_ops
 	for i, op_name in ipairs(sorted_initial_menu_ops) do
-		if menu_config[op_name] and op_name ~= "playmode_choice" then
+		if menu_config[op_name] then
 			menu_options[#menu_options+1]= {name= op_name}
 		end
 	end
@@ -190,8 +190,8 @@ local function create_actors()
 			SCREEN_CENTER_X, SCREEN_CENTER_Y)
 	end
 	args[#args+1]= menu_display:create_actors(
-		"Menu", SCREEN_CENTER_X, SCREEN_CENTER_Y - 0, #menu_options, disp_width,
-		24, 1, true, true)
+		"Menu", SCREEN_CENTER_X, SCREEN_CENTER_Y - 0, math.min(6, #menu_options),
+		disp_width, 24, 1, true, true)
 	args[#args+1]= playmode_display:create_actors(
 		"Playmode", SCREEN_CENTER_X, SCREEN_CENTER_Y - 132, 3, disp_width, 24, 1,
 		false, true)
@@ -396,7 +396,10 @@ local function update_cursor_pos()
 		if item then
 			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(item.container)
 			local xp, yp= rec_calc_actor_pos(item.container)
+			cursors[rpn]:unhide()
 			cursors[rpn]:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
+		else
+			cursors[rpn]:hide()
 		end
 	end
 	for i, frame in ipairs(display_frames) do

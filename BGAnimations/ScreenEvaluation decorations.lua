@@ -460,9 +460,8 @@ local life_graph_mt= {
 		hide= function(self) self.container:visible(false) end,
 		unhide= function(self) self.container:visible(true) end,
 		set= function(self)
-			--local length= song_get_length(gamestate_get_curr_song())
 			local length= gameplay_end_time - gameplay_start_time
-			local samples= 100
+			local samples= DISPLAY:GetDisplayHeight()
 			local sample_resolution= self.gh / samples
 			local seconds_per_sample= length / samples
 			--Trace("Getting life record over length " .. tostring(length))
@@ -643,7 +642,8 @@ local score_report_mt= {
 			local next_y= 0
 			if flags.chart_info then
 				self.chart_info:settext(
-					chart_info_text(gamestate_get_curr_steps(player_number)))
+					chart_info_text(gamestate_get_curr_steps(player_number),
+													gamestate_get_curr_song()))
 				width_limit_text(self.chart_info, allowed_width, self.scale)
 				next_y= next_y + self.spacing
 			else

@@ -685,13 +685,10 @@ function credit_reporter(x, y, show_credits)
 	})
 end
 
-function chart_info_text(steps)
+function chart_info_text(steps, song)
 	local info_text= ""
 	if steps then
-		local author= steps_get_author(steps)
-		if GAMESTATE:IsCourseMode() then
-			author= GAMESTATE:GetCurrentCourse():GetScripter()
-		end
+		local author= steps_get_author(steps, song)
 		if not author or author == "" then
 			author= "Uncredited"
 		end
@@ -700,11 +697,6 @@ function chart_info_text(steps)
 		info_text= author .. ": " .. difficulty .. ": " .. rating
 	end
 	return info_text
-end
-
-function chart_info(steps, x, y, z)
-	return normal_text(
-		"chart_info", chart_info_text(steps), nil, nil, x, y, z or 1, center)
 end
 
 -- Because somebody decided stepmania's scaletofit should change the position

@@ -420,7 +420,7 @@ local score_display_mt= {
 				width_limit_text(self.title, banner_width)
 				self.timeframe:settext(info.start .. "-" .. info.finish)
 				width_limit_text(self.timeframe, banner_width)
-				self.chart_info:settext(chart_info_text(info.steps))
+				self.chart_info:settext(chart_info_text(info.steps, info.song))
 				width_limit_text(self.chart_info, banner_width)
 				local high_scores= machine_profile:GetHighScoreList(
 					info.song, info.steps):GetHighScores()

@@ -721,7 +721,7 @@ pain_display_mt= {
 				item:set_number(steps:GetMeter())
 				item.number:diffuse(color_percent_above(steps:GetMeter()/20, .6))
 			elseif item_config.author then
-				item:set_text(steps_get_author(steps))
+				item:set_text(steps_get_author(steps, song))
 				local width= self.narrow_el_w
 				if item_config.is_wide then width= self.wide_el_w end
 				width_limit_text(item.text, width, self.el_z)

@@ -54,7 +54,7 @@ local function step_artist(song)
 		local all_steps= song:GetStepsByStepsType(filter_type)
 		local artists= {}
 		for i, v in ipairs(all_steps) do
-			local author= steps_get_author(v)
+			local author= steps_get_author(v, song)
 			if not string_in_table(author, artists) then
 				artists[#artists+1]= steps_get_author(v)
 			end
@@ -65,6 +65,51 @@ local function step_artist(song)
 		return {""}
 	else
 		return {""}
+	end
+end
+
+local function note_count(song)
+	if song.GetStepsByStepsType then
+		local curr_style= GAMESTATE:GetCurrentStyle()
+		local filter_type= curr_style:GetStepsType()
+		local all_steps= song:GetStepsByStepsType(filter_type)
+		local ret= {}
+		local radar
+		for i, v in ipairs(all_steps) do
+			radar= v:GetRadarValues(PLAYER_2)
+			ret[#ret+1]= radar:GetValue("RadarCategory_TapsAndHolds") +
+				radar:GetValue("RadarCategory_Jumps") +
+				radar:GetValue("RadarCategory_Hands")
+		end
+		if #ret > 0 then
+			return ret
+		end
+		return {0}
+	else
+		return {0}
+	end
+end
+
+local function nps(song)
+	if song.GetStepsByStepsType then
+		local curr_style= GAMESTATE:GetCurrentStyle()
+		local filter_type= curr_style:GetStepsType()
+		local all_steps= song:GetStepsByStepsType(filter_type)
+		local ret= {}
+		local radar
+		local len= song_get_length(song)
+		for i, v in ipairs(all_steps) do
+			radar= v:GetRadarValues(PLAYER_2)
+			ret[#ret+1]= (radar:GetValue("RadarCategory_TapsAndHolds") +
+											radar:GetValue("RadarCategory_Jumps") +
+											radar:GetValue("RadarCategory_Hands")) / len
+		end
+		if #ret > 0 then
+			return ret
+		end
+		return {0}
+	else
+		return {0}
 	end
 end
 
@@ -255,6 +300,8 @@ local song_sort_factors= {
 	-- Disabled, causes stepmania to eat all ram and hang.
 	-- Left in as disabled so it's known to not work.
 	{ name= "Step Artist", get_names= step_artist, returns_multiple= true},
+	{ name= "Note Count", get_names= note_count, returns_multiple= true},
+	{ name= "NPS", get_names= nps, returns_multiple= true},
 }
 
 local course_sort_factors= {
@@ -476,14 +523,25 @@ end
 
 local bucket_man_interface= {}
 local bucket_man_interface_mt= { __index= bucket_man_interface }
+local prev_was_course= false
 
 function bucket_man_interface:initialize()
 	init_songs_of_each_style()
 	machine_profile= PROFILEMAN:GetMachineProfile()
 	if GAMESTATE:IsCourseMode() then
+		if not prev_was_course then
+			random_recent= {}
+			played_recent= {}
+		end
+		prev_was_course= true
 		self.song_set= SONGMAN:GetAllCourses(false) -- fuck autogen courses
 		set_course_mode()
 	else
+		if prev_was_course then
+			random_recent= {}
+			played_recent= {}
+		end
+		prev_was_course= false
 		self.song_set= SONGMAN:GetAllSongs()
 		set_song_mode()
 	end
