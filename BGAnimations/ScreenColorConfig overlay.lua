@@ -425,6 +425,7 @@ local function input(event)
 					color_config:save()
 					resolve_color_references()
 					update_common_bg_colors()
+					update_confetti_color()
 					trans_new_screen("ScreenInitialMenu")
 				else
 					lua.ReportScriptError("Config sanity check failed.")

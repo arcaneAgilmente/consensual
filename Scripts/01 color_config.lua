@@ -77,6 +77,7 @@ local default_config= {
 	{"bpm", "percent"},
 	{"speed", "percent"},
 	{"hours", "percent"},
+	{"confetti", "percent"},
 
 	{"help", {
 		 {"bg", "bg", .75},
@@ -489,6 +490,78 @@ function groups_are_similar(a, b)
 	return resolved_groups_are_similar(left_resolved, right_resolved)
 end
 
+local function group_has_entry(group, entry_name)
+	for i, entry in ipairs(group) do
+		if entry[1] == entry_name then return entry end
+	end
+	return false
+end
+
+function rec_ensure_color_existence(a, b)
+	for i, entry in ipairs(a) do
+		local should_have= true
+		local name= convert_name(entry[1])
+		if type(name) == "number" and name > 1 then should_have= false end
+		if should_have then
+			local from_b= group_has_entry(b, entry[1])
+			if from_b then
+				local ant= type(entry[2])
+				local bnt= type(from_b[2])
+				if ant == "string" then
+					if bnt == "string" then
+						local refa= fetch_default_color_setting(entry[2])
+						local refb= lookup_color_reference(from_b[2], false, true)
+						if is_color(refa) then
+							if not is_color(refb) then
+								from_b[2]= entry[2]
+							end
+						else
+							if is_color(refb) then
+								from_b[2]= entry[2]
+							else
+								rec_ensure_color_existence(refa, refb)
+							end
+						end
+					elseif is_color(from_b[2]) then
+						if not is_color(fetch_default_color_setting(entry[2])) then
+							from_b[2]= entry[2]
+						end
+					else
+						rec_ensure_color_existence(
+							fetch_default_color_setting(entry[2]),
+							from_b[2])
+					end
+				elseif is_color(entry[2]) then
+					if bnt == "string" then
+						if not is_color(lookup_color_reference(from_b[2], false, true)) then
+							from_b[2]= DeepCopy(entry[2])
+						end
+					elseif is_color(from_b[2]) then
+						-- good.
+					else
+						from_b[2]= DeepCopy(entry[2])
+					end
+				else
+					if bnt == "string" then
+						local refb= lookup_color_reference(from_b[2], false, true)
+						if is_color(refb) then
+							from_b[2]= DeepCopy(entry[2])
+						else
+							rec_ensure_color_existence(entry[2], refb)
+						end
+					elseif is_color(from_b[2]) then
+						from_b[2]= DeepCopy(entry[2])
+					else
+						rec_ensure_color_existence(entry[2], from_b[2])
+					end
+				end
+			else
+				b[#b+1]= DeepCopy(entry)
+			end
+		end
+	end
+end
+
 function fetch_color(name, alpha)
 	local name_parts= split_name(name)
 	local current_group= resolved_colors
@@ -528,6 +601,7 @@ function resolve_color_references()
 		end
 	end
 end
+rec_ensure_color_existence(default_config, color_config:get_data())
 resolve_color_references()
 function print_resolved_colors()
 	Trace("Resolved colors:")

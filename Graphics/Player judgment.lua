@@ -102,6 +102,8 @@ local tns_cont_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToContinu
 local tns_maint_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToMaintainCombo")]
 local tns_inc_miss_combo= tns_reverse[THEME:GetMetric("Gameplay", "MaxScoreToIncrementMissCombo")]
 
+local prev_combo= -1
+
 local get_seconds= function() return 0 end
 -- GetStepsSeconds is recently added, in an attempt to make life and combo
 -- graphs match better.
@@ -364,10 +366,18 @@ local args= {
 			end
 		end,
 	ComboCommand= function(self, param)
-									if not cons_players[player].fake_judge then
-										set_combo_stuff(param)
-									end
-								end
+		if prev_combo == -1 then
+			prev_combo= math.floor((param.Combo or 0) / 1000) * 1000
+		else
+			if param.Combo and param.Combo > prev_combo + 1000 then
+				prev_combo= math.floor(param.Combo / 1000) * 1000
+				activate_confetti("combo", true, player)
+			end
+		end
+		if not cons_players[player].fake_judge then
+			set_combo_stuff(param)
+		end
+	end
 }
 args[1].OnCommand= THEME:GetMetric("Judgment", "JudgmentOnCommand")
 

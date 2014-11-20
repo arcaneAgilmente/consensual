@@ -56,7 +56,7 @@ local function step_artist(song)
 		for i, v in ipairs(all_steps) do
 			local author= steps_get_author(v, song)
 			if not string_in_table(author, artists) then
-				artists[#artists+1]= steps_get_author(v)
+				artists[#artists+1]= author
 			end
 		end
 		if #artists > 0 then
@@ -100,9 +100,10 @@ local function nps(song)
 		local len= song_get_length(song)
 		for i, v in ipairs(all_steps) do
 			radar= v:GetRadarValues(PLAYER_2)
-			ret[#ret+1]= (radar:GetValue("RadarCategory_TapsAndHolds") +
+			local nps= (radar:GetValue("RadarCategory_TapsAndHolds") +
 											radar:GetValue("RadarCategory_Jumps") +
 											radar:GetValue("RadarCategory_Hands")) / len
+			ret[#ret+1]= math.round(nps * 100) / 100
 		end
 		if #ret > 0 then
 			return ret
@@ -378,7 +379,14 @@ local function make_rival_bucket()
 	local name_sort_factor= {
 		name= "Rival Name", get_names= function(n) return {n} end,
 		uses_depth= true, can_join= noop_false}
-	local sorted_names= bucket_sort(all_names, {name_sort_factor})
+	local sorted_names= {}
+	local worker= coroutine.create(
+		function()
+			sorted_names= bucket_sort(all_names, {name_sort_factor})
+	end)
+	while coroutine.status(worker) ~= "dead" do
+		coroutine.resume(worker)
+	end
 	local function convert_name_to_bucket(item)
 		local name= item.el
 		local contents= {}
@@ -547,6 +555,7 @@ function bucket_man_interface:initialize()
 	end
 	rival_bucket= make_rival_bucket()
 	self:style_filter_songs()
+	self.cur_sort_info= get_sort_info()[1]
 end
 
 function bucket_man_interface:style_filter_songs()
@@ -588,38 +597,64 @@ function bucket_man_interface:filter_songs(filter_func)
 		return
 	end
 	local refiltered_songs= {}
-	for i, v in ipairs(self.style_filtered_songs) do
-		if filter_func(v) then
-			refiltered_songs[#refiltered_songs+1]= v
+	local num_songs= #self.style_filtered_songs
+	for i= 1, num_songs do
+		local song= self.style_filtered_songs[i]
+		if filter_func(song) then
+			refiltered_songs[#refiltered_songs+1]= song
 		end
+		if i % 1000 == 0 then maybe_yield("Filtering", fracstr(i, num_songs)) end
 	end
 	self.filtered_songs= refiltered_songs
-end
-
-function bucket_man_interface:sort_songs(sort_info)
-	sort_info= sort_info or self.cur_sort_info
-	update_rating_cap()
-	self:filter_songs(song_short_and_uncensored)
-	-- TODO:  The case where the player manages to set their rating cap to
-	-- filter out all songs should be handled better.
-	if #self.filtered_songs < 1 then
-		disable_rating_cap()
-		self:filter_songs(song_short_and_uncensored)
-	end
-	if sort_info.pre_sort_func then
-		sort_info.pre_sort_func(sort_info.pre_sort_arg)
-	end
-	self.current_sort_name= sort_info.name
-	self.cur_sort_info= sort_info
-	self.sorted_songs= bucket_sort(
-		self.filtered_songs, {sort_info, title_sort})
-	return self.sorted_songs
 end
 
 if bucket_man then
 	setmetatable(bucket_man, bucket_man_interface_mt)
 else
 	bucket_man= setmetatable({}, bucket_man_interface_mt)
+end
+
+local function sort_work()
+--	Trace("Sorting by: " .. bucket_man.cur_sort_info.name)
+	update_rating_cap()
+	local filter_start= GetTimeSinceStart()
+	bucket_man:filter_songs(song_short_and_uncensored)
+	local filter_end= GetTimeSinceStart()
+	local sfcount= #bucket_man.style_filtered_songs
+	maybe_yield("filtered", sfcount .. "/" .. sfcount)
+--	Trace("Filtering took " .. filter_end - filter_start)
+	-- TODO:  The case where the player manages to set their rating cap to
+	-- filter out all songs should be handled better.
+	if #bucket_man.filtered_songs < 1 then
+		disable_rating_cap()
+		bucket_man:filter_songs(song_short_and_uncensored)
+	end
+	local csi= bucket_man.cur_sort_info
+	if csi.pre_sort_func then
+		csi.pre_sort_func(csi.pre_sort_arg)
+	end
+	bucket_man.current_sort_name= csi.name
+	local sort_start= GetTimeSinceStart()
+	bucket_man.sorted_songs= bucket_sort(
+		bucket_man.filtered_songs, {csi, title_sort})
+	local sort_end= GetTimeSinceStart()
+--	Trace("Converting + sorting took " .. sort_end - sort_start)
+end
+
+local song_sort_worker= false
+
+function make_song_sort_worker()
+	song_sort_worker= coroutine.create(sort_work)
+	return song_sort_worker
+end
+
+function finish_song_sort_worker()
+	if song_sort_worker then
+		while coroutine.status(song_sort_worker) ~= "dead" do
+			coroutine.resume(song_sort_worker)
+		end
+		song_sort_worker= false
+	end
 end
 
 local wheel_x= 0
@@ -772,6 +807,7 @@ end
 function music_whale:find_actors()
 	self.song_set= bucket_man.filtered_songs
 	self.cursor_song= gamestate_get_curr_song()
+	finish_song_sort_worker()
 	if music_whale_state then
 		self.cursor_item= music_whale_state.cursor_item
 		if song_short_enough(music_whale_state.cursor_song) then
@@ -784,64 +820,49 @@ function music_whale:find_actors()
 				end
 			end
 		end
-		self:sort_songs(music_whale_state.cur_sort_info)
-	else
-		self:sort_songs(get_sort_info()[1])
 	end
+	self:post_sort_update(bucket_man.cur_sort_info)
 end
 
-function music_whale:sort_songs(si)
+function music_whale:post_sort_update(si)
 	self.current_sort_name= si.name
-	local function sort_work()
-		self.cur_sort_info= si
-		self.sorted_songs= bucket_man:sort_songs(si)
-		self.disp_stack= {}
-		self.display_bucket= nil
-		if self.cursor_song or self.cursor_item and #self.sorted_songs > 0 then
-			local function final_compare(a, b)
-				return a == b
-			end
-			local search_path= {}
-			if self.cursor_item then
-				search_path= {
-					bucket_search_for_item(self.sorted_songs, self.cursor_item)}
-				if search_path[1] == -1 then
---					Trace("Failed to find cursor item, searching for song:  " .. table.concat(search_path, ", "))
-					search_path= {bucket_search(self.sorted_songs, self.cursor_song,
-																			final_compare, true)}
-				end
-			else
+	self.cur_sort_info= si
+	self.sorted_songs= bucket_man.sorted_songs
+	self.disp_stack= {}
+	self.display_bucket= nil
+	if self.cursor_song or self.cursor_item and #self.sorted_songs > 0 then
+		local function final_compare(a, b)
+			return a == b
+		end
+		local search_path= {}
+		if self.cursor_item then
+			search_path= {
+				bucket_search_for_item(self.sorted_songs, self.cursor_item)}
+			if search_path[1] == -1 then
+				--					Trace("Failed to find cursor item, searching for song:  " .. table.concat(search_path, ", "))
 				search_path= {bucket_search(self.sorted_songs, self.cursor_song,
 																		final_compare, true)}
 			end
-			if music_whale_state and music_whale_state.on_random then
-				while #search_path > music_whale_state.depth_to_random+1 do
-					search_path[#search_path]= nil
-				end
+		else
+			search_path= {bucket_search(self.sorted_songs, self.cursor_song,
+																	final_compare, true)}
+		end
+		if music_whale_state and music_whale_state.on_random then
+			while #search_path > music_whale_state.depth_to_random+1 do
+				search_path[#search_path]= nil
 			end
-			if search_path[1] ~= -1 then
-				self:follow_search_path(search_path, 1, self.sorted_songs)
-				if music_whale_state and music_whale_state.on_random then
-					self:nav_to_named_element(music_whale_state.on_random)
-					music_whale_state.on_random= nil
-				end
-			else
-				self:set_display_bucket(self.sorted_songs, 1)
+		end
+		if search_path[1] ~= -1 then
+			self:follow_search_path(search_path, 1, self.sorted_songs)
+			if music_whale_state and music_whale_state.on_random then
+				self:nav_to_named_element(music_whale_state.on_random)
+				music_whale_state.on_random= nil
 			end
 		else
 			self:set_display_bucket(self.sorted_songs, 1)
 		end
-	end
-	if false and si == self.cur_sort_info then
-		-- TODO:  This does not work anymore because there are sort options inside buckets.  The structure has to change so that the sort menu and the song buckets do not share the same stack.
-		local parent_group= self.disp_stack[#self.disp_stack]
-		if parent_group then
-			self:pop_from_disp_stack()
-		else
-			sort_work()
-		end
 	else
-		sort_work()
+		self:set_display_bucket(self.sorted_songs, 1)
 	end
 	play_sample_music()
 end
@@ -853,7 +874,8 @@ function music_whale:resort_for_new_style()
 	self.cursor_song= gamestate_get_curr_song()
 	self.cursor_item= self.sick_wheel:get_info_at_focus_pos().item
 	bucket_man:style_filter_songs()
-	self:sort_songs(self.cur_sort_info)
+	return coroutine.create(sort_work),
+	function() self:post_sort_update(curr_element.sort_info) end
 end
 
 function music_whale:add_player_randoms(disp_bucket, player_number)
@@ -1190,7 +1212,12 @@ function music_whale:interact_with_element()
 			play_sample_music()
 		end
 	elseif curr_element.sort_info then
-		self:sort_songs(curr_element.sort_info)
+		-- TODO:  Avoid the work of sorting if the current sort type is chosen.
+		-- Problem:  Picking the current type when on a Random or Previous Song
+		-- choice is a useful way of seeing what group that item came from.
+		bucket_man.cur_sort_info= curr_element.sort_info
+		return coroutine.create(sort_work),
+		function() self:post_sort_update(curr_element.sort_info) end
 	elseif (curr_element.song_info or curr_element.random_info) and
 	gamestate_get_curr_song() then
 		local cur_song= gamestate_get_curr_song()

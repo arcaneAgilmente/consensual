@@ -3,7 +3,8 @@ return Def.ActorFrame{
 	normal_text(
 		"going", "", fetch_color("text"), fetch_color("bg"), _screen.cx,
 		_screen.cy, 2, nil, {
-			InitCommand= function(self)
+			StartTransitioningCommand= function(self)
+				activate_confetti("earned", false)
 				if get_time_remaining() < misc_config:get_data().min_remaining_time
 				or #bucket_man.filtered_songs < 1 then
 					self:settext("Your turn ends here.")

@@ -419,11 +419,61 @@ local function update_player_cursors()
 	end
 end
 
+local status_text= false
+local status_count= false
+local status_container= false
+local status_frame= setmetatable({}, frame_helper_mt)
+local status_active= false
+local status_worker= false
+local status_finish_func= false
+local function activate_status(worker, after_func)
+	status_active= true
+	status_worker= worker
+	status_finish_func= after_func
+	status_container:stoptweening()
+	status_container:linear(0.5)
+	status_container:diffusealpha(1)
+	status_text:settext("")
+	status_count:settext("")
+end
+
+local function deactivate_status()
+	if status_finish_func then
+		status_finish_func()
+	end
+	status_active= false
+	status_worker= false
+	status_container:stoptweening()
+	status_container:linear(0.5)
+	status_container:diffusealpha(0)
+end
+
+local function status_update(self)
+	if status_worker then
+		if coroutine.status(status_worker) ~= "dead" then
+			local working, state, count= coroutine.resume(status_worker)
+			if working then
+				status_text:settext(state or "done")
+				status_count:settext(count or "done")
+			else
+				status_text:settext("Error encountered.")
+				status_count:settext("")
+				lua.ReportScriptError(state)
+				deactivate_status()
+			end
+		else
+			deactivate_status()
+		end
+	end
+end
+
 local function Update(self)
 	if entering_song then
 		if get_screen_time() > entering_song then
 			SCREENMAN:GetTopScreen():queuecommand("real_play_song")
 		end
+	elseif status_active then
+		-- do nothing.
 	else
 		if auto_scrolling then
 			if get_screen_time() > next_auto_scroll_time then
@@ -767,8 +817,12 @@ local code_functions= {
 			change_sort_text(music_wheel.current_sort_name)
 		end,
 		play_song= function(pn)
-			music_wheel:interact_with_element()
-			change_sort_text(music_wheel.current_sort_name)
+			local needs_work, after_func= music_wheel:interact_with_element()
+			if needs_work then
+				activate_status(needs_work, after_func)
+			else
+				change_sort_text(music_wheel.current_sort_name)
+			end
 		end,
 		diff_up= function(pn)
 			stop_auto_scrolling()
@@ -830,7 +884,7 @@ local function handle_triggered_codes(pn, key_pressed, button, press_type)
 		if cons_players[pn] and cons_players[pn][v] then
 			cons_players[pn][v](cons_players[pn])
 			if update_rating_cap() then
-				music_wheel:resort_for_new_style()
+				activate_status(music_wheel:resort_for_new_style())
 			end
 			pain_displays[pn]:fetch_config()
 			pain_displays[pn]:update_all_items()
@@ -847,6 +901,7 @@ local function input(event)
 	local pn= event.PlayerNumber
 	local key_pressed= event.GameButton
 	local press_type= event.type
+	if status_active then return end
 	if press_type == "InputEventType_FirstPress"
 	and event.DeviceInput.button == misc_config:get_data().censor_privilege_key then
 		privileged_props= not privileged_props
@@ -909,30 +964,30 @@ local function input(event)
 						elseif extra.name == "censor" then
 							if gamestate_get_curr_song() then
 								add_to_censor_list(gamestate_get_curr_song())
-								music_wheel:resort_for_new_style()
+								activate_status(music_wheel:resort_for_new_style())
 							else
 								local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
 								if bucket.bucket_info and not bucket.is_special then
 									bucket_traverse(bucket.bucket_info.contents, nil, censor_item)
-									music_wheel:resort_for_new_style()
+									activate_status(music_wheel:resort_for_new_style())
 								end
 							end
 							common_menu_change(1)
 						elseif extra.name == "uncensor" then
 							if gamestate_get_curr_song() then
 								remove_from_censor_list(gamestate_get_curr_song())
-								music_wheel:resort_for_new_style()
+								activate_status(music_wheel:resort_for_new_style())
 							else
 								local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
 								if bucket.bucket_info and not bucket.is_special then
 									bucket_traverse(bucket.bucket_info.contents, nil, uncensor_item)
-									music_wheel:resort_for_new_style()
+									activate_status(music_wheel:resort_for_new_style())
 								end
 							end
 							common_menu_change(1)
 						elseif extra.name == "toggle_censoring" then
 							toggle_censoring()
-							music_wheel:resort_for_new_style()
+							activate_status(music_wheel:resort_for_new_style())
 							common_menu_change(1)
 						elseif extra.name == "convert_xml" then
 							local cong= GAMESTATE:GetCurrentSong()
@@ -962,7 +1017,7 @@ local function input(event)
 					local function close_attempt()
 						if enough_sourses_of_visible_styles() then
 							style_config:set_dirty(pn_to_profile_slot(pn))
-							music_wheel:resort_for_new_style()
+							activate_status(music_wheel:resort_for_new_style())
 							common_menu_change(1)
 							return
 						else
@@ -1012,7 +1067,7 @@ local function input(event)
 					SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 					pain_displays[pn]:fetch_config()
 					set_current_style("versus")
-					music_wheel:resort_for_new_style()
+					activate_status(music_wheel:resort_for_new_style())
 					set_closest_steps_to_preferred(pn)
 				end
 			end
@@ -1370,7 +1425,7 @@ return Def.ActorFrame {
 										end
 									end
 									self:settext(name)
-									width_limit_text(self, sort_width)
+									width_clip_limit_text(self, sort_width)
 									self:visible(true)
 								end
 	}),
@@ -1380,7 +1435,23 @@ return Def.ActorFrame {
 	player_cursors[PLAYER_2]:create_actors(
 		"P2_cursor", 0, 0, 1, pn_to_color(PLAYER_2),
 		fetch_color("player.hilight"), true, false, .5),
-	credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
+	-- FIXME:  There's not a place for the credit count on the screen anymore.
+	-- credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
+	Def.ActorFrame{
+		Name= "status report", InitCommand= function(self)
+			status_text= self:GetChild("status_text")
+			status_count= self:GetChild("status_count")
+			status_container= self
+			self:xy(_screen.cx, _screen.cy)
+			self:SetUpdateFunction(status_update)
+			self:diffusealpha(0)
+		end,
+		status_frame:create_actors(
+			"frame", 2, 200, 56, fetch_color("prompt.frame"), fetch_color("prompt.bg"),
+			0, 0),
+		normal_text("status_text", "", fetch_color("prompt.text"), nil, 0, -6, 1.5),
+		normal_text("status_count", "", fetch_color("prompt.text"), nil, 0, 18, .5),
+	},
 	Def.ActorFrame{
 		Name= "options message",
 		InitCommand= function(self)

@@ -28,6 +28,20 @@ options_sets.settable_thing= {
 set_option_set_metatables()
 dofile(THEME:GetPathO("", "auto_hider.lua"))
 
+local confetti_data= confetti_config:get_data()
+local function confetti_val(name, min, max, min_scale, scale, max_scale)
+	return {
+		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
+		validator= function(v) return v >= min and v <= max end,
+		initial_value= function() return confetti_data[name] end,
+		set= function(pn, v)
+			confetti_data[name]= v
+			confetti_config:set_dirty()
+			update_confetti_count()
+		end
+	}
+end
+
 local function make_extra_for_conf_val(name, min_scale, scale, max_scale)
 	return {
 		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
@@ -227,12 +241,36 @@ local consensual_options= {
 	{name= "initial_menu_choices", meta= options_sets.menu, args= im_options},
 }
 
+local confetti_options= {
+	{name= "confetti_amount", meta= options_sets.adjustable_float,
+	 args= confetti_val("amount", 0, 2000, 0, 2, 3)},
+	{name= "confetti_min_size", meta= options_sets.adjustable_float,
+	 args= confetti_val("min_size", 1, 512, 0, 1, 2)},
+	{name= "confetti_max_size", meta= options_sets.adjustable_float,
+	 args= confetti_val("max_size", 1, 512, 0, 1, 2)},
+	{name= "confetti_min_fall", meta= options_sets.adjustable_float,
+	 args= confetti_val("min_fall", 0, 60, -2, 0, 1)},
+	{name= "confetti_max_fall", meta= options_sets.adjustable_float,
+	 args= confetti_val("max_fall", 0, 60, -2, 0, 1)},
+	{name= "confetti_lumax", meta= options_sets.adjustable_float,
+	 args= confetti_val("lumax", 0, 256, -1, 1, 2)},
+	{name= "confetti_spin", meta= options_sets.adjustable_float,
+	 args= confetti_val("spin", 0, 3600, 0, 2, 3)},
+	{name= "confetti_on", meta= options_sets.special_functions,
+	 args= {
+		 eles= {
+			 { name= "On", init= function() return get_confetti("perm") end,
+				 set= function() activate_confetti("perm", true) end,
+				 unset= function() activate_confetti("perm", false) end}}}},
+}
+
 local menu_items= {
 	{name= "cons_config", meta= options_sets.menu, args= consensual_options},
 	{name= "reward_config", meta= options_sets.menu, args= reward_options},
 	{name= "help_config", meta= options_sets.menu, args= help_options},
 	{name= "flags_config", meta= options_sets.menu, args= flag_slot_options},
 	{name= "pain_config", meta= options_sets.menu, args= pain_slot_options},
+	{name= "confetti_config", meta= options_sets.menu, args= confetti_options},
 }
 
 local config_menu= setmetatable({}, menu_stack_mt)
@@ -272,6 +310,8 @@ local function input(event)
 			if not config_menu:interpret_code(code) then
 				if code == "Start" and config_menu:can_exit_screen() then
 					misc_config:save()
+					confetti_config:save()
+					update_confetti_count()
 					machine_flag_setting:save()
 					machine_pain_setting:save()
 					trans_new_screen("ScreenInitialMenu")

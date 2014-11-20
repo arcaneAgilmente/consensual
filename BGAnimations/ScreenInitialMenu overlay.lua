@@ -2,6 +2,7 @@
 GAMESTATE:Reset()
 SOUND:StopMusic()
 aprf_check()
+activate_confetti("credit", false)
 
 local profile_list= {}
 for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do
@@ -267,6 +268,21 @@ local fail_message_mt= {
 
 local fail_message= setmetatable({}, fail_message_mt)
 
+local worker= false
+local function worker_update()
+	if worker then
+		if coroutine.status(worker) ~= "dead" then
+			local working, err= coroutine.resume(worker)
+			if not working then
+				lua.ReportScriptError(err)
+				worker= false
+			end
+		else
+			worker= false
+		end
+	end
+end
+
 local function finalize_and_exit(pns)
 	SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 	GAMESTATE:LoadProfiles()
@@ -283,6 +299,7 @@ local function finalize_and_exit(pns)
 	set_time_remaining_to_default()
 	prev_picked_song= nil
 	bucket_man:initialize()
+	worker= make_song_sort_worker()
 	trans_new_screen("ScreenConsSelectMusic")
 end
 
@@ -430,6 +447,12 @@ local function input(event)
 	if event.DeviceInput.button == "DeviceButton_n" then
 		trans_new_screen("ScreenMiscTest")
 	end
+	if event.DeviceInput.button == "DeviceButton_a" then
+		activate_confetti("perm", true)
+	end
+	if event.DeviceInput.button == "DeviceButton_s" then
+		activate_confetti("perm", false)
+	end
 	if event.DeviceInput.button == misc_config:get_data().color_config_key then
 		trans_new_screen("ScreenColorConfig")
 	end
@@ -481,10 +504,11 @@ local args= {
 		update_cursor_pos()
 		april_spin(self)
 	end,
-	Def.Actor{
+	Def.ActorFrame{
 		Name= "code_interpreter",
 		OnCommand= function(self)
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
+			self:SetUpdateFunction(worker_update)
 		end,
 	},
 	Def.ActorFrame(star_args),
@@ -506,6 +530,18 @@ local args= {
 			"hms", "", fetch_color("text"), fetch_color("stroke"),
 			_screen.cx, SCREEN_BOTTOM-24),
   },
+	Def.BitmapText{
+		Font= "Common Normal", InitCommand= function(self)
+			self:zoom(.5)
+			self:xy(_screen.cx, SCREEN_BOTTOM-48)
+			if not startup_time then
+				startup_time= GetTimeSinceStart()
+			end
+			self:settext("Startup time: " .. secs_to_str(startup_time))
+			self:diffuse(fetch_color("text"))
+			self:strokecolor(fetch_color("stroke"))
+		end
+	},
 	Def.BitmapText{
 		Font= "Common Normal", Text= get_string_wrapper("Common", "special_day"),
 		InitCommand= function(self)

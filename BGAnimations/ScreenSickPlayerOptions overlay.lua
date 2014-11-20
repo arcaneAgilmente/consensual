@@ -1135,6 +1135,18 @@ local special= {
 				{ name= "On", init= function() return global_distortion_mode end,
 					set= function() global_distortion_mode= true end,
 					unset= function() global_distortion_mode= false end}}}},
+	{ name= "Confetti", meta= options_sets.special_functions, level= 4,
+		args= {
+			eles= {
+				{ name= "On", init= function() return get_confetti("credit") end,
+					set= function() activate_confetti("credit", true) end,
+					unset= function() activate_confetti("credit", false) end}}}},
+	{ name= "Permfetti", meta= options_sets.special_functions, level= 5,
+		args= {
+			eles= {
+				{ name= "On", init= function() return get_confetti("perm") end,
+					set= function() activate_confetti("perm", true) end,
+					unset= function() activate_confetti("perm", false) end}}}},
 	{ name= "Next Screen", meta= options_sets.special_functions, level= 4,
 		args= {
 			eles= {

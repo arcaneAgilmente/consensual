@@ -209,11 +209,14 @@ local function evenly_split_bucket(items, name_source)
 		curr_sub= {}
 		curr_sub_index= #sub_buckets+1
 	end
-	for i, item in ipairs(items) do
+	local num_items= #items
+	for i= 1, num_items do
+		local item= items[i]
 		curr_sub[#curr_sub+1]= item
 		if i >= math.floor(curr_sub_index * sub_size) then
 			add_curr_sub_to_buckets()
 		end
+		if i % 1000 == 0 then maybe_yield("Splitting", fracstr(i, num_items)) end
 	end
 	if #curr_sub > 0 then
 		add_curr_sub_to_buckets()
@@ -251,9 +254,13 @@ end
 local function convert_elements_to_items(els, sfs)
 	local items= {}
 	local sf_spew_flags= {}
-	for ei, el in ipairs(els) do
+	local elcount= #els
+	local sfcount= #sfs
+	for ei= 1, elcount do
+		local el= els[ei]
 		local name_set= {}
-		for si, sf in ipairs(sfs) do
+		for si= 1, sfcount do
+			local sf= sfs[si]
 			local names
 			names, sf_spew_flags[si]= validate_name_set(
 				sf.get_names(el), sf, not sf_spew_flags[si])
@@ -274,6 +281,7 @@ local function convert_elements_to_items(els, sfs)
 			name_set[#name_set+1]= {source= sf, names= names}
 		end
 		items[#items+1]= {el= el, name_set= name_set}
+		if ei % 100 == 0 then maybe_yield("Converting", fracstr(ei, elcount)) end
 	end
 	return items
 end
@@ -435,7 +443,9 @@ local function recursive_sort(items, sort_factors, sort_depth, name_depth)
 	end
 	local sub_sort_depth= sort_depth
 	local function process_sub_buckets(buckets, depth_remains)
-		for i, bucket in ipairs(buckets) do
+		local num_buckets= #buckets
+		for i= 1, num_buckets do
+			local bucket= buckets[i]
 			if bucket.from_split then
 				bucket.contents= recursive_sort(
 					bucket.contents, sort_factors, sort_depth, name_depth)
@@ -454,6 +464,7 @@ local function recursive_sort(items, sort_factors, sort_depth, name_depth)
 				end
 			end
 			set_range_name_from_contents(bucket, sub_sort_depth)
+			if i % 100 == 0 then maybe_yield("Sorting", fracstr(i, num_buckets)) end
 		end
 		local i= 1
 		while i <= #buckets do
@@ -483,6 +494,7 @@ local function recursive_sort(items, sort_factors, sort_depth, name_depth)
 			if bucket then
 				i= i + 1
 			end
+			if i % 100 == 0 then maybe_yield("Combining", fracstr(i, #buckets)) end
 		end
 	end
 	if should_split then
@@ -589,8 +601,17 @@ function bucket_sort(set, sort_factors)
 	for i, sf in ipairs(sort_factors) do
 		ensure_can_join(sf)
 	end
+	local conv_start= GetTimeSinceStart()
 	local items= convert_elements_to_items(set, sort_factors)
-	return recursive_sort(items, sort_factors, 1, 1)
+	local conv_end= GetTimeSinceStart()
+--	Trace("Converting to items took " .. conv_end - conv_start)
+	local setcount= #set
+	coroutine.yield("converted", setcount .. "/" .. setcount)
+	local sort_start= GetTimeSinceStart()
+	local ret= recursive_sort(items, sort_factors, 1, 1)
+	local sort_end= GetTimeSinceStart()
+--	Trace("Sorting took " .. sort_end - sort_start)
+	return ret
 end
 
 local function short_name(name, len)

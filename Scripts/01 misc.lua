@@ -258,25 +258,6 @@ function lua_table_to_string(t, indent)
 	return ret
 end
 
-function force_table_elements_to_match_type(candidate, must_match, depth_remaining)
-	for k, v in pairs(candidate) do
-		if type(must_match[k]) ~= type(v) then
-			candidate[k]= nil
-		elseif type(v) == "table" and depth_remaining ~= 0 then
-			force_table_elements_to_match_type(v, must_match[k], depth_remaining-1)
-		end
-	end
-	for k, v in pairs(must_match) do
-		if type(candidate[k]) == "nil" then
-			if type(v) == "table" then
-				candidate[k]= DeepCopy(v)
-			else
-				candidate[k]= v
-			end
-		end
-	end
-end
-
 function get_string_wrapper(section, str)
 	--Trace("get_string_wrapper:  Searching section \"" .. tostring(section)
 	--   .. "\" for string \"" .. tostring(str) .. "\"")
@@ -317,20 +298,29 @@ do
 	end
 end
 
+local prev_month= -1
+local prev_day= -1
 function aprf_check()
-	if MonthOfYear() == 3 and DayOfMonth() == 1 and PREFSMAN:GetPreference("EasterEggs") then
+	local month= MonthOfYear()
+	local day= DayOfMonth()
+	if day ~= prev_day then
+		activate_confetti("day", false)
+	end
+	if month == 3 and day == 1 and PREFSMAN:GetPreference("EasterEggs") then
 		april_fools= true
+		activate_confetti("day", true)
 	else
 		april_fools= false
 	end
-	if MonthOfYear() == 10 and DayOfMonth() == 7 and PREFSMAN:GetPreference("EasterEggs") then
+	if month == 10 and day == 7 and PREFSMAN:GetPreference("EasterEggs") then
 		kyzentun_birthday= true
 	else
 		kyzentun_birthday= false
 	end
 	special_day= kyzentun_birthday or april_fools
+	prev_month= month
+	prev_day= day
 end
-aprf_check()
 
 global_distortion_mode= april_fools
 function maybe_distort_text(text_actor)
@@ -354,6 +344,20 @@ function maybe_distort_text(text_actor)
 			text_actor:distort(.75)
 		end
 	end
+end
+
+local last_yield_time= 0
+local yield_gap= .02
+function maybe_yield(...)
+	local curr_time= GetTimeSinceStart()
+	if curr_time - last_yield_time > yield_gap then
+		last_yield_time= curr_time
+		coroutine.yield(...)
+	end
+end
+
+function fracstr(a, b)
+	return a .. "/" .. b
 end
 
 function april_spin(self)

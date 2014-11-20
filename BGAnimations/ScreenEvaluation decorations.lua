@@ -1748,10 +1748,11 @@ return Def.ActorFrame{
 	reward_indicator:create_actors("reward", SCREEN_CENTER_X, SCREEN_TOP+150),
 	judge_key:create_actors(),
 	make_graph_actors(),
-	Def.Actor{
+	Def.ActorFrame{
 		Name= "Honmono dayo",
 		OnCommand= function(self)
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
+			self:SetUpdateFunction(worker_update)
 			for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 				if cons_players[pn].fake_judge then
 					set_visible_score_data(pn, -2)
@@ -1771,12 +1772,6 @@ return Def.ActorFrame{
 				end
 			end
 		end,
-	},
-	Def.Actor{
-		Name= "Vacuum Cleaner D27",
-		StartTransitioningCommand= function(self)
-			bucket_man:sort_songs()
-		end
 	},
 	maybe_help(),
 }
