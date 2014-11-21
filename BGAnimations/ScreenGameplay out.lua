@@ -101,7 +101,8 @@ local args= {
 					earned_combo_splash[pn]= true
 				end
 				local score= pss:GetActualDancePoints()/pss:GetPossibleDancePoints()
-				if score >= .995 then
+				if score >= .995 and
+				cons_players[pn].flags.gameplay.score_confetti then
 					activate_confetti("earned", true)
 				end
 				if score > score_color_threshold and

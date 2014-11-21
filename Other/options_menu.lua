@@ -459,7 +459,6 @@ options_sets.menu= {
 		end,
 		update_info= function(self, new_menu_data)
 			local next_shown= 1
-			Trace("Updating menu: " .. self.name)
 			for i, data in ipairs(new_menu_data) do
 				local show= true
 				if self.player_number and data.level then
@@ -876,6 +875,74 @@ options_sets.enum_option= {
 				self.display:set_heading(self.name)
 				self.display:set_display(ToEnumShortString(self:get_val()))
 			end
+}}
+
+options_sets.extensible_boolean_menu= {
+	__index= {
+		initialize= function(self, pn, extra)
+			self.name= extra.name
+			self.player_number= pn
+			self.cursor_pos= 1
+			self.bool_table= extra.values
+			self.true_text= extra.true_text
+			self.false_text= extra.false_text
+			self.default_for_new= extra.default_for_new
+			self.info_set= {
+				up_element(), {text= "Add Value"}, {text= "Remove Value"}}
+			for i= 1, #self.bool_table do
+				table.insert(
+					self.info_set, i+1, {text= self:val_text(self.bool_table[i])})
+			end
+		end,
+		val_text= function(self, val)
+			if val then return self.true_text end
+			return self.false_text
+		end,
+		add_value= function(self)
+			local insert_pos= #self.info_set - 1
+			table.insert(self.bool_table, insert_pos-1, self.default_for_new)
+			table.insert(self.info_set, insert_pos,
+									 {text= self:val_text(self.default_for_new)})
+			self.cursor_pos= self.cursor_pos + 1
+			self:update_from_pos(insert_pos-1)
+		end,
+		remove_value= function(self)
+			local remove_pos= #self.info_set - 2
+			table.remove(self.bool_table, remove_pos-1)
+			table.remove(self.info_set, remove_pos)
+			self.display:set_element_info(#self.info_set+1, nil)
+			self.cursor_pos= self.cursor_pos - 1
+			self:update_from_pos(remove_pos-1)
+		end,
+		update_from_pos= function(self, pos)
+			for i= pos, #self.info_set do
+				self.display:set_element_info(i, self.info_set[i])
+			end
+			self:scroll_to_pos(self.cursor_pos)
+		end,
+		interpret_start= function(self)
+			if self.cursor_pos == #self.info_set then
+				if #self.bool_table > 1 then
+					self:remove_value()
+				end
+			elseif self.cursor_pos == #self.info_set-1 then
+				self:add_value()
+			elseif self.cursor_pos > 1 then
+				local bi= self.cursor_pos - 1
+				self.bool_table[bi]= not self.bool_table[bi]
+				self.info_set[self.cursor_pos].text=
+					self:val_text(self.bool_table[bi])
+				self.display:set_element_info(
+					self.cursor_pos, self.info_set[self.cursor_pos])
+			else
+				return false
+			end
+			return true
+		end,
+		set_status= function(self)
+			self.display:set_heading(self.name)
+			self.display:set_display("")
+		end
 }}
 
 function set_option_set_metatables()

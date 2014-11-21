@@ -821,12 +821,12 @@ function music_whale:find_actors()
 			end
 		end
 	end
-	self:post_sort_update(bucket_man.cur_sort_info)
+	self:post_sort_update()
 end
 
-function music_whale:post_sort_update(si)
-	self.current_sort_name= si.name
-	self.cur_sort_info= si
+function music_whale:post_sort_update()
+	self.current_sort_name= bucket_man.cur_sort_info.name
+	self.cur_sort_info= bucket_man.cur_sort_info
 	self.sorted_songs= bucket_man.sorted_songs
 	self.disp_stack= {}
 	self.display_bucket= nil
@@ -875,7 +875,7 @@ function music_whale:resort_for_new_style()
 	self.cursor_item= self.sick_wheel:get_info_at_focus_pos().item
 	bucket_man:style_filter_songs()
 	return coroutine.create(sort_work),
-	function() self:post_sort_update(curr_element.sort_info) end
+	function() self:post_sort_update() end
 end
 
 function music_whale:add_player_randoms(disp_bucket, player_number)
@@ -1217,7 +1217,7 @@ function music_whale:interact_with_element()
 		-- choice is a useful way of seeing what group that item came from.
 		bucket_man.cur_sort_info= curr_element.sort_info
 		return coroutine.create(sort_work),
-		function() self:post_sort_update(curr_element.sort_info) end
+		function() self:post_sort_update() end
 	elseif (curr_element.song_info or curr_element.random_info) and
 	gamestate_get_curr_song() then
 		local cur_song= gamestate_get_curr_song()

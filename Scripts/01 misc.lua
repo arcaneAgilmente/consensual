@@ -244,7 +244,7 @@ function lua_table_to_string(t, indent)
 	end
 	-- do the integer indices from 0 to n first, in order.
 	for n= 0, #t do
-		if t[n] then
+		if type(t[n]) ~= "nil" then
 			do_value_for_key(n, t[n])
 		end
 	end

@@ -371,7 +371,9 @@ local args= {
 		else
 			if param.Combo and param.Combo > prev_combo + 1000 then
 				prev_combo= math.floor(param.Combo / 1000) * 1000
-				activate_confetti("combo", true, player)
+				if cons_players[player].flags.gameplay.combo_confetti then
+					activate_confetti("combo", true, player)
+				end
 			end
 		end
 		if not cons_players[player].fake_judge then

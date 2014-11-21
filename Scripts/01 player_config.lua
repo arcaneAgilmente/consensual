@@ -1,186 +1,48 @@
--- TODO:  Make it possible to configure the number of levels and not have
--- 200+ lines of default config in here.
 local default_flag_set= {
-	{
-		eval= {
-			banner= true,
-			best_scores= false,
-			chart_info= true,
-			color_combo= false,
-			color_life_by_value= true,
-			color_life_by_combo= false,
-			combo_graph= true,
-			dance_points= true,
-			judge_list= false,
-			life_graph= true,
-			lock_per_arrow= true,
-			offset= false,
-			pct_column= false,
-			pct_score= true,
-			profile_data= true,
-			reward= true,
-			score_early_late= false,
-			session_column= false,
-			song_column= true,
-			style_pad= true,
-			sum_column= false,
-		},
-		gameplay= {
-			allow_toasty= true,
-			bpm_meter= true,
-			chart_info= true,
-			score_splash= true,
-			dance_points= false,
-			judge= false,
-			offset= false,
-			pct_score= true,
-			score_meter= true,
-			sigil= false,
-		},
-		interface= {
-			easier_random= false,
-			harder_random= false,
-			same_random= false,
-			score_random= false,
-			straight_floats= false,
-			verbose_bpm= false,
-		}
+	eval= {
+		banner= {true},
+		best_scores= {false, true},
+		chart_info= {true},
+		color_combo= {false, false, true},
+		color_life_by_value= {true},
+		color_life_by_combo= {false, false, true},
+		combo_graph= {true},
+		dance_points= {true},
+		judge_list= {true},
+		life_graph= {true},
+		lock_per_arrow= {true, true, true, false},
+		offset= {false, false, false, true},
+		pct_column= {false, true},
+		pct_score= {true},
+		profile_data= {true},
+		reward= {true},
+		score_early_late= {false, false, false, true},
+		session_column= {false, false, false, true},
+		song_column= {true},
+		style_pad= {true},
+		sum_column= {false, false, false, true},
 	},
-	{
-		eval= {
-			banner= true,
-			best_scores= true,
-			chart_info= true,
-			color_combo= false,
-			color_life_by_value= true,
-			color_life_by_combo= false,
-			combo_graph= true,
-			score_splash= true,
-			dance_points= true,
-			judge_list= false,
-			lock_per_arrow= true,
-			life_graph= true,
-			offset= false,
-			pct_column= true,
-			pct_score= true,
-			profile_data= true,
-			reward= true,
-			score_early_late= false,
-			session_column= false,
-			song_column= true,
-			style_pad= true,
-			sum_column= false,
-		},
-		gameplay= {
-			allow_toasty= true,
-			bpm_meter= true,
-			chart_info= true,
-			score_splash= true,
-			dance_points= true,
-			pct_score= false,
-			judge= false,
-			offset= false,
-			score_meter= true,
-			sigil= false,
-		},
-		interface= {
-			easier_random= false,
-			harder_random= false,
-			same_random= true,
-			score_random= false,
-			straight_floats= false,
-			verbose_bpm= false,
-		}
+	gameplay= {
+		allow_toasty= {true},
+		bpm_meter= {true},
+		chart_info= {true},
+		combo_confetti= {true},
+		dance_points= {false, true},
+		judge= {false, false, true},
+		offset= {false, false, false, true},
+		pct_score= {true},
+		score_confetti= {true},
+		score_meter= {true},
+		score_splash= {true},
+		sigil= {false, false, false, true},
 	},
-	{
-		eval= {
-			banner= true,
-			best_scores= true,
-			chart_info= true,
-			color_combo= true,
-			color_life_by_value= false,
-			color_life_by_combo= true,
-			combo_graph= true,
-			score_splash= true,
-			dance_points= true,
-			judge_list= false,
-			life_graph= true,
-			lock_per_arrow= true,
-			offset= false,
-			pct_column= true,
-			pct_score= true,
-			profile_data= true,
-			reward= true,
-			score_early_late= false,
-			session_column= false,
-			song_column= true,
-			style_pad= true,
-			sum_column= true,
-		},
-		gameplay= {
-			allow_toasty= true,
-			bpm_meter= true,
-			chart_info= true,
-			dance_points= true,
-			pct_score= true,
-			judge= true,
-			offset= false,
-			score_meter= true,
-			sigil= false,
-		},
-		interface= {
-			straight_floats= false,
-			easier_random= true,
-			harder_random= true,
-			same_random= true,
-			score_random= false,
-			verbose_bpm= false,
-		}
-	},
-	{
-		eval= {
-			banner= true,
-			best_scores= true,
-			chart_info= true,
-			color_combo= true,
-			color_life_by_value= true,
-			color_life_by_combo= true,
-			combo_graph= true,
-			score_splash= true,
-			dance_points= true,
-			judge_list= true,
-			life_graph= true,
-			lock_per_arrow= false,
-			offset= true,
-			pct_column= true,
-			pct_score= true,
-			profile_data= true,
-			reward= true,
-			score_early_late= true,
-			session_column= true,
-			song_column= true,
-			style_pad= true,
-			sum_column= true,
-		},
-		gameplay= {
-			allow_toasty= true,
-			bpm_meter= true,
-			chart_info= true,
-			dance_points= true,
-			pct_score= true,
-			judge= true,
-			offset= true,
-			score_meter= true,
-			sigil= true,
-		},
-		interface= {
-			easier_random= true,
-			harder_random= true,
-			same_random= true,
-			score_random= true,
-			straight_floats= true,
-			verbose_bpm= false,
-		}
+	interface= {
+		easier_random= {false, false, true},
+		harder_random= {false, false, true},
+		same_random= {false, true},
+		score_random= {false, false, false, true},
+		straight_floats= {false, false, false, true},
+		verbose_bpm= {false, false, false, true},
 	}
 }
 
@@ -212,11 +74,13 @@ sorted_flag_names= {
 	 "allow_toasty",
 	 "bpm_meter",
 	 "chart_info",
+	 "combo_confetti",
 	 "dance_points",
 	 "pct_score",
 	 "score_splash",
 	 "judge",
 	 "offset",
+	 "score_confetti",
 	 "score_meter",
 	 "sigil",
 	},
@@ -238,21 +102,29 @@ machine_flag_setting:load()
 
 function get_default_flag_config(level)
 	local machine_data= machine_flag_setting:get_data()
-	if machine_data[level] then
-		return DeepCopy(machine_data[level])
-	else
-		return DeepCopy(machine_data[1])
+	local ret= {}
+	for group_name, group_values in pairs(machine_data) do
+		ret[group_name]= {}
+		for flag_name, flag_levels in pairs(group_values) do
+			ret[group_name][flag_name]= flag_levels[math.min(level, #flag_levels)]
+		end
 	end
+	return ret
 end
 
 profile_flag_setting= create_setting("player flag config", "flag_config.lua", get_default_flag_config(1), -1)
 
 function set_player_flag_to_level(pn, level)
-	local config= get_default_flag_config(level)
+	local machine_flags= machine_flag_setting:get_data()
 	local slot= pn_to_profile_slot(pn)
-	profile_flag_setting:set_data(slot, config)
+	local player_flags= profile_flag_setting:get_data(slot)
+	for set_name, set in pairs(machine_flags) do
+		for name, levels in pairs(set) do
+			player_flags[set_name][name]= levels[math.min(level, #levels)]
+		end
+	end
 	profile_flag_setting:set_dirty(slot)
-	return config
+	return player_flags
 end
 
 local dspeed_default_min= 0
@@ -339,6 +211,7 @@ local default_config= {
 	combo_splash_threshold= "TapNoteScore_W3",
 	combo_graph_threshold= "TapNoteScore_W3",
 	preferred_style= "single",
+	experience_level= 1, -- To ease triggering confetti on gaining a level.
 }
 
 player_config= create_setting("player_config", "player_config.lua", default_config, -1)

@@ -147,6 +147,7 @@ local function sort_uns_buckets(uns)
 	for name, bucket in pairs(uns) do
 		bucketed_set[#bucketed_set+1]= bucket
 	end
+	maybe_yield("Bucketing", fracstr(#bucketed_set, #bucketed_set))
 	table.sort(bucketed_set, bckt_cmp)
 	return bucketed_set
 end
@@ -227,10 +228,12 @@ end
 local function make_sub_buckets_from_items(items, sort_depth, name_depth)
 	local buckets= {}
 	local depth_remains= -1
-	for i, item in ipairs(items) do
+	local icount= #items
+	for i= 1, icount do
 		local remain= add_item_to_uns_buckets(
-			buckets, item, sort_depth, name_depth)
+			buckets, items[i], sort_depth, name_depth)
 		depth_remains= math.max(depth_remains, remain)
+		if i % 100 == 0 then maybe_yield("Bucketing", fracstr(i, icount)) end
 	end
 	return sort_uns_buckets(buckets), depth_remains
 end

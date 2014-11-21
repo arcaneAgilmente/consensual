@@ -120,33 +120,17 @@ local flag_slot_options= {}
 do -- make a flags menu for each set of flags.
 	local machine_flags= machine_flag_setting:get_data()
 	machine_flag_setting:set_dirty()
-	local function flag_controller(slot, type_name, flag_name)
-		return {
-			name= flag_name,
-			init= function(pn)
-				return machine_flags[slot][type_name][flag_name]
-			end,
-			set= function(pn)
-				machine_flags[slot][type_name][flag_name]= true
-			end,
-			unset= function(pn)
-				machine_flags[slot][type_name][flag_name]= false
-			end
-		}
-	end
-	for slot, set in ipairs(machine_flags) do
-		local type_eles= {}
-		for i, name_list in ipairs(sorted_flag_names) do
-			local flag_eles= {}
-			for f, name in ipairs(name_list) do
-				flag_eles[#flag_eles+1]= flag_controller(slot, name_list.type, name)
-			end
-			type_eles[#type_eles+1]= {
-				name= name_list.type, meta= options_sets.special_functions,
-				args= {eles= flag_eles}}
+	for gi, group_data in ipairs(sorted_flag_names) do
+		local this_group= {}
+		for fi, flag_name in ipairs(group_data) do
+			this_group[#this_group+1]= {
+				name= flag_name, meta= options_sets.extensible_boolean_menu,
+				args= {values= machine_flags[group_data.type][flag_name],
+							 true_text= "True", false_text= "False",
+							 default_for_new= false}}
 		end
 		flag_slot_options[#flag_slot_options+1]= {
-			name= "Slot " .. slot, meta= options_sets.menu, args= type_eles}
+			name= group_data.type, meta= options_sets.menu, args= this_group}
 	end
 end
 
@@ -198,25 +182,23 @@ local function key_get_set(key_name)
 	return {get= key_get(key_name), set= key_set(key_name)}
 end
 
+local function imop(show_name, op_name)
+	return {name= show_name,
+					init= function() return config_data.initial_menu_ops[op_name] end,
+					set= function() config_data.initial_menu_ops[op_name]= true end,
+					unset= function() config_data.initial_menu_ops[op_name]= false end}
+end
+
 local im_options= {
-	{name= "im_have_single", meta= options_sets.boolean_option,
-	 args= sub_bool_conf("initial_menu_ops", "single_choice", "On", "Off")},
-	{name= "im_have_versus", meta= options_sets.boolean_option,
-	 args= sub_bool_conf("initial_menu_ops", "versus_choice", "On", "Off")},
-	{name= "im_have_playmode", meta= options_sets.boolean_option,
-	 args= sub_bool_conf("initial_menu_ops", "playmode_choice", "On", "Off")},
-	{name= "im_have_profile", meta= options_sets.boolean_option,
-	 args= sub_bool_conf("initial_menu_ops", "profile_choice", "On", "Off")},
-	{name= "im_have_smops", meta= options_sets.boolean_option,
-	 args= sub_bool_conf("initial_menu_ops", "stepmania_ops", "On", "Off")},
-	{name= "im_have_consops", meta= options_sets.boolean_option,
-	 args= sub_bool_conf("initial_menu_ops", "consensual_ops", "On", "Off")},
-	{name= "im_have_colconf", meta= options_sets.boolean_option,
-	 args= sub_bool_conf("initial_menu_ops", "color_config", "On", "Off")},
-	{name= "im_have_edit", meta= options_sets.boolean_option,
-	 args= sub_bool_conf("initial_menu_ops", "edit_choice", "On", "Off")},
-	{name= "im_have_exit", meta= options_sets.boolean_option,
-	 args= sub_bool_conf("initial_menu_ops", "exit_choice", "On", "Off")},
+	imop("im_have_single", "single_choice"),
+	imop("im_have_versus", "versus_choice"),
+	imop("im_have_playmode", "playmode_choice"),
+	imop("im_have_profile", "profile_choice"),
+	imop("im_have_smops", "stepmania_ops"),
+	imop("im_have_consops", "consensual_ops"),
+	imop("im_have_colconf", "color_config"),
+	imop("im_have_edit", "edit_choice"),
+	imop("im_have_exit", "exit_choice"),
 }
 
 local consensual_options= {
@@ -238,7 +220,8 @@ local consensual_options= {
 	 args= make_extra_for_conf_val("transition_split_max", 0, 0, 1)},
 	{name= "transition_meta_var_max", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("transition_meta_var_max", 0, 0, 1)},
-	{name= "initial_menu_choices", meta= options_sets.menu, args= im_options},
+	{name= "initial_menu_choices", meta= options_sets.special_functions,
+	 args= {eles= im_options}},
 }
 
 local confetti_options= {
