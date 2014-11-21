@@ -441,6 +441,7 @@ local function deactivate_status()
 	if status_finish_func then
 		status_finish_func()
 	end
+	change_sort_text(music_wheel.current_sort_name)
 	status_active= false
 	status_worker= false
 	status_container:stoptweening()

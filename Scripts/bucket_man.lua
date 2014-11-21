@@ -68,6 +68,11 @@ local function step_artist(song)
 	end
 end
 
+local nps_player= false
+local function set_nps_player()
+	nps_player= GAMESTATE:GetEnabledPlayers()[1]
+end
+
 local function note_count(song)
 	if song.GetStepsByStepsType then
 		local curr_style= GAMESTATE:GetCurrentStyle()
@@ -76,7 +81,7 @@ local function note_count(song)
 		local ret= {}
 		local radar
 		for i, v in ipairs(all_steps) do
-			radar= v:GetRadarValues(PLAYER_2)
+			radar= v:GetRadarValues(nps_player)
 			ret[#ret+1]= radar:GetValue("RadarCategory_TapsAndHolds") +
 				radar:GetValue("RadarCategory_Jumps") +
 				radar:GetValue("RadarCategory_Hands")
@@ -99,7 +104,7 @@ local function nps(song)
 		local radar
 		local len= song_get_length(song)
 		for i, v in ipairs(all_steps) do
-			radar= v:GetRadarValues(PLAYER_2)
+			radar= v:GetRadarValues(nps_player)
 			local nps= (radar:GetValue("RadarCategory_TapsAndHolds") +
 											radar:GetValue("RadarCategory_Jumps") +
 											radar:GetValue("RadarCategory_Hands")) / len
@@ -301,8 +306,10 @@ local song_sort_factors= {
 	-- Disabled, causes stepmania to eat all ram and hang.
 	-- Left in as disabled so it's known to not work.
 	{ name= "Step Artist", get_names= step_artist, returns_multiple= true},
-	{ name= "Note Count", get_names= note_count, returns_multiple= true},
-	{ name= "NPS", get_names= nps, returns_multiple= true},
+	{ name= "Note Count", get_names= note_count, returns_multiple= true,
+		pre_sort_func= set_nps_player},
+	{ name= "NPS", get_names= nps, returns_multiple= true,
+		pre_sort_func= set_nps_player},
 }
 
 local course_sort_factors= {
