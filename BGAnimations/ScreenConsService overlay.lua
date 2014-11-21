@@ -55,8 +55,8 @@ local function time_conf(name, min_scale, scale, max_scale)
 		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
 		initial_value= function() return config_data[name] end,
 		set= function(pn, value) config_data[name]= value end,
-		val_to_text= function(pn, value) return secs_to_str(value) end,
-		scale_to_text= function(pn, value) return secs_to_str(value) end,
+		val_to_text= function(pn, value) return secs_to_str(value, -min_scale) end,
+		scale_to_text= function(pn, value) return secs_to_str(value, -min_scale) end,
 	}
 end
 

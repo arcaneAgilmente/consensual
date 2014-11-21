@@ -951,9 +951,9 @@ function profile_report_interface:create_actors(player_number)
 				level_diff= calc_taps - prev_calc_taps
 				prev_calc_taps= calc_taps
 			until calc_taps > taps
-			if level > (cons_players[player_number].level or 0) then
+			if level > cons_players[player_number].experience_level then
 				activate_confetti("earned", true)
-				cons_players[player_number].level= level
+				cons_players[player_number].experience_level= level
 			end
 			things_in_list[#things_in_list+1]= {
 				name= "Experience Level", number= level }

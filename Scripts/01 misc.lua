@@ -760,16 +760,26 @@ function pn_to_profile_slot(pn)
 	return slot_conversion[pn] or "ProfileSlot_Invalid"
 end
 
-function secs_to_str(secs)
-	local minutes= math.round_to_zero(secs / 60)
+function secs_to_str(secs, precise)
+	local minutes= math.abs(math.round_to_zero(secs / 60))
 	local seconds= math.round_to_zero(secs % 60)
+	if precise and precise > 0 then
+		seconds= secs % 60
+	end
 	if secs < 0 then
-		seconds= math.abs(math.round_to_zero(secs % -60))
+		if precise and precise > 0 then
+			seconds= math.abs(secs % -60)
+		else
+			seconds= math.abs(math.round_to_zero(secs % -60))
+		end
 	end
-	if seconds < 10 then
-		return minutes .. ":" .. "0" .. seconds
+	local neg= (secs < 0) and "-" or ""
+	local lead= (seconds < 10) and "0" or ""
+	if precise and precise > 0 then
+		return neg..minutes..":"..lead..("%."..(precise+1).."g"):format(seconds)
+	else
+		return neg..minutes..":"..lead..seconds
 	end
-	return minutes .. ":" .. seconds
 end
 
 function toggle_int_as_bool(b)
