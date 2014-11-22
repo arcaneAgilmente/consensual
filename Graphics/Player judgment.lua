@@ -368,13 +368,16 @@ local args= {
 	ComboCommand= function(self, param)
 		if prev_combo == -1 then
 			prev_combo= math.floor((param.Combo or 0) / 1000) * 1000
-		else
-			if param.Combo and param.Combo > prev_combo + 1000 then
+		end
+		if param.Combo then
+			if param.Combo >= prev_combo + 1000 then
 				prev_combo= math.floor(param.Combo / 1000) * 1000
 				if cons_players[player].flags.gameplay.combo_confetti then
 					activate_confetti("combo", true, player)
 				end
 			end
+		else
+			prev_combo= 0
 		end
 		if not cons_players[player].fake_judge then
 			set_combo_stuff(param)
