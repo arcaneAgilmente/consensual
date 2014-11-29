@@ -1,6 +1,5 @@
 GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(1)
 
-
 local music_wheel= setmetatable({}, music_whale_mt)
 local auto_scrolling= nil
 local next_auto_scroll_time= 0
@@ -360,7 +359,6 @@ local function start_auto_scrolling(dir)
 end
 
 local function stop_auto_scrolling()
-	--steps_decompress_test(GAMESTATE:GetCurrentSteps(PLAYER_2))
 	play_sample_music()
 	auto_scrolling= nil
 	fast_auto_scroll= nil
@@ -902,7 +900,6 @@ local function input(event)
 	local pn= event.PlayerNumber
 	local key_pressed= event.GameButton
 	local press_type= event.type
-	if status_active then return end
 	if press_type == "InputEventType_FirstPress"
 	and event.DeviceInput.button == misc_config:get_data().censor_privilege_key then
 		privileged_props= not privileged_props
@@ -1040,7 +1037,7 @@ local function input(event)
 				end
 			}
 			update_keys_down(pn, key_pressed, press_type)
-			if pressed_since_menu_change[pn][key_pressed] then
+			if not status_active and pressed_since_menu_change[pn][key_pressed] then
 				menu_func[in_special_menu[pn]]()
 			end
 			if down_count[pn] == 0 then codes_since_release[pn]= false end

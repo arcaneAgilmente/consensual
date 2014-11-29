@@ -1,5 +1,8 @@
 -- Unjoin currently joined players because stuff like going into the options and changing the theme joins players.
+local reset_start= GetTimeSinceStart()
 GAMESTATE:Reset()
+local reset_end= GetTimeSinceStart()
+--Trace("Reset time: " .. reset_end - reset_start)
 SOUND:StopMusic()
 aprf_check()
 activate_confetti("credit", false)

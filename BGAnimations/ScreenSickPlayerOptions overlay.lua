@@ -1165,6 +1165,7 @@ local special= {
 						 generic_fake_judge_element("TapNoteScore_W2"),
 						 generic_fake_judge_element("TapNoteScore_W1"),
 			 }}},
+	player_enum("MinTNSToHideNotes", TapNoteScore, "MinTNSToHideNotes"),
 	{ name= "BG Brightness", meta= options_sets.adjustable_float, level= 2,
 		args= extra_for_bg_bright()},
 	{ name= "Mine Effects", level= 3,

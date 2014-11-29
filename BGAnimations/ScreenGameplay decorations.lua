@@ -837,6 +837,21 @@ local function make_special_actors_for_players()
 						self:strokecolor(fetch_color("gameplay.text_stroke"))
 			end })
 		end
+		a[#a+1]= normal_text(
+			"toasties", "", nil, fetch_color("gameplay.text_stroke"),
+				author_centers[v][1], author_centers[v][2]+24, 1, center,
+				{ OnCommand= cmd(queuecommand, "Update"),
+					ToastyAchievedMessageCommand= cmd(queuecommand, "Update"),
+					UpdateCommand= function(self)
+						local pro= PROFILEMAN:GetProfile(v)
+						local toasts= pro:GetNumToasties()
+						local songs= pro:GetNumTotalSongsPlayed()
+						local toast_pct= toasts / songs
+						local color= percent_to_color((toast_pct-.75)*4)
+						self:diffuse(color)
+						self:settext(toasts .. "/" .. songs)
+					end
+		})
 		args[#args+1]= Def.ActorFrame(a)
 	end
 	args[#args+1]= normal_text(
@@ -941,35 +956,6 @@ local function cleanup(self)
 	set_last_song_time(time_spent)
 end
 
-local function note_date_edit_test()
-	local top_screen= SCREENMAN:GetTopScreen()
-	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-		local pinfo= top_screen:GetPlayerInfo(pn)
-		if pinfo then
-			Trace("Got pinfo, attempting to get note data.")
-			local note_data= pinfo:GetNoteData()
-			if note_data then
-				Trace("Got note_data, hold onto your butts.")
-				local tap_note= false
-				local function lengthen_holds(tapnote, row, track)
-					if not tap_note then tap_note= tapnote end
-					if tapnote:GetType() == "TapNoteType_HoldHead" then
-						local new_duration= tapnote:GetDuration()+2
-						Trace("Setting held at " .. row .. " to " .. new_duration)
-						tapnote:SetDuration(new_duration)
-					end
-				end
-				note_data:ForEachTapNoteAllTracks(0, -1, lengthen_holds)
-				--note_data:SetTapNote(2, 99, tap_note)
-				--note_data:AddHoldNote(
-				--	2, 100, {
-				--		Type= "TapNoteType_HoldHead", SubType= "TapNoteSubType_Roll",
-				--		Duration= 3})
-			end
-		end
-	end
-end
-
 local do_unacceptable_check= false
 local unacc_dp_limits= {}
 local unacc_voted= {}
@@ -998,7 +984,6 @@ return Def.ActorFrame {
 					screen_gameplay:HasteAddAmounts({-.25, 0, .25})
 					screen_gameplay:HasteTurningPoints({-1, 0, 1})
 				end
-				--note_date_edit_test()
 				song_progress_bar:set_from_song()
 				local song_ops= GAMESTATE:GetSongOptionsObject("ModsLevel_Current")
 				if song_ops:MusicRate() < 1 or song_ops:Haste() < 0 then
