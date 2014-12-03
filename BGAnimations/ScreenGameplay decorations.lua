@@ -46,6 +46,7 @@ local side_swap_vals= {}
 local swap_on_xs= {}
 local side_toggles= {}
 local side_actors= {}
+local notefields= {}
 local next_chuunibyou= {[PLAYER_1]= 0, [PLAYER_2]= 0}
 local chuunibyou_state= {[PLAYER_1]= true, [PLAYER_2]= true}
 local chuunibyou_sides= {}
@@ -837,6 +838,7 @@ local function make_special_actors_for_players()
 						self:strokecolor(fetch_color("gameplay.text_stroke"))
 			end })
 		end
+		--[[
 		a[#a+1]= normal_text(
 			"toasties", "", nil, fetch_color("gameplay.text_stroke"),
 				author_centers[v][1], author_centers[v][2]+24, 1, center,
@@ -852,6 +854,7 @@ local function make_special_actors_for_players()
 						self:settext(toasts .. "/" .. songs)
 					end
 		})
+		]]
 		args[#args+1]= Def.ActorFrame(a)
 	end
 	args[#args+1]= normal_text(
@@ -961,6 +964,11 @@ local unacc_dp_limits= {}
 local unacc_voted= {}
 local unacc_reset_votes= 0
 
+local mircol= {4, 3, 2, 1}
+local function miss_all(col, tns, bright)
+	return mircol[col], "TapNoteScore_W5", bright
+end
+
 return Def.ActorFrame {
 	Name= "SGPbgf",
 	make_special_actors_for_players(),
@@ -1026,6 +1034,10 @@ return Def.ActorFrame {
 					set_speed_from_speed_info(cons_players[v])
 					side_actors[v]=
 						screen_gameplay:GetChild("Player" .. ToEnumShortString(v))
+					notefields[v]= side_actors[v]:GetChild("NoteField")
+					if notefields[v] then
+						--notefields[v]:SetDidTapNoteCallback(miss_all)
+					end
 					if cons_players[v].side_swap or force_swap then
 						side_swap_vals[v]= cons_players[v].side_swap or
 							cons_players[other_player[v]].side_swap

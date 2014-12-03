@@ -540,7 +540,7 @@ local args= {
 			if not startup_time then
 				startup_time= GetTimeSinceStart()
 			end
-			self:settext("Startup time: " .. secs_to_str(startup_time))
+			-- self:settext("Startup time: " .. secs_to_str(startup_time))
 			self:diffuse(fetch_color("text"))
 			self:strokecolor(fetch_color("stroke"))
 		end

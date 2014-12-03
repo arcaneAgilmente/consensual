@@ -14,8 +14,8 @@ function normal_text(name, text, color, stroke, tx, ty, z, align, commands)
 		self:xy(tx,ty)
 		self:zoom(z)
 		self:diffuse(color)
-		if stroke then self:strokecolor(stroke) end
 		self:horizalign(align)
+		if stroke then self:strokecolor(stroke) end
 		maybe_distort_text(self)
 		if passed_init then passed_init(self) end
 	end

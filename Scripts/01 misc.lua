@@ -445,7 +445,7 @@ function get_display_bpms(steps, song)
 	or steps_are_konami_trash(steps) then
 		bpms= {}
 		local timing_data= steps:GetTimingData()
-		local bpmsand= timing_data:GetBPMsAndTimes()
+		local bpmsand= timing_data:GetBPMsAndTimes(true)
 		if type(bpmsand[1]) == "string" then
 			for i, s in ipairs(bpmsand) do
 				local sand= split("=", s)
