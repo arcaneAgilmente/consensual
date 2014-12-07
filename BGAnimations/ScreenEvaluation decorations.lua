@@ -47,7 +47,7 @@ local tnss_that_can_be_early= {
 	TapNoteScore_W5= true,
 }
 
--- style compatibility issue:  Dance, Pump, and Techno are the only supported games.
+-- style compatibility issue:  Dance, Kickbox, Pump, and Techno are the only supported games.
 local column_to_pad_arrow_map= {
 	[PLAYER_1]= {
 		StepsType_Dance_Single= {4, 8, 2, 6},
@@ -67,6 +67,10 @@ local column_to_pad_arrow_map= {
 		StepsType_Techno_Double4= {4, 8, 2, 6, 13, 17, 11, 15},
 		StepsType_Techno_Double5= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
 		StepsType_Techno_Double8= {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
+		StepsType_Kickbox_Human= {1, 4, 5, 8},
+		StepsType_Kickbox_Quadarm= {3, 4, 5, 6},
+		StepsType_Kickbox_Insect= {1, 3, 4, 5, 6, 8},
+		StepsType_Kickbox_Arachnid= {1, 2, 3, 4, 5, 6, 7, 8},
 	},
 	[PLAYER_2]= {
 		StepsType_Dance_Single= {13, 17, 11, 15},
@@ -86,6 +90,10 @@ local column_to_pad_arrow_map= {
 		StepsType_Techno_Double4= {4, 8, 2, 6, 13, 17, 11, 15},
 		StepsType_Techno_Double5= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
 		StepsType_Techno_Double8= {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
+		StepsType_Kickbox_Human= {1, 4, 5, 8},
+		StepsType_Kickbox_Quadarm= {3, 4, 5, 6},
+		StepsType_Kickbox_Insect= {1, 3, 4, 5, 6, 8},
+		StepsType_Kickbox_Arachnid= {1, 2, 3, 4, 5, 6, 7, 8},
 }}
 
 local score_datas= {}
@@ -97,6 +105,8 @@ local function get_pad_arrow_for_col(pn, col)
 	local steps_type= gamestate_get_curr_steps(pn):GetStepsType()
 	if column_to_pad_arrow_map[pn][steps_type] then
 		return column_to_pad_arrow_map[pn][steps_type][col]
+	else
+		lua.ReportScriptError("No translation for stepstype: " .. steps_type)
 	end
 end
 

@@ -331,7 +331,7 @@ local function check_both_ready(presser)
 	end
 end
 
-local function attempt_play(style, pns, presser)
+local function attempt_play(pns, presser)
 	if check_both_ready(presser) and play_will_succeed(pns) then
 		local join_success= true
 		for i, rpn in ipairs(pns) do
@@ -341,7 +341,7 @@ local function attempt_play(style, pns, presser)
 			end
 		end
 		if join_success then
-			set_current_style(style)
+			set_current_style(first_compat_style(#pns))
 			set_current_playmode(playmode)
 			finalize_and_exit(pns)
 			return
@@ -367,9 +367,9 @@ local function interpret_code(pn, code)
 		if extra then
 			extra= extra.name
 			if extra == "single_choice" then
-				attempt_play("single", {pn}, pn)
+				attempt_play({pn}, pn)
 			elseif extra == "versus_choice" then
-				attempt_play("versus", {PLAYER_1, PLAYER_2}, pn)
+				attempt_play({PLAYER_1, PLAYER_2}, pn)
 			elseif extra == "stepmania_ops" then
 				trans_new_screen("ScreenOptionsService")
 			elseif extra == "consensual_ops" then
@@ -377,7 +377,7 @@ local function interpret_code(pn, code)
 			elseif extra == "color_config" then
 				trans_new_screen("ScreenColorConfig")
 			elseif extra == "edit_choice" then
-				
+				trans_new_screen("ScreenEditMenu")
 			elseif extra == "exit_choice" then
 				trans_new_screen("ScreenExit")
 			else

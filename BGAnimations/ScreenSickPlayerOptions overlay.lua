@@ -517,7 +517,8 @@ options_sets.steps_list= {
 					GAMESTATE:SetPreferredDifficulty(
 						self.player_number, steps:GetDifficulty())
 					set_preferred_style(
-						self.player_number, stepstype_to_style[steps:GetStepsType()].name)
+						self.player_number, stepstype_to_style[steps:GetStepsType()]
+						[GAMESTATE:GetNumPlayersEnabled()].name)
 					local steps_info= self.info_set[self.player_choice+1]
 					steps_info.underline= false
 					self.display:set_element_info(self.player_choice+1, steps_info)

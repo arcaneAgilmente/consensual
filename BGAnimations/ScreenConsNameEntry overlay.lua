@@ -212,7 +212,7 @@ local name_display_mt= {
 				end
 				args[#args+1]= normal_text("text", player_name, color, nil, 0, 0, 1)
 				args[#args+1]= normal_text(
-					"time", secs_to_str(cons_players[player_number].credit_time),
+					"time", secs_to_str(cons_players[player_number].credit_time or 0),
 					color, nil, time_x, 0, 1)
 				args[#args+1]= Def.Quad{
 					Name= "cursor", InitCommand= cmd(xy, 0, 12; diffuse, color;

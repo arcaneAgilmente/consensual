@@ -76,7 +76,7 @@ function cons_player:kyzentun_mode()
 	self.rating_cap= -1
 	self.options_level= 5
 	self.kyzentun= true
-	local styletype= GAMESTATE:GetCurrentStyle():GetStyleType()
+	local styletype= GAMESTATE:GetCurrentStyle(self.player_number):GetStyleType()
 	local new_speed= {speed= 1000, mode= "m"}
 	self.preferred_options:Distant(1.5)
 	if styletype == "StyleType_OnePlayerTwoSides" then
@@ -127,7 +127,7 @@ function cons_player:stage_stats_reset()
 		}
 	end
 	self.fake_score= empty_col_score()
-	local cur_style= GAMESTATE:GetCurrentStyle()
+	local cur_style= GAMESTATE:GetCurrentStyle(self.player_number)
 	if cur_style then
 		local columns= cur_style:ColumnsPerPlayer()
 		--Trace("Making column score slots for " .. tostring(columns) .. " columns.")
@@ -491,34 +491,35 @@ end
 
 function cons_set_current_steps(pn, steps)
 	local num_players= GAMESTATE:GetNumPlayersEnabled()
-	if num_players == 1 then
-		local curr_st= GAMESTATE:GetCurrentStyle():GetStepsType()
-		local to_st= steps:GetStepsType()
-		if curr_st ~= to_st then
-			local curr_style_info= stepstype_to_style[curr_st]
-			if not curr_style_info then
-				Trace("Error when trying to fetch style info.  Dumping stepstype_to_style.")
-				rec_print_table(stepstype_to_style)
+	local curr_st= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
+	local to_st= steps:GetStepsType()
+	if curr_st ~= to_st then
+		local curr_style_info= stepstype_to_style[curr_st][num_players]
+		if not curr_style_info then
+			lua.ReportScriptError("Error when trying to fetch style info.  Dumping stepstype_to_style.")
+			rec_print_table(stepstype_to_style)
+		end
+		local to_style= stepstype_to_style[to_st][num_players]
+		if to_style then
+			if curr_style_info.for_sides > to_style.for_sides then
+				-- If the current style is double, and we try to set the style to
+				-- single, then we run into the error of having too many sides
+				-- joined to change styles.
+				-- Unjoining the other side prevents that error.
+				GAMESTATE:UnjoinPlayer(other_player[pn])
+			elseif curr_style_info.for_sides < to_style.for_sides then
+				-- No action necessary.
 			end
-			local to_style= stepstype_to_style[to_st]
-			if to_style then
-				if curr_style_info.for_sides > to_style.for_sides then
-					-- If the current style is double, and we try to set the style to
-					-- single, then we run into the error of having too many sides
-					-- joined to change styles.
-					-- Unjoining the other side prevents that error.
-					GAMESTATE:UnjoinPlayer(other_player[pn])
-				elseif curr_style_info.for_sides < to_style.for_sides then
-					-- No action necessary.
-				end
-				set_current_style(to_style.name)
-			end
+			set_current_style(to_style.name, pn)
+		else
+			lua.ReportScriptError("Need to change the style, but no to_style found.")
+			return
 		end
 	end
-	local curr_st= GAMESTATE:GetCurrentStyle():GetStepsType()
+	local curr_st= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
 	if curr_st ~= steps:GetStepsType() then
-		Trace("Attempted to set steps with invalid stepstype: " .. curr_st ..
-					" ~= " .. steps:GetStepsType())
+		lua.ReportScriptError("Attempted to set steps with invalid stepstype: "
+														.. curr_st .. " ~= " .. steps:GetStepsType())
 		return
 	end
 	gamestate_set_curr_steps(pn, steps)

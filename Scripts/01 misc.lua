@@ -317,6 +317,10 @@ function aprf_check()
 	else
 		kyzentun_birthday= false
 	end
+	if GAMESTATE:GetCurrentGame():GetName() == "kickbox" then
+		-- Not going to bother porting the doubles-only easter egg to kickbox.
+		kyzentun_birthday= false
+	end
 	special_day= kyzentun_birthday or april_fools
 	prev_month= month
 	prev_day= day
@@ -593,21 +597,12 @@ function trans_new_screen(name)
 	SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
 end
 
--- API compatibility to support older versions that don't have GAMESTATE:SetCurrentStyle.
-function set_current_style(style)
-	if GAMESTATE.SetCurrentStyle then
-		GAMESTATE:SetCurrentStyle(style)
-	else
-		GAMESTATE:ApplyGameCommand("style," .. style)
-	end
+function set_current_style(style, pn)
+	GAMESTATE:SetCurrentStyle(style, pn)
 end
 
 function set_current_playmode(playmode)
-	if GAMESTATE.SetCurrentPlayMode then
-		GAMESTATE:SetCurrentPlayMode(playmode)
-	else
-		GAMESTATE:ApplyGameCommand("playmode," .. ToEnumShortString(playmode):lower())
-	end
+	GAMESTATE:SetCurrentPlayMode(playmode)
 end
 
 -- An object to handle coordination of rate changes between things on a screen.

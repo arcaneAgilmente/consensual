@@ -9,7 +9,6 @@ local fast_auto_scroll= nil
 local fast_scroll_start_time= 0
 local time_before_fast_scroll= .8
 local time_between_fast_scroll= .02
-local special_menu_activate_time= .2
 local banner_x= SCREEN_LEFT + 132
 local banner_y= SCREEN_TOP + 44
 local banner_w= 256
@@ -533,7 +532,7 @@ local function set_closest_steps_to_preferred(pn)
 	local preferred_diff= GAMESTATE:GetPreferredDifficulty(pn) or
 		"Difficulty_Beginner"
 	local pref_style= get_preferred_style(pn)
-	local curr_steps_type= GAMESTATE:GetCurrentStyle():GetStepsType()
+	local curr_steps_type= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
 	local candidates= get_filtered_sorted_steps_list()
 	if candidates and #candidates > 0 then
 		local steps_set= false
@@ -543,11 +542,13 @@ local function set_closest_steps_to_preferred(pn)
 				closest= {
 					steps= steps, diff_diff=
 						math.abs(Difficulty:Compare(preferred_diff, steps:GetDifficulty())),
-					style= stepstype_to_style[steps:GetStepsType()].name}
+					style= stepstype_to_style[steps:GetStepsType()]
+						[GAMESTATE:GetNumPlayersEnabled()].name}
 			else
 				local this_difference= math.abs(
 					Difficulty:Compare(preferred_diff, steps:GetDifficulty()))
-				local this_style= stepstype_to_style[steps:GetStepsType()].name
+				local this_style= stepstype_to_style[steps:GetStepsType()]
+					[GAMESTATE:GetNumPlayersEnabled()].name
 				if closest.style == pref_style then
 					if this_style == pref_style and
 					this_difference < closest.diff_diff then
@@ -583,7 +584,7 @@ local function adjust_difficulty(player, dir, sound)
 				if picked_steps then
 					cons_set_current_steps(player, picked_steps)
 					GAMESTATE:SetPreferredDifficulty(player, picked_steps:GetDifficulty())
-					set_preferred_style(player, stepstype_to_style[picked_steps:GetStepsType()].name)
+					set_preferred_style(player, stepstype_to_style[picked_steps:GetStepsType()][GAMESTATE:GetNumPlayersEnabled()].name)
 					SOUND:PlayOnce(THEME:GetPathS("_switch", sound))
 				else
 					SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
@@ -705,10 +706,14 @@ local codes= {
 		"Up", "Up" },
 	{ name= "diff_up", ignore_release= true, games= {"pump", "techno"},
 		"UpLeft", "UpLeft" },
+	{ name= "diff_up", ignore_release= true, games= {"kickbox"},
+		"UpLeftFoot" },
 	{ name= "diff_down", ignore_release= true, games= {"dance", "techno"},
 		"Down", "Down" },
 	{ name= "diff_down", ignore_release= true, games= {"pump", "techno"},
 		"UpRight", "UpRight" },
+	{ name= "diff_down", ignore_release= true, games= {"kickbox"},
+		"DownLeftFoot" },
 	{ name= "noob_mode", ignore_release= true, games= {"dance", "techno"},
 		"Up", "Up", "Down", "Down", "Left", "Right", "Left", "Right"},
 	{ name= "simple_options_mode", ignore_release= true, games= {"dance", "techno"},
@@ -1044,7 +1049,7 @@ local function input(event)
 		end
 	else
 		if key_pressed == "Start" then
-			local curr_style_type= GAMESTATE:GetCurrentStyle():GetStyleType()
+			local curr_style_type= GAMESTATE:GetCurrentStyle(pn):GetStyleType()
 			if curr_style_type == "StyleType_OnePlayerOneSide" and not kyzentun_birthday then
 				if cons_join_player(pn) then
 					-- Give everybody enough tokens to play, as a way of disabling the stage system.
@@ -1064,7 +1069,12 @@ local function input(event)
 					end
 					SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 					pain_displays[pn]:fetch_config()
-					set_current_style("versus")
+					if GAMESTATE:GetCurrentGame():GetSeparateStyles() then
+						set_current_style(first_compat_style(2), PLAYER_1)
+						set_current_style(first_compat_style(2), PLAYER_2)
+					else
+						set_current_style(first_compat_style(2))
+					end
 					activate_status(music_wheel:resort_for_new_style())
 					set_closest_steps_to_preferred(pn)
 				end
@@ -1216,18 +1226,24 @@ return Def.ActorFrame {
 							 top_screen:SetAllowLateJoin(true)
 							 top_screen:AddInputCallback(input)
 							 change_sort_text(music_wheel.current_sort_name)
-						 end,
+	end,
 	play_songCommand= function(self)
-											SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-											local om= self:GetChild("options message")
-											om:accelerate(0.25)
-											om:diffusealpha(1)
-											entering_song= get_screen_time() + options_time
-											prev_picked_song= gamestate_get_curr_song()
-											save_all_favorites()
-											save_all_tags()
-											save_censored_list()
-										end,
+		local can, reason= GAMESTATE:CanSafelyEnterGameplay()
+		if can then
+			SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
+			local om= self:GetChild("options message")
+			om:accelerate(0.25)
+			om:diffusealpha(1)
+			entering_song= get_screen_time() + options_time
+			prev_picked_song= gamestate_get_curr_song()
+			save_all_favorites()
+			save_all_tags()
+			save_censored_list()
+		else
+			SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
+			lua.ReportScriptError("Cannot safely enter gameplay: " .. tostring(reason))
+		end
+	end,
 	real_play_songCommand= function(self)
 													 if go_to_options then
 														 trans_new_screen("ScreenSickPlayerOptions")

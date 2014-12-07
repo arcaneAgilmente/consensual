@@ -55,7 +55,7 @@ sorted_initial_menu_ops= {
 	"stepmania_ops",
 	"consensual_ops",
 	"color_config",
---	"edit_choice", -- coming soon
+	"edit_choice", -- coming soon
 	"exit_choice",
 }
 

@@ -57,7 +57,7 @@ local heart_entry_mt= {
 			self.cursor_pos= 5
 			return Def.ActorFrame(args)
 		end,
-		interpret_code= function(self, code)
+		interpret_code= function(self, code, menu_code)
 			if code == "Start" then
 				local num= self.numpad_nums[self.cursor_pos]
 				local as_num= tonumber(num)
@@ -91,20 +91,25 @@ local heart_entry_mt= {
 					MenuLeft= {-1, -1, -1},
 					MenuRight= {1, 1, 1},
 					Up= {9, -3, -3, -3},
-					Down= {3, 3, 3, -9}
+					Down= {3, 3, 3, -9},
 				}
 				adds.MenuUp= adds.Up
 				adds.MenuDown= adds.Down
+				adds.UpLeftFist= adds.Left
+				adds.UpRightFist= adds.Right
+				adds.DownLeftFist= adds.Up
+				adds.DownRightFist= adds.Down
 				local lr_buttons= {
-					Left= true, Right= true, MenuLeft= true, MenuRight= true}
-				if adds[code] then
+					Left= true, Right= true, UpLeftFist= true, UpRightFist= true, MenuLeft= true, MenuRight= true}
+				local adhd= adds[code] or adds[menu_code]
+				if adhd then
 					local ind= 0
 					if lr_buttons[code] then
 						ind= ((self.cursor_pos-1)%3)+1
 					else
 						ind= math.ceil(self.cursor_pos / 3)
 					end
-					local new_pos= self.cursor_pos + adds[code][ind]
+					local new_pos= self.cursor_pos + adhd[ind]
 					if new_pos < 1 then new_pos= #self.numpad_nums end
 					if new_pos > #self.numpad_nums then new_pos= 1 end
 					self.cursor_pos= new_pos
@@ -131,7 +136,7 @@ local function input(event)
 	if not pn then return false end
 	if event.type == "InputEventType_Release" then return false end
 	if not heart_entries[pn] then return false end
-	local handled, done= heart_entries[pn]:interpret_code(event.button)
+	local handled, done= heart_entries[pn]:interpret_code(event.button, event.GameButton)
 	if handled and done then
 		local all_done= true
 		for i, en in pairs(heart_entries) do
