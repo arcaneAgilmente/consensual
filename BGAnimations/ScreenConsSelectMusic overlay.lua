@@ -1228,6 +1228,18 @@ return Def.ActorFrame {
 							 change_sort_text(music_wheel.current_sort_name)
 	end,
 	play_songCommand= function(self)
+		if not GAMESTATE.CanSafelyEnterGameplay then
+			SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
+			local om= self:GetChild("options message")
+			om:accelerate(0.25)
+			om:diffusealpha(1)
+			entering_song= get_screen_time() + options_time
+			prev_picked_song= gamestate_get_curr_song()
+			save_all_favorites()
+			save_all_tags()
+			save_censored_list()
+			return
+		end
 		local can, reason= GAMESTATE:CanSafelyEnterGameplay()
 		if can then
 			SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))

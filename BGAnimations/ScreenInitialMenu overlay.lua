@@ -6,6 +6,7 @@ local reset_end= GetTimeSinceStart()
 SOUND:StopMusic()
 aprf_check()
 activate_confetti("credit", false)
+in_edit_mode= false
 
 local profile_list= {}
 for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do
@@ -377,6 +378,11 @@ local function interpret_code(pn, code)
 			elseif extra == "color_config" then
 				trans_new_screen("ScreenColorConfig")
 			elseif extra == "edit_choice" then
+				in_edit_mode= true
+				for i, cn in ipairs{PLAYER_1, PLAYER_2} do
+					cons_players[cn]:clear_init(cn)
+					cons_players[cn]:set_ops_from_profile()
+				end
 				trans_new_screen("ScreenEditMenu")
 			elseif extra == "exit_choice" then
 				trans_new_screen("ScreenExit")

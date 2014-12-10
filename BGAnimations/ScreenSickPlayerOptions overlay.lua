@@ -453,7 +453,11 @@ options_sets.rate_mod= {
 			end,
 		valid_value=
 			function(self, value)
-				if value <= 0.499 or value > 2.001 then return false end
+				if in_edit_mode then
+					if value <= 0.1 or value > 2.001 then return false end
+				else
+					if value <= 0.499 or value > 2.001 then return false end
+				end
 				if GAMESTATE:GetCoinMode() == "CoinMode_Home" then return true end
 				local modified_length= get_current_song_length() / value
 				return modified_length <= get_time_remaining()
@@ -1287,6 +1291,12 @@ function args:InitCommand()
 	end
 end
 
+local function apply_preferred_mods()
+	GAMESTATE:GetPlayerState(PLAYER_1):ApplyPreferredOptionsToOtherLevels()
+	GAMESTATE:GetPlayerState(PLAYER_2):ApplyPreferredOptionsToOtherLevels()
+	GAMESTATE:ApplyPreferredSongOptionsToOtherLevels()
+end
+
 local function input(event)
 	if event.type == "InputEventType_Release" then return end
 	local pn= event.PlayerNumber
@@ -1302,14 +1312,30 @@ local function input(event)
 				end
 				if all_on_exit then
 					SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-					trans_new_screen("ScreenStageInformation")
+					if in_edit_mode then
+						set_speed_from_speed_info(cons_players[PLAYER_1])
+						apply_preferred_mods()
+						trans_new_screen("none")
+					else
+						trans_new_screen("ScreenStageInformation")
+					end
 				end
 			elseif code == "Back" then
 				SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
-				trans_new_screen("ScreenConsSelectMusic")
+				if in_edit_mode then
+					apply_preferred_mods()
+					trans_new_screen("none")
+				else
+					trans_new_screen("ScreenConsSelectMusic")
+				end
 			end
 		end
 	end
+end
+
+if in_edit_mode then
+	cons_players[PLAYER_1].options_level= 4
+	cons_players[PLAYER_2].options_level= 4
 end
 
 args[#args+1]= Def.Actor{

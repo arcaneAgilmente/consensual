@@ -186,8 +186,77 @@ function cons_player:get_speed_info()
 	return self.speed_info or self:set_speed_info_from_poptions()
 end
 
+local function find_read_bpm_for_player_steps(player_number)
+	local bpms= get_display_bpms(GAMESTATE:GetCurrentSteps(player_number),
+															 GAMESTATE:GetCurrentSong())
+	return bpms[2]
+end
+
+function set_speed_from_speed_info(player)
+	-- mmods are just a poor mask over xmods, so if you set an mmod in
+	-- the middle of the song, it'll null out.  This means that if you
+	-- use PlayerState:SetPlayerOptions, it'll ruin whatever mmod the
+	-- player has set.  So this code is here to remove that mask.
+	if not player.player_number or not GAMESTATE:IsPlayerEnabled(player.player_number) then return end
+	local speed_info= player:get_speed_info()
+	speed_info.prev_bps= nil
+	local mode_functions= {
+		x= function(speed)
+				 player.preferred_options:XMod(speed)
+				 player.stage_options:XMod(speed)
+				 player.song_options:XMod(speed)
+				 player.current_options:XMod(speed)
+			 end,
+		C= function(speed)
+				 player.preferred_options:CMod(speed)
+				 player.stage_options:CMod(speed)
+				 player.song_options:CMod(speed)
+				 player.current_options:CMod(speed)
+			 end,
+		m= function(speed)
+				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
+				 local real_speed= (speed / read_bpm) / get_rate_from_songopts()
+				 player.preferred_options:XMod(real_speed)
+				 player.stage_options:XMod(real_speed)
+				 player.song_options:XMod(real_speed)
+				 player.current_options:XMod(real_speed)
+				 --player.song_options:MMod(speed)
+				 --player.current_options:MMod(speed)
+			 end,
+		D= function(speed)
+				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
+				 local real_speed= (speed / read_bpm) / get_rate_from_songopts()
+				 player.dspeed_mult= real_speed
+				 player.preferred_options:XMod(real_speed)
+				 player.stage_options:XMod(real_speed)
+				 player.song_options:XMod(real_speed)
+				 player.current_options:XMod(real_speed)
+				 if math.abs(player.dspeed.max - player.dspeed.min) < .01 then
+					 player.dspeed.special= true
+					 if player.dspeed.alternate then
+						 player.current_options:Sudden(1)
+						 player.song_options:Sudden(1)
+						 player.song_options:SuddenOffset(suddmin)
+						 player.dspeed_phase= 1
+						 dspeed_special_phase_starts[player.dspeed_phase](player)
+					 else
+						 player.song_options:Centered(dspeed_default_max)
+					 end
+				 else
+					 player.dspeed.special= false
+					 player.song_options:Centered(player.dspeed.max)
+				 end
+			 end
+	}
+	if mode_functions[speed_info.mode] then
+		mode_functions[speed_info.mode](speed_info.speed)
+	end
+end
+
 function cons_player:set_ops_from_profile(profile)
-	self.proguid= profile:GetGUID()
+	if profile then
+		self.proguid= profile:GetGUID()
+	end
 	local prof_slot= pn_to_profile_slot(self.player_number)
 	self.pain_config= profile_pain_setting:load(prof_slot)
 	self.flags= profile_flag_setting:load(prof_slot)
