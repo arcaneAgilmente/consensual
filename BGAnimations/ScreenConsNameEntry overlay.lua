@@ -1,3 +1,10 @@
+local button_list= {{"left", "MenuLeft"}, {"right", "MenuRight"}}
+if ud_menus() then
+	button_list[#button_list+1]= {"top", "MenuUp"}
+	button_list[#button_list+1]= {"bottom", "MenuDown"}
+end
+reverse_button_list(button_list)
+
 local keyboard_special_names= {"down", "up", "shift", "backspace", "enter"}
 local keyboard_num_rows= 4
 local keyboard_mt= {
@@ -83,7 +90,7 @@ local keyboard_mt= {
 					self.cursor_poses[pn]= {1, 1}
 					args[#args+1]= self.cursors[pn]:create_actors(
 						"cursor"..pn, 0, 0, 1, pn_to_color(pn),
-						fetch_color("player.hilight"), true, true)
+						fetch_color("player.hilight"), button_list)
 				end
 				for i, r in ipairs(rows) do
 					local keyw= (SCREEN_WIDTH-self.key_spacing) / #r

@@ -9,6 +9,13 @@ local function timer_update(self)
 	end
 end
 
+local button_list= {{"left", "MenuLeft"}, {"right", "MenuRight"}}
+if ud_menus() then
+	button_list[#button_list+1]= {"top", "MenuUp"}
+	button_list[#button_list+1]= {"bottom", "MenuDown"}
+end
+reverse_button_list(button_list)
+
 local heart_entry_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, pn)
@@ -53,7 +60,7 @@ local heart_entry_mt= {
 			self.cursor= setmetatable({}, cursor_mt)
 			args[#args+1]= self.cursor:create_actors(
 				"cursor", 0, 0, 1, pn_to_color(pn), fetch_color("player.hilight"),
-				true, ud_menus())
+				button_list)
 			self.cursor_pos= 5
 			return Def.ActorFrame(args)
 		end,

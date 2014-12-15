@@ -1436,7 +1436,7 @@ local function make_player_specific_actors()
 	for i, pn in ipairs(enabled_players) do
 		all_actors[#all_actors+1]= player_cursors[pn]:create_actors(
 			pn .."_cursor", 0, 0, 1, pn_to_color(pn),
-			fetch_color("player.hilight"), true, ud_menus())
+			fetch_color("player.hilight"), button_list_for_menu_cursor())
 	end
 	return Def.ActorFrame(all_actors)
 end

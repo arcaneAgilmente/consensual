@@ -7,6 +7,7 @@ SOUND:StopMusic()
 aprf_check()
 activate_confetti("credit", false)
 in_edit_mode= false
+true_gameplay= false
 
 local profile_list= {}
 for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do
@@ -208,7 +209,7 @@ local function create_actors()
 	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
 		args[#args+1]= cursors[rpn]:create_actors(
 			rpn .. "_cursor", 0, 0, 1, pn_to_color(rpn),
-			fetch_color("player.hilight"), true, ud_menus())
+			fetch_color("player.hilight"), button_list_for_menu_cursor())
 	end
 	return Def.ActorFrame(args)
 end
@@ -304,6 +305,7 @@ local function finalize_and_exit(pns)
 	prev_picked_song= nil
 	bucket_man:initialize()
 	worker= make_song_sort_worker()
+	true_gameplay= true
 	trans_new_screen("ScreenConsSelectMusic")
 end
 
@@ -454,7 +456,12 @@ local speeds= {1, 1, 1}
 local function input(event)
 	if event.type == "InputEventType_Release" then return false end
 	if event.DeviceInput.button == "DeviceButton_n" then
-		trans_new_screen("ScreenMiscTest")
+		set_song_mode()
+		for i, cn in ipairs{PLAYER_1, PLAYER_2} do
+			cons_players[cn]:clear_init(cn)
+			cons_players[cn]:set_ops_from_profile()
+		end
+		trans_new_screen("ScreenDemonstration")
 	end
 	if event.DeviceInput.button == "DeviceButton_a" then
 		activate_confetti("perm", true)
@@ -491,6 +498,7 @@ local star_args= {
 
 local hms= {}
 local hset= fetch_color("hours")
+local prev_timestamp= ""
 local function get_hour_indices()
 	local curr_second= (Hour() * 3600) + (Minute() * 60) + Second()
 	local sec_per= misc_config:get_data().seconds_per_clock_change
@@ -500,7 +508,10 @@ local function get_hour_indices()
 	return curr_index, next_index, percent
 end
 local function hms_update(self)
-	hms:settext(hms_timestamp())
+	local this_stamp= hms_timestamp()
+	if this_stamp == prev_timestamp then return end
+	prev_timestamp= this_stamp
+	hms:settext(this_stamp)
 	local curr_index, next_index, percent= get_hour_indices()
 	local hour_curr= color_in_set(hset, curr_index, true, false, false)
 	local hour_next= color_in_set(hset, next_index, true, false, false)

@@ -1,4 +1,5 @@
 local settings_prefix= "/consensual_settings/"
+global_cur_game= GAMESTATE:GetCurrentGame():GetName():lower()
 
 function force_table_elements_to_match_type(candidate, must_match, depth_remaining)
 	for k, v in pairs(candidate) do

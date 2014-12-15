@@ -2,7 +2,9 @@ local rate_coordinator= setmetatable({}, rate_coordinator_interface_mt)
 rate_coordinator:initialize()
 
 local function can_have_special_actors()
-	return Var("LoadingScreen") == "ScreenGameplay"
+	local screen_name= Var("LoadingScreen")
+	return screen_name == "ScreenGameplay" or
+		screen_name == "ScreenDemonstration"
 end
 
 -- The order of these elements also affects the coloring of the score meter.
@@ -54,7 +56,8 @@ local notefields= {}
 local next_chuunibyou= {[PLAYER_1]= 0, [PLAYER_2]= 0}
 local chuunibyou_state= {[PLAYER_1]= true, [PLAYER_2]= true}
 local chuunibyou_sides= {}
-do
+if true_gameplay and (cons_players[PLAYER_1].chuunibyou or
+											cons_players[PLAYER_2].chuunibyou) then
 	local enabled= GAMESTATE:GetEnabledPlayers()
 	if #enabled == 1 then
 		chuunibyou_sides= {
@@ -789,6 +792,15 @@ local author_centers= {
 	[PLAYER_2]= { SCREEN_RIGHT * .75, SCREEN_TOP + (line_spacing*1.5) }
 }
 
+local function chart_info_text(pn)
+	local cur_steps= gamestate_get_curr_steps(pn)
+	if not cur_steps then return "" end
+	local author= steps_get_author(cur_steps, gamestate_get_curr_song())
+	local difficulty= steps_to_string(cur_steps)
+	local rating= cur_steps:GetMeter()
+	return author .. ": " .. difficulty .. ": " .. rating
+end
+
 local function make_special_actors_for_players()
 	if not can_have_special_actors() then
 		return Def.Actor{}
@@ -832,18 +844,20 @@ local function make_special_actors_for_players()
 			feedback_things[v][#feedback_things[v]+1]= new_feedback
 		end
 		if flags.chart_info then
-			local cur_steps= gamestate_get_curr_steps(v)
-			local author= steps_get_author(cur_steps, gamestate_get_curr_song())
-			local difficulty= steps_to_string(cur_steps)
-			local rating= cur_steps:GetMeter()
-			local info_text= author .. ": " .. difficulty .. ": " .. rating
 			a[#a+1]= normal_text(
-				"author", info_text, fetch_color("gameplay.chart_info"), nil,
+				"author", chart_info_text(v), fetch_color("gameplay.chart_info"),
+				fetch_color("gameplay.text_stroke"),
 				author_centers[v][1], author_centers[v][2], 1, center,
 				{ OnCommand= function(self)
 						width_limit_text(self, spb_width/2 - 48)
-						self:strokecolor(fetch_color("gameplay.text_stroke"))
-			end })
+				end,
+					["CurrentSteps"..ToEnumShortString(v).."ChangedMessageCommand"]=
+						function(self)
+							if GAMESTATE:IsCourseMode() then return end
+							self:settext(chart_info_text(v))
+							width_limit_text(self, spb_width/2 - 48)
+						end
+			})
 		end
 		--[[
 		a[#a+1]= normal_text(
@@ -923,14 +937,10 @@ return Def.ActorFrame {
 		OnCommand=
 			function(self)
 				screen_gameplay= SCREENMAN:GetTopScreen()
-				if not screen_gameplay.GetTrueBPS then
-					Trace("screen_gameplay lacks GetTrueBPS, something is wrong.")
-				else
-					screen_gameplay:HasteLifeSwitchPoint(.5)
-					screen_gameplay:HasteTimeBetweenUpdates(4)
-					screen_gameplay:HasteAddAmounts({-.25, 0, .25})
-					screen_gameplay:HasteTurningPoints({-1, 0, 1})
-				end
+				screen_gameplay:HasteLifeSwitchPoint(.5)
+				screen_gameplay:HasteTimeBetweenUpdates(4)
+				screen_gameplay:HasteAddAmounts({-.25, 0, .25})
+				screen_gameplay:HasteTurningPoints({-1, 0, 1})
 				song_progress_bar:set_from_song()
 				local song_ops= GAMESTATE:GetSongOptionsObject("ModsLevel_Current")
 				if song_ops:MusicRate() < 1 or song_ops:Haste() < 0 then

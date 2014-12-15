@@ -988,8 +988,8 @@ menu_stack_mt= {
 					elements, disp_el_width_limit, line_height, 1)
 			end
 			args[#args+1]= self.cursor:create_actors(
-				"cursor", sep, 0, 1, pcolor, fetch_color("player.hilight"), true,
-				ud_menus())
+				"cursor", sep, 0, 1, pcolor, fetch_color("player.hilight"),
+				button_list_for_menu_cursor())
 			return Def.ActorFrame(args)
 		end,
 		push_options_set_stack= function(

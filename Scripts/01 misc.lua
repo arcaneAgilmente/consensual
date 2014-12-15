@@ -522,6 +522,10 @@ end
 
 function steps_get_author(steps, song)
 	local author= ""
+	if not steps then
+		if not song then return "" end
+		return song:GetGroupName()
+	end
 	if steps.GetAuthorCredit then
 		-- All three of these are plausible places for the author name.
 		-- The correct place.

@@ -222,7 +222,7 @@ local args= {
 			local fake_judge= cons_players[player].fake_judge
 			local fake_score= cons_players[player].fake_score
 			local stage_stats= cons_players[player].stage_stats
-			do
+			if true_gameplay then
 				local max_step_value= 0
 				if param.HoldNoteScore then
 					max_step_value= tns_values.HoldNoteScore_Held
@@ -234,7 +234,7 @@ local args= {
 				local taps= param.Notes
 				local holds= param.Holds
 				local col_scores= cons_players[player].column_scores
-				if taps then
+				if taps and col_scores then
 					add_to_col(col_scores[0], param.TapNoteScore, max_step_value, param.TapNoteOffset)
 					local function add_set(set)
 						for track, tapnote in pairs(set) do
@@ -244,7 +244,7 @@ local args= {
 					if taps then add_set(taps) end
 					if holds then add_set(holds) end
 				end
-				if param.HoldNoteScore then
+				if param.HoldNoteScore and col_scores then
 					add_to_col(col_scores[0], param.HoldNoteScore, max_step_value)
 					add_to_col(col_scores[param.FirstTrack+1], param.HoldNoteScore, max_step_value)
 				end

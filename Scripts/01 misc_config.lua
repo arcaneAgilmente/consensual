@@ -66,6 +66,76 @@ function ud_menus()
 	return misc_config:get_data().menus_have_ud
 end
 
+-- Gametype compatibility:  Any new game mode will need to have its menu
+-- reverse mapping added to this.
+local reverse_menu_button_mapping= {
+	dance= {
+		MenuLeft= "Left", MenuRight= "Right", MenuUp= "Up", MenuDown= "Down"
+	},
+	pump= {
+		MenuLeft= "DownLeft", MenuRight= "DownRight", MenuUp= "UpLeft", MenuDown= "UpRight"
+	},
+	kb7= {
+		MenuLeft= "Key2", MenuRight= "Key3", MenuUp= "Key5", MenuDown= "Key6"
+	},
+	ez2= {
+		MenuLeft= "HandUpLeft", MenuRight= "HandUpRight", MenuUp= "FootUpLeft", MenuDown= "FootUpRight"
+	},
+	para= {
+		MenuLeft= "Left", MenuRight= "Right", MenuUp= "UpRight", MenuDown= "UpLeft"
+	},
+	ds3ddx= {
+		MenuLeft= "HandLeft", MenuRight= "HandRight", MenuUp= "HandUp", MenuDown= "HandDown"
+	},
+	beat= {
+		MenuLeft= "Key1", MenuRight= "Key3", MenuUp= "Scratch up", MenuDown= "Scratch down"
+	},
+	maniax= {
+		MenuLeft= "HandUpLeft", MenuRight= "HandUpRight", MenuUp= "HandLrRight", MenuDown= "HandLrLeft"
+	},
+	techno= {
+		MenuLeft= "Left", MenuRight= "Right", MenuUp= "Up", MenuDown= "Down"
+	},
+	popn= {
+		MenuLeft= "Left Blue", MenuRight= "Right Blue", MenuUp= "Left Yellow", MenuDown= "Right Yellow"
+	},
+	lights= {
+		MenuLeft= "MarqueeUpLeft", MenuRight= "MarqueeUpRight", MenuUp= "MarqueeLrLeft", MenuDown= "MarqueeLrRight"
+	},
+	kickbox= {
+		MenuLeft= "UpLeftFist", MenuRight= "UpRightFist", MenuUp= "DownLeftFist", MenuDown= "DownRightFist"
+	},
+}
+
+local game_name= GAMESTATE:GetCurrentGame():GetName()
+local rev_map= reverse_menu_button_mapping[game_name]
+
+function reverse_menu_button(button)
+	if not rev_map then
+		return button
+	end
+	return rev_map[button] or button
+end
+
+function reverse_button_list(list)
+	if not PREFSMAN:GetPreference("OnlyDedicatedMenuButtons") then
+		for i, button in ipairs(list) do
+			button[2]= reverse_menu_button(button[2])
+		end
+	end
+end
+
+function button_list_for_menu_cursor()
+	local button_list= {}
+	if ud_menus() then
+		button_list= {{"top", "MenuUp"}, {"bottom", "MenuDown"}}
+	else
+		button_list= {{"top", "MenuLeft"}, {"bottom", "MenuRight"}}
+	end
+	reverse_button_list(button_list)
+	return button_list
+end
+
 -- Planned but unimplemented:  (doable on request)
 --	menu_grace_time= 0, -- The amount of time the player can spend on a menu screen before time starts being deducted from their play time.
 --	menu_time_multiplier= 0, -- Time spent on a menu screen is multiplied by this amount before being deducted from the play time.  0 means menu time is free, .5 means that 2 seconds on a menu takes 1 second off of play time.

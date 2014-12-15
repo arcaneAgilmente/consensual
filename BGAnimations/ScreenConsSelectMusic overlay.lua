@@ -151,6 +151,7 @@ local std_items_mt= {
 }}
 
 local steps_display_elements= 6
+local sd_button_list= {}
 function steps_display_interface:create_actors(name)
 	self.name= name
 	local args= {
@@ -166,18 +167,18 @@ function steps_display_interface:create_actors(name)
 			end
 		end
 	}
+	self.sick_wheel= setmetatable({disable_wrapping= true}, sick_wheel_mt)
+	args[#args+1]= self.sick_wheel:create_actors("wheel", steps_display_elements, std_items_mt, 0, 0)
 	local cursors= {}
 	for i, v in ipairs(all_player_indices) do
 		local new_curs= {}
 		setmetatable(new_curs, cursor_mt)
 		args[#args+1]= new_curs:create_actors(
 			v .. "curs", 0, 0, 2, pn_to_color(v), fetch_color("player.hilight"),
-			false, true)
+			sd_button_list)
 		cursors[v]= new_curs
 	end
 	self.cursors= cursors
-	self.sick_wheel= setmetatable({disable_wrapping= true}, sick_wheel_mt)
-	args[#args+1]= self.sick_wheel:create_actors("wheel", steps_display_elements, std_items_mt, 0, 0)
 	return Def.ActorFrame(args)
 end
 
@@ -323,6 +324,8 @@ local visible_styles_menus= {
 	[PLAYER_2]= setmetatable({}, options_sets.special_functions),
 }
 
+local player_cursor_button_list= {{"top", "MenuLeft"}, {"bottom", "MenuRight"}}
+reverse_button_list(player_cursor_button_list)
 local player_cursors= {
 	[PLAYER_1]= setmetatable({}, cursor_mt),
 	[PLAYER_2]= setmetatable({}, cursor_mt)
@@ -727,8 +730,16 @@ local codes= {
 	{ name= "unjoin", ignore_release= true, games= {"none"},
 		"Down", "Left", "Up", "Down", "Left", "Up", "Down", "Left", "Up"},
 }
-for i, v in ipairs(codes) do
-	v.curr_pos= {[PLAYER_1]= 1, [PLAYER_2]= 1}
+for i, code in ipairs(codes) do
+	code.curr_pos= {[PLAYER_1]= 1, [PLAYER_2]= 1}
+	local in_game= string_in_table(global_cur_game, code.games)
+	if in_game then
+		if code.name == "diff_up" then
+			sd_button_list[#sd_button_list+1]= {"left", code[1]}
+		elseif code.name == "diff_down" then
+			sd_button_list[#sd_button_list+1]= {"right", code[1]}
+		end
+	end
 end
 
 local function update_keys_down(pn, key_pressed, press_type)
@@ -1457,10 +1468,10 @@ return Def.ActorFrame {
 	}),
 	player_cursors[PLAYER_1]:create_actors(
 		"P1_cursor", 0, 0, 1, pn_to_color(PLAYER_1),
-		fetch_color("player.hilight"), true, false, .5),
+		fetch_color("player.hilight"), player_cursor_button_list, .5),
 	player_cursors[PLAYER_2]:create_actors(
 		"P2_cursor", 0, 0, 1, pn_to_color(PLAYER_2),
-		fetch_color("player.hilight"), true, false, .5),
+		fetch_color("player.hilight"), player_cursor_button_list, .5),
 	-- FIXME:  There's not a place for the credit count on the screen anymore.
 	-- credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
 	Def.ActorFrame{

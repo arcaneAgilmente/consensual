@@ -170,6 +170,12 @@ local color_manipulator_mt= {
 dofile(THEME:GetPathO("", "options_menu.lua"))
 set_option_set_metatables()
 
+local cursor_button_list= {
+	{"top", "MenuLeft"}, {"bottom", "MenuRight"},
+	{"left", "MenuLeft"}, {"right", "MenuRight"},
+}
+reverse_button_list(cursor_button_list)
+
 local manip= setmetatable({}, color_manipulator_mt)
 local cursor= setmetatable({}, cursor_mt)
 local main_menu= setmetatable({}, options_sets.menu)
@@ -249,16 +255,22 @@ local function update_cursor()
 	if cursor_pos == "main" then
 		cursor.align= .5
 		cursor_fit= item_fit(main_menu:get_cursor_element())
+		cursor:set_sides_vis({"top", "bottom"}, true)
+		cursor:set_sides_vis({"left", "right"}, false)
 	elseif cursor_pos == "second" then
 		cursor.align= 0
 		cursor_fit= item_fit(second_menu:get_cursor_element())
+		cursor:set_sides_vis({"top", "bottom"}, true)
+		cursor:set_sides_vis({"left", "right"}, false)
 	elseif cursor_pos == "color" then
 		cursor.align= 0
 		cursor_fit= manip:get_cursor_fit()
 		if manip.locked_in_editing then
-			cursor.parts[2]:visible(false)
+			cursor:set_sides_vis({"top", "bottom"}, true)
+			cursor:set_sides_vis({"left", "right"}, false)
 		else
-			cursor.parts[2]:visible(true)
+			cursor:set_sides_vis({"top", "bottom"}, false)
+			cursor:set_sides_vis({"left", "right"}, true)
 		end
 	end
 	cursor:refit(unpack(cursor_fit))
@@ -579,6 +591,6 @@ return Def.ActorFrame{
 		true, true),
 	cursor:create_actors(
 		"cursor", _screen.cx, _screen.cy, 1, fetch_color("player.both"),
-		fetch_color("player.hilight"), true, true),
+		fetch_color("player.hilight"), cursor_button_list),
 	helper:create_actors("helper", misc_config:get_data().color_help_time, "ColorConfig", "main_help"),
 }

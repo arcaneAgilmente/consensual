@@ -3,9 +3,9 @@ if in_edit_mode then
 		Def.Actor{
 			Name= "cover", StartTransitioningCommand= function(self)
 				local screen= SCREENMAN:GetTopScreen()
-				screen:linear(1)
+				screen:linear(.5)
 				screen:diffusealpha(0)
-				self:sleep(1)
+				self:sleep(.5)
 			end
 		}
 	}

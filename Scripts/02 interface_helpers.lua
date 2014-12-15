@@ -319,14 +319,100 @@ function create_frame_quads(label, pad, fw, fh, outer_color, inner_color, fx, fy
 	}
 end
 
+local halvable_sides= {top= true, bottom= true}
+local function generic_left_half(self)
+	self:cropright(0.5)
+end
+local function generic_right_half(self)
+	self:cropleft(0.5)
+end
+local function generic_unhalf(self)
+	self:cropright(0):cropleft(0)
+end
+
+local function generic_icon_sprite(button, side, add_to)
+	local path= THEME:GetPathG("", "button_icons/"..button..".png", true)
+	if not path or path == "" then return nil end
+	local args= {
+		Name= button, Texture= path, InitCommand= function(self)
+			add_to[#add_to+1]= {side, self}
+			scale_to_fit(self, 16, 16)
+			self:diffusealpha(.5)
+			if side == "top" then
+				self:vertalign(bottom)
+			elseif side == "bottom" then
+				self:vertalign(top)
+			elseif side == "left" then
+				self:horizalign(right)
+			elseif side == "right" then
+				self:horizalign(left)
+			end
+		end,
+	}
+	if halvable_sides[side] then
+		args.LeftCommand= generic_left_half
+		args.RightCommand= generic_right_half
+		args.FullCommand= generic_unhalf
+	end
+	return Def.Sprite(args)
+end
+
+local arrow_h= 8
+local full_arrow_verts= {
+	left= {-arrow_h, 0, 0, arrow_h, 0, -arrow_h},
+	right= {arrow_h, 0, 0, -arrow_h, 0, arrow_h},
+	top= {0, -arrow_h, -arrow_h, 0, arrow_h, 0},
+	bottom= {0, arrow_h, arrow_h, 0, -arrow_h, 0},
+}
+local left_half_arrow_verts= {
+	left= full_arrow_verts.left,
+	right= {0, 0, 0, 0, 0, 0},
+	top= {0, -arrow_h, -arrow_h, 0, 0, 0},
+	bottom= {0, arrow_h, 0, 0, -arrow_h, 0},
+}
+local right_half_arrow_verts= {
+	left= {0, 0, 0, 0, 0, 0},
+	right= full_arrow_verts.right,
+	top= {0, -arrow_h, 0, 0, arrow_h, 0},
+	bottom= {0, arrow_h, arrow_h, 0, 0, 0},
+}
+local function generic_arrow(button, side, add_to, add_approaches, cursor_self)
+	return Def.ActorMultiVertex{
+		Name= button, InitCommand= function(self)
+			add_to[#add_to+1]= {side, self}
+			self:SetDrawState{Mode= "DrawMode_Triangles"}:SetNumVertices(3)
+			add_approaches(cursor_self, 3)
+		end,
+		RefitCommand= noop_blank,
+		LeftCommand= function(self, param)
+			cursor_self:set_verts_for_part(param[1], left_half_arrow_verts[side])
+		end,
+		RightCommand= function(self, param)
+			cursor_self:set_verts_for_part(param[1], right_half_arrow_verts[side])
+		end,
+		FullCommand= function(self, param)
+			cursor_self:set_verts_for_part(param[1], full_arrow_verts[side])
+		end,
+	}
+end
+local vert_speed= 512
+local function handle_approach(currents, goals, delta)
+	local speeds= {}
+	for i= 1, #currents do
+		speeds[i]= math.abs(vert_speed * delta)
+	end
+	multiapproach(currents, goals, speeds)
+end
+local function align_x(x, align, w)
+	return x + (align * w)
+end
+
 local pulse_cycle= 1
 local move_time= 0.1
-local arrow_h= 8
-local vert_speed= 512
 cursor_mt= {
 	__index= {
 		create_actors= function(
-				self, name, x, y, t, main, hilight, lrarr, udarr, align)
+				self, name, x, y, t, main, hilight, button_list, align)
 			self.main_color= main or fetch_color("player.both")
 			self.hilight_color= hilight or fetch_color("player.hilight")
 			self.x= x
@@ -337,22 +423,29 @@ cursor_mt= {
 			self.t= t
 			self.hw= 0
 			self.hh= 0
+			self.sprite_parts= {}
 			self.parts= {}
 			self.part_ranges= {}
 			self.currents= {}
 			self.goals= {}
+			self.corner_currents= {0, 0, 0, 0}
+			self.corner_goals= {0, 0, 0, 0}
 			self.update= function(frame, delta)
+				local lerp_t= self.pulse_time / pulse_cycle
 				self.pulse_time= self.pulse_time + delta
-				self.curr_color= lerp_color(self.pulse_time / pulse_cycle, self.start_color, self.goal_color)
+				self.curr_color= lerp_color(lerp_t, self.start_color, self.goal_color)
+				self.curr_alpha= lerp(lerp_t, self.start_alpha, self.goal_alpha)
 				-- I think something is causing a negative delta.
-				self.curr_thick= math.abs(lerp(self.pulse_time / pulse_cycle, self.start_thick, self.goal_thick))
-				local speeds= {}
-				for i= 1, #self.currents do
-					speeds[i]= math.abs(vert_speed * delta)
-				end
-				multiapproach(self.currents, self.goals, speeds)
+				self.curr_thick= math.abs(lerp(lerp_t, self.start_thick, self.goal_thick))
+				handle_approach(self.currents, self.goals, delta)
+				handle_approach(self.corner_currents, self.corner_goals, delta)
 				for i= 1, #self.parts do
 					self:update_part(i, self.parts[i])
+					self:position_part(self.parts[i])
+				end
+				for i= 1, #self.sprite_parts do
+					self:position_part(self.sprite_parts[i])
+					self.sprite_parts[i][2]:diffusealpha(self.curr_alpha)
 				end
 				if self.pulse_time > pulse_cycle then
 					self:reverse_pulse()
@@ -364,10 +457,11 @@ cursor_mt= {
 					subself:xy(x, y)
 					self.container= subself
 					subself:SetUpdateFunction(self.update)
+					self:un_half()
 				end,
 				Def.ActorMultiVertex{
 					Name= "outline", InitCommand= function(subself)
-						self.parts[#self.parts+1]= subself
+						self.parts[#self.parts+1]= {"none", subself}
 						subself:SetDrawState{Mode= "DrawMode_LineStrip"}
 						self:add_approaches(7)
 						subself:SetNumVertices(7)
@@ -391,71 +485,26 @@ cursor_mt= {
 					end
 				},
 			}
-			if lrarr then
-				args[#args+1]= Def.ActorMultiVertex{
-					Name= "arrows", InitCommand= function(subself)
-						self.parts[#self.parts+1]= subself
-						subself:SetDrawState{Mode= "DrawMode_Triangles"}
-						self:add_approaches(6)
-						subself:SetNumVertices(6)
-					end,
-					RefitCommand= function(subself, param)
-						local base_x= self.hw
-						self:set_verts_for_part(param[1], {
-							base_x, -arrow_h, base_x, arrow_h, base_x+arrow_h, 0,
-							-base_x, -arrow_h, -base_x, arrow_h, -base_x-arrow_h, 0,
-						})
-					end,
-					LeftCommand= function(subself)
-						subself:SetDrawState{First= 4}
-					end,
-					RightCommand= function(subself)
-						subself:SetDrawState{First= 1, Num= 3}
-					end,
-					FullCommand= function(subself)
-						subself:SetDrawState{First= 1, Num= -1}
-					end
-				}
-			end
-			if udarr then
-				args[#args+1]= Def.ActorMultiVertex{
-					Name= "arrows", InitCommand= function(subself)
-						self.parts[#self.parts+1]= subself
-						subself:SetDrawState{Mode= "DrawMode_Triangles"}
-						self:add_approaches(6)
-						subself:SetNumVertices(6)
-					end,
-					RefitCommand= function(subself, param)
-						local base_y= self.hh
-						self:set_verts_for_part(param[1], {
-							-arrow_h, base_y, arrow_h, base_y, 0, base_y + arrow_h,
-							arrow_h, -base_y, -arrow_h, -base_y, 0, -base_y - arrow_h,
-						})
-					end,
-					LeftCommand= function(subself, param)
-						local base_y= self.hh
-						self:set_verts_for_part(param[1], {
-							-arrow_h, base_y, 0, base_y, 0, base_y + arrow_h,
-							0, -base_y, -arrow_h, -base_y, 0, -base_y - arrow_h,
-						})
-					end,
-					RightCommand= function(subself, param)
-						local base_y= self.hh
-						self:set_verts_for_part(param[1], {
-							0, base_y, arrow_h, base_y, 0, base_y + arrow_h,
-							arrow_h, -base_y, 0, -base_y, 0, -base_y - arrow_h,
-						})
-					end,
-					FullCommand= function(subself, param)
-						subself:playcommand("Refit", param)
-					end
-				}
+			for i, button_info in ipairs(button_list) do
+				-- button_info= {side, button}
+				-- side= "left" or "top" or "right" or "bottom"
+				local sprite= generic_icon_sprite(
+					button_info[2], button_info[1], self.sprite_parts)
+				if sprite then
+					args[#args+1]= sprite
+				else
+					args[#args+1]= generic_arrow(
+						button_info[2], button_info[1], self.parts, self.add_approaches,
+						self)
+				end
 			end
 			return Def.ActorFrame(args)
 		end,
 		start_pulse= function(self)
 			self.start_color= self.main_color
 			self.goal_color= self.hilight_color
+			self.start_alpha= 1
+			self.goal_alpha= 0
 			self.start_thick= self.t*2
 			self.goal_thick= self.t
 			self.pulse_time= 0
@@ -463,6 +512,7 @@ cursor_mt= {
 		reverse_pulse= function(self)
 			self.start_color, self.goal_color= self.goal_color, self.start_color
 			self.start_thick, self.goal_thick= self.goal_thick, self.start_thick
+			self.start_alpha, self.goal_alpha= self.goal_alpha, self.start_alpha
 			self.pulse_time= 0
 		end,
 		add_approaches= function(self, vert_count)
@@ -482,15 +532,26 @@ cursor_mt= {
 				local i= start+(v*2)
 				table.insert(verts, {{currs[i+1], currs[i+2], 0}, self.curr_color})
 			end
-			part:SetVertices(verts)
-			part:SetLineWidth(self.curr_thick)
+			part[2]:SetVertices(verts)
+			part[2]:SetLineWidth(self.curr_thick)
+		end,
+		position_part= function(self, part)
+			local corcur= self.corner_currents
+			local xadd= ({none= 0, left= corcur[1], right= corcur[3],
+										top= 0, bottom= 0})[part[1]]
+			local yadd= ({none= 0, left= 0, right= 0, top= corcur[2],
+										bottom= corcur[4]})[part[1]]
+			if part[1] ~= "none" then
+				xadd= align_x(xadd, self.align, corcur[3] - corcur[1])
+			end
+			part[2]:xy(xadd, yadd)
 		end,
 		set_verts_for_part= function(self, id, verts)
 			local start= self.part_ranges[id][1]
 			local goals= self.goals
 			for v= 1, #verts do
 				if v % 2 == 1 then
-					goals[start+v]= verts[v] + self.align * self.w
+					goals[start+v]= align_x(verts[v], self.align, self.w)
 				else
 					goals[start+v]= verts[v]
 				end
@@ -506,6 +567,10 @@ cursor_mt= {
 			self.h= nh or self.h
 			self.hw= self.w/2
 			self.hh= self.h/2
+			self.corner_goals= {
+				align_x(-self.hw, self.align, self.w), -self.hh,
+				align_x(self.hw, self.align, self.w), self.hh,
+			}
 			local secs_into_pulse= self.container:GetSecsIntoEffect()
 			local remain= pulse_cycle - secs_into_pulse
 			self.container:stoptweening()
@@ -513,34 +578,60 @@ cursor_mt= {
 			self.container:xy(nx, ny)
 			if new_size then
 				for i= 1, #self.parts do
-					self.parts[i]:playcommand("Refit", {i})
+					self.parts[i][2]:playcommand("Refit", {i})
 				end
 			end
 		end,
 		left_half= function(self)
 			for i= 1, #self.parts do
-				self.parts[i]:playcommand("Left", {i})
+				self.parts[i][2]:playcommand("Left", {i})
+			end
+			for i= 1, #self.sprite_parts do
+				self.sprite_parts[i][2]:playcommand("Left")
 			end
 		end,
 		right_half= function(self)
 			for i= 1, #self.parts do
-				self.parts[i]:playcommand("Right", {i})
+				self.parts[i][2]:playcommand("Right", {i})
+			end
+			for i= 1, #self.sprite_parts do
+				self.sprite_parts[i][2]:playcommand("Right")
 			end
 		end,
 		un_half= function(self)
 			for i= 1, #self.parts do
-				self.parts[i]:playcommand("Full", {i})
+				self.parts[i][2]:playcommand("Full", {i})
+			end
+			for i= 1, #self.sprite_parts do
+				self.sprite_parts[i][2]:playcommand("Full")
 			end
 		end,
 		hide= function(self)
 			for i= 1, #self.parts do
-				self.parts[i]:visible(false)
+				self.parts[i][2]:visible(false)
+			end
+			for i= 1, #self.sprite_parts do
+				self.sprite_parts[i][2]:visible(false)
 			end
 		end,
 		unhide= function(self)
 			for i= 1, #self.parts do
-				self.parts[i]:visible(true)
+				self.parts[i][2]:visible(true)
 			end
+			for i= 1, #self.sprite_parts do
+				self.sprite_parts[i][2]:visible(true)
+			end
+		end,
+		set_parts_vis= function(self, sides, part_list, vis)
+			for i= 1, #part_list do
+				if string_in_table(part_list[i][1], sides) then
+					part_list[i][2]:visible(vis)
+				end
+			end
+		end,
+		set_sides_vis= function(self, sides, vis)
+			self:set_parts_vis(sides, self.parts, vis)
+			self:set_parts_vis(sides, self.sprite_parts, vis)
 		end
 }}
 

@@ -114,7 +114,7 @@ options_sets.pain_menu= {
 			self.cursor= setmetatable({}, cursor_mt)
 			args[#args+1]= self.cursor:create_actors(
 				"cursor", 0, 0, .5, pn_to_color(player_number),
-				fetch_color("player.hilight"), true, ud_menus())
+				fetch_color("player.hilight"), button_list_for_menu_cursor())
 			self.cursor_pos= 1
 			self.depth= 1
 			self.mode= 1
@@ -439,7 +439,7 @@ pain_display_mt= {
 			self.cursor= setmetatable({}, cursor_mt)
 			el_args[#el_args+1]= self.cursor:create_actors(
 				"cursor", 0, 0, .5, pn_to_color(player_number),
-				fetch_color("player.hilight"), true, ud_menus())
+				fetch_color("player.hilight"), button_list_for_menu_cursor())
 			self.cursor_pos= {1, 1}
 			self.mode= 1
 			self.menu= setmetatable({}, options_sets.pain_menu)
