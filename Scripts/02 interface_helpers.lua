@@ -11,10 +11,7 @@ function normal_text(name, text, color, stroke, tx, ty, z, align, commands)
 	commands.Name= name
 	commands.Text= text
 	commands.InitCommand= function(self)
-		self:xy(tx,ty)
-		self:zoom(z)
-		self:diffuse(color)
-		self:horizalign(align)
+		self:xy(tx,ty):zoom(z):diffuse(color):horizalign(align)
 		if stroke then self:strokecolor(stroke) end
 		maybe_distort_text(self)
 		if passed_init then passed_init(self) end
@@ -40,9 +37,7 @@ end
 function attributed_text(name, x, y, z, align, parts, commands)
 	local ret=  Def.BitmapText{
 		Name= name, Font= "Common Normal", InitCommand= function(self)
-			self:xy(x, y)
-			self:zoom(z)
-			self:horizalign(align)
+			self:xy(x, y):zoom(z):horizalign(align)
 			set_text_from_parts(self, parts)
 			maybe_distort_text(self)
 			if commands.InitCommand then commands.InitCommand(self) end
@@ -95,22 +90,18 @@ do
 				Name= "text",
 				Text= self:get_string(params.tt),
 				InitCommand= function(self)
-											 self:xy(params.tx, params.ty)
-											 self:zoom(params.tz)
-											 self:diffuse(params.tc)
-											 self:horizalign(params.ta)
-											 maybe_distort_text(self)
-										 end
-			},
+					self:xy(params.tx, params.ty):zoom(params.tz):diffuse(params.tc)
+						:horizalign(params.ta)
+					maybe_distort_text(self)
+				end
+														 },
 			LoadFont(params.nf) .. {
 				Name= "number", Text= params.nt,
 				InitCommand= function(self)
-											 self:xy(params.nx, params.ny)
-											 self:zoom(params.nz)
-											 self:diffuse(params.nc)
-											 self:horizalign(params.na)
-											 maybe_distort_text(self)
-										 end
+					self:xy(params.nx, params.ny):zoom(params.nz):diffuse(params.nc)
+						:horizalign(params.na)
+					maybe_distort_text(self)
+				end
 			},
 		}
 	end
@@ -159,8 +150,7 @@ end
 function text_and_number_interface:move_to(x, y, time)
 	if self.container then
 		if tonumber(time) then
-			self.container:finishtweening()
-			self.container:linear(time)
+			self.container:finishtweening():linear(time)
 		end
 		self.x= x
 		self.y= y
@@ -454,17 +444,16 @@ cursor_mt= {
 			self:start_pulse()
 			local args= {
 				Name= "cursor", InitCommand= function(subself)
-					subself:xy(x, y)
 					self.container= subself
-					subself:SetUpdateFunction(self.update)
+					subself:xy(x, y):SetUpdateFunction(self.update)
 					self:un_half()
 				end,
 				Def.ActorMultiVertex{
 					Name= "outline", InitCommand= function(subself)
 						self.parts[#self.parts+1]= {"none", subself}
-						subself:SetDrawState{Mode= "DrawMode_LineStrip"}
 						self:add_approaches(7)
-						subself:SetNumVertices(7)
+						subself:SetDrawState{Mode= "DrawMode_LineStrip"}
+							:SetNumVertices(7)
 					end,
 					RefitCommand= function(subself, param)
 						self:set_verts_for_part(
@@ -532,8 +521,7 @@ cursor_mt= {
 				local i= start+(v*2)
 				table.insert(verts, {{currs[i+1], currs[i+2], 0}, self.curr_color})
 			end
-			part[2]:SetVertices(verts)
-			part[2]:SetLineWidth(self.curr_thick)
+			part[2]:SetVertices(verts):SetLineWidth(self.curr_thick)
 		end,
 		position_part= function(self, part)
 			local corcur= self.corner_currents
@@ -573,9 +561,7 @@ cursor_mt= {
 			}
 			local secs_into_pulse= self.container:GetSecsIntoEffect()
 			local remain= pulse_cycle - secs_into_pulse
-			self.container:stoptweening()
-			self.container:linear(move_time)
-			self.container:xy(nx, ny)
+			self.container:stoptweening():linear(move_time):xy(nx, ny)
 			if new_size then
 				for i= 1, #self.parts do
 					self.parts[i][2]:playcommand("Refit", {i})
@@ -652,9 +638,8 @@ amv_outline_mt= {
 				Name= name,
 				InitCommand= function(subself)
 					self.container= subself
-					subself:xy(x, y)
 					-- 6 verts, so the cursor can easily be cut in half.
-					subself:SetVertices{
+					subself:xy(x, y):SetVertices{
 						{{0, -h/2, 0}, color},
 						{{w/2, -h/2, 0}, color},
 						{{w/2, h/2, 0}, color},
@@ -663,8 +648,7 @@ amv_outline_mt= {
 						{{-w/2, -h/2, 0}, color},
 						{{0, -h/2, 0}, color},
 					}
-					subself:SetLineWidth(t)
-					subself:SetDrawState{Mode= "DrawMode_LineStrip"}
+						:SetLineWidth(t):SetDrawState{Mode= "DrawMode_LineStrip"}
 				end
 			}
 		end,
@@ -744,9 +728,7 @@ frame_helper_mt= {
 		move= function(self, x, y)
 			x= x or self.x
 			y= y or self.y
-			self.container:stoptweening()
-			self.container:linear(0.1)
-			self.container:xy(x, y)
+			self.container:stoptweening():linear(0.1):xy(x, y)
 			self.x, self.y= x, y
 		end,
 		hide= function(self)
@@ -805,10 +787,7 @@ function clip_scale(self, zw, zh)
 	local uzh= self:GetHeight()
 	local xz= zw / uzw
 	local yz= zh / uzh
-	self:cropleft(0)
-	self:cropright(0)
-	self:croptop(0)
-	self:cropbottom(0)
+	self:cropleft(0):cropright(0):croptop(0):cropbottom(0)
 	local function handle_dim(dimz, dim, dimdest, cropa, cropb)
 		self:zoom(dimz)
 		local clip_amount= (1 - (dimdest / dim)) / 2

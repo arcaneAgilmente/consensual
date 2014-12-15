@@ -21,24 +21,20 @@ function arrow_amv(name, x, y, width, height, detail, color)
 	local radius= height / 2
 	local ratio= width / radius
 	return Def.ActorMultiVertex{
-		Name= name,
-		InitCommand=
-			function(self)
-				self:xy(x, y)
-				local verts= {{{0, 0, 0}, color}}
-				local top_curve_verts= calc_circle_verts(radius, detail, 0, math.pi/2)
-				for i, vert in ipairs(top_curve_verts) do
-					verts[#verts+1]= {
-						{(vert[1][1] - radius) * ratio, vert[1][2] - radius, 0}, color}
-				end
-				local bot_curve_verts= calc_circle_verts(radius, detail, -math.pi/2, 0)
-				for i, vert in ipairs(bot_curve_verts) do
-					verts[#verts+1]= {
-						{(vert[1][1] - radius) * ratio, vert[1][2] + radius, 0}, color}
-				end
-				self:SetDrawState{Mode="DrawMode_Fan"}
-				self:SetVertices(verts)
+		Name= name, InitCommand= function(self)
+			local verts= {{{0, 0, 0}, color}}
+			local top_curve_verts= calc_circle_verts(radius, detail, 0, math.pi/2)
+			for i, vert in ipairs(top_curve_verts) do
+				verts[#verts+1]= {
+					{(vert[1][1] - radius) * ratio, vert[1][2] - radius, 0}, color}
 			end
+			local bot_curve_verts= calc_circle_verts(radius, detail, -math.pi/2, 0)
+			for i, vert in ipairs(bot_curve_verts) do
+				verts[#verts+1]= {
+					{(vert[1][1] - radius) * ratio, vert[1][2] + radius, 0}, color}
+			end
+			self:xy(x, y):SetDrawState{Mode="DrawMode_Fan"}:SetVertices(verts)
+		end
 	}
 end
 
@@ -48,16 +44,13 @@ function circle_amv(name, x, y, r, chords, color)
 	r= r or 4
 	chords= chords or 6
 	return Def.ActorMultiVertex{
-		Name= name,
-		InitCommand= function(self)
-			self:xy(x, y)
+		Name= name, InitCommand= function(self)
 			local verts= calc_circle_verts(r, chords, 0, 0)
 			table.insert(verts, 1, {{0, 0, 0}, color})
 			for i, v in ipairs(verts) do
 				v[2]= color
 			end
-			self:SetDrawState{Mode="DrawMode_Fan"}
-			self:SetVertices(verts)
+			self:xy(x, y):SetDrawState{Mode="DrawMode_Fan"}:SetVertices(verts)
 	end}
 end
 
@@ -78,8 +71,7 @@ star_amv_mt= {
 			return Def.ActorMultiVertex{
 				Name= name, InitCommand= function(subself)
 					self.container= subself
-					subself:xy(x, y)
-					subself:queuecommand("change")
+					subself:xy(x, y):queuecommand("change")
 				end,
 				changeCommand= function(subself)
 					local step= self.step_set[self.curr_step]
@@ -92,14 +84,11 @@ star_amv_mt= {
 					until curr_point == 1
 					verts[#verts+1]= verts[1]
 					subself:SetDrawState{Mode="DrawMode_LineStrip"}
-					subself:SetVertices(verts)
-					subself:SetNumVertices(#verts)
-					subself:SetLineWidth(.125)
+						:SetVertices(verts):SetNumVertices(#verts):SetLineWidth(.125)
+						:rotationz(self.rot)
+						:queuecommand("change"):linear(self.shift_time)
 					self.curr_step= wrapped_index(self.curr_step, 1, #self.step_set)
-					subself:rotationz(self.rot)
 					self.rot= self.rot + self.rot_step
-					subself:queuecommand("change")
-					subself:linear(self.shift_time)
 				end
 			}
 		end,
@@ -145,9 +134,7 @@ function dance_arrow_amv(name, x, y, r, size, color)
 	local tip_size= leg_width / math.sqrt(2)
 	local point_vert= {0, -size/2, 0}
 	return Def.ActorMultiVertex{
-		Name= name,
-		InitCommand= function(self)
-			self:xy(x, y)
+		Name= name, InitCommand= function(self)
 			local verts= {
 				{point_vert, color},
 				{{point_vert[1]-norm_size, point_vert[2]+norm_size, 0}, color},
@@ -162,9 +149,8 @@ function dance_arrow_amv(name, x, y, r, size, color)
 				{{point_vert[1]+norm_size, point_vert[2]+norm_size+tip_size, 0}, color},
 				{{point_vert[1]+norm_size, point_vert[2]+norm_size, 0}, color},
 			}
-			self:rotationz(r)
-			self:SetDrawState{Mode="DrawMode_Fan"}
-			self:SetVertices(verts)
+			self:xy(x, y):rotationz(r):SetDrawState{Mode="DrawMode_Fan"}
+				:SetVertices(verts)
 		end
 	}
 end
@@ -235,10 +221,8 @@ function noteskin_arrow_amv(name, x, y, r, size, out_color, in_color)
 			for i, v in ipairs(in_verts) do
 				verts[#verts+1]= {v, in_color}
 			end
-			self:xy(x, y)
-			self:rotationz(r)
-			self:SetDrawState{Mode="DrawMode_Triangles"}
-			self:SetVertices(verts)
+			self:xy(x, y):rotationz(r):SetDrawState{Mode="DrawMode_Triangles"}
+				:SetVertices(verts)
 		end
 	}
 end
@@ -249,17 +233,14 @@ function random_grow_circle(name, x, y, center_color, edge_color, step_time, end
 		[activate_command.."Command"]= function(self)
 			if type(center_color) == "function" then center_color= center_color() end
 			if type(edge_color) == "function" then edge_color= edge_color() end
-			self:xy(x, y)
 			local verts= {{{0, 0, 0}, center_color}}
 			local points= 128
 			for i= 1, points+1 do
 				verts[#verts+1]= {{0, 0, 0}, edge_color}
 			end
 			local expansion_vectors= calc_circle_verts(end_radius * .05, points, 0, 0)
-			self:SetVertices(verts)
-			self:SetDrawState{Mode= "DrawMode_Fan"}
+			self:xy(x, y):SetVertices(verts):SetDrawState{Mode= "DrawMode_Fan"}
 			for i= 1, 20 do
-				self:linear(step_time)
 				for v, vert in ipairs(verts) do
 					if v > 1 then
 						local scale= i + ((MersenneTwister.Random(1, 11) - 6) * .05)
@@ -270,7 +251,7 @@ function random_grow_circle(name, x, y, center_color, edge_color, step_time, end
 				-- Make the join point of the circle match.
 				verts[#verts][1][1]= verts[2][1][1]
 				verts[#verts][1][2]= verts[2][1][2]
-				self:SetVertices(verts)
+				self:linear(step_time):SetVertices(verts)
 			end
 		end
 	}
@@ -283,7 +264,6 @@ function random_grow_column(name, x, y, bottom_color, top_color, w, step_time, e
 			if type(bottom_color) == "function" then bottom_color= bottom_color() end
 			if type(top_color) == "function" then top_color= top_color() end
 			if type(end_h) == "function" then end_h= end_h() end
-			self:xy(x, y)
 			local sx= w*-.5
 			local cols= 64
 			local xdiff= w / cols
@@ -294,10 +274,8 @@ function random_grow_column(name, x, y, bottom_color, top_color, w, step_time, e
 				verts[#verts+1]= {{vx, 0, 0}, top_color}
 			end
 			local grow_amount= end_h / 20
-			self:SetVertices(verts)
-			self:SetDrawState{Mode= "DrawMode_Strip"}
+			self:xy(x, y):SetVertices(verts):SetDrawState{Mode= "DrawMode_Strip"}
 			for i= 1, 20 do
-				self:linear(step_time)
 				for v, vert in ipairs(verts) do
 					if v % 2 == 0 then
 						local scale= i
@@ -307,7 +285,7 @@ function random_grow_column(name, x, y, bottom_color, top_color, w, step_time, e
 						vert[1][2]= grow_amount * scale
 					end
 				end
-				self:SetVertices(verts)
+				self:linear(step_time):SetVertices(verts)
 			end
 		end
 	}
@@ -320,24 +298,17 @@ dance_pad_mt= {
 			local sepw= .5
 			local function sep(name, x, y, w, h)
 				return Def.Quad{
-					Name= name,
-					InitCommand= function(self)
-						self:xy(x, y)
-						self:SetWidth(w)
-						self:SetHeight(h)
-						self:diffuse(fetch_color("rev_bg"))
+					Name= name, InitCommand= function(self)
+						self:xy(x, y):setsize(w, h):diffuse(fetch_color("rev_bg"))
 				end}
 			end
 			local function pad_half(name, x, y)
 				local args= {
-					Name= name,
-					InitCommand= cmd(xy, x, y),
+					Name= name, InitCommand= cmd(xy, x, y),
 					Def.Quad{
-						Name= "bg",
-						InitCommand= function(self)
-							self:SetWidth(panel_width * 3 + sepw)
-							self:SetHeight(panel_width * 3 + sepw)
-							self:diffuse(fetch_color("bg"))
+						Name= "bg", InitCommand= function(self)
+							self:setsize(panel_width * 3 + sepw, panel_width * 3 + sepw)
+								:diffuse(fetch_color("bg"))
 					end},
 					sep("sep1", 0, panel_width * -1.5, panel_width * 3, sepw),
 					sep("sep2", 0, panel_width * -.5, panel_width * 3, sepw),
@@ -356,12 +327,9 @@ dance_pad_mt= {
 					local px= panel_width * panel_poses[p][1]
 					local py= panel_width * panel_poses[p][2]
 					args[#args+1]= Def.Quad{
-						Name= "dai"..p,
-						InitCommand= function(self)
-							self:xy(px, py)
-							self:SetWidth(panel_width)
-							self:SetHeight(panel_width)
-							self:diffuse(Alpha(fetch_color("rev_bg_shadow"), 0))
+						Name= "dai"..p, InitCommand= function(self)
+							self:xy(px, py):setsize(panel_width, panel_width)
+								:diffuse(Alpha(fetch_color("rev_bg_shadow"), 0))
 					end}
 					if p == 5 then
 						args[#args+1]= circle_amv(
@@ -374,8 +342,7 @@ dance_pad_mt= {
 				return Def.ActorFrame(args)
 			end
 			return Def.ActorFrame{
-				Name= name,
-				InitCommand= function(subself)
+				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
 					self.container= subself
 					self.indicators= {}

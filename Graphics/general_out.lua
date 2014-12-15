@@ -2,11 +2,8 @@ local conf_data= misc_config:get_data()
 if conf_data.transition_split_max <= 0 or conf_data.transition_split_min <= 0 then
 	return Def.Quad{
 		StartTransitioningCommand= function(self)
-			self:xy(_screen.cx, _screen.cy)
-			self:setsize(_screen.w, _screen.h)
-			self:diffuse(Alpha(fetch_color("bg"), 0))
-			self:linear(1)
-			self:diffusealpha(1)
+			self:xy(_screen.cx, _screen.cy):setsize(_screen.w, _screen.h)
+				:diffuse(Alpha(fetch_color("bg"), 0)):linear(1):diffusealpha(1)
 		end
 	}
 end
@@ -85,21 +82,18 @@ local texcalc= {
 
 return Def.ActorFrame{
 	Def.ActorMultiVertex{
-		Name= "transplitter",
-		StartTransitioningCommand= function(self)
+		Name= "transplitter", StartTransitioningCommand= function(self)
 			local beg= GetTimeSinceStart()
 			self:LoadTexture("__screen__")
 			self:GetTexture():Reload()
 			local after_tex= GetTimeSinceStart()
 			tex_load_time= after_tex - beg
-			self:SetDrawState{Mode="DrawMode_Quads"}
-			self:playcommand("new_verts", {1})
 			local after_verts= GetTimeSinceStart()
 			vert_set_time= after_verts - after_tex
 			tex_pos_time= GetTimeSinceStart() - after_verts
-			self:sleep(tex_load_time+vert_set_time+(tex_pos_time*2))
-			self:linear(trans_time)
-			self:playcommand("new_verts", {2})
+			self:SetDrawState{Mode="DrawMode_Quads"}:playcommand("new_verts", {1})
+				:sleep(tex_load_time+vert_set_time+(tex_pos_time*2))
+				:linear(trans_time):playcommand("new_verts", {2})
 --			lua.ReportScriptError(
 --				"Transition times: " .. tex_load_time .. ", " .. vert_set_time ..
 --					", " .. tex_pos_time)
@@ -129,15 +123,11 @@ return Def.ActorFrame{
 		end
 	},
 	Def.Quad{
-		Name= "transcover",
-		StartTransitioningCommand= function(self)
-			self:diffuse(Alpha(fetch_color("bg"), 0))
-			self:xy(_screen.cx, _screen.cy)
-			self:setsize(_screen.w, _screen.h)
-			self:sleep(tex_load_time+vert_set_time+(tex_pos_time*2))
-			self:sleep(trans_time/2)
-			self:linear(trans_time/2)
-			self:diffusealpha(1)
+		Name= "transcover", StartTransitioningCommand= function(self)
+			self:diffuse(Alpha(fetch_color("bg"), 0)):xy(_screen.cx, _screen.cy)
+				:setsize(_screen.w, _screen.h)
+				:sleep(tex_load_time+vert_set_time+(tex_pos_time*2))
+				:sleep(trans_time/2):linear(trans_time/2):diffusealpha(1)
 		end
 	}
 }

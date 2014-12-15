@@ -6,7 +6,6 @@ end
 return Def.Quad{
 	InitCommand= function(self)
 		common_bg= self
-		self:FullScreen()
-		self:diffuse(fetch_color("bg"))
+		self:FullScreen():diffuse(fetch_color("bg"))
 	end
 }

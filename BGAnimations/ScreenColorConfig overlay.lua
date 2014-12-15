@@ -24,9 +24,7 @@ local color_manipulator_mt= {
 				Def.Quad{
 					Name= "example", InitCommand= function(subself)
 						self.example= subself
-						subself:setsize(chactor_width*8, 80)
-						subself:vertalign(bottom)
-						subself:xy(8, -16)
+						subself:setsize(chactor_width*8, 80):vertalign(bottom):xy(8, -16)
 					end
 				},
 				normal_text("done", get_string_wrapper("ColorConfig", "done"),
@@ -39,8 +37,8 @@ local color_manipulator_mt= {
 					Name= "chex"..i, InitCommand= function(subself)
 						self.chex[i]= subself
 						subself:setsize(chactor_width*2, 256)
-						subself:xy(-64 + (chactor_width*2 * i) - chactor_width/2, 16)
-						subself:vertalign(top)
+							:xy(-64 + (chactor_width*2 * i) - chactor_width/2, 16)
+							:vertalign(top)
 					end
 				}
 			end
@@ -78,7 +76,7 @@ local color_manipulator_mt= {
 			top_color[chid]= 1
 			bottom_color[chid]= 0
 			self.chex[chid]:diffusetopedge(top_color)
-			self.chex[chid]:diffusebottomedge(bottom_color)
+				:diffusebottomedge(bottom_color)
 		end,
 		hide= function(self)
 			self.container:visible(false)

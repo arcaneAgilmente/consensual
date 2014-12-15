@@ -123,60 +123,58 @@ end
 
 sigil_controller_mt= {
 	__index= {
-		create_actors=
-			function(self, name, x, y, color, max_detail, size)
-				self.name= name
-				self.max_detail= max_detail
-				self.shift_time= .5
-				self.detail_queue= {}
-				do
-					local layers= calc_sigil_layers(max_detail)
-					local width= 0
-					local rot_seperation= ((math.pi*2) / max_detail)
-					for l= 1, layers do
-						local angle= (l-1) * rot_seperation
-						width= width + math.sin(angle)
+		create_actors= function(self, name, x, y, color, max_detail, size)
+			self.name= name
+			self.max_detail= max_detail
+			self.shift_time= .5
+			self.detail_queue= {}
+			do
+				local layers= calc_sigil_layers(max_detail)
+				local width= 0
+				local rot_seperation= ((math.pi*2) / max_detail)
+				for l= 1, layers do
+					local angle= (l-1) * rot_seperation
+					width= width + math.sin(angle)
+				end
+				if width > 0 then
+					self.length= size / width / 2
+				else
+					self.length= 1
+				end
+			end
+			local verts= {}
+			local max_verts= calc_max_verts_alt(max_detail)
+			for n= 1, max_verts do
+				verts[n]= {{0, 0, 0}, color}
+			end
+			return Def.ActorMultiVertex{
+				Name= name, InitCommand= function(subself)
+					self.container= subself
+					self.sigil= subself
+					subself:xy(x, y):SetDrawState{Mode="DrawMode_LineStrip"}
+						:SetVertices(verts)
+					self:internal_redetail(max_detail)
+				end,
+				queued_redetailCommand= function(subself)
+					if self.detail_queue[1] then
+						self:internal_redetail(self.detail_queue[1])
+						table.remove(self.detail_queue, 1)
+						subself:queuecommand("queued_redetail")
 					end
-					if width > 0 then
-						self.length= size / width / 2
+				end,
+				goaled_redetailCommand= function(subself)
+					if self.detail < self.goal_detail then
+						self:internal_redetail(self.detail + 1)
+						subself:queuecommand("goaled_redetail")
+					elseif self.detail > self.goal_detail then
+						self:internal_redetail(self.detail - 1)
+						subself:queuecommand("goaled_redetail")
 					else
-						self.length= 1
+						self.moving_to_goal= false
 					end
 				end
-				local verts= {}
-				local max_verts= calc_max_verts_alt(max_detail)
-				for n= 1, max_verts do
-					verts[n]= {{0, 0, 0}, color}
-				end
-				return Def.ActorMultiVertex{
-					Name= name, InitCommand= function(subself)
-						self.container= subself
-						self.sigil= subself
-						subself:xy(x, y)
-						subself:SetDrawState{Mode="DrawMode_LineStrip"}
-						subself:SetVertices(verts)
-						self:internal_redetail(max_detail)
-					end,
-					queued_redetailCommand= function(subself)
-						if self.detail_queue[1] then
-							self:internal_redetail(self.detail_queue[1])
-							table.remove(self.detail_queue, 1)
-							subself:queuecommand("queued_redetail")
-						end
-					end,
-					goaled_redetailCommand= function(subself)
-						if self.detail < self.goal_detail then
-							self:internal_redetail(self.detail + 1)
-							subself:queuecommand("goaled_redetail")
-						elseif self.detail > self.goal_detail then
-							self:internal_redetail(self.detail - 1)
-							subself:queuecommand("goaled_redetail")
-						else
-							self.moving_to_goal= false
-						end
-					end
-				}
-			end,
+			}
+		end,
 		redetail= function(self, new_detail)
 			self.detail_queue[#self.detail_queue+1]= new_detail
 			if #self.detail_queue == 1 then
@@ -192,16 +190,13 @@ sigil_controller_mt= {
 				end
 			end
 		end,
-		internal_redetail=
-			function(self, new_detail)
-				new_detail= math.max(math.min(new_detail, self.max_detail), 1)
-				if self.detail == new_detail then return end
-				if self.sigil then
-					local new_verts, used_verts= calc_sigil_verts_alt(new_detail, self.max_detail, self.length)
---					self.sigil:SetDrawState{Num= used_verts}
-					self.sigil:linear(self.shift_time)
-					self.sigil:SetVertices(new_verts)
-				end
-				self.detail= new_detail
+		internal_redetail= function(self, new_detail)
+			new_detail= math.max(math.min(new_detail, self.max_detail), 1)
+			if self.detail == new_detail then return end
+			if self.sigil then
+				local new_verts, used_verts= calc_sigil_verts_alt(new_detail, self.max_detail, self.length)
+				self.sigil:linear(self.shift_time):SetVertices(new_verts)
 			end
+			self.detail= new_detail
+		end
 }}

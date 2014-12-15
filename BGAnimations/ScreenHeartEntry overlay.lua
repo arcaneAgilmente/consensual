@@ -168,8 +168,7 @@ end
 
 local args= {
 	Def.ActorFrame{
-		Name= "timer",
-		InitCommand= function(self)
+		Name= "timer", InitCommand= function(self)
 			self:effectperiod(2^16)
 			timer_text= self:GetChild("timer_text")
 			self:SetUpdateFunction(timer_update)

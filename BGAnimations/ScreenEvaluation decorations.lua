@@ -173,11 +173,8 @@ local number_set_mt= {
 					local color= number_data[i].color or fetch_color("text")
 					local zoom= (number_data[i].zoom or 1) * self.elz
 					self.elzooms[i]= zoom
-					el:settext(number)
-					el:diffuse(color)
-					el:zoom(zoom)
+					el:settext(number):diffuse(color):zoom(zoom):visible(true)
 					width_limit_text(el, self.elw, zoom)
-					el:visible(true)
 				else
 					el:visible(false)
 				end
@@ -259,10 +256,9 @@ local best_score_mt= {
 						if rank == 0 then
 							self.rank:visible(false)
 						else
-							self.rank:settext("Rank: #"..rank)
-							self.rank:diffuse(number_to_color(
+							self.rank:settext("Rank: #"..rank):diffuse(number_to_color(
 								rank, false, true, "evaluation.best_score.rank_colors"))
-							self.rank:visible(true)
+								:visible(true)
 						end
 						self.score:set_text(highest_score:GetName())
 						local pct= math.floor(highest_score:GetPercentDP() * 10000) * .01
@@ -397,17 +393,16 @@ local reward_time_mt= {
 		set= function(self, width, reward_time)
 			local next_y= 0
 			self.used_text:settext(get_string_wrapper("ScreenEvaluation", "Used"))
+				:y(next_y)
 			width_limit_text(self.used_text, width, .5)
-			self.used_text:y(next_y)
 			next_y= next_y + (24 * .75)
-			self.used_amount:settext(secs_to_str(get_last_song_time()))
+			self.used_amount:settext(secs_to_str(get_last_song_time())):y(next_y)
 			width_limit_text(self.used_amount, width, 1)
-			self.used_amount:y(next_y)
 			next_y= next_y + (24 * .75)
 			if reward_time ~= 0 then
-				self.reward_text:settext(get_string_wrapper("ScreenEvaluation", "Reward"))
+				self.reward_text:settext(
+					get_string_wrapper("ScreenEvaluation", "Reward")):y(next_y)
 				width_limit_text(self.reward_text, width, .5)
-				self.reward_text:y(next_y)
 				next_y= next_y + (24 * .75)
 				local reward_str= secs_to_str(reward_time)
 				if reward_time > 0 then
@@ -418,14 +413,13 @@ local reward_time_mt= {
 				self.reward_amount:y(next_y)
 				next_y= next_y + (24 * .75)
 			end
-			self.remain_text:settext(get_string_wrapper("ScreenEvaluation", "Remaining"))
+			self.remain_text:settext(
+				get_string_wrapper("ScreenEvaluation", "Remaining")):y(next_y)
 			width_limit_text(self.remain_text, width, .5)
-			self.remain_text:y(next_y)
 			next_y= next_y + (24 * .75)
 			local remstr= secs_to_str(get_time_remaining())
-			self.remain_time:settext(remstr)
+			self.remain_time:settext(remstr):y(next_y)
 			width_limit_text(self.remain_time, width, 1)
-			self.remain_time:y(next_y)
 			local fxmn, fxmx, fymn, fymx= rec_calc_actor_extent(self.container)
 			local fw= fxmx - fxmn + 6
 			local fh= fymx - fymn + 6
@@ -462,8 +456,7 @@ local life_graph_mt= {
 				Name= "lgraph",
 				InitCommand= function(subself)
 					self.container= subself
-					subself:xy(gx - gw/2, gy)
-					subself:SetDrawState{Mode="DrawMode_QuadStrip"}
+					subself:xy(gx - gw/2, gy):SetDrawState{Mode="DrawMode_QuadStrip"}
 				end
 			}
 		end,
@@ -559,8 +552,7 @@ local combo_graph_mt= {
 				Name= name,
 				InitCommand= function(subself)
 					self.container= subself
-					subself:xy(x, y)
-					subself:SetDrawState{Mode="DrawMode_QuadStrip"}
+					subself:xy(x, y):SetDrawState{Mode="DrawMode_QuadStrip"}
 				end
 			}
 		end,
@@ -592,8 +584,7 @@ local combo_graph_mt= {
 				end
 			end
 			if #verts > 2 then
-				self.container:SetVertices(verts)
-				self.container:SetDrawState{Num= #verts}
+				self.container:SetVertices(verts):SetDrawState{Num= #verts}
 			end
 		end
 }}
@@ -673,17 +664,13 @@ local score_report_mt= {
 				local percent_score= fmat:format(math.floor(adp/mdp * raise) * lower)
 				local score_color= color_for_score(adp/mdp)
 				if flags.pct_score then
-					self.score:settext(percent_score)
-					self.score:diffuse(score_color)
-					self.score:y(next_y)
+					self.score:settext(percent_score):diffuse(score_color):y(next_y)
 					next_y= next_y + (self.spacing * .75)
 				else
 					self.score:settext("")
 				end
 				if flags.dance_points then
-					self.dp:settext(adp .. " / " .. mdp)
-					self.dp:diffuse(score_color)
-					self.dp:y(next_y)
+					self.dp:settext(adp .. " / " .. mdp):diffuse(score_color):y(next_y)
 				else
 					self.dp:settext("")
 				end
@@ -720,16 +707,12 @@ local score_report_mt= {
 				local avg_text= " "..get_string_wrapper("ScreenEvaluation", "avg")
 				local tot_text= " "..get_string_wrapper("ScreenEvaluation", "tot")
 				next_y= next_y + (self.spacing * .5)
-				self.offavgms:settext(offavg..ms_text..avg_text)
-				self.offavgms:y(next_y)
-				self.offavgms:diffuse(offcolor)
+				self.offavgms:settext(offavg..ms_text..avg_text):y(next_y)
+					:diffuse(offcolor):visible(true)
 				width_limit_text(self.offavgms, allowed_width, self.scale)
-				self.offavgms:visible(true)
 				next_y= next_y + (self.spacing * .75)
-				self.offms:settext(offscore..ms_text..tot_text)
-				self.offms:y(next_y)
-				self.offms:diffuse(offcolor)
-				self.offms:visible(true)
+				self.offms:settext(offscore..ms_text..tot_text):y(next_y)
+					:diffuse(offcolor):visible(true)
 				next_y= next_y + (self.spacing * .25)
 			else
 				self.offavgms:visible(false)
@@ -1296,6 +1279,21 @@ local function perform_screenshot(pn)
 	end
 end
 
+local worker= false
+local function worker_update()
+	if worker then
+		if coroutine.status(worker) ~= "dead" then
+			local working, err= coroutine.resume(worker)
+			if not working then
+				lua.ReportScriptError(err)
+				worker= false
+			end
+		else
+			worker= false
+		end
+	end
+end
+
 local function filter_input_for_menus(pn, code, press)
 	local handled, close= false, false
 	local spid= special_menu_states[pn]
@@ -1683,6 +1681,7 @@ local function input(event)
 			end
 		end
 	end
+	if worker then return end
 	if not pn or not GAMESTATE:IsPlayerEnabled(pn) then return end
 	if filter_input_for_menus(pn, code, press) then return end
 	if press ~= "InputEventType_Release" then return end
@@ -1720,8 +1719,7 @@ local help_args= {
 	Def.Quad{
 		InitCommand= function(self)
 			self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
-			self:setsize(SCREEN_WIDTH, SCREEN_HEIGHT)
-			self:diffuse(fetch_color("help.bg"))
+				:setsize(SCREEN_WIDTH, SCREEN_HEIGHT):diffuse(fetch_color("help.bg"))
 		end
 	},
 }
@@ -1767,6 +1765,7 @@ return Def.ActorFrame{
 		Name= "Honmono dayo",
 		OnCommand= function(self)
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
+			worker= make_song_sort_worker()
 			self:SetUpdateFunction(worker_update)
 			for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 				if cons_players[pn].fake_judge then

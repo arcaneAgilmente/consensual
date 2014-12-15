@@ -56,6 +56,15 @@ end
 update_player_profile(PLAYER_1)
 update_player_profile(PLAYER_2)
 
+local function ensure_enough_stages()
+	-- Give everybody enough tokens to play, as a way of disabling the stage system.
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		while GAMESTATE:GetNumStagesLeft(pn) < 3 do
+			GAMESTATE:AddStageToPlayer(pn)
+		end
+	end
+end
+
 local function change_sort_text(new_text)
 	local overlay= SCREENMAN:GetTopScreen():GetChild("Overlay")
 	local stext= overlay:GetChild("sort_text")
@@ -125,9 +134,7 @@ local std_items_mt= {
 				self.tani:hide()
 			end
 			local nx= (item_index - 1) * (std_item_w + 6)
-			self.container:stoptweening()
-			self.container:linear(.1)
-			self.container:x(nx)
+			self.container:stoptweening():linear(.1):x(nx)
 			self.tani:unhide()
 			self.bg:diffusealpha(1)
 			self.prev_index= item_index
@@ -141,8 +148,7 @@ local std_items_mt= {
 				width_limit_text(self.tani.text, 18)
 				width_limit_text(self.tani.number, 30)
 				self.tani:unhide()
-				self.bg:diffuse(diff_to_color(info:GetDifficulty()))
-				self.bg:diffusealpha(1)
+				self.bg:diffuse(diff_to_color(info:GetDifficulty())):diffusealpha(1)
 				self.container:visible(true)
 			else
 				self.container:visible(false)
@@ -430,9 +436,7 @@ local function activate_status(worker, after_func)
 	status_active= true
 	status_worker= worker
 	status_finish_func= after_func
-	status_container:stoptweening()
-	status_container:linear(0.5)
-	status_container:diffusealpha(1)
+	status_container:stoptweening():linear(0.5):diffusealpha(1)
 	status_text:settext("")
 	status_count:settext("")
 end
@@ -444,9 +448,7 @@ local function deactivate_status()
 	change_sort_text(music_wheel.current_sort_name)
 	status_active= false
 	status_worker= false
-	status_container:stoptweening()
-	status_container:linear(0.5)
-	status_container:diffusealpha(0)
+	status_container:stoptweening():linear(0.5):diffusealpha(0)
 end
 
 local function status_update(self)
@@ -880,19 +882,15 @@ local function handle_triggered_codes(pn, key_pressed, button, press_type)
 		if ctext then
 			if convert_code_name_to_display_text[v] then
 				ctext:settext(convert_code_name_to_display_text[v])
-				ctext:DiffuseAndStroke(
-					Alpha(fetch_color("stroke"), 0), fetch_color("text"))
-				ctext:finishtweening()
+					:DiffuseAndStroke(
+						Alpha(fetch_color("stroke"), 0), fetch_color("text"))
+					:finishtweening()
 				local w= ctext:GetWidth()
 				local h= ctext:GetHeight()
 				local z= ctext:GetZoom()
-				ctext:x(SCREEN_LEFT+(w*z/2)+2)
-				ctext:y(SCREEN_TOP+(h*z/2)+4)
-				ctext:ease(.5,-100)
-				ctext:diffusealpha(1)
-				ctext:sleep(2)
-				ctext:ease(.5,100)
-				ctext:diffusealpha(0)
+				ctext:xy(SCREEN_LEFT+(w*z/2)+2, SCREEN_TOP+(h*z/2)+4)
+					:ease(.5,-100):diffusealpha(1):sleep(2):ease(.5,100)
+					:diffusealpha(0)
 			end
 		end
 		if code_functions[v] then code_functions[v](pn) end
@@ -1063,12 +1061,7 @@ local function input(event)
 			local curr_style_type= GAMESTATE:GetCurrentStyle(pn):GetStyleType()
 			if curr_style_type == "StyleType_OnePlayerOneSide" and not kyzentun_birthday then
 				if cons_join_player(pn) then
-					-- Give everybody enough tokens to play, as a way of disabling the stage system.
-					for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-						while GAMESTATE:GetNumStagesLeft(pn) < 3 do
-							GAMESTATE:AddStageToPlayer(pn)
-						end
-					end
+					ensure_enough_stages()
 					GAMESTATE:LoadProfiles()
 					local prof= PROFILEMAN:GetProfile(pn)
 					if prof then
@@ -1130,8 +1123,7 @@ local help_args= {
 	Def.Quad{
 		InitCommand= function(self)
 			self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
-			self:setsize(SCREEN_WIDTH, SCREEN_HEIGHT)
-			self:diffuse(fetch_color("help.bg"))
+				:setsize(SCREEN_WIDTH, SCREEN_HEIGHT):diffuse(fetch_color("help.bg"))
 		end
 	},
 	exp_text("group_exp", 8, 12, "music_select.music_wheel.group"),
@@ -1144,7 +1136,7 @@ local help_args= {
 		Def.Quad{
 			InitCommand= function(self)
 				self:diffuse(fetch_color("accent.yellow"))
-				self:setsize(std_item_w, std_item_h)
+					:setsize(std_item_w, std_item_h)
 			end
 		},
 		normal_text(
@@ -1224,56 +1216,43 @@ return Def.ActorFrame {
 			update_pain(pn)
 		end
 		music_wheel:find_actors(self:GetChild(music_wheel.name))
-		-- Give everybody enough tokens to play, as a way of disabling the stage system.
-		for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-			while GAMESTATE:GetNumStagesLeft(pn) < 3 do
-				GAMESTATE:AddStageToPlayer(pn)
-			end
-		end
+		ensure_enough_stages()
 		april_spin(self)
 	end,
 	OnCommand= function(self)
-							 local top_screen= SCREENMAN:GetTopScreen()
-							 top_screen:SetAllowLateJoin(true)
-							 top_screen:AddInputCallback(input)
-							 change_sort_text(music_wheel.current_sort_name)
+		local top_screen= SCREENMAN:GetTopScreen()
+		top_screen:SetAllowLateJoin(true):AddInputCallback(input)
+		change_sort_text(music_wheel.current_sort_name)
 	end,
 	play_songCommand= function(self)
-		if not GAMESTATE.CanSafelyEnterGameplay then
+		local function do_entry()
 			SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-			local om= self:GetChild("options message")
-			om:accelerate(0.25)
-			om:diffusealpha(1)
+			self:GetChild("options message"):accelerate(0.25):diffusealpha(1)
 			entering_song= get_screen_time() + options_time
 			prev_picked_song= gamestate_get_curr_song()
 			save_all_favorites()
 			save_all_tags()
 			save_censored_list()
+		end
+		if not GAMESTATE.CanSafelyEnterGameplay then
+			do_entry()
 			return
 		end
 		local can, reason= GAMESTATE:CanSafelyEnterGameplay()
 		if can then
-			SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-			local om= self:GetChild("options message")
-			om:accelerate(0.25)
-			om:diffusealpha(1)
-			entering_song= get_screen_time() + options_time
-			prev_picked_song= gamestate_get_curr_song()
-			save_all_favorites()
-			save_all_tags()
-			save_censored_list()
+			do_entry()
 		else
 			SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
 			lua.ReportScriptError("Cannot safely enter gameplay: " .. tostring(reason))
 		end
 	end,
 	real_play_songCommand= function(self)
-													 if go_to_options then
-														 trans_new_screen("ScreenSickPlayerOptions")
-													 else
-														 trans_new_screen("ScreenStageInformation")
-													 end
-												 end,
+		if go_to_options then
+			trans_new_screen("ScreenSickPlayerOptions")
+		else
+			trans_new_screen("ScreenStageInformation")
+		end
+	end,
 	Def.ActorFrame{
 		Name= "If these commands were in the parent actor frame, they would not activate.",
 		CurrentSongChangedMessageCommand=cmd(playcommand,"SCSet"),
@@ -1331,8 +1310,8 @@ return Def.ActorFrame {
 			local song= gamestate_get_curr_song()
 			if song and song:HasBanner()then
 				self:LoadBanner(song:GetBannerPath())
-				scale_to_fit(self, banner_w, banner_h)
 				self:visible(true)
+				scale_to_fit(self, banner_w, banner_h)
 			else
 				self:visible(false)
 			end
@@ -1343,8 +1322,8 @@ return Def.ActorFrame {
 				local path= songman_get_group_banner_path(name)
 				if path and path ~= "" then
 					self:LoadBanner(path)
-					scale_to_fit(self, banner_w, banner_h)
 					self:visible(true)
+					scale_to_fit(self, banner_w, banner_h)
 				else
 					self:visible(false)
 				end
@@ -1362,9 +1341,8 @@ return Def.ActorFrame {
 										local song= gamestate_get_curr_song()
 										if song then
 											--spew_song_specials(song)
-											self:settext(song_get_main_title(song))
+											self:settext(song_get_main_title(song)):visible(true)
 											width_limit_text(self, title_width)
-											self:visible(true)
 										else
 											self:visible(false)
 										end
@@ -1373,9 +1351,8 @@ return Def.ActorFrame {
 									function(self, param)
 										local name= param[1]
 										if name then
-											self:settext(name)
+											self:settext(name):visible(true)
 											width_limit_text(self, title_width)
-											self:visible(true)
 										else
 											self:visible(false)
 										end
@@ -1389,8 +1366,7 @@ return Def.ActorFrame {
 										local song= gamestate_get_curr_song()
 										if song then
 											local lenstr= secs_to_str(song_get_length(song))
-											self:settext("song length: " .. lenstr)
-											self:visible(true)
+											self:settext("song length: " .. lenstr):visible(true)
 										else
 											self:visible(false)
 										end
@@ -1408,18 +1384,17 @@ return Def.ActorFrame {
 	Def.Actor{
 		Name= "code_interpreter",
 		InitCommand= function(self)
-									 self:effectperiod(2^16)
-									 timer_actor= self
-								 end,
+			self:effectperiod(2^16)
+			timer_actor= self
+		end,
 		CurrentCourseChangedMessageCommand= cmd(playcommand, "sc_changed"),
 		CurrentSongChangedMessageCommand= cmd(playcommand, "sc_changed"),
-		sc_changedCommand=
-			function(self)
-				local enabled_players= GAMESTATE:GetEnabledPlayers()
-				for i, v in ipairs(enabled_players) do
-					set_closest_steps_to_preferred(v)
-				end
-			end,
+		sc_changedCommand= function(self)
+			local enabled_players= GAMESTATE:GetEnabledPlayers()
+			for i, v in ipairs(enabled_players) do
+				set_closest_steps_to_preferred(v)
+			end
+		end,
 	},
 	normal_text("code_text", "", Alpha(fetch_color("text"), 0), nil, 0, 0, .75),
 	normal_text("sort", "Sort",
@@ -1461,9 +1436,8 @@ return Def.ActorFrame {
 											name= music_wheel.curr_bucket.name.value
 										end
 									end
-									self:settext(name)
+									self:settext(name):visible(true)
 									width_clip_limit_text(self, sort_width)
-									self:visible(true)
 								end
 	}),
 	player_cursors[PLAYER_1]:create_actors(
@@ -1479,9 +1453,8 @@ return Def.ActorFrame {
 			status_text= self:GetChild("status_text")
 			status_count= self:GetChild("status_count")
 			status_container= self
-			self:xy(_screen.cx, _screen.cy)
-			self:SetUpdateFunction(status_update)
-			self:diffusealpha(0)
+			self:xy(_screen.cx, _screen.cy):SetUpdateFunction(status_update)
+				:diffusealpha(0)
 		end,
 		status_frame:create_actors(
 			"frame", 2, 200, 56, fetch_color("prompt.frame"), fetch_color("prompt.bg"),

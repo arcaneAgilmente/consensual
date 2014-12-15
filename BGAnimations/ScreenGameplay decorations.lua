@@ -217,17 +217,13 @@ function score_feedback_interface:create_actors(name, fx, fy, player_number)
 	if not fx then fx= 0 end
 	if not fy then fy= 0 end
 	return Def.ActorFrame{
-		Name= name,
-		InitCommand= function(subself)
+		Name= name, InitCommand= function(subself)
 			subself:xy(fx, fy)
 			self.container= subself
 			self.meter= subself:GetChild("meter")
 		end,
-		Def.Quad{ Name= "meter",
-							InitCommand= function(self)
-								self:SetWidth(16)
-								self:SetHeight(SCREEN_BOTTOM)
-								self:vertalign(bottom)
+		Def.Quad{ Name= "meter", InitCommand= function(self)
+								self:setsize(16, SCREEN_BOTTOM):vertalign(bottom)
 							end
 		}
 	}
@@ -259,6 +255,12 @@ function score_feedback_interface:update(player_stage_stats)
 				break
 			end
 		end
+	end
+	if score < 0 then
+		score= -score
+		self.meter:vertalign(top)
+	else
+		self.meter:vertalign(bottom)
 	end
 	self.meter:zoomy(score^((score+1)^((score*2.718281828459045))))
 end
@@ -295,8 +297,7 @@ local numerical_score_feedback_mt= {
 						-- maximum width for the pct will be -222%
 						self.pct:settext(self.fmat:format(-222))
 						local pct_width= self.pct:GetWidth()
-						self.pct:x(pct_width / 2)
-						self.pct:settext(self.fmat:format(0))
+						self.pct:x(pct_width / 2):settext(self.fmat:format(0))
 					end
 					if self.max_dp then
 						self.max_dp:settext(mdp)
@@ -377,14 +378,11 @@ local numerical_score_feedback_mt= {
 			if self.pct then
 				local pct= math.floor(adp/mdp*(10^(self.precision+2))) *
 					(10^-self.precision)
-				self.pct:settext(self.fmat:format(pct))
-				self.pct:diffuse(text_color)
+				self.pct:settext(self.fmat:format(pct)):diffuse(text_color)
 			end
 			if self.dp_container then
-				self.curr_dp:settext(adp)
-				self.max_dp:settext(mdp)
-				self.curr_dp:diffuse(text_color)
-				self.max_dp:diffuse(text_color)
+				self.curr_dp:settext(adp):diffuse(text_color)
+				self.max_dp:settext(mdp):diffuse(text_color)
 			end
 		end
 }}
@@ -446,12 +444,10 @@ function song_progress_bar_interface:create_actors()
 		Def.Quad{
 			Name= "filler", InitCommand=
 				function(self)
-					self:diffuse(fetch_color("gameplay.song_progress_bar.progression.too_low"))
-					self:x(spb_width * -.5)
-					self:horizalign(left)
-					self:SetWidth(spb_width)
-					self:SetHeight(spb_height-1)
-					self:zoomx(0)
+					self:diffuse(
+						fetch_color("gameplay.song_progress_bar.progression.too_low"))
+						:x(spb_width * -.5):horizalign(left)
+						:setsize(spb_width, spb_height-1):zoomx(0)
 				end
 		},
 		normal_text("time", "", nil, fetch_color("gameplay.song_progress_bar.stroke"),
@@ -475,8 +471,7 @@ function song_progress_bar_interface:update()
 		/ (song_opts:MusicRate() * screen_gameplay:GetHasteRate())
 	local zoom= cur_seconds / self.song_len
 	local cur_color= color_in_set(self.progress_colors, math.ceil(zoom * #self.progress_colors), false, false, false)
-	self.filler:diffuse(cur_color)
-	self.filler:zoomx(zoom)
+	self.filler:diffuse(cur_color):zoomx(zoom)
 	cur_seconds= math.floor(cur_seconds)
 	if cur_seconds ~= self.prev_second then
 		self.prev_second= cur_seconds
@@ -521,9 +516,7 @@ local function reposition_screen(screen)
 	local ny= math.sin(rx) * yz_mag * base_len
 	local nz= math.cos(rx) * yz_mag * base_len
 	--   Trace(("Angles: %f.3, %f.3  Pos: %f.3, %f.3, %f.3"):format(try, trz, nx, ny, nz))
-	screen:x(nx)
-	screen:y(ny)
-	screen:z(nz)
+	screen:x(nx):y(ny):z(nz)
 end
 local function rotate_screen_z(screen, rot)
 	-- The screen is rotated around its top left corner, but we want to
@@ -888,8 +881,8 @@ local function make_special_actors_for_players()
 				if cur_song then
 					local title= cur_song:GetDisplayFullTitle()
 					self:settext(title)
+						:strokecolor(fetch_color("gameplay.text_stroke"))
 					width_limit_text(self, spb_width)
-					self:strokecolor(fetch_color("gameplay.text_stroke"))
 				end
 			end
 	})
@@ -933,93 +926,88 @@ return Def.ActorFrame {
 								 end,
 	},
 	Def.Actor{
-		Name= "Cleaner S22",
-		OnCommand=
-			function(self)
-				screen_gameplay= SCREENMAN:GetTopScreen()
-				screen_gameplay:HasteLifeSwitchPoint(.5)
-				screen_gameplay:HasteTimeBetweenUpdates(4)
-				screen_gameplay:HasteAddAmounts({-.25, 0, .25})
-				screen_gameplay:HasteTurningPoints({-1, 0, 1})
-				song_progress_bar:set_from_song()
-				local song_ops= GAMESTATE:GetSongOptionsObject("ModsLevel_Current")
-				if song_ops:MusicRate() < 1 or song_ops:Haste() < 0 then
-					song_ops:SaveScore(false)
-				else
-					song_ops:SaveScore(true)
+		Name= "Cleaner S22", OnCommand= function(self)
+			screen_gameplay= SCREENMAN:GetTopScreen()
+			screen_gameplay:HasteLifeSwitchPoint(.5, true)
+				:HasteTimeBetweenUpdates(4, true)
+				:HasteAddAmounts({-.25, 0, .25}, true)
+				:HasteTurningPoints({-1, 0, 1})
+			song_progress_bar:set_from_song()
+			local song_ops= GAMESTATE:GetSongOptionsObject("ModsLevel_Current")
+			if song_ops:MusicRate() < 1 or song_ops:Haste() < 0 then
+				song_ops:SaveScore(false)
+			else
+				song_ops:SaveScore(true)
+			end
+			prev_song_start_timestamp= hms_timestamp()
+			local force_swap= (cons_players[PLAYER_1].side_swap or 0) > 1 or
+				(cons_players[PLAYER_2].side_swap or 0) > 1
+			local unacc_enable_votes= 0
+			local unacc_reset_limit= misc_config:get_data().gameplay_reset_limit
+			local curstats= STATSMAN:GetCurStageStats()
+			for k, v in pairs(enabled_players) do
+				cons_players[v].prev_steps= gamestate_get_curr_steps(v)
+				cons_players[v]:stage_stats_reset()
+				cons_players[v]:combo_qual_reset()
+				cons_players[v].unmine_time= nil
+				cons_players[v].mine_data= nil
+				local punacc= cons_players[v].unacceptable_score
+				if punacc.enabled then
+					unacc_enable_votes= unacc_enable_votes + 1
+					unacc_reset_limit= math.min(
+						unacc_reset_limit, cons_players[v].unacceptable_score.limit)
+					local mdp= curstats:GetPlayerStageStats(v):GetPossibleDancePoints()
+					local tdp= mdp
+					if punacc.condition == "dance_points" then
+						tdp= math.max(0, math.round(punacc.value))
+					elseif punacc.condition == "score_pct" then
+						tdp= math.max(0, math.round(mdp - mdp * punacc.value))
+					else
+						unacc_enable_votes= unacc_enable_votes - 1
+					end
+					unacc_dp_limits[v]= tdp
 				end
-				prev_song_start_timestamp= hms_timestamp()
-				local force_swap= (cons_players[PLAYER_1].side_swap or 0) > 1 or
-					(cons_players[PLAYER_2].side_swap or 0) > 1
-				local unacc_enable_votes= 0
-				local unacc_reset_limit= misc_config:get_data().gameplay_reset_limit
-				local curstats= STATSMAN:GetCurStageStats()
-				for k, v in pairs(enabled_players) do
-					cons_players[v].prev_steps= gamestate_get_curr_steps(v)
-					cons_players[v]:stage_stats_reset()
-					cons_players[v]:combo_qual_reset()
-					cons_players[v].unmine_time= nil
-					cons_players[v].mine_data= nil
-					local punacc= cons_players[v].unacceptable_score
-					if punacc.enabled then
-						unacc_enable_votes= unacc_enable_votes + 1
-						unacc_reset_limit= math.min(
-							unacc_reset_limit, cons_players[v].unacceptable_score.limit)
-						local mdp= curstats:GetPlayerStageStats(v):GetPossibleDancePoints()
-						local tdp= mdp
-						if punacc.condition == "dance_points" then
-							tdp= math.max(0, math.round(punacc.value))
-						elseif punacc.condition == "score_pct" then
-							tdp= math.max(0, math.round(mdp - mdp * punacc.value))
-						else
-							unacc_enable_votes= unacc_enable_votes - 1
-						end
-						unacc_dp_limits[v]= tdp
-					end
-					local speed_info= cons_players[v].speed_info
-					if speed_info then
-						speed_info.prev_bps= nil
-					end
-					set_speed_from_speed_info(cons_players[v])
-					side_actors[v]=
-						screen_gameplay:GetChild("Player" .. ToEnumShortString(v))
-					notefields[v]= side_actors[v]:GetChild("NoteField")
-					if notefields[v] then
-						--notefields[v]:SetDidTapNoteCallback(miss_all)
-					end
-					if cons_players[v].side_swap or force_swap then
-						side_swap_vals[v]= cons_players[v].side_swap or
-							cons_players[other_player[v]].side_swap
-						local mod_res= side_swap_vals[v] % 1
-						if mod_res == 0 then mod_res= 1 end
-						swap_on_xs[v]= player_sides[v] + (side_diffs[v] * mod_res)
-						side_actors[v]:x(swap_on_xs[v])
-						side_toggles[v]= true
-					end
+				local speed_info= cons_players[v].speed_info
+				if speed_info then
+					speed_info.prev_bps= nil
 				end
-				if unacc_enable_votes == #enabled_players and
-					(GAMESTATE:IsEventMode() or get_current_song_length() /
-					 song_ops:MusicRate() < get_time_remaining()) then
-						unacc_reset_count= unacc_reset_count or 0
-						if unacc_reset_count < unacc_reset_limit then
-							do_unacceptable_check= true
-						end
+				set_speed_from_speed_info(cons_players[v])
+				side_actors[v]=
+					screen_gameplay:GetChild("Player" .. ToEnumShortString(v))
+				notefields[v]= side_actors[v]:GetChild("NoteField")
+				if notefields[v] then
+					--notefields[v]:SetDidTapNoteCallback(miss_all)
 				end
-			end,
+				if cons_players[v].side_swap or force_swap then
+					side_swap_vals[v]= cons_players[v].side_swap or
+						cons_players[other_player[v]].side_swap
+					local mod_res= side_swap_vals[v] % 1
+					if mod_res == 0 then mod_res= 1 end
+					swap_on_xs[v]= player_sides[v] + (side_diffs[v] * mod_res)
+					side_actors[v]:x(swap_on_xs[v])
+					side_toggles[v]= true
+				end
+			end
+			if unacc_enable_votes == #enabled_players and
+				(GAMESTATE:IsEventMode() or get_current_song_length() /
+				 song_ops:MusicRate() < get_time_remaining()) then
+					unacc_reset_count= unacc_reset_count or 0
+					if unacc_reset_count < unacc_reset_limit then
+						do_unacceptable_check= true
+					end
+			end
+		end,
 		OffCommand= cleanup,
 		CancelCommand= cleanup,
-		CurrentSongChangedMessageCommand=
-			function(self, param)
-				song_progress_bar:set_from_song()
-			end,
-		CurrentStepsP1ChangedMessageCommand=
-			function(self, param)
-				set_speed_from_speed_info(cons_players[PLAYER_1])
-			end,
-		CurrentStepsP2ChangedMessageCommand=
-			function(self, param)
-				set_speed_from_speed_info(cons_players[PLAYER_2])
-			end,
+		CurrentSongChangedMessageCommand= function(self, param)
+			song_progress_bar:set_from_song()
+		end,
+		CurrentStepsP1ChangedMessageCommand= function(self, param)
+			set_speed_from_speed_info(cons_players[PLAYER_1])
+		end,
+		CurrentStepsP2ChangedMessageCommand= function(self, param)
+			set_speed_from_speed_info(cons_players[PLAYER_2])
+		end,
 		JudgmentMessageCommand= function(self, param)
 			local pn= param.Player
 			if param.TapNoteScore == "TapNoteScore_HitMine" then

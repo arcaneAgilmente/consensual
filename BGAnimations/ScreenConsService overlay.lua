@@ -324,8 +324,7 @@ return Def.ActorFrame{
 		Name= "press prompt",
 		InitCommand= function(self)
 			press_prompt= self
-			self:xy(_screen.cx, _screen.cy)
-			self:visible(false)
+			self:xy(_screen.cx, _screen.cy):visible(false)
 		end,
 		OnCommand= function(self)
 			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(self)

@@ -9,265 +9,249 @@ local keyboard_special_names= {"down", "up", "shift", "backspace", "enter"}
 local keyboard_num_rows= 4
 local keyboard_mt= {
 	__index={
-		calculate_top=
-			function(self)
-				local row_height= 24
-				return SCREEN_BOTTOM - ((keyboard_num_rows+1) * row_height)
-			end,
-		create_actors=
-			function(self, name)
-				self.name= name
-				self.key_spacing= 24
-				local row_height= 24
-				local key_names= THEME:GetStringNamesInGroup("NameEntryKeyboard")
-				local ur_keys_per_row= #key_names / keyboard_num_rows
-				local keys_per_row= math.floor(ur_keys_per_row)
-				local rows= {}
-				local curr_row= 1
-				local fraction= 0
-				for c= 1, #key_names do
-					if not rows[curr_row] then
-						rows[curr_row]= {}
-					end
-					local row_len= #rows[curr_row]
-					local str= THEME:GetString("NameEntryKeyboard", key_names[c])
-					rows[curr_row][row_len+1]= str
-					if row_len > keys_per_row-1 then
-						fraction= fraction + (ur_keys_per_row - keys_per_row)
-						if fraction < 1 then
-							curr_row= curr_row+1
-							fraction= fraction - 1
-						end
+		calculate_top= function(self)
+			local row_height= 24
+			return SCREEN_BOTTOM - ((keyboard_num_rows+1) * row_height)
+		end,
+		create_actors= function(self, name)
+			self.name= name
+			self.key_spacing= 24
+			local row_height= 24
+			local key_names= THEME:GetStringNamesInGroup("NameEntryKeyboard")
+			local ur_keys_per_row= #key_names / keyboard_num_rows
+			local keys_per_row= math.floor(ur_keys_per_row)
+			local rows= {}
+			local curr_row= 1
+			local fraction= 0
+			for c= 1, #key_names do
+				if not rows[curr_row] then
+					rows[curr_row]= {}
+				end
+				local row_len= #rows[curr_row]
+				local str= THEME:GetString("NameEntryKeyboard", key_names[c])
+				rows[curr_row][row_len+1]= str
+				if row_len > keys_per_row-1 then
+					fraction= fraction + (ur_keys_per_row - keys_per_row)
+					if fraction < 1 then
+						curr_row= curr_row+1
+						fraction= fraction - 1
 					end
 				end
-				for i, row in ipairs(rows) do
-					table.insert(row, 1,
-											 get_string_wrapper("NameEntryKeyboardSpecials", "down"))
-					row[#row+1]= get_string_wrapper("NameEntryKeyboardSpecials", "up")
+			end
+			for i, row in ipairs(rows) do
+				table.insert(row, 1,
+										 get_string_wrapper("NameEntryKeyboardSpecials", "down"))
+				row[#row+1]= get_string_wrapper("NameEntryKeyboardSpecials", "up")
+			end
+			do
+				local special_row= {}
+				for i, spec in ipairs(keyboard_special_names) do
+					special_row[#special_row+1]=
+						get_string_wrapper("NameEntryKeyboardSpecials", spec)
 				end
-				do
-					local special_row= {}
-					for i, spec in ipairs(keyboard_special_names) do
-						special_row[#special_row+1]=
-							get_string_wrapper("NameEntryKeyboardSpecials", spec)
-					end
-					rows[#rows+1]= special_row
-				end
-				local x= SCREEN_CENTER_X
-				local y= SCREEN_BOTTOM - (#rows * row_height)
-				local args= {
-					Name= name,
-					InitCommand= function(subself)
-						subself:xy(x, y)
-						self.container= subself
-						local enabled_players= GAMESTATE:GetEnabledPlayers()
-						self.key_actors= {}
-						for name, child in pairs(subself:GetChildren()) do
-							local r, c= name:match("key(%d+)c(%d+)")
-							if r and c then
-								r= tonumber(r)
-								c= tonumber(c)
-								if not self.key_actors[r] then
-									self.key_actors[r]= {}
-								end
-								self.key_actors[r][c]= child
+				rows[#rows+1]= special_row
+			end
+			local x= SCREEN_CENTER_X
+			local y= SCREEN_BOTTOM - (#rows * row_height)
+			local args= {
+				Name= name,
+				InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					local enabled_players= GAMESTATE:GetEnabledPlayers()
+					self.key_actors= {}
+					for name, child in pairs(subself:GetChildren()) do
+						local r, c= name:match("key(%d+)c(%d+)")
+						if r and c then
+							r= tonumber(r)
+							c= tonumber(c)
+							if not self.key_actors[r] then
+								self.key_actors[r]= {}
 							end
+							self.key_actors[r][c]= child
 						end
-						for r, row in ipairs(self.key_actors) do
-							local keyw= ((SCREEN_WIDTH-self.key_spacing) / #row) - 24
-							for c, key in ipairs(row) do
-								width_limit_text(key, keyw, 1)
-							end
-						end
-						self:update_cursors()
 					end
-				}
-				self.cursors= {}
-				self.cursor_poses= {}
-				local enabled_players= GAMESTATE:GetEnabledPlayers()
-				for i, pn in ipairs(enabled_players) do
-					self.cursors[pn]= setmetatable({}, cursor_mt)
-					self.cursor_poses[pn]= {1, 1}
-					args[#args+1]= self.cursors[pn]:create_actors(
-						"cursor"..pn, 0, 0, 1, pn_to_color(pn),
-						fetch_color("player.hilight"), button_list)
+					for r, row in ipairs(self.key_actors) do
+						local keyw= ((SCREEN_WIDTH-self.key_spacing) / #row) - 24
+						for c, key in ipairs(row) do
+							width_limit_text(key, keyw, 1)
+						end
+					end
+					self:update_cursors()
 				end
-				for i, r in ipairs(rows) do
-					local keyw= (SCREEN_WIDTH-self.key_spacing) / #r
-					local xmin= 0
-					if #r % 2 == 0 then
-						xmin= -(keyw * ((#r / 2) - .5))
+			}
+			self.cursors= {}
+			self.cursor_poses= {}
+			local enabled_players= GAMESTATE:GetEnabledPlayers()
+			for i, pn in ipairs(enabled_players) do
+				self.cursors[pn]= setmetatable({}, cursor_mt)
+				self.cursor_poses[pn]= {1, 1}
+				args[#args+1]= self.cursors[pn]:create_actors(
+					"cursor"..pn, 0, 0, 1, pn_to_color(pn),
+					fetch_color("player.hilight"), button_list)
+			end
+			for i, r in ipairs(rows) do
+				local keyw= (SCREEN_WIDTH-self.key_spacing) / #r
+				local xmin= 0
+				if #r % 2 == 0 then
+					xmin= -(keyw * ((#r / 2) - .5))
+				else
+					xmin= -(keyw * math.floor(#r / 2))
+				end
+				for c, v in ipairs(r) do
+					local cx= xmin + (keyw * (c-1))
+					local cy= (i-1) * row_height
+					args[#args+1]= normal_text("key"..i.."c"..c, v, nil, nil, cx, cy)
+				end
+			end
+			return Def.ActorFrame(args)
+		end,
+		update_cursors= function(self)
+			local other_cur= false
+			local other_pos= false
+			for k, cur in pairs(self.cursors) do
+				local curpos= self.cursor_poses[k]
+				local curactor= self.key_actors[curpos[1]][curpos[2]]
+				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(curactor)
+				local xp, yp= curactor:GetX(), curactor:GetY()
+				cur:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
+				if other_cur then
+					if other_pos[1] == curpos[1] and other_pos[2] == curpos[2] then
+						self.cursors[PLAYER_1]:left_half()
+						self.cursors[PLAYER_2]:right_half()
 					else
-						xmin= -(keyw * math.floor(#r / 2))
+						self.cursors[PLAYER_1]:un_half()
+						self.cursors[PLAYER_2]:un_half()
 					end
-					for c, v in ipairs(r) do
-						local cx= xmin + (keyw * (c-1))
-						local cy= (i-1) * row_height
-						args[#args+1]= normal_text("key"..i.."c"..c, v, nil, nil, cx, cy)
-					end
+				else
+					other_cur= cur
+					other_pos= curpos
 				end
-				return Def.ActorFrame(args)
-			end,
-		update_cursors=
-			function(self)
-				local other_cur= false
-				local other_pos= false
-				for k, cur in pairs(self.cursors) do
-					local curpos= self.cursor_poses[k]
-					local curactor= self.key_actors[curpos[1]][curpos[2]]
-					local xmn, xmx, ymn, ymx= rec_calc_actor_extent(curactor)
-					local xp, yp= curactor:GetX(), curactor:GetY()
-					cur:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
-					if other_cur then
-						if other_pos[1] == curpos[1] and other_pos[2] == curpos[2] then
-							self.cursors[PLAYER_1]:left_half()
-							self.cursors[PLAYER_2]:right_half()
-						else
-							self.cursors[PLAYER_1]:un_half()
-							self.cursors[PLAYER_2]:un_half()
-						end
-					else
-						other_cur= cur
-						other_pos= curpos
-					end
-				end
-			end,
-		move_cursor_x=
-			function(self, pn, dir)
-				if not self.cursors[pn] then return end
-				local pos= self.cursor_poses[pn]
-				pos[2]= pos[2] + dir
+			end
+		end,
+		move_cursor_x= function(self, pn, dir)
+			if not self.cursors[pn] then return end
+			local pos= self.cursor_poses[pn]
+			pos[2]= pos[2] + dir
+			if pos[2] < 1 then
+				pos[2]= #self.key_actors[pos[1]]
+			end
+			if pos[2] > #self.key_actors[pos[1]] then
+				pos[2]= 1
+			end
+			self:update_cursors()
+		end,
+		move_cursor_y= function(self, pn, dir)
+			if not self.cursors[pn] then return end
+			local pos= self.cursor_poses[pn]
+			local old_row_len= #self.key_actors[pos[1]]
+			pos[1]= pos[1] + dir
+			if pos[1] < 1 then
+				pos[1]= #self.key_actors
+			end
+			if pos[1] > #self.key_actors then
+				pos[1]= 1
+			end
+			local new_row_len= #self.key_actors[pos[1]]
+			if old_row_len ~= new_row_len then
+				pos[2]= math.round(scale(pos[2], 1, old_row_len, 1, new_row_len))
 				if pos[2] < 1 then
 					pos[2]= #self.key_actors[pos[1]]
 				end
 				if pos[2] > #self.key_actors[pos[1]] then
 					pos[2]= 1
 				end
-				self:update_cursors()
-			end,
-		move_cursor_y=
-			function(self, pn, dir)
-				if not self.cursors[pn] then return end
-				local pos= self.cursor_poses[pn]
-				local old_row_len= #self.key_actors[pos[1]]
-				pos[1]= pos[1] + dir
-				if pos[1] < 1 then
-					pos[1]= #self.key_actors
+			end
+			self:update_cursors()
+		end,
+		move_to_exit= function(self, pn)
+			self.cursor_poses[pn][1]= #self.key_actors
+			self.cursor_poses[pn][2]= #self.key_actors[#self.key_actors]
+			self:update_cursors()
+		end,
+		interact= function(self, pn)
+			if not self.cursors[pn] then return nil end
+			local pos= self.cursor_poses[pn]
+			if pos[1] < #self.key_actors then
+				if pos[2] == 1 then
+					return keyboard_special_names[1]
+				elseif pos[2] == #self.key_actors[pos[1]] then
+					return keyboard_special_names[2]
 				end
-				if pos[1] > #self.key_actors then
-					pos[1]= 1
-				end
-				local new_row_len= #self.key_actors[pos[1]]
-				if old_row_len ~= new_row_len then
-					pos[2]= math.round(scale(pos[2], 1, old_row_len, 1, new_row_len))
-					if pos[2] < 1 then
-						pos[2]= #self.key_actors[pos[1]]
-					end
-					if pos[2] > #self.key_actors[pos[1]] then
-						pos[2]= 1
-					end
-				end
-				self:update_cursors()
-			end,
-		move_to_exit=
-			function(self, pn)
-				self.cursor_poses[pn][1]= #self.key_actors
-				self.cursor_poses[pn][2]= #self.key_actors[#self.key_actors]
-				self:update_cursors()
-			end,
-		interact=
-			function(self, pn)
-				if not self.cursors[pn] then return nil end
-				local pos= self.cursor_poses[pn]
-				if pos[1] < #self.key_actors then
-					if pos[2] == 1 then
-						return keyboard_special_names[1]
-					elseif pos[2] == #self.key_actors[pos[1]] then
-						return keyboard_special_names[2]
-					end
-					return self.key_actors[pos[1]][pos[2]]:GetText()
-				else
-					return keyboard_special_names[pos[2]]
-				end
-			end,
+				return self.key_actors[pos[1]][pos[2]]:GetText()
+			else
+				return keyboard_special_names[pos[2]]
+			end
+		end,
 }}
 
 local name_display_mt= {
 	__index= {
-		create_actors=
-			function(self, name, x, y, color, player_number)
-				self.name= name
-				self.max_len= 10
-				local profile= PROFILEMAN:GetProfile(player_number)
-				local player_name= profile:GetLastUsedHighScoreName()
-				if not player_using_profile(player_number) then
-					player_name= ""
-				end
-				local args= {
-					Name= name,
-					InitCommand= function(subself)
-						subself:xy(x, y)
-						self.container= subself
-						self.cursor= subself:GetChild("cursor")
-						self.text= subself:GetChild("text")
-						self:update_cursor()
-					end
-				}
-				local time_x= 160
-				if player_number == PLAYER_2 then
-					time_x= time_x * -1
-				end
-				args[#args+1]= normal_text("text", player_name, color, nil, 0, 0, 1)
-				args[#args+1]= normal_text(
-					"time", secs_to_str(cons_players[player_number].credit_time or 0),
-					color, nil, time_x, 0, 1)
-				args[#args+1]= Def.Quad{
-					Name= "cursor", InitCommand= cmd(xy, 0, 12; diffuse, color;
-																					 setsize, 12, 2)}
-				return Def.ActorFrame(args)
-			end,
-		add_text=
-			function(self, new_text)
-				if self.shift then new_text= new_text:upper() self:toggle_shift() end
-				--Trace("Adding '" .. new_text .. "' to name.")
-				local cur_text= self.text:GetText()
-				if #cur_text < self.max_len then
-					self.text:settext(cur_text .. new_text)
-				end
-				--Trace("'" .. self.text:GetText() .. "'")
-				self:update_cursor()
-				return #cur_text + #new_text >= self.max_len
-			end,
-		remove_text=
-			function(self)
-				--Trace("Removing last letter from name.")
-				self.text:settext(self.text:GetText():sub(1, -2))
-				--Trace("'" .. self.text:GetText() .. "'")
-				self:update_cursor()
-			end,
-		get_text=
-			function(self)
-				return self.text:GetText()
-			end,
-		update_cursor=
-			function(self)
-				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(self.text)
-				self.cursor:finishtweening()
-				self.cursor:linear(.1)
-				self.cursor:x(xmx + 6)
-			end,
-		toggle_shift=
-			function(self)
-				self.shift= not self.shift
-				if self.shift then
-					self.cursor:y(-12)
-				else
-					self.cursor:y(12)
-				end
-			end,
-		set_name_from_text=
-			function(self)
+		create_actors= function(self, name, x, y, color, player_number)
+			self.name= name
+			self.max_len= 10
+			local profile= PROFILEMAN:GetProfile(player_number)
+			local player_name= profile:GetLastUsedHighScoreName()
+			if not player_using_profile(player_number) then
+				player_name= ""
 			end
+			local args= {
+				Name= name,
+				InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					self.cursor= subself:GetChild("cursor")
+					self.text= subself:GetChild("text")
+					self:update_cursor()
+				end
+			}
+			local time_x= 160
+			if player_number == PLAYER_2 then
+				time_x= time_x * -1
+			end
+			args[#args+1]= normal_text("text", player_name, color, nil, 0, 0, 1)
+			args[#args+1]= normal_text(
+				"time", secs_to_str(cons_players[player_number].credit_time or 0),
+				color, nil, time_x, 0, 1)
+			args[#args+1]= Def.Quad{
+				Name= "cursor", InitCommand= cmd(xy, 0, 12; diffuse, color;
+																				 setsize, 12, 2)}
+			return Def.ActorFrame(args)
+		end,
+		add_text= function(self, new_text)
+			if self.shift then new_text= new_text:upper() self:toggle_shift() end
+			--Trace("Adding '" .. new_text .. "' to name.")
+			local cur_text= self.text:GetText()
+			if #cur_text < self.max_len then
+				self.text:settext(cur_text .. new_text)
+			end
+			--Trace("'" .. self.text:GetText() .. "'")
+			self:update_cursor()
+			return #cur_text + #new_text >= self.max_len
+		end,
+		remove_text= function(self)
+			--Trace("Removing last letter from name.")
+			self.text:settext(self.text:GetText():sub(1, -2))
+			--Trace("'" .. self.text:GetText() .. "'")
+			self:update_cursor()
+		end,
+		get_text= function(self)
+			return self.text:GetText()
+		end,
+		update_cursor= function(self)
+			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(self.text)
+			self.cursor:finishtweening()
+			self.cursor:linear(.1)
+			self.cursor:x(xmx + 6)
+		end,
+		toggle_shift= function(self)
+			self.shift= not self.shift
+			if self.shift then
+				self.cursor:y(-12)
+			else
+				self.cursor:y(12)
+			end
+		end,
 }}
 
 local combined_play_history= {}
@@ -330,14 +314,12 @@ dofile(THEME:GetPathO("", "art_helpers.lua"))
 
 local score_display_mt= {
 	__index= {
-		banner_center_y=
-			function(self)
+		banner_center_y= function(self)
 				local tz= .75
 				local line_height= 24 * tz
 				return hbanner_height + (line_height)
 			end,
-		create_actors=
-			function(self, name)
+		create_actors= function(self, name)
 				self.name= name
 				local tz= .75
 				local line_height= 24 * tz
@@ -384,19 +366,14 @@ local score_display_mt= {
 					args[#args+1]= Def.Quad{
 						Name= "shadow" .. s,
 						InitCommand= function(self)
-							self:y(quad_y)
-							self:SetHeight(line_height)
-							self:SetWidth(entry_width)
-							self:diffuse(quad_color)
+							self:y(quad_y):setsize(line_height, entry_width)
+								:diffuse(quad_color)
 					end}
 					args[#args+1]= self.tanis[s]:create_actors("entry"..s, tani_params)
 				end
 				return Def.ActorFrame(args)
 			end,
-		transform=
-			function(self, item_index, num_items, is_focus)
-				self.container:finishtweening()
-				self.container:linear(.1)
+		transform= function(self, item_index, num_items, is_focus)
 				local disp_start= 0
 				if num_items % 2 == 0 then
 					disp_start= -(((num_items/2)-.5) * score_disp_width)
@@ -404,59 +381,58 @@ local score_display_mt= {
 					disp_start= -(math.floor(num_items/2) * score_disp_width)
 				end
 				local myx= disp_start + ((item_index-1) * score_disp_width)
-				self.container:x(myx)
+				self.container:finishtweening():linear(.1):x(myx)
 				if math.abs(myx) + hbanner_width > SCREEN_WIDTH/2 then
 					self.container:diffusealpha(0)
 				else
 					self.container:diffusealpha(1)
 				end
-			end,
-		set=
-			function(self, info)
-				self.info= info
-				if not info then return end
-				-- info is a {song= Song, steps= Steps, start= time, finish= time}
-				if info.song:HasBanner() then
-					self.banner:LoadFromSongBanner(info.song)
-					scale_to_fit(self.banner, banner_width, banner_height)
-					self.banner:visible(true)
+		end,
+		set= function(self, info)
+			self.info= info
+			if not info then return end
+			-- info is a {song= Song, steps= Steps, start= time, finish= time}
+			if info.song:HasBanner() then
+				self.banner:LoadFromSongBanner(info.song)
+				scale_to_fit(self.banner, banner_width, banner_height)
+				self.banner:visible(true)
+			else
+				self.banner:visible(false)
+			end
+			self.title:settext(info.song:GetDisplayFullTitle())
+			width_limit_text(self.title, banner_width)
+			self.timeframe:settext(info.start .. "-" .. info.finish)
+			width_limit_text(self.timeframe, banner_width)
+			self.chart_info:settext(chart_info_text(info.steps, info.song))
+			width_limit_text(self.chart_info, banner_width)
+			local high_scores= machine_profile:GetHighScoreList(
+				info.song, info.steps):GetHighScores()
+			for i, tani in ipairs(self.tanis) do
+				if high_scores[i] then
+					local score= high_scores[i]:GetPercentDP()
+					local score_color= color_for_score(score)
+					tani:set_number(("%.2f%%"):format(score*100))
+					tani.number:diffuse(score_color)
+					tani:set_text(high_scores[i]:GetName())
+					local num_width= tani.number:GetZoomedWidth()
+					width_limit_text(tani.text, entry_width - num_width - 8)
+					--Trace("tani " .. i .. " unhidden with score " .. score)
+					if self.shadows[i] then
+						self.shadows[i]:visible(true)
+					end
+					tani:unhide()
 				else
-					self.banner:visible(false)
-				end
-				self.title:settext(info.song:GetDisplayFullTitle())
-				width_limit_text(self.title, banner_width)
-				self.timeframe:settext(info.start .. "-" .. info.finish)
-				width_limit_text(self.timeframe, banner_width)
-				self.chart_info:settext(chart_info_text(info.steps, info.song))
-				width_limit_text(self.chart_info, banner_width)
-				local high_scores= machine_profile:GetHighScoreList(
-					info.song, info.steps):GetHighScores()
-				for i, tani in ipairs(self.tanis) do
-					if high_scores[i] then
-						local score= high_scores[i]:GetPercentDP()
-						local score_color= color_for_score(score)
-						tani:set_number(("%.2f%%"):format(score*100))
-						tani.number:diffuse(score_color)
-						tani:set_text(high_scores[i]:GetName())
-						local num_width= tani.number:GetZoomedWidth()
-						width_limit_text(tani.text, entry_width - num_width - 8)
-						--Trace("tani " .. i .. " unhidden with score " .. score)
-						if self.shadows[i] then
-							self.shadows[i]:visible(true)
-						end
-						tani:unhide()
-					else
-						--Trace("tani " .. i .. " should be hidden.")
-						--TODO: Track down why hide isn't working.
-						tani:set_text("")
-						tani:set_number("")
-						tani:hide()
-						if self.shadows[i] then
-							self.shadows[i]:visible(false)
-						end
+					--Trace("tani " .. i .. " should be hidden.")
+					--TODO: Track down why hide isn't working.
+					tani:set_text("")
+					tani:set_number("")
+					tani:hide()
+					if self.shadows[i] then
+						self.shadows[i]:visible(false)
 					end
 				end
 			end
+		end
 }}
 
 local score_wheel= setmetatable({disable_wrapping= all_scores_on_screen}, sick_wheel_mt)

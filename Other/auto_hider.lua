@@ -38,8 +38,7 @@ updatable_help_mt= {
 					self.container= subself
 					subself:xy(_screen.cx, _screen.cy)
 					self.text= subself:GetChild("text")
-					self.text:wrapwidthpixels(SCREEN_WIDTH-20)
-					self.text:vertspacing(-8)
+					self.text:wrapwidthpixels(SCREEN_WIDTH-20):vertspacing(-8)
 				end,
 				self.frame:create_actors(
 					"frame", 1, 0, 0, fetch_color("rev_bg"), fetch_color("help.bg"),

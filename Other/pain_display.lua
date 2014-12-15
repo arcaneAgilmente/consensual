@@ -127,8 +127,7 @@ options_sets.pain_menu= {
 			self.mode= 1
 			self.number_val= 1
 			self:change_mode()
-			self.container:xy(x, y)
-			self.container:visible(true)
+			self.container:xy(x, y):visible(true)
 			self.inc_arrow:visible(false)
 			self.dec_arrow:visible(false)
 			self:update_cursor()
@@ -407,10 +406,8 @@ pain_display_mt= {
 				shadow_args[#shadow_args+1]= Def.Quad{
 					Name= "q"..i, InitCommand= function(subself)
 						self.shadows[#self.shadows+1]= subself
-						subself:visible(false)
-						subself:xy(0, (i-1)*self.text_height)
-						subself:setsize(el_w - 4, self.text_height)
-						subself:diffuse(scolor)
+						subself:visible(false):xy(0, (i-1)*self.text_height)
+							:setsize(el_w - 4, self.text_height):diffuse(scolor)
 					end
 				}
 			end
@@ -481,9 +478,8 @@ pain_display_mt= {
 			local center_y= revealed_height/2 - (self.text_height/2)
 			self.frame_main:resize(self.el_w, revealed_height)
 			self.frame_main:move(nil, center_y-2)
-			self.container:finishtweening()
-			self.container:linear(.1)
-			self.container:y(self.original_y+hidden_height)
+			self.container:finishtweening():linear(.1)
+				:y(self.original_y+hidden_height)
 		end,
 		enter_edit_mode= function(self)
 			self.mode= 2

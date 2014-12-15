@@ -57,21 +57,6 @@ local function input(event)
 	end
 end
 
-local worker= false
-local function worker_update()
-	if worker then
-		if coroutine.status(worker) ~= "dead" then
-			local working, err= coroutine.resume(worker)
-			if not working then
-				lua.ReportScriptError(err)
-				worker= false
-			end
-		else
-			worker= false
-		end
-	end
-end
-
 local args= {
 	OnCommand= function(self)
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
@@ -120,11 +105,7 @@ local args= {
 		if nobody_earned_splash then
 			self:GetChild("normal_exit"):playcommand("splash")
 		end
-		worker= make_song_sort_worker()
 	end,
-	Def.ActorFrame{
-		InitCommand= function(self) self:SetUpdateFunction(worker_update) end
-	},
 }
 local enabled= GAMESTATE:GetEnabledPlayers()
 local xs= {

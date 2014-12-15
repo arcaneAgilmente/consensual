@@ -12,8 +12,7 @@ return Def.ActorFrame {
 			else
 				self:visible(false)
 			end
-			self:scale_or_crop_background()
-			self:diffusealpha(bg_color[4])
+			self:scale_or_crop_background():diffusealpha(bg_color[4])
 		end
 	}
 }

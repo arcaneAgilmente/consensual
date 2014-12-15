@@ -2,9 +2,7 @@ if in_edit_mode then
 	return Def.ActorFrame{
 		Def.Actor{
 			Name= "cover", StartTransitioningCommand= function(self)
-				local screen= SCREENMAN:GetTopScreen()
-				screen:linear(.5)
-				screen:diffusealpha(0)
+				SCREENMAN:GetTopScreen():linear(.5):diffusealpha(0)
 				self:sleep(.5)
 			end
 		}

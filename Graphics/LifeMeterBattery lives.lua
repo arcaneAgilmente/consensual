@@ -25,13 +25,10 @@ end
 
 return Def.ActorFrame{
 	Def.ActorMultiVertex{
-		Name= "_lives",
-		InitCommand= cmd(xy, 0, 0),
-		BeginCommand= function(self)
+		Name= "_lives", InitCommand= cmd(xy, 0, 0), BeginCommand= function(self)
 			local life_meter= SCREENMAN:GetTopScreen():GetLifeMeter(player)
-			self:SetDrawState{Mode= "DrawMode_Quads"}
 			recalc_verts(self, life_meter)
-			self:visible(true)
+			self:SetDrawState{Mode= "DrawMode_Quads"}:visible(true)
 		end,
 		LifeChangedMessageCommand= function(self, param)
 			if param.Player == player then

@@ -262,12 +262,8 @@ local fail_message_mt= {
 		show_message= function(self, message)
 			self.text:settext(message)
 			self.frame:resize_to_outline(self.text, 12)
-			self.container:stoptweening()
-			self.container:linear(.125)
-			self.container:diffusealpha(1)
-			self.container:sleep(2)
-			self.container:linear(.25)
-			self.container:diffusealpha(0)
+			self.container:stoptweening():linear(.125):diffusealpha(1)
+				:sleep(2):linear(.25):diffusealpha(0)
 		end
 }}
 
@@ -552,30 +548,21 @@ local args= {
   },
 	Def.BitmapText{
 		Font= "Common Normal", InitCommand= function(self)
-			self:zoom(.5)
-			self:xy(_screen.cx, SCREEN_BOTTOM-48)
+			if true then self:visible(false) end
 			if not startup_time then
 				startup_time= GetTimeSinceStart()
 			end
-			-- self:settext("Startup time: " .. secs_to_str(startup_time))
-			self:diffuse(fetch_color("text"))
-			self:strokecolor(fetch_color("stroke"))
+			self:zoom(.5):xy(_screen.cx, SCREEN_BOTTOM-48)
+				:diffuse(fetch_color("text")):strokecolor(fetch_color("stroke"))
 		end
 	},
 	Def.BitmapText{
 		Font= "Common Normal", Text= get_string_wrapper("Common", "special_day"),
 		InitCommand= function(self)
-			self:zoom(.5)
-			self:xy(_screen.cx, SCREEN_BOTTOM-60)
-			self:wrapwidthpixels((SCREEN_WIDTH-32)*2)
-			self:vertspacing(-8)
-			self:diffuse(fetch_color("text"))
-			self:strokecolor(fetch_color("stroke"))
-			if special_day then
-				self:visible(true)
-			else
-				self:visible(false)
-			end
+			self:zoom(.5):xy(_screen.cx, SCREEN_BOTTOM-60)
+				:wrapwidthpixels((SCREEN_WIDTH-32)*2):vertspacing(-8)
+				:diffuse(fetch_color("text")):strokecolor(fetch_color("stroke"))
+				:visible(special_day or false)
 		end
 	},
 	credit_reporter(SCREEN_CENTER_X, SCREEN_TOP+60, true),

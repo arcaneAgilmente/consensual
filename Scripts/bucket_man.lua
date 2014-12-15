@@ -687,10 +687,8 @@ end
 function sick_wheel_item_interface:transform(item_index, num_items, is_focus)
 	local move_time= .1
 	local width_limit= SCREEN_RIGHT - wheel_x - 16
-	self.container:finishtweening()
-	self.container:linear(move_time)
-	self.container:x(0)
-	self.container:y((item_index - 1) * (SCREEN_HEIGHT / num_items))
+	self.container:finishtweening():linear(move_time):x(0)
+		:y((item_index - 1) * (SCREEN_HEIGHT / num_items))
 	if item_index == 1 or item_index == num_items then
 		self.container:diffusealpha(0)
 	else
