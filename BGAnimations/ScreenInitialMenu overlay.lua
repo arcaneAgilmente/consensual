@@ -451,6 +451,10 @@ local speeds= {1, 1, 1}
 
 local function input(event)
 	if event.type == "InputEventType_Release" then return false end
+	--[[
+	if event.DeviceInput.button == "DeviceButton_m" then
+		trans_new_screen("ScreenVersionTest")
+	end
 	if event.DeviceInput.button == "DeviceButton_n" then
 		set_song_mode()
 		for i, cn in ipairs{PLAYER_1, PLAYER_2} do
@@ -465,6 +469,7 @@ local function input(event)
 	if event.DeviceInput.button == "DeviceButton_s" then
 		activate_confetti("perm", false)
 	end
+	]]
 	if event.DeviceInput.button == misc_config:get_data().color_config_key then
 		trans_new_screen("ScreenColorConfig")
 	end

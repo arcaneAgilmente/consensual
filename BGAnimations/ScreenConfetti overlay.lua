@@ -113,6 +113,7 @@ return Def.ActorFrame{
 		Name= "confetti_container", InitCommand= function(self)
 			confetti_container= self
 			update_confetti_count()
+			update_confetti_active()
 		end
 	}
 }

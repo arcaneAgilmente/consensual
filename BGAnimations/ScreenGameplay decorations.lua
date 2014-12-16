@@ -258,8 +258,10 @@ function score_feedback_interface:update(player_stage_stats)
 	end
 	if score < 0 then
 		score= -score
+		self.container:y(0)
 		self.meter:vertalign(top)
 	else
+		self.container:y(_screen.h)
 		self.meter:vertalign(bottom)
 	end
 	self.meter:zoomy(score^((score+1)^((score*2.718281828459045))))

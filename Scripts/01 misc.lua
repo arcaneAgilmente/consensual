@@ -73,35 +73,11 @@ function pow_ten_force(val)
 	return 10^math.round(math.log10(val))
 end
 
-if outdated_sm or not lerp then
-	outdated_sm= true
-	lua.ReportScriptError("This theme uses functions added after beta 4.  Consider upgrading to a nightly build made after 2014-10-23.  http://smnightly.katzepower.com/")
-	function lerp(percent, start, goal)
-		return (percent * (goal - start)) + start
-	end
-
-	function lerp_color(percent, start, goal)
-		return {
-			lerp(percent, start[1], goal[1]),
-			lerp(percent, start[2], goal[2]),
-			lerp(percent, start[3], goal[3]),
-			lerp(percent, start[4], goal[4]),
-		}
-	end
-
-	function approach(current, goal, speed)
-		if current == goal then return current end
-		local diff= goal - current
-		local abs_diff= math.abs(diff)
-		if speed > abs_diff then return goal end
-		return current + (speed * (diff / abs_diff))
-	end
-
-	function multiapproach(currents, goals, speeds)
-		for i= 1, #currents do
-			currents[i]= approach(currents[i], goals[i], speeds[i])
-		end
-		return currents
+function shuffle(tab)
+	for i= 1, #tab do
+		local a= math.random(1, #tab)
+		local b= math.random(1, #tab)
+		tab[a], tab[b]= tab[b], tab[a]
 	end
 end
 

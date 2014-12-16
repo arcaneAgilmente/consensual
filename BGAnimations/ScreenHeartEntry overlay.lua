@@ -45,12 +45,7 @@ local heart_entry_mt= {
 			self.numpad_nums= {7, 8, 9, 4, 5, 6, 1, 2, 3, 0,
 												 self.done_text, self.back_text}
 			if april_fools then
-				for i= 1, #self.numpad_nums do
-					local a= math.random(1, #self.numpad_nums)
-					local b= math.random(1, #self.numpad_nums)
-					self.numpad_nums[a], self.numpad_nums[b]=
-						self.numpad_nums[b], self.numpad_nums[a]
-				end
+				shuffle(self.numpad_nums)
 			end
 			for i, num in ipairs(self.numpad_nums) do
 				args[#args+1]= normal_text(

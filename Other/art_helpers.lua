@@ -387,3 +387,86 @@ dance_pad_mt= {
 			self.container:visible(true)
 		end,
 }}
+
+local letter_vert_positions= {
+	a= {{1, -5}, {4, -5}, {5, -4}, {5, 0}, {5, -3}, {1, -3}, {0, -2}, {0, -1},
+		{1, 0}, {3, 0}, {5, -2}},
+	b= {{0, -8}, {0, 0}, {0, -4}, {2, -5}, {4, -5}, {5, -4}, {5, -1}, {4, 0},
+		{2, 0}, {0, -1}},
+	c= {{5, -4}, {4, -5}, {1, -5}, {0, -4}, {0, -1}, {1, 0}, {4, 0}, {5, -1}},
+	d= {{5, -8}, {5, 0}, {5, -4}, {3, -5}, {1, -5}, {0, -4}, {0, -1}, {1, 0},
+		{3, 0}, {5, -1}},
+	e= {{5, -1}, {4, 0}, {1, 0}, {0, -1}, {0, -4}, {1, -5}, {4, -5}, {5, -4},
+		{5, -3}, {0, -3}},
+	f= {{5, -7}, {4, -8}, {2, -8}, {1, -7}, {1, 0}, {1, -4}, {0, -4}, {4, -4}},
+	l= {{1, -8}, {2, -8}, {2, 0}, {0, 0}, {4, 0}},
+	n= {{0, -5}, {0, 0}, {0, -3}, {2, -5}, {4, -5}, {5, -4}, {5, 0}},
+	o= {{0, -4}, {0, -1}, {1, 0}, {4, 0}, {5, -1}, {5, -4}, {4, -5}, {1, -5},
+		{0, -4}},
+	s= {{0, -1}, {1, 0}, {4, 0}, {5, -1}, {0, -4}, {1, -5}, {4, -5}, {5, -4}},
+	u= {{0, -5}, {0, -1}, {1, 0}, {3, 0}, {4, -1}, {4, -5}, {4, -1}, {5, 0}},
+	C= {{5, -7}, {4, -8}, {1, -8}, {0, -7}, {0, -1}, {1, 0}, {4, 0}, {5, -1}},
+}
+local letter_w= 8
+
+function unfolding_letter(name, x, y, letter, color, unfold_time, scale, thick, steps)
+	if not letter_vert_positions[letter] then return Def.Actor{} end
+	local function add_shuffle_step(self, source_verts, time)
+		local ordering= {}
+		for i= 1, #source_verts do ordering[i]= i end
+		shuffle(ordering)
+		local shuffled_verts= {}
+		for i= 1, #source_verts do
+			local sv= source_verts[ordering[i]]
+			shuffled_verts[i]= {{sv[1]*scale, sv[2]*scale, 0}, color}
+		end
+		self:SetVertices(shuffled_verts)
+		self:linear(unfold_time)
+	end
+	return Def.ActorMultiVertex{
+		Name= name, InitCommand= function(self)
+			local source_verts= letter_vert_positions[letter]
+			local final_verts= {}
+			steps= steps or 1
+			for i= 1, #source_verts do
+				local sv= source_verts[i]
+				final_verts[i]= {{sv[1]*scale, sv[2]*scale, 0}, color}
+			end
+			self:xy(x, y)
+			self:SetDrawState{Mode= "DrawMode_LineStrip"}
+			self:SetLineWidth(thick)
+			for i= 1, steps do
+				add_shuffle_step(self, source_verts, unfold_time)
+			end
+			self:SetVertices(final_verts)
+		end
+	}
+end
+
+function unfolding_text(name, x, y, text, color, unfold_time, scale, thick,
+											 fade_time)
+	local args= {Name= name, InitCommand= function(self)
+								 self:xy(x, y)
+								 self:linear(unfold_time)
+								 if fade_time then
+									 self:linear(fade_time)
+									 self:diffusealpha(0)
+								 end
+							end}
+	if not scale then
+		scale= (_screen.w * .75) / (#text * letter_w)
+	end
+	thick= thick or (scale * .75)
+	local space= scale * letter_w
+	local text_start= (space*.25)-((#text * space) / 2)
+	local step_ordering= {}
+	for i= 1, #text do step_ordering[i]= i end
+	shuffle(step_ordering)
+	for i= 1, #text do
+		local l= text:sub(i, i)
+		local lx= text_start+(space*(i-1))
+		args[#args+1]= unfolding_letter(
+			l, lx, 0, l, color, unfold_time/#text, scale, thick, step_ordering[i])
+	end
+	return Def.ActorFrame(args)
+end
