@@ -728,13 +728,21 @@ local function extra_for_chuunibyou()
 		min_scale= -2,
 		scale= 0,
 		max_scale= 5,
-		initial_value= function(pn)
-			return cons_players[pn].chuunibyou or 0
-		end,
+		initial_value= function(pn) return cons_players[pn].chuunibyou or 0 end,
 		validator= noop_true,
-		set= function(pn, value)
-			cons_players[pn].chuunibyou= value
-		end
+		set= function(pn, value) cons_players[pn].chuunibyou= value end
+	}
+end
+
+local function extra_for_confidence()
+	return {
+		name= "Confidence Shaker",
+		min_scale= 0,
+		scale= 0,
+		max_scale= 2,
+		initial_value= function(pn) return cons_players[pn].confidence or 0 end,
+		validator= function(value) return value >= 0 and value <= 100 end,
+		set= function(pn, value) cons_players[pn].confidence= value end
 	}
 end
 
@@ -1015,6 +1023,8 @@ local floaty_mods= {
 		args= extra_for_sideswap(), level= 5 },
 	{ name= "Chuunibyou", meta= options_sets.adjustable_float,
 		args= extra_for_chuunibyou(), level= 4},
+	{ name= "Confidence Shaker", meta= options_sets.adjustable_float,
+		args= extra_for_confidence(), level= 4},
 }
 
 local chart_mods= {

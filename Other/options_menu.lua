@@ -18,8 +18,6 @@
 -- See ScreenSickPlayerOptions for a complicated example.
 
 local move_time= 0.1
-local underline_offset= 12
-local underline_thickness= 2
 local line_height= 24
 
 local option_item_mt= {
@@ -35,13 +33,10 @@ local option_item_mt= {
 				InitCommand= function(subself)
 					self.container= subself
 					self.text= subself:GetChild("text")
-					self.underline= subself:GetChild("underline")
-					self.underline:horizalign(center)
 				end,
-				normal_text("text", "", nil, fetch_color("stroke"), nil, nil, self.zoom),
 				Def.Quad{
-					Name= "underline", InitCommand= cmd(y,underline_offset;horizalign,left;SetHeight,underline_thickness)
-				}
+					Name= "underline", InitCommand= function(q) self.underline= q end},
+				normal_text("text", "", nil, fetch_color("stroke"), nil, nil, self.zoom),
 			}
 		end,
 		set_geo= function(self, width, height, zoom)
@@ -49,7 +44,7 @@ local option_item_mt= {
 			self.zoom= zoom
 			self.height= height
 			self.text:zoom(zoom)
-			self.underline:y(height/2)
+			self.underline:SetHeight(height/2):vertalign(top)
 		end,
 		set_underline_color= function(self, color)
 			self.underline:diffuse(color)
