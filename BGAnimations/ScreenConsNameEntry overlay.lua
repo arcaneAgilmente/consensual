@@ -366,7 +366,7 @@ local score_display_mt= {
 					args[#args+1]= Def.Quad{
 						Name= "shadow" .. s,
 						InitCommand= function(self)
-							self:y(quad_y):setsize(line_height, entry_width)
+							self:y(quad_y):setsize(entry_width, line_height)
 								:diffuse(quad_color)
 					end}
 					args[#args+1]= self.tanis[s]:create_actors("entry"..s, tani_params)
