@@ -267,6 +267,9 @@ local fail_message_mt= {
 		end
 }}
 
+local last_input_time= GetTimeSinceStart()
+local idle_limit= misc_config:get_data().screen_demo_idle_time
+
 local fail_message= setmetatable({}, fail_message_mt)
 
 local worker= false
@@ -280,6 +283,17 @@ local function worker_update()
 			end
 		else
 			worker= false
+		end
+	else
+		if idle_limit > 1
+			and GetTimeSinceStart() - last_input_time > idle_limit
+		and misc_config:get_data().screen_demo_show_time > 10 then
+			set_song_mode()
+			for i, cn in ipairs{PLAYER_1, PLAYER_2} do
+				cons_players[cn]:clear_init(cn)
+				cons_players[cn]:set_ops_from_profile()
+			end
+			trans_new_screen("ScreenDemonstration")
 		end
 	end
 end
@@ -450,6 +464,7 @@ local speeds= {1, 1, 1}
 
 
 local function input(event)
+	last_input_time= GetTimeSinceStart()
 	if event.type == "InputEventType_Release" then return false end
 	--[[
 	if event.DeviceInput.button == "DeviceButton_m" then
@@ -528,6 +543,7 @@ local args= {
 	Def.ActorFrame{
 		Name= "code_interpreter",
 		OnCommand= function(self)
+			last_input_time= GetTimeSinceStart()
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
 			self:SetUpdateFunction(worker_update)
 		end,

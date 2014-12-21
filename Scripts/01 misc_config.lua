@@ -34,6 +34,9 @@ local default_config= {
 	color_config_key= "DeviceButton_b",
 	censor_privilege_key= "DeviceButton_c",
 
+	screen_demo_idle_time= 10,
+	screen_demo_show_time= 120,
+
 	initial_menu_ops= {
 		single_choice= true,
 		versus_choice= true,
@@ -64,6 +67,10 @@ misc_config:load()
 
 function ud_menus()
 	return misc_config:get_data().menus_have_ud
+end
+
+function screen_demonstration_show_time()
+	return misc_config:get_data().screen_demo_show_time
 end
 
 -- Gametype compatibility:  Any new game mode will need to have its menu

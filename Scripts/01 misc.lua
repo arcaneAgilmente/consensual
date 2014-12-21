@@ -191,20 +191,47 @@ function rec_print_table(t, indent, depth_remaining)
 	Trace(indent .. "end")
 end
 
-function lua_table_to_string(t, indent)
+function string_needs_escape(str)
+	if str:match("^[a-zA-Z_][a-zA-Z_0-9]*$") then
+		return false
+	else
+		return true
+	end
+end
+
+function lua_table_to_string(t, indent, line_pos)
 	indent= indent or ""
-	local ret= "{\n"
+	line_pos= (line_pos or #indent) + 1
 	local internal_indent= indent .. "  "
-	local function do_value_for_key(k, v)
+	local ret= "{"
+	local has_table= false
+	for k, v in pairs(t) do if type(v) == "table" then has_table= true end
+	end
+	if has_table then
+		ret= "{\n" .. internal_indent
+		line_pos= #internal_indent
+	end
+	local separator= ""
+	local function do_value_for_key(k, v, need_key_str)
+		if type(v) == "nil" then return end
 		local k_str= k
 		if type(k) == "number" then
 			k_str= "[" .. k .. "]"
 		else
-			k_str= "[" .. ("%q"):format(k) .. "]"
+			if string_needs_escape(k) then
+				k_str= "[" .. ("%q"):format(k) .. "]"
+			else
+				k_str= k
+			end
+		end
+		if need_key_str then
+			k_str= k_str .. "= "
+		else
+			k_str= ""
 		end
 		local v_str= ""
 		if type(v) == "table" then
-			v_str= lua_table_to_string(v, internal_indent)
+			v_str= lua_table_to_string(v, internal_indent, line_pos + #k_str)
 		elseif type(v) == "string" then
 			v_str= ("%q"):format(v)
 		elseif type(v) == "number" then
@@ -216,21 +243,37 @@ function lua_table_to_string(t, indent)
 		else
 			v_str= tostring(v)
 		end
-		ret= ret .. internal_indent .. k_str .. "= " .. v_str .. ",\n"
+		local to_add= k_str .. v_str
+		if type(v) == "table" then
+			if separator == "" then
+				to_add= separator .. to_add
+			else
+				to_add= separator .."\n" .. internal_indent .. to_add
+			end
+		else
+			if line_pos + #separator + #to_add > 80 then
+				line_pos= #internal_indent + #to_add
+				to_add= separator .. "\n" .. internal_indent .. to_add
+			else
+				to_add= separator .. to_add
+				line_pos= line_pos + #to_add
+			end
+		end
+		ret= ret .. to_add
+		separator= ", "
 	end
 	-- do the integer indices from 0 to n first, in order.
-	for n= 0, #t do
-		if type(t[n]) ~= "nil" then
-			do_value_for_key(n, t[n])
-		end
+	do_value_for_key(0, t[0], true)
+	for n= 1, #t do
+		do_value_for_key(n, t[n], false)
 	end
 	for k, v in pairs(t) do
 		local is_integer_key= (type(k) == "number") and (k == math.floor(k)) and k >= 0 and k <= #t
 		if not is_integer_key then
-			do_value_for_key(k, v)
+			do_value_for_key(k, v, true)
 		end
 	end
-	ret= ret .. indent .. "}"
+	ret= ret .. "}"
 	return ret
 end
 

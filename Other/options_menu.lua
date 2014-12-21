@@ -74,9 +74,9 @@ local option_item_mt= {
 		end,
 		set_underline= function(self, u)
 			if u then
-				self.underline:accelerate(0.25):zoom(1)
+				self.underline:stoptweening():accelerate(0.25):zoom(1)
 			else
-				self.underline:decelerate(0.25):zoom(0)
+				self.underline:stoptweening():decelerate(0.25):zoom(0)
 			end
 		end,
 		set_text= function(self, t)

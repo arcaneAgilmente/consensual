@@ -32,6 +32,22 @@ local function slot_to_prof_dir(slot, reason)
 	return prof_dir
 end
 
+local function load_conf_file(fname)
+	local file= RageFileUtil.CreateRageFile()
+	local ret= {}
+	if file:Open(fname, 1) then
+		local data= loadstring(file:Read())
+		setfenv(data, {})
+		local success, data_ret= pcall(data)
+		if success then
+			ret= data_ret
+		end
+		file:Close()
+	end
+	file:destroy()
+	return ret
+end
+
 local setting_mt= {
 	__index= {
 		init= function(self, name, file, default, match_depth)
@@ -54,7 +70,7 @@ local setting_mt= {
 				if not FILEMAN:DoesFileExist(fname) then
 					self.data_set[slot]= DeepCopy(self.default)
 				else
-					local from_file= dofile(fname)
+					local from_file= load_conf_file(fname)
 					if type(from_file) == "table" then
 						if self.match_depth and self.match_depth ~= 0 then
 							force_table_elements_to_match_type(

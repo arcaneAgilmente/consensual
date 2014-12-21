@@ -805,23 +805,24 @@ local function make_special_actors_for_players()
               }
 	for k, v in pairs(enabled_players) do
 		local add_to_feedback= {}
+		local over_confident= cons_players[v].confidence and cons_players[v].confidence >= 50
 		local flags= cons_players[v].flags.gameplay
 		if flags.sigil then
 			add_to_feedback[#add_to_feedback+1]= {
 				name= "sigil", meattable= sigil_feedback_interface_mt,
 				center= {sigil_centers[v][1], sigil_centers[v][2]}}
 		end
-		if flags.judge then
+		if flags.judge and not over_confident then
 			add_to_feedback[#add_to_feedback+1]= {
 				name= "judge_list", meattable= judge_feedback_interface_mt,
 				center= {judge_centers[v][1], judge_centers[v][2]}}
 		end
-		if flags.score_meter then
+		if flags.score_meter and not over_confident then
 			add_to_feedback[#add_to_feedback+1]= {
 				name= "scoremeter", meattable= score_feedback_interface_mt,
 				center= {score_feedback_centers[v][1], score_feedback_centers[v][2]}}
 		end
-		if flags.dance_points or flags.pct_score then
+		if (flags.dance_points or flags.pct_score) and not over_confident then
 			add_to_feedback[#add_to_feedback+1]= {
 				name= "scorenumber", meattable= numerical_score_feedback_mt,
 				center= {dp_feedback_centers[v][1], dp_feedback_centers[v][2]}}
@@ -901,10 +902,54 @@ local function apply_time_spent()
 	return time_spent
 end
 
+local confidence_data= {}
+local function step_callback(pn)
+	return function(col, score)
+		if confidence_data[pn].active then
+			return col, "TapNoteScore_Miss"
+		else
+			return col, score
+		end
+	end
+end
+
+local function setpressed_callback(pn)
+	return function(col)
+		if confidence_data[pn].active then
+			return col, false
+		else
+			return col, true
+		end
+	end
+end
+
+local function didtapnote_callback(pn)
+	return function(col, score, bright)
+		if confidence_data[pn].active then
+			return col, "TapNoteScore_Miss", bright
+		else
+			return col, score, bright
+		end
+	end
+end
+
+local function didholdnote_callback(pn)
+	return function(col, score, bright)
+		if confidence_data[pn].active then
+			return col, "HoldNoteScore_MissedHold", bright
+		else
+			return col, score, bright
+		end
+	end
+end
+
 local function cleanup(self)
 	prev_song_end_timestamp= hms_timestamp()
 	local time_spent= apply_time_spent()
 	set_last_song_time(time_spent)
+	for i, pn in ipairs(enabled_players) do
+		cons_players[pn].toasty= nil
+	end
 end
 
 local do_unacceptable_check= false
@@ -947,18 +992,18 @@ return Def.ActorFrame {
 			local unacc_enable_votes= 0
 			local unacc_reset_limit= misc_config:get_data().gameplay_reset_limit
 			local curstats= STATSMAN:GetCurStageStats()
-			for k, v in pairs(enabled_players) do
-				cons_players[v].prev_steps= gamestate_get_curr_steps(v)
-				cons_players[v]:stage_stats_reset()
-				cons_players[v]:combo_qual_reset()
-				cons_players[v].unmine_time= nil
-				cons_players[v].mine_data= nil
-				local punacc= cons_players[v].unacceptable_score
+			for i, pn in ipairs(enabled_players) do
+				cons_players[pn].prev_steps= gamestate_get_curr_steps(pn)
+				cons_players[pn]:stage_stats_reset()
+				cons_players[pn]:combo_qual_reset()
+				cons_players[pn].unmine_time= nil
+				cons_players[pn].mine_data= nil
+				local punacc= cons_players[pn].unacceptable_score
 				if punacc.enabled then
 					unacc_enable_votes= unacc_enable_votes + 1
 					unacc_reset_limit= math.min(
-						unacc_reset_limit, cons_players[v].unacceptable_score.limit)
-					local mdp= curstats:GetPlayerStageStats(v):GetPossibleDancePoints()
+						unacc_reset_limit, cons_players[pn].unacceptable_score.limit)
+					local mdp= curstats:GetPlayerStageStats(pn):GetPossibleDancePoints()
 					local tdp= mdp
 					if punacc.condition == "dance_points" then
 						tdp= math.max(0, math.round(punacc.value))
@@ -967,27 +1012,33 @@ return Def.ActorFrame {
 					else
 						unacc_enable_votes= unacc_enable_votes - 1
 					end
-					unacc_dp_limits[v]= tdp
+					unacc_dp_limits[pn]= tdp
 				end
-				local speed_info= cons_players[v].speed_info
+				local speed_info= cons_players[pn].speed_info
 				if speed_info then
 					speed_info.prev_bps= nil
 				end
-				set_speed_from_speed_info(cons_players[v])
-				side_actors[v]=
-					screen_gameplay:GetChild("Player" .. ToEnumShortString(v))
-				notefields[v]= side_actors[v]:GetChild("NoteField")
-				if notefields[v] then
-					--notefields[v]:SetDidTapNoteCallback(miss_all)
-				end
-				if cons_players[v].side_swap or force_swap then
-					side_swap_vals[v]= cons_players[v].side_swap or
-						cons_players[other_player[v]].side_swap
-					local mod_res= side_swap_vals[v] % 1
+				set_speed_from_speed_info(cons_players[pn])
+				side_actors[pn]=
+					screen_gameplay:GetChild("Player" .. ToEnumShortString(pn))
+				notefields[pn]= side_actors[pn]:GetChild("NoteField")
+				if cons_players[pn].side_swap or force_swap then
+					side_swap_vals[pn]= cons_players[pn].side_swap or
+						cons_players[other_player[pn]].side_swap
+					local mod_res= side_swap_vals[pn] % 1
 					if mod_res == 0 then mod_res= 1 end
-					swap_on_xs[v]= player_sides[v] + (side_diffs[v] * mod_res)
-					side_actors[v]:x(swap_on_xs[v])
-					side_toggles[v]= true
+					swap_on_xs[pn]= player_sides[pn] + (side_diffs[pn] * mod_res)
+					side_actors[pn]:x(swap_on_xs[pn])
+					side_toggles[pn]= true
+				end
+				if cons_players[pn].confidence and cons_players[pn].confidence > 0 then
+					confidence_data[pn]= {
+						active= false, chance= cons_players[pn].confidence
+					}
+					notefields[pn]:SetStepCallback(step_callback(pn))
+					notefields[pn]:SetSetPressedCallback(setpressed_callback(pn))
+					notefields[pn]:SetDidTapNoteCallback(didtapnote_callback(pn))
+					notefields[pn]:SetDidHoldNoteCallback(didholdnote_callback(pn))
 				end
 			end
 			if unacc_enable_votes == #enabled_players and
@@ -1012,6 +1063,30 @@ return Def.ActorFrame {
 		end,
 		JudgmentMessageCommand= function(self, param)
 			local pn= param.Player
+			local confidence= confidence_data[pn]
+			if confidence then
+				if confidence.active then
+					if confidence.chance < 100 then
+						confidence.active= confidence.active - 1
+					elseif cons_players[pn].toasty then
+						cons_players[pn].toasty.remaining= 100
+					end
+					if confidence.active < 1 then
+						confidence.active = false
+						cons_players[pn].song_options:MinTNSToHideNotes(confidence.min_tns)
+					end
+				else
+					if math.random(0, 99) < confidence.chance then
+						confidence.active= math.random(1, confidence.chance+1)
+						confidence.min_tns= cons_players[pn].song_options:
+							MinTNSToHideNotes("TapNoteScore_CheckpointHit")
+						confidence.fake_judge= cons_players[pn].fake_judge
+						cons_players[pn].toasty= {
+							judge= "TapNoteScore_Miss", remaining= confidence.active,
+							progress= 0}
+					end
+				end
+			end
 			if param.TapNoteScore == "TapNoteScore_HitMine" then
 				local cp= cons_players[pn]
 				if cp.mine_effect then

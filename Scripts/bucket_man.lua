@@ -75,7 +75,7 @@ end
 
 local function note_count(song)
 	if song.GetStepsByStepsType then
-		local curr_style= GAMESTATE:GetCurrentStyle()
+		local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
 		local filter_type= curr_style:GetStepsType()
 		local all_steps= song:GetStepsByStepsType(filter_type)
 		local ret= {}
@@ -97,7 +97,7 @@ end
 
 local function nps(song)
 	if song.GetStepsByStepsType then
-		local curr_style= GAMESTATE:GetCurrentStyle()
+		local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
 		local filter_type= curr_style:GetStepsType()
 		local all_steps= song:GetStepsByStepsType(filter_type)
 		local ret= {}

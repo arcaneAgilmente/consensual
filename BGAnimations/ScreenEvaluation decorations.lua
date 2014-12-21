@@ -931,6 +931,10 @@ function profile_report_interface:create_actors(player_number)
 			things_in_list[#things_in_list+1]= {
 				name= "Toasties", number= pro:GetNumToasties(), color= color}
 		end
+		if pro.GetTotalDancePoints then
+			things_in_list[#things_in_list+1]= {
+				name= "Dance Points", number= pro:GetTotalDancePoints() }
+		end
 		do
 			local taps= pro:GetTotalTapsAndHolds() + pro:GetTotalJumps() +
 				pro:GetTotalHands()

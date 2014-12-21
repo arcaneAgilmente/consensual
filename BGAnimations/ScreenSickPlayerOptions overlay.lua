@@ -1000,8 +1000,8 @@ local target_mods= {
 }
 
 local visibility_mods= {
-	"Blink", "RandomVanish", "Stealth",
-	-- "PlayerAutoPlay", "Cover", "Passmark", TODO?  Add support for these mods.
+	"Blink", "RandomVanish", "Stealth", "Cover"
+	-- "PlayerAutoPlay", "Passmark", TODO?  Add support for these mods.
 }
 
 local floaty_mods= {

@@ -1,8 +1,17 @@
-local test_failed= false
-local test_text= ""
+local version_failed= false
+local show_message= false
+local message= ""
+local next_screen= "ScreenInitialMenu"
 if not NoteField or not NoteField.SetStepCallback then
-	test_failed= true
-	test_text= "Your version of Stepmania is too old for this version of Consensual.\nUpgrade to a nightly build made on or after 2014/12/14.\nhttp://smnightly.katzepower.com/  (build #864 should work)\nSwitching to a different theme."
+	version_failed= true
+	show_message= true
+	message= "Your version of Stepmania is too old for this version of Consensual.\nUpgrade to a nightly build made on or after 2014/12/14.\nhttp://smnightly.katzepower.com/  (build #864 should work)\nSwitching to a different theme."
+end
+
+if not PREFSMAN:GetPreference("SmoothLines") then
+	show_message= true
+	next_screen= "ScreenOptionsGraphicsSound"
+	message= "You have the Smooth Lines preference set to false.  Consensual uses linestrips in many places, and having Smooth Lines set to false will ruin your frame rate.\nGoing to Graphics options screen so you can set it to true."
 end
 
 dofile(THEME:GetPathO("", "art_helpers.lua"))
@@ -10,14 +19,14 @@ local unfold_time= 4
 
 return Def.ActorFrame{
 	Def.BitmapText{
-		Font= "Common Normal", Text= test_text, InitCommand= function(self)
+		Font= "Common Normal", Text= message, InitCommand= function(self)
 			self:xy(_screen.cx, _screen.cy)
 			self:wrapwidthpixels(_screen.w-32)
 			self:diffuse(fetch_color("text"))
 			self:strokecolor(fetch_color("stroke"))
 			self:diffusealpha(0)
 			self:sleep(unfold_time+1)
-			if test_failed then
+			if show_message then
 				self:linear(.5)
 				self:diffusealpha(1)
 				self:linear(5)
@@ -25,7 +34,7 @@ return Def.ActorFrame{
 			self:queuecommand("Continue")
 		end,
 		ContinueCommand= function(self)
-			if test_failed then
+			if version_failed then
 				local theme_names= THEME:GetSelectableThemeNames()
 				local simply_love= false
 				local ultralight= false
@@ -44,7 +53,7 @@ return Def.ActorFrame{
 					THEME:SetTheme("default")
 				end
 			else
-				trans_new_screen("ScreenInitialMenu")
+				trans_new_screen(next_screen)
 			end
 		end
 	},
