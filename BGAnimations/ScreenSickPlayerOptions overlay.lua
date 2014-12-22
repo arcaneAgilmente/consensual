@@ -706,6 +706,18 @@ local function extra_for_sigil_size()
 	}
 end
 
+local function player_conf_float(disp_name, field_name, mins, scal, maxs,
+																 minv, maxv)
+	return {
+		name= disp_name, min_scale= mins, scale= scal, max_scale= maxs,
+		initial_value= function(pn) return cons_players[pn][field_name] or 0 end,
+		validator= function(value)
+			return gte_nil(value, minv) and lte_nil(value, maxv)
+		end,
+		set= function(pn, value) cons_players[pn][field_name]= value end
+	}
+end
+
 local function extra_for_sideswap()
 	return {
 		name= "Side Swap",
@@ -1025,6 +1037,10 @@ local floaty_mods= {
 		args= extra_for_chuunibyou(), level= 4},
 	{ name= "Confidence Shaker", meta= options_sets.adjustable_float,
 		args= extra_for_confidence(), level= 4},
+	{ name= "Judgment Y", meta= options_sets.adjustable_float,
+		args= player_conf_float("Judgment Y", "judgment_offset", 0, 1, 2)},
+	{ name= "Combo Y", meta= options_sets.adjustable_float,
+		args= player_conf_float("Combo Y", "combo_offset", 0, 1, 2)},
 }
 
 local chart_mods= {

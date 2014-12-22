@@ -4,7 +4,7 @@ local player= Var "Player"
 local Judgment
 local tani= setmetatable({upper= true}, text_and_number_interface_mt)
 local tani_params= {
-	sy= 60, tx= 8, nx= -8, ta= left, na= right, text_section= "Combo"
+	sy= cons_players[player].combo_offset, tx= 8, nx= -8, ta= left, na= right, text_section= "Combo"
 }
 local OffsetQuad
 

@@ -212,6 +212,8 @@ local default_config= {
 	combo_graph_threshold= "TapNoteScore_W3",
 	preferred_style= "single",
 	experience_level= 1, -- To ease triggering confetti on gaining a level.
+	judgment_offset= -30,
+	combo_offset= 60,
 }
 
 player_config= create_setting("player_config", "player_config.lua", default_config, -1)
