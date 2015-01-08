@@ -1,3 +1,4 @@
+local pi= math.pi
 local rate_coordinator= setmetatable({}, rate_coordinator_interface_mt)
 rate_coordinator:initialize()
 
@@ -700,6 +701,17 @@ for i, pn in ipairs(enabled_players) do
 	pstats[pn]= curstats:GetPlayerStageStats(pn)
 end
 
+local next_spline_change_time= 0
+local function rand_pos()
+	return math.random(-32, 32)
+end
+local function rand_angle()
+	return (math.random(0, 16) * .03125) * pi
+end
+local function rand_zoom()
+	return scale(math.random(), 0, 1, .25, 2)
+end
+
 local function Update(self)
 	if gameplay_start_time == -20 then
 		if GAMESTATE:GetCurMusicSeconds() >= 0 then
@@ -767,6 +779,67 @@ local function Update(self)
 				chuunibyou_state[v]= not chuunibyou_state[v]
 				side_actors[v]:x(chuunibyou_sides[chuunibyou_state[v]])
 				next_chuunibyou[v]= next_chuunibyou[v] + player.chuunibyou
+			end
+		end
+		if notecolumns[v] and get_screen_time() > next_spline_change_time then
+			next_spline_change_time= next_spline_change_time + 20
+			if cons_players[v].pos_splines_demo or cons_players[v].rot_splines_demo
+			or cons_players[v].zoom_splines_demo then
+				for i= 1, #notecolumns[v] do
+					if hate then
+						local spread= math.random(-120, 120)
+						local per= spread / (#notecolumns[pn] - 1)
+						local start= (spread * -.5) - per
+						notecolumns[v][i]:rotationz(start + (i * per))
+					end
+					if cons_players[v].pos_splines_demo then
+						local handler= notecolumns[v][i]:get_pos_handler()
+						handler:set_beats_per_t(64/math.random(1, 32))
+							:set_spline_mode("NoteColumnSplineMode_Offset")
+							:set_subtract_song_beat(false)
+						local spline= handler:get_spline()
+						local num_points= math.random(1, 8)
+						spline:set_loop(true):set_size(num_points)
+						for p= 1, num_points do
+							spline:set_point(p, {rand_pos(), rand_pos(), rand_pos()})
+						end
+						spline:solve()
+					end
+					if cons_players[v].rot_splines_demo then
+						local handler= notecolumns[v][i]:get_rot_handler()
+						handler:set_beats_per_t(64/math.random(1, 32))
+							:set_spline_mode("NoteColumnSplineMode_Position")
+							:set_subtract_song_beat(false)
+						--:set_subtract_song_beat(math.random(1, 2) == 1)
+						local spline= handler:get_spline()
+						local num_points= math.random(1, 8)
+						spline:set_loop(true):set_size(num_points)
+						local prevx= rand_angle() * 4
+						local prevy= rand_angle() * 4
+						local prevz= rand_angle() * 4
+						for p= 1, num_points do
+							spline:set_point(p, {prevx, prevy, prevz})
+							prevx= prevx + rand_angle()
+							prevy= prevy + rand_angle()
+							prevz= prevz + rand_angle()
+						end
+						spline:solve()
+					end
+					if cons_players[v].zoom_splines_demo then
+						local handler= notecolumns[v][i]:get_zoom_handler()
+						handler:set_beats_per_t(64/math.random(1, 32))
+							:set_spline_mode("NoteColumnSplineMode_Position")
+							:set_subtract_song_beat(false)
+						local spline= handler:get_spline()
+						local num_points= math.random(1, 8)
+						spline:set_loop(true):set_size(num_points)
+						for p= 1, num_points do
+							spline:set_point(p, {rand_zoom(), rand_zoom(), rand_zoom()})
+						end
+						spline:solve()
+					end
+					notecolumns[v][i]:linear(20)
+				end
 			end
 		end
 		if (side_swap_vals[v] or 0) > 1 then
@@ -1029,31 +1102,8 @@ return Def.ActorFrame {
 					if hate then spread= math.random(-120, 120) end
 					local per= spread / (#notecolumns[pn] - 1)
 					local start= (spread * -.5) - per
-					local rad= 200
 					for i= 1, #notecolumns[pn] do
-						local verts= calc_circle_verts(rad, 32, math.pi*1.5, math.pi*1.5)
 						notecolumns[pn][i]:rotationz(start + (i * per))
-						if cons_players[pn].rot_splines_demo then
-							for s= 1, 15 do
-								local rot_handler= notecolumns[pn][i]:get_rot_handler()
-								rot_handler:set_beats_per_t(4/math.random(1, 32))
-									:set_spline_mode("NoteColumnSplineMode_Position")
-									:set_subtract_song_beat(false)
-								--:set_subtract_song_beat(math.random(1, 2) == 1)
-								local rot_spline= rot_handler:get_spline()
-								local pi= math.pi
-								local num_points= math.random(1, 8)
-								local function rand_angle()
-									return (math.random(0, 16) * .125) * pi
-								end
-								rot_spline:set_loop(true):set_size(num_points)
-								for p= 1, num_points do
-									rot_spline:set_point(p, {rand_angle(), rand_angle(), rand_angle()})
-								end
-								rot_spline:solve()
-								notecolumns[pn][i]:linear(10)
-							end
-						end
 					end
 				end
 				if cons_players[pn].side_swap or force_swap then

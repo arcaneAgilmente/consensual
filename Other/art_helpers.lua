@@ -263,7 +263,7 @@ function random_grow_circle(name, x, y, center_color, edge_color, step_time, end
 			if type(center_color) == "function" then center_color= center_color() end
 			if type(edge_color) == "function" then edge_color= edge_color() end
 			local verts= {{{0, 0, 0}, center_color}}
-			local points= 2048
+			local points= 512
 			local spp= 64
 			for i= 1, points+1 do
 				verts[#verts+1]= {{0, 0, 0}, edge_color}

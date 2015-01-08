@@ -1256,6 +1256,7 @@ function music_whale:interact_with_element()
 end
 
 function music_whale:close_group()
+	self.in_recent= false
 	self:pop_from_disp_stack()
 end
 

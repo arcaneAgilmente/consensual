@@ -1141,6 +1141,22 @@ for i, tns in ipairs{
 end
 
 local special= {
+	{ name= "Spline Demos", meta= options_sets.special_functions, level= 4,
+		args= {
+			eles= {
+				{ name= "Position",
+					init= function(pn) return cons_players[pn].pos_splines_demo end,
+					set= function(pn) cons_players[pn].pos_splines_demo= true end,
+					unset= function(pn) cons_players[pn].pos_splines_demo= false end},
+				{ name= "Rotation",
+					init= function(pn) return cons_players[pn].rot_splines_demo end,
+					set= function(pn) cons_players[pn].rot_splines_demo= true end,
+					unset= function(pn) cons_players[pn].rot_splines_demo= false end},
+				{ name= "Zoom",
+					init= function(pn) return cons_players[pn].zoom_splines_demo end,
+					set= function(pn) cons_players[pn].zoom_splines_demo= true end,
+					unset= function(pn) cons_players[pn].zoom_splines_demo= false end},
+	}}},
 	{ name= "Distortion", meta= options_sets.special_functions, level= 5,
 		args= {
 			eles= {
