@@ -1073,7 +1073,8 @@ local function input(event)
 					end
 					SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 					pain_displays[pn]:fetch_config()
-					if GAMESTATE:GetCurrentGame():GetSeparateStyles() then
+					if Game.GetSeparateStyles
+					and GAMESTATE:GetCurrentGame():GetSeparateStyles() then
 						set_current_style(first_compat_style(2), PLAYER_1)
 						set_current_style(first_compat_style(2), PLAYER_2)
 					else
@@ -1447,7 +1448,7 @@ return Def.ActorFrame {
 		"P2_cursor", 0, 0, 1, pn_to_color(PLAYER_2),
 		fetch_color("player.hilight"), player_cursor_button_list, .5),
 	-- FIXME:  There's not a place for the credit count on the screen anymore.
-	-- credit_reporter(SCREEN_LEFT+120, SCREEN_BOTTOM - 24 - (pane_h * 2), true),
+	-- credit_reporter(SCREEN_LEFT+120, _screen.cy, true),
 	Def.ActorFrame{
 		Name= "status report", InitCommand= function(self)
 			status_text= self:GetChild("status_text")

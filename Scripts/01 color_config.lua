@@ -640,6 +640,9 @@ function color_in_set(set, index, wrap, cap_low, cap_high)
 		if cap_high then return set[#set]
 		else return set.too_high end
 	end
+	if not set[index] then
+		lua.ReportScriptError("Index '" .. tostring(index) .. "' is not in set.")
+	end
 	return set[index] or default_color
 end
 
@@ -657,7 +660,7 @@ end
 
 function wrapping_number_to_color(n, set_name)
 	set_name= set_name or "number"
-	return color_in_set(fetch_color(set_name), index, true)
+	return color_in_set(fetch_color(set_name), n, true)
 end
 
 function color_percent_above(val, above, set_name)

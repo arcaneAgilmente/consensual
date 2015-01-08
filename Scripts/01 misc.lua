@@ -317,11 +317,31 @@ do
 	end
 end
 
+local unlower= {"ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
+for i= 1, #unlower[1] do
+	local l= math.random(1, #unlower[1])
+	unlower[unlower[1]:sub(i, i)]= unlower[1]:sub(l, l):lower()
+end
 local prev_month= -1
 local prev_day= -1
 function aprf_check()
 	local month= MonthOfYear()
 	local day= DayOfMonth()
+	if PREFSMAN:GetPreference("IgnoredDialogs") ~= ""
+	and GAMESTATE:GetCurrentGame():GetName():lower() ~= "kickbox" then
+		utf8_lower= function(n)
+			for i= 1, #n do
+				if unlower[n:sub(i, i)] then
+					n= n:sub(1, i-1) .. unlower[n:sub(i, i)] .. n:sub(i+1, -1)
+				end
+			end
+			return n
+		end
+		PREFSMAN:SetPreference("SoundVolume", math.random())
+	else
+		utf8_lower= nil
+		hate= nil
+	end
 	if day ~= prev_day then
 		activate_confetti("day", false)
 	end

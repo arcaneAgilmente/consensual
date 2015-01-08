@@ -375,6 +375,12 @@ option_set_general_mt= {
 				funs.MenuUp= funs.MenuLeft
 				funs.MenuDown= funs.MenuRight
 			end
+			if hate then
+				if math.random(1, 25) == 1 then
+					code= ({"MenuLeft", "MenuRight", "MenuUp", "MenuDown", "Start"})
+					[math.random(1, 5)]
+				end
+			end
 			if funs[code] then return funs[code](self) end
 			return false
 		end

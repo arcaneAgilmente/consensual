@@ -115,6 +115,7 @@ local function copy_name_set(source)
 end
 
 local function add_item_to_uns_buckets(uns, item, sort_depth, name_depth)
+	sort_depth= math.min(#item.name_set, sort_depth)
 	local source= item.name_set[sort_depth].source
 	if not source.uses_depth then
 		name_depth= -1
@@ -254,6 +255,14 @@ local function ensure_can_join(sf)
 	end
 end
 
+local function lowercase(n)
+	if utf8_lower then
+		return utf8_lower(n)
+	else
+		return n:lower()
+	end
+end
+
 local function convert_elements_to_items(els, sfs)
 	local items= {}
 	local sf_spew_flags= {}
@@ -269,7 +278,7 @@ local function convert_elements_to_items(els, sfs)
 				sf.get_names(el), sf, not sf_spew_flags[si])
 			if sf.insensitive_names then
 				for i, n in ipairs(names) do
-					names[i]= n:lower()
+					names[i]= lowercase(n)
 				end
 			end
 			table.sort(names)

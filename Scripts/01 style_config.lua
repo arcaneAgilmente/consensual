@@ -5,10 +5,13 @@ local default_config= {{}, {}}
 -- style, but is necessary because Steps do not have a StyleType or other
 -- direct way to figure out what style they're meant for.
 stepstype_to_style= {}
-for i, style in ipairs(styles_for_game) do
+local function add_style_to_lists(style)
 	local stepstype= style:GetStepsType()
 	local stame= style:GetName()
 	local stype= style:GetStyleType()
+	-- Why is couple-edit marked as OnePlayerTwoSides?  I'm throwing it out as
+	-- unsupported rather than trying to write special case code for it.
+	if stame == "couple-edit" then return end
 	if not stepstype_to_style[stepstype] then
 		stepstype_to_style[stepstype]= {}
 	end
@@ -16,6 +19,7 @@ for i, style in ipairs(styles_for_game) do
 	local for_sides= 1
 	if stype:find("TwoPlayers") then for_players= 2 end
 	if stype:find("TwoSides") then for_sides= 2 end
+	if stype:find("SharedSides") then for_sides= 2 end
 	stepstype_to_style[stepstype][for_players]= {
 		name= stame, stype= stype, for_players= for_players, for_sides= for_sides}
 	if stype == "StyleType_OnePlayerOneSide" then
@@ -27,7 +31,14 @@ for i, style in ipairs(styles_for_game) do
 	elseif stype == "StyleType_TwoPlayersTwoSides" then
 		table.insert(
 			default_config[2], {style= stame, stepstype= stepstype, visible= true})
+	elseif stype == "StyleType_TwoPlayersSharedSides" then
+		table.insert(
+			default_config[2], {style= stame, stepstype= stepstype, visible= true})
 	end
+end
+
+for i, style in ipairs(styles_for_game) do
+	add_style_to_lists(style)
 end
 
 style_config= create_setting(

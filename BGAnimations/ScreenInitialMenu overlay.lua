@@ -466,10 +466,12 @@ local speeds= {1, 1, 1}
 local function input(event)
 	last_input_time= GetTimeSinceStart()
 	if event.type == "InputEventType_Release" then return false end
-	--[[
 	if event.DeviceInput.button == "DeviceButton_m" then
-		trans_new_screen("ScreenVersionTest")
+		trans_new_screen("ScreenSplineDesign")
+	elseif event.DeviceInput.button == "DeviceButton_n" then
+		trans_new_screen("ScreenMiscTest")
 	end
+	--[[
 	if event.DeviceInput.button == "DeviceButton_n" then
 		set_song_mode()
 		for i, cn in ipairs{PLAYER_1, PLAYER_2} do

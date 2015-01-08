@@ -53,6 +53,7 @@ local swap_on_xs= {}
 local side_toggles= {}
 local side_actors= {}
 local notefields= {}
+local notecolumns= {}
 local next_chuunibyou= {[PLAYER_1]= 0, [PLAYER_2]= 0}
 local chuunibyou_state= {[PLAYER_1]= true, [PLAYER_2]= true}
 local chuunibyou_sides= {}
@@ -1022,6 +1023,39 @@ return Def.ActorFrame {
 				side_actors[pn]=
 					screen_gameplay:GetChild("Player" .. ToEnumShortString(pn))
 				notefields[pn]= side_actors[pn]:GetChild("NoteField")
+				if notefields[pn].get_column_actors then
+					notecolumns[pn]= notefields[pn]:get_column_actors()
+					local spread= cons_players[pn].column_angle or 0
+					if hate then spread= math.random(-120, 120) end
+					local per= spread / (#notecolumns[pn] - 1)
+					local start= (spread * -.5) - per
+					local rad= 200
+					for i= 1, #notecolumns[pn] do
+						local verts= calc_circle_verts(rad, 32, math.pi*1.5, math.pi*1.5)
+						notecolumns[pn][i]:rotationz(start + (i * per))
+						if cons_players[pn].rot_splines_demo then
+							for s= 1, 15 do
+								local rot_handler= notecolumns[pn][i]:get_rot_handler()
+								rot_handler:set_beats_per_t(4/math.random(1, 32))
+									:set_spline_mode("NoteColumnSplineMode_Position")
+									:set_subtract_song_beat(false)
+								--:set_subtract_song_beat(math.random(1, 2) == 1)
+								local rot_spline= rot_handler:get_spline()
+								local pi= math.pi
+								local num_points= math.random(1, 8)
+								local function rand_angle()
+									return (math.random(0, 16) * .125) * pi
+								end
+								rot_spline:set_loop(true):set_size(num_points)
+								for p= 1, num_points do
+									rot_spline:set_point(p, {rand_angle(), rand_angle(), rand_angle()})
+								end
+								rot_spline:solve()
+								notecolumns[pn][i]:linear(10)
+							end
+						end
+					end
+				end
 				if cons_players[pn].side_swap or force_swap then
 					side_swap_vals[pn]= cons_players[pn].side_swap or
 						cons_players[other_player[pn]].side_swap

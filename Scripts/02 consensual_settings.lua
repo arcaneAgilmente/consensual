@@ -269,7 +269,7 @@ end
 
 local cons_player_mt= { __index= cons_player}
 
-if cons_players then
+if cons_players and cons_players[PLAYER_1] and cons_players[PLAYER_2] then
 	for k, v in pairs(all_player_indices) do
 		setmetatable(cons_players[v], cons_player_mt)
 	end
@@ -560,6 +560,15 @@ end
 
 function cons_set_current_steps(pn, steps)
 	local num_players= GAMESTATE:GetNumPlayersEnabled()
+	local set_other_player_too= false
+	if num_players == 2 then
+		if GAMESTATE:GetCurrentStyle(pn):GetStyleType() ==
+			"StyleType_TwoPlayersSharedSides"
+			or GAMESTATE:GetCurrentStyle(other_player[pn]):GetStyleType() ==
+		"StyleType_TwoPlayersSharedSides" then
+			set_other_player_too= true
+		end
+	end
 	local curr_st= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
 	local to_st= steps:GetStepsType()
 	if curr_st ~= to_st then
@@ -592,6 +601,10 @@ function cons_set_current_steps(pn, steps)
 		return
 	end
 	gamestate_set_curr_steps(pn, steps)
+	if set_other_player_too then
+		set_current_style(GAMESTATE:GetCurrentStyle(pn), other_player[pn])
+		gamestate_set_curr_steps(other_player[pn], steps)
+	end
 end
 
 function JudgmentTransformCommand( self, params )

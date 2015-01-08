@@ -758,6 +758,17 @@ local function extra_for_confidence()
 	}
 end
 
+local function extra_for_colangle()
+	return {
+		name= "Column Angle",
+		min_scale= 0,
+		scale= 0,
+		max_scale= 2,
+		initial_value= function(pn) return cons_players[pn].column_angle or 0 end,
+		set= function(pn, value) cons_players[pn].column_angle= value end
+	}
+end
+
 local function extra_for_lives()
 	return {
 		name= "Battery Lives",
@@ -1037,6 +1048,8 @@ local floaty_mods= {
 		args= extra_for_chuunibyou(), level= 4},
 	{ name= "Confidence Shaker", meta= options_sets.adjustable_float,
 		args= extra_for_confidence(), level= 4},
+	{ name= "Column Angle", meta= options_sets.adjustable_float,
+		args= extra_for_colangle(), level= 4},
 	{ name= "Judgment Y", meta= options_sets.adjustable_float,
 		args= player_conf_float("Judgment Y", "judgment_offset", 0, 1, 2)},
 	{ name= "Combo Y", meta= options_sets.adjustable_float,
