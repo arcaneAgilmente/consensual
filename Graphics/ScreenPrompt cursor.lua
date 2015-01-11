@@ -5,6 +5,6 @@ return Def.ActorFrame{
 	},
 	cursor:create_actors(
 		"cursor", 0, 0, 2, fetch_color("player.both"),
-		fetch_color("player.hilight"), true, false),
+		fetch_color("player.hilight"), {{"left", "MenuLeft"}, {"right", "MenuRight"}}),
 	Def.Actor{ InitCommand= function(self) cursor:refit(0, 0, 100, 32) end,},
 }

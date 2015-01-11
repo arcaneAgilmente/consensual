@@ -788,7 +788,7 @@ local function Update(self)
 				for i= 1, #notecolumns[v] do
 					if hate then
 						local spread= math.random(-120, 120)
-						local per= spread / (#notecolumns[pn] - 1)
+						local per= spread / (#notecolumns[v] - 1)
 						local start= (spread * -.5) - per
 						notecolumns[v][i]:rotationz(start + (i * per))
 					end

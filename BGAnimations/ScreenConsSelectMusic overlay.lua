@@ -915,6 +915,11 @@ local function input(event)
 	local key_pressed= event.GameButton
 	local press_type= event.type
 	if press_type == "InputEventType_FirstPress"
+	and event.DeviceInput.button == "DeviceButton_F9" then
+		PREFSMAN:SetPreference("ShowNativeLanguage", not PREFSMAN:GetPreference("ShowNativeLanguage"))
+		lua.ReportScriptError("ShowNativeLanguage: " .. tostring(PREFSMAN:GetPreference("ShowNativeLanguage")))
+	end
+	if press_type == "InputEventType_FirstPress"
 	and event.DeviceInput.button == misc_config:get_data().censor_privilege_key then
 		privileged_props= not privileged_props
 		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do

@@ -8,11 +8,6 @@ if not NoteField or not NoteField.SetStepCallback then
 	message= "Your version of Stepmania is too old for this version of Consensual.\nUpgrade to a nightly build made on or after 2014/12/14.\nhttp://smnightly.katzepower.com/  (build #864 should work)\nSwitching to a different theme."
 end
 
-if not CubicSplineN then
-	show_message= true
-	message= "Gameplay transitions use splines for smooth edges now.\nEdges will be spiky in builds without splines."
-end
-
 if not PREFSMAN:GetPreference("SmoothLines") then
 	show_message= true
 	next_screen= "ScreenOptionsGraphicsSound"
