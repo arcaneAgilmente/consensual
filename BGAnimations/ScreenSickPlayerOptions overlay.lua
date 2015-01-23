@@ -706,67 +706,18 @@ local function extra_for_sigil_size()
 	}
 end
 
-local function player_conf_float(disp_name, field_name, mins, scal, maxs,
-																 minv, maxv)
+local function player_conf_float(
+		disp_name, field_name, level, mins, scal, maxs, minv, maxv)
 	return {
-		name= disp_name, min_scale= mins, scale= scal, max_scale= maxs,
-		initial_value= function(pn) return cons_players[pn][field_name] or 0 end,
-		validator= function(value)
-			return gte_nil(value, minv) and lte_nil(value, maxv)
-		end,
-		set= function(pn, value) cons_players[pn][field_name]= value end
-	}
-end
-
-local function extra_for_sideswap()
-	return {
-		name= "Side Swap",
-		min_scale= -2,
-		scale= 0,
-		max_scale= 0,
-		initial_value= function(player_number)
-			return cons_players[player_number].side_swap or 0
-		end,
-		validator= noop_true,
-		set= function(player_number, value)
-			cons_players[player_number].side_swap= value
-		end
-	}
-end
-
-local function extra_for_chuunibyou()
-	return {
-		name= "Chuunibyuou",
-		min_scale= -2,
-		scale= 0,
-		max_scale= 5,
-		initial_value= function(pn) return cons_players[pn].chuunibyou or 0 end,
-		validator= noop_true,
-		set= function(pn, value) cons_players[pn].chuunibyou= value end
-	}
-end
-
-local function extra_for_confidence()
-	return {
-		name= "Confidence Shaker",
-		min_scale= 0,
-		scale= 0,
-		max_scale= 2,
-		initial_value= function(pn) return cons_players[pn].confidence or 0 end,
-		validator= function(value) return value >= 0 and value <= 100 end,
-		set= function(pn, value) cons_players[pn].confidence= value end
-	}
-end
-
-local function extra_for_colangle()
-	return {
-		name= "Column Angle",
-		min_scale= 0,
-		scale= 0,
-		max_scale= 2,
-		initial_value= function(pn) return cons_players[pn].column_angle or 0 end,
-		set= function(pn, value) cons_players[pn].column_angle= value end
-	}
+		name= disp_name, meta= options_sets.adjustable_float, level= level,
+		args= {
+			name= disp_name, min_scale= mins, scale= scal, max_scale= maxs,
+			initial_value= function(pn) return cons_players[pn][field_name] or 0 end,
+			validator= function(value)
+				return gte_nil(value, minv) and lte_nil(value, maxv)
+			end,
+			set= function(pn, value) cons_players[pn][field_name]= value end
+	}}
 end
 
 local function extra_for_lives()
@@ -1042,18 +993,13 @@ local floaty_mods= {
 		args= make_menu_of_float_set(target_mods) },
 	{ name= "Visibility", meta= options_sets.menu,
 		args= make_menu_of_float_set(visibility_mods) },
-	{ name= "Side Swap", meta= options_sets.adjustable_float,
-		args= extra_for_sideswap(), level= 5 },
-	{ name= "Chuunibyou", meta= options_sets.adjustable_float,
-		args= extra_for_chuunibyou(), level= 4},
-	{ name= "Confidence Shaker", meta= options_sets.adjustable_float,
-		args= extra_for_confidence(), level= 4},
-	{ name= "Column Angle", meta= options_sets.adjustable_float,
-		args= extra_for_colangle(), level= 4},
-	{ name= "Judgment Y", meta= options_sets.adjustable_float,
-		args= player_conf_float("Judgment Y", "judgment_offset", 0, 1, 2)},
-	{ name= "Combo Y", meta= options_sets.adjustable_float,
-		args= player_conf_float("Combo Y", "combo_offset", 0, 1, 2)},
+	player_conf_float("Side Swap", "side_swap", 5, -2, 0, 0, nil, nil),
+	player_conf_float("Chuunibyou", "chuunibyou", 4, -2, 0, 4, nil, nil),
+	player_conf_float("Confidence Shaker", "confidence", 4, 0, 0, 2, 0, 100),
+	player_conf_float("Column Angle", "column_angle", 4, 0, 0, 2, nil, nil),
+	player_conf_float("Toasty Level", "toasty_level", 4, 0, 0, 0, 1, 16),
+	player_conf_float("Judgement Y", "judgment_offset", 1, 0, 1, 2, nil, nil),
+	player_conf_float("Combo Y", "combo_offset", 1, 0, 1, 2, nil, nil),
 }
 
 local chart_mods= {
@@ -1205,10 +1151,8 @@ local special= {
 		args= extra_for_dspeed_min("Driven Min")},
 	{ name= "Driven Max", meta= options_sets.adjustable_float, level= 4,
 		args= extra_for_dspeed_max("Driven Max")},
-	{ name= "Options Level", meta= options_sets.adjustable_float,
-		args= extra_for_ops_level(), level= 1},
-	{ name= "Rating Cap", meta= options_sets.adjustable_float,
-		args= extra_for_rating_cap(), level= 2},
+	player_conf_float("Options Level", "options_level", 1, 0, 0, 0, 1, 4),
+	player_conf_float("Rating Cap", "rating_cap", 2, 0, 0, 1, nil, nil),
 	-- TODO?  Add support for these?
 	--"StaticBackground", "RandomBGOnly", "SaveReplay" }),
 }
@@ -1291,8 +1235,8 @@ local base_options= {
 		level= 3},
 	{ name= "Steps", meta= options_sets.steps_list, level= 1},
 	{ name= "Noteskin", meta= options_sets.noteskins, level= -1},
-	{ name= "Options Level", meta= options_sets.adjustable_float,
-		args= extra_for_ops_level(), level= -1},
+	player_conf_float("Options Level", "options_level", -1, 0, 0, 0, 1, 4),
+	player_conf_float("Rating Cap", "rating_cap", -1, 0, 0, 1, nil, nil),
 	{ name= "Decorations", meta= options_sets.menu, args= decorations, level= 2},
 	{ name= "Special", meta= options_sets.menu, args= special, level= 2},
 	{ name= "Profile Options", meta= options_sets.menu, args= profile_options,

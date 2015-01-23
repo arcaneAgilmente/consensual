@@ -50,7 +50,7 @@ updatable_help_mt= {
 			return Def.AutoHider(self.hider_params)
 		end,
 		update_text= function(self, text, alt_text)
-			local match= ""
+			local match= get_string_wrapper(self.translation_section, text)
 			if THEME:HasString(self.translation_section, text) then
 				match= THEME:GetString(self.translation_section, text)
 			elseif alt_text

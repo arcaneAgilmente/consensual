@@ -143,6 +143,59 @@ function rec_find_child(parent, name)
 	return nil
 end
 
+local function rand_bezin()
+	return math.random()
+end
+
+function rand_bezier1(actor, time)
+	actor:tween(time, "TweenType_Bezier", {rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin()})
+end
+
+function rand_bezier2(actor, time)
+	actor:tween(time, "TweenType_Bezier", {rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin()})
+end
+
+local possible_tweens= {
+	noop_nil, Actor.linear, Actor.accelerate, Actor.decelerate, Actor.spring,
+	rand_bezier1, rand_bezier2,
+}
+local tween_sets= {
+	{1, 1}, {1, 1}, {1, 1}, {2, 2}, {2, 2},
+	{1, 5}, {2, 5}, {3, 5}, {5, 5},
+	{5, #possible_tweens},
+	{#possible_tweens, #possible_tweens},
+}
+local tween_times= {
+	{1, 1}, {1, 1}, {1, 1}, {1, 4}, {1, 4}, {1, 8}, {1, 8}, {1, 16}, {1, 32},
+}
+
+function rand_choice(level, sets)
+	level= level or 1
+	level= force_to_range(1, level, #sets)
+	local min, max= sets[level][1], sets[level][2]
+	if min == max then return min end
+	return math.random(min, max)
+end
+
+function rand_tween(child, level)
+	local choice= rand_choice(level, tween_sets)
+	local time= rand_choice(level, tween_times)
+	possible_tweens[choice](child, time)
+end
+
+function for_all_children(parent, func)
+	local children= parent:GetChildren()
+	for name, child in pairs(children) do
+		if #child > 0 then
+			for si, sc in ipairs(child) do
+				func(sc)
+			end
+		else
+			func(child)
+		end
+	end
+end
+
 function rec_convert_strings_to_numbers(t)
 	for k, v in pairs(t) do
 		if tonumber(v) then
@@ -275,24 +328,6 @@ function lua_table_to_string(t, indent, line_pos)
 	end
 	ret= ret .. "}"
 	return ret
-end
-
-function get_string_wrapper(section, str)
-	--Trace("get_string_wrapper:  Searching section \"" .. tostring(section)
-	--   .. "\" for string \"" .. tostring(str) .. "\"")
-	if not str then return "" end
-	if section then
-		if str ~= "" and section ~= "" and
-			THEME:HasString(section, str) then
-			return THEME:GetString(section, str)
-		else
-			--Trace("Emptry string, empty section, or string not found.")
-			return str
-		end
-	else
-		--Trace("Empty section.")
-		return str
-	end
 end
 
 function wrapped_index(start, offset, set_size)

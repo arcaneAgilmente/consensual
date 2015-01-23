@@ -278,6 +278,12 @@ local privileged_props= false
 local function privileged(pn)
 	return privileged_props
 end
+PREFSMAN:SetPreference("Center1Player", false)
+local function convert_xml_exists()
+	if convert_xml_bgs then return true end
+	return false
+end
+
 local song_props= {
 	{name= "exit_menu"},
 	{name= "prof_favor_inc", req_func= player_using_profile},
@@ -290,7 +296,7 @@ local song_props= {
 	{name= "edit_tags", level= 3},
 	{name= "edit_pain", level= 4},
 	{name= "edit_styles", level= 2},
-	{name= "convert_xml"},
+	{name= "convert_xml", req_func= convert_xml_exists},
 	{name= "end_credit", level= 4},
 }
 
@@ -1007,12 +1013,17 @@ local function input(event)
 							activate_status(music_wheel:resort_for_new_style())
 							common_menu_change(1)
 						elseif extra.name == "convert_xml" then
+							if not convert_xml_bgs then return end
 							local cong= GAMESTATE:GetCurrentSong()
 							if cong then
-								if convert_xml_bgs then
-									convert_xml_bgs(cong:GetSongDir())
-								else
-									lua.ReportScriptError("Converting xml scripted simfiles is an abandoned project.  See http://www.stepmania.com/forums/news/show/1121 to learn why.")
+								convert_xml_bgs(cong:GetSongDir())
+							else
+								local function convert_item(item, depth)
+									convert_xml_bgs(item.el:GetSongDir())
+								end
+								local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
+								if bucket.bucket_info and not bucket.is_special then
+									bucket_traverse(bucket.bucket_info.contents, nil, convert_item)
 								end
 							end
 							common_menu_change(1)

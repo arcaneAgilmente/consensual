@@ -8,8 +8,6 @@ local function input(event)
 	elseif event.DeviceInput.button == "DeviceButton_e" then
 	elseif event.DeviceInput.button == "DeviceButton_x" then
 	elseif event.DeviceInput.button == "DeviceButton_z" then
-	elseif event.DeviceInput.button == "DeviceButton_c" then
-	elseif event.DeviceInput.button == "DeviceButton_v" then
 	end
 end
 

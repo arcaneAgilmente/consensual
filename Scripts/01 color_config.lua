@@ -16,6 +16,7 @@ local default_config= {
 	{"stroke", "bg"},
 	{"rev_text", color("#586e75")},
 	{"rev_text_other", color("#839496")},
+	{"text_disabled", "accent.red"},
 
 	{"accent", {
 		 {"yellow", color("#b58900")},

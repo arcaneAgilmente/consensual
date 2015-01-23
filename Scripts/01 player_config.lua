@@ -208,6 +208,7 @@ local default_config= {
 	-- rating_cap, combo_splash_threshold, and combo_graph_threshold.
 	options_level= 1,
 	rating_cap= -1,
+	toasty_level= 1,
 	combo_splash_threshold= "TapNoteScore_W3",
 	combo_graph_threshold= "TapNoteScore_W3",
 	preferred_style= "single",

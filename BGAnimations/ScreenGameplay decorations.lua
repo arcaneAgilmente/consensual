@@ -870,6 +870,11 @@ local function chart_info_text(pn)
 	return author .. ": " .. difficulty .. ": " .. rating
 end
 
+local lifex = {
+	[PLAYER_1]= 12,
+	[PLAYER_2]= _screen.w-12,
+}
+
 local function make_special_actors_for_players()
 	if not can_have_special_actors() then
 		return Def.Actor{}
@@ -907,6 +912,7 @@ local function make_special_actors_for_players()
 				center= {bpm_centers[v][1], bpm_centers[v][2]}}
 		end
 		local a= {Name= v}
+		a[#a+1]= LoadActor(THEME:GetPathG("", "special_lifebar.lua"), {pn= v, x= lifex[v]})
 		for fk, fv in pairs(add_to_feedback) do
 			local new_feedback= {}
 			setmetatable(new_feedback, fv.meattable)
@@ -934,7 +940,9 @@ local function make_special_actors_for_players()
 			"toasties", "", nil, fetch_color("gameplay.text_stroke"),
 				author_centers[v][1], author_centers[v][2]+24, 1, center,
 				{ OnCommand= cmd(queuecommand, "Update"),
-					ToastyAchievedMessageCommand= cmd(queuecommand, "Update"),
+					ToastyAchievedMessageCommand= function(self, param)
+						self:queuecommand("Update")
+					end,
 					UpdateCommand= function(self)
 						local pro= PROFILEMAN:GetProfile(v)
 						local toasts= pro:GetNumToasties()
@@ -1017,7 +1025,89 @@ local function didholdnote_callback(pn)
 	end
 end
 
+local side_names= {
+	["Player" .. ToEnumShortString(PLAYER_1)]= true,
+	["Player" .. ToEnumShortString(PLAYER_2)]= true,
+}
+local trans_names= {
+	In= true, Out= true, Cancel= true
+}
+
+-- Don't feel like adding an arg to all the functions.
+local inversion_toasty_level= 0
+
+local function invert_not_notefield(child, invert)
+	local name= child:GetName()
+	local function sub_invert(sub_child)
+		invert_not_notefield(sub_child, invert, true)
+	end
+	if side_names[name] then
+		for_all_children(child, sub_invert)
+	elseif name ~= "NoteField" then
+		invert(child)
+	end
+end
+
+local function wrap_invert(invert)
+	return function(child) invert_not_notefield(child, invert) end
+end
+
+local function tween_not_trans(child, tween)
+	if tween and not trans_names[child:GetName()] then
+		rand_tween(child, inversion_toasty_level)
+	end
+end
+
+local next_x_zoom= -1
+local function horiz_invert_gameplay(tween)
+	MESSAGEMAN:Broadcast("gameplay_xversion", {inversion_toasty_level, tween})
+	local function invert_child(child, in_player)
+		tween_not_trans(child, tween)
+		if not in_player then
+			child:x(_screen.w - child:GetX())
+		end
+		child:zoomx(next_x_zoom)
+	end
+	for_all_children(screen_gameplay, wrap_invert(invert_child))
+	next_x_zoom= next_x_zoom * -1
+end
+
+local next_y_zoom= -1
+local function vert_invert_gameplay(tween)
+	MESSAGEMAN:Broadcast("gameplay_yversion", {inversion_toasty_level, tween})
+	local function invert_child(child, in_player)
+		tween_not_trans(child, tween)
+		if not in_player then
+			child:y(_screen.h - child:GetY())
+		end
+		child:zoomy(next_y_zoom)
+	end
+	for_all_children(screen_gameplay, wrap_invert(invert_child))
+	next_y_zoom= next_y_zoom * -1
+end
+
+local function invert_both()
+	horiz_invert_gameplay(true)
+	vert_invert_gameplay(false)
+end
+
+local function wrap_inv(inv, tween)
+	return function() inv(tween) end
+end
+
+local inversion_choices= {
+	noop_nil,
+	wrap_inv(horiz_invert_gameplay, true),
+	wrap_inv(vert_invert_gameplay, true),
+	invert_both,
+}
+
+local inversion_sets= {
+	{1, 1}, {2, 2}, {3, 3}, {2, 2}, {3, 3}, {2, 3}, {2, 4}
+}
+
 local function cleanup(self)
+	MESSAGEMAN:Broadcast("gameplay_unversion")
 	prev_song_end_timestamp= hms_timestamp()
 	local time_spent= apply_time_spent()
 	set_last_song_time(time_spent)
@@ -1144,6 +1234,13 @@ return Def.ActorFrame {
 		end,
 		CurrentStepsP2ChangedMessageCommand= function(self, param)
 			set_speed_from_speed_info(cons_players[PLAYER_2])
+		end,
+		ToastyAchievedMessageCommand= function(self, param)
+			if cons_players[param.PlayerNumber].flags.gameplay.allow_toasty then
+				inversion_toasty_level= cons_players[param.PlayerNumber].toasty_level
+				local choice= rand_choice(inversion_toasty_level, inversion_sets)
+				inversion_choices[choice]()
+			end
 		end,
 		JudgmentMessageCommand= function(self, param)
 			local pn= param.Player
