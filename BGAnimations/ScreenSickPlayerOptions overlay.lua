@@ -780,31 +780,15 @@ local function extra_for_bg_bright()
 	}
 end
 
-local function extra_for_ops_level()
+local function extra_for_agen_arg(arg)
 	return {
-		name= "Options Level",
-		min_scale= 0, scale= 0, max_scale= 0,
+		name= "Autogen Arg " .. arg,
+		min_scale= -2, scale= -1, max_scale= 0,
 		initial_value= function(pn)
-			return cons_players[pn].options_level
-		end,
-		validator= function(value)
-			return value >= 1 and value <= 4
+			return GAMESTATE:GetAutoGenFarg(arg)
 		end,
 		set= function(pn, value)
-			cons_players[pn].options_level= value
-		end
-	}
-end
-
-local function extra_for_rating_cap()
-	return {
-		name= "Rating Cap",
-		min_scale= 0, scale= 0, max_scale= 0,
-		initial_value= function(pn)
-			return cons_players[pn].rating_cap
-		end,
-		set= function(pn, value)
-			cons_players[pn].rating_cap= value
+			GAMESTATE:SetAutoGenFarg(arg, value)
 		end
 	}
 end
@@ -1153,6 +1137,9 @@ local special= {
 		args= extra_for_dspeed_max("Driven Max")},
 	player_conf_float("Options Level", "options_level", 1, 0, 0, 0, 1, 4),
 	player_conf_float("Rating Cap", "rating_cap", 2, 0, 0, 1, nil, nil),
+	{ name= "Autogen Arg 1", meta= options_sets.adjustable_float, level= 4,
+		args= extra_for_agen_arg(1), req_func= function()
+			if GAMESTATE.GetAutoGenFarg then return true end return false end},
 	-- TODO?  Add support for these?
 	--"StaticBackground", "RandomBGOnly", "SaveReplay" }),
 }

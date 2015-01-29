@@ -728,10 +728,11 @@ end
 --   set= {bucket, ...}, -- the set of buckets returned by bucket_sort
 --   match_item= item, -- an item from a bucket
 -- )
--- This requires no compare function or brute search option because it uses
--- the names the item provides.  If the search fails, the item doesn't exist
--- in the tree.
-function bucket_search_for_item(set, match_item)
+-- This requires no brute search option because it uses the names the item
+-- provides.  If the search fails, the item doesn't exist in the tree.
+-- final_compare is used to handle the case where two items have the same set
+-- of names but are actually different.
+function bucket_search_for_item(set, match_item, final_compare)
 	local function get_bucket_source(bucket)
 		return bucket.name.source.name
 	end
@@ -784,7 +785,7 @@ function bucket_search_for_item(set, match_item)
 			local name_reason= item.name.value .. ": " .. reason
 			if in_bucket then
 --				Trace(item.name.value .. ": inside(): " .. reason)
-				local sub_ret= {bucket_search_for_item(item.contents, match_item)}
+				local sub_ret= {bucket_search_for_item(item.contents, match_item, final_compare)}
 				if sub_ret[1] == -1 then
 --					Trace("not inside")
 				else
@@ -801,7 +802,8 @@ function bucket_search_for_item(set, match_item)
 		else
 --			Trace("match(" .. match_last_name .. ", " ..
 --							get_last_name(item.name_set) .. ")")
-			if match_last_name == get_last_name(item.name_set) then
+			if match_last_name == get_last_name(item.name_set)
+			and final_compare(match_item, item) then
 				return i
 			end
 		end

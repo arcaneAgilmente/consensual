@@ -51,12 +51,10 @@ updatable_help_mt= {
 		end,
 		update_text= function(self, text, alt_text)
 			local match= get_string_wrapper(self.translation_section, text)
-			if THEME:HasString(self.translation_section, text) then
-				match= THEME:GetString(self.translation_section, text)
-			elseif alt_text
-			and THEME:HasString(self.translation_section, alt_text) then
-				match= THEME:GetString(self.translation_section,alt_text)
-			else
+			if match == text and alt_text then
+				match= get_string_wrapper(self.translation_section, alt_text)
+			end
+			if match == alt_text then
 				match= self.default_help
 			end
 			self.text:settext(match)

@@ -608,7 +608,7 @@ function cons_set_current_steps(pn, steps)
 end
 
 function JudgmentTransformCommand( self, params )
-	local y = cons_players[params.Player].judgment_offset
+	local y = cons_players[params.Player].judgment_offset or -30
 	if params.bReverse then
 		y = y * -1
 		self:rotationx(180)

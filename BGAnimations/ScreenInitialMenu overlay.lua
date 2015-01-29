@@ -1,6 +1,9 @@
 -- Unjoin currently joined players because stuff like going into the options and changing the theme joins players.
 local reset_start= GetTimeSinceStart()
 GAMESTATE:Reset()
+for i, cn in ipairs{PLAYER_1, PLAYER_2} do
+	cons_players[cn]:clear_init(cn)
+end
 local reset_end= GetTimeSinceStart()
 --Trace("Reset time: " .. reset_end - reset_start)
 SOUND:StopMusic()
@@ -333,19 +336,21 @@ local function play_will_succeed(pns)
 	return true
 end
 
-local function check_both_ready(presser)
+local function check_both_ready(presser, choice_name)
 	if choosing_states[PLAYER_1] == choosing_states[PLAYER_2] and
 	cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] then
 		return true
 	else
 		fail_message:show_message(
-			"Player " .. ToEnumShortString(other_player[presser]) .. " is unready.")
+			"Player " .. ToEnumShortString(other_player[presser]) ..
+				" must also pick " .. get_string_wrapper("OptionNames", choice_name)
+				.. ".")
 		return false
 	end
 end
 
-local function attempt_play(pns, presser)
-	if check_both_ready(presser) and play_will_succeed(pns) then
+local function attempt_play(pns, presser, choice_name)
+	if check_both_ready(presser, choice_name) and play_will_succeed(pns) then
 		local join_success= true
 		for i, rpn in ipairs(pns) do
 			if not cons_join_player(rpn) then
@@ -380,9 +385,9 @@ local function interpret_code(pn, code)
 		if extra then
 			extra= extra.name
 			if extra == "single_choice" then
-				attempt_play({pn}, pn)
+				attempt_play({pn}, pn, extra)
 			elseif extra == "versus_choice" then
-				attempt_play({PLAYER_1, PLAYER_2}, pn)
+				attempt_play({PLAYER_1, PLAYER_2}, pn, extra)
 			elseif extra == "stepmania_ops" then
 				trans_new_screen("ScreenOptionsService")
 			elseif extra == "consensual_ops" then
@@ -409,6 +414,12 @@ local function interpret_code(pn, code)
 					cursor_poses[pn]= 1
 				end
 			end
+		end
+		if code == "Start" and current_menu ~= main_menu
+		and cursor_poses[pn] ~= 1 then
+			current_menu.display:hide()
+			cursor_poses[pn]= 1
+			choosing_states[pn]= choosing_menu
 		end
 	else
 		if code == "Start" then
@@ -467,9 +478,9 @@ local function input(event)
 	last_input_time= GetTimeSinceStart()
 	if event.type == "InputEventType_Release" then return false end
 	if event.DeviceInput.button == "DeviceButton_m" then
-		trans_new_screen("ScreenSplineDesign")
+--		trans_new_screen("ScreenSplineDesign")
 	elseif event.DeviceInput.button == "DeviceButton_n" then
-		trans_new_screen("ScreenMiscTest")
+--		trans_new_screen("ScreenMiscTest")
 	end
 	--[[
 	if event.DeviceInput.button == "DeviceButton_n" then

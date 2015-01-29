@@ -4,7 +4,9 @@ local special_sections= {
 
 local game_sections= {
 	kickbox= {
-		RadarCategory= "RadarCategoryKickbox"
+		OptionNames= "OptionNamesKickbox",
+		ProfileData= "ProfileDataKickbox",
+		RadarCategory= "RadarCategoryKickbox",
 	}
 }
 local game_name= GAMESTATE:GetCurrentGame():GetName()
@@ -34,4 +36,3 @@ function get_string_wrapper(section, str)
 	end
 	return str
 end
-

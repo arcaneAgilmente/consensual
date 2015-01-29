@@ -839,10 +839,14 @@ function music_whale:post_sort_update()
 		local function final_compare(a, b)
 			return a == b
 		end
+		local function dir_compare(a, b)
+			return a and b and a.GetSongDir and b.GetSongDir and
+				a:GetSongDir() == b:GetSongDir()
+		end
 		local search_path= {}
 		if self.cursor_item then
 			search_path= {
-				bucket_search_for_item(self.sorted_songs, self.cursor_item)}
+				bucket_search_for_item(self.sorted_songs, self.cursor_item, dir_compare)}
 			if search_path[1] == -1 then
 				--					Trace("Failed to find cursor item, searching for song:  " .. table.concat(search_path, ", "))
 				search_path= {bucket_search(self.sorted_songs, self.cursor_song,

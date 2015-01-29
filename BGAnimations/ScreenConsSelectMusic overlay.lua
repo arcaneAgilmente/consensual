@@ -1124,9 +1124,9 @@ local function get_code_texts_for_game()
 	return ret
 end
 
-local to_open= THEME:GetString("SelectMusic", "to_open")
+local to_open= get_string_wrapper("SelectMusic", "to_open")
 local function exp_text(exp_name, x, y, attrib_color)
-	local str= THEME:GetString("SelectMusic", exp_name)
+	local str= get_string_wrapper("SelectMusic", exp_name)
 	return normal_text(
 		exp_name, str .. " " .. to_open, fetch_color("help.text"), fetch_color("help.stroke"), x, y, .75, left, {
 			InitCommand= function(self)
@@ -1163,11 +1163,11 @@ local help_args= {
 			"number", "5", fetch_color("help.text"), fetch_color("help.stroke"),
 				24, 0, 1, right),
 		normal_text(
-			"diff", THEME:GetString("SelectMusic", "difficulty"),
+			"diff", get_string_wrapper("SelectMusic", "difficulty"),
 			fetch_color("help.text"), fetch_color("help.stroke"), -32,0,.75, right),
 	},
 	normal_text(
-		"dismiss", THEME:GetString("SelectMusic", "dismiss_help"),
+		"dismiss", get_string_wrapper("SelectMusic", "dismiss_help"),
 		fetch_color("help.text"), fetch_color("help.stroke"), _screen.cx,
 		SCREEN_BOTTOM - 28, 1.5),
 }
@@ -1192,8 +1192,8 @@ do
 	for code_name, code_set in pairs(game_codes) do
 		local pos= code_positions[code_name]
 		if pos then
-			local help= THEME:GetString("SelectMusic", code_name)
-			local or_word= " "..THEME:GetString("Common", "or").." "
+			local help= get_string_wrapper("SelectMusic", code_name)
+			local or_word= " "..get_string_wrapper("Common", "or").." "
 			local code_text= ""
 			for i, sintext in ipairs(code_set) do
 				if pos[3] and i % 2 == 1 and i > 1 then
@@ -1393,6 +1393,10 @@ return Def.ActorFrame {
 							SCREEN_LEFT + 4, title_y + 48, 1, left, {
 								OnCommand=
 									function(self)
+										if GAMESTATE:IsCourseMode() then
+											self:visible(false)
+											return
+										end
 										local remstr= secs_to_str(get_time_remaining())
 										self:settext(remstr .. " remaining")
 									end

@@ -52,9 +52,9 @@ end
 local function item_value_to_text(item, value)
 	if item.item_type == "bool" then
 		if value then
-			value= THEME:GetString("ScreenOptionsCustomizeProfile", item.true_text)
+			value= get_string_wrapper("ScreenOptionsCustomizeProfile", item.true_text)
 		else
-			value= THEME:GetString("ScreenOptionsCustomizeProfile", item.false_text)
+			value= get_string_wrapper("ScreenOptionsCustomizeProfile", item.false_text)
 		end
 	elseif item.item_type == "list" then
 		local pos= calc_list_pos(value, item.list)
@@ -166,7 +166,7 @@ local function input(event)
 				number_entry.max_value= item.max
 				number_entry:update_cursor(number_entry.cursor_start)
 				number_entry.prompt_actor:playcommand(
-					"Set", {THEME:GetString("ScreenOptionsCustomizeProfile", item.name)})
+					"Set", {get_string_wrapper("ScreenOptionsCustomizeProfile", item.name)})
 				cursor_on_menu= "numpad"
 			elseif item.item_type == "list" then
 				cursor_on_menu= "list"
@@ -242,7 +242,7 @@ for i, item in ipairs(menu_items) do
 	-- This creates the actor that will be used to show each item on the menu.
 	args[#args+1]= Def.BitmapText{
 		Name= "menu_" .. item.name, Font= "Common Normal",
-		Text= THEME:GetString("ScreenOptionsCustomizeProfile", item.name),
+		Text= get_string_wrapper("ScreenOptionsCustomizeProfile", item.name),
 		InitCommand= function(self)
 			-- Note that the item adds itself to the list menu_item_actors.  This
 			-- is so that when the cursor is moved, the appropriate item can be

@@ -17,7 +17,7 @@ end
 if PREFSMAN:GetPreference("IgnoredDialogs") ~= ""
 and GAMESTATE:GetCurrentGame():GetName():lower() ~= "kickbox" then
 	show_message= true
-	message= "... I hate you."
+	message= "... I hate you.  Press f to clear IgnoredDialogs and report problems so they can be fixed."
 	hate= true
 end
 
@@ -27,7 +27,8 @@ local unfold_time= 4
 local function input(event)
 	if event.DeviceInput.button == "DeviceButton_f" then
 		PREFSMAN:SetPreference("IgnoredDialogs", "")
-		next_screen= "ScreenExit"
+		hate= false
+		next_screen= "ScreenInitialMenu"
 	end
 end
 
@@ -51,7 +52,7 @@ return Def.ActorFrame{
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
 		end,
 		ContinueCommand= function(self)
-			if version_failed then
+			if version_failed or hate then
 				local theme_names= THEME:GetSelectableThemeNames()
 				local simply_love= false
 				local ultralight= false

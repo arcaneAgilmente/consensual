@@ -962,7 +962,7 @@ function profile_report_interface:create_actors(player_number)
 				color= color_percent_above(1-((calc_taps-taps) / level_diff), .5)}
 		end
 		things_in_list[#things_in_list+1]= {
-			name= "Taps and holds", number= pro:GetTotalTapsAndHolds() }
+			name= "Taps", number= pro:GetTotalTapsAndHolds() }
 		things_in_list[#things_in_list+1]= {
 			name= "Hands", number= pro:GetTotalHands() }
 		things_in_list[#things_in_list+1]= {
@@ -977,7 +977,7 @@ function profile_report_interface:create_actors(player_number)
 		for i, thing in ipairs(things_in_list) do
 			local y= spacing * (i) + 12
 			args[#args+1]= normal_text(
-				thing.name .. "t", get_string_wrapper("ScreenEvaluation", thing.name),
+				thing.name .. "t", get_string_wrapper("ProfileData", thing.name),
 				nil, eval_stroke, -sep, y, .5, left)
 			args[#args+1]= normal_text(
 				thing.name .. "n", thing.number, thing.color, eval_stroke,
@@ -1739,8 +1739,8 @@ do
 		screenshot= {"&select;"},
 	}
 	for name, pos in pairs(help_positions) do
-		local help= THEME:GetString("Evaluation", name)
-		local or_word= " "..THEME:GetString("Common", "or").." "
+		local help= get_string_wrapper("Evaluation", name)
+		local or_word= " "..get_string_wrapper("Common", "or").." "
 		local code_text= table.concat(help_codes[name], or_word)
 		help_args[#help_args+1]= normal_text(
 			name .. "_help", help .. " " .. code_text,

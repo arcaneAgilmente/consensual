@@ -725,12 +725,17 @@ pain_display_mt= {
 			elseif item_config.radar_category then
 				item:set_text(item_config.radar_category)
 				local rval= radars:GetValue(item_config.radar_category)
-				if rval == math.floor(rval) then
-					item:set_number(rval)
+				if rval == -1 then
+					item:set_number("N/A")
 					item.number:diffuse(fetch_color("text"))
 				else
-					item:set_number(("%.2f"):format(rval))
-					item.number:diffuse(color_percent_above(rval, .5))
+					if rval == math.floor(rval) then
+						item:set_number(rval)
+						item.number:diffuse(fetch_color("text"))
+					else
+						item:set_number(("%.2f"):format(rval))
+						item.number:diffuse(color_percent_above(rval, .5))
+					end
 				end
 			elseif item_config.nps then
 				item:set_text("NPS")
@@ -739,8 +744,13 @@ pain_display_mt= {
 				local hands= radars:GetValue("RadarCategory_Hands")
 				local length= song_get_length(song)
 				local nps= (taps + jumps + hands) / length
-				item:set_number(("%.2f"):format(nps))
-				item.number:diffuse(color_percent_above(nps/10, .5))
+				if length <= 0 then
+					item:set_number("N/A")
+					item.number:diffuse(fetch_color("text"))
+				else
+					item:set_number(("%.2f"):format(nps))
+					item.number:diffuse(color_percent_above(nps/10, .5))
+				end
 			else
 				item:set_text("")
 				item:set_number("")

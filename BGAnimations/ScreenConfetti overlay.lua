@@ -108,6 +108,8 @@ function get_confetti(level)
 	return confetti_levels[level]
 end
 
+local inversion_level= 1
+
 return Def.ActorFrame{
 	Def.ActorFrame{
 		Name= "confetti_container", InitCommand= function(self)
@@ -117,19 +119,21 @@ return Def.ActorFrame{
 		end,
 		gameplay_yversionMessageCommand= function(self, param)
 			if param[2] then
+				inversion_level= param[1]
 				rand_tween(self, param[1])
 			end
 			self:zoomy(self:GetZoomY() * -1):y(_screen.h - self:GetY())
 		end,
 		gameplay_xversionMessageCommand= function(self, param)
 			if param[2] then
+				inversion_level= param[1]
 				rand_tween(self, param[1])
 			end
 			self:zoomx(self:GetZoomX() * -1):x(_screen.w - self:GetX())
 		end,
 		gameplay_unversionMessageCommand= function(self)
 			if self:GetZoomY() < 0 or self:GetZoomX() < 0 then
-				rand_tween(self)
+				rand_tween(self, inversion_level)
 				self:zoomy(1):y(0):zoomx(1):x(0)
 			end
 		end

@@ -160,18 +160,22 @@ local possible_tweens= {
 	rand_bezier1, rand_bezier2,
 }
 local tween_sets= {
+	[0]= {2, 5},
 	{1, 1}, {1, 1}, {1, 1}, {2, 2}, {2, 2},
 	{1, 5}, {2, 5}, {3, 5}, {5, 5},
 	{5, #possible_tweens},
 	{#possible_tweens, #possible_tweens},
 }
 local tween_times= {
-	{1, 1}, {1, 1}, {1, 1}, {1, 4}, {1, 4}, {1, 8}, {1, 8}, {1, 16}, {1, 32},
+	[0]= {1, 8}, {1, 1}, {1, 1}, {1, 1}, {1, 4}, {1, 4}, {1, 8}, {1, 8}, {1, 16}, {1, 32},
 }
 
 function rand_choice(level, sets)
-	level= level or 1
-	level= force_to_range(1, level, #sets)
+	if level then
+		level= force_to_range(1, level, #sets)
+	else
+		level= 0
+	end
 	local min, max= sets[level][1], sets[level][2]
 	if min == max then return min end
 	return math.random(min, max)
@@ -470,9 +474,9 @@ function set_course_mode()
 	get_group_banner_path= SONGMAN.GetCourseGroupBannerPath
 	song_get_length=
 		function(song)
-			return 0
---			local steps_type= GAMESTATE:GetCurrentStyle():GetStepsType()
---			return (song.GetTotalSeconds and song:GetTotalSeconds(steps_type)) or 0
+--			return 0
+			local steps_type= GAMESTATE:GetCurrentStyle():GetStepsType()
+			return (song.GetTotalSeconds and song:GetTotalSeconds(steps_type)) or 0
 		end
 end
 
@@ -599,6 +603,9 @@ function steps_get_author(steps, song)
 	if not steps then
 		if not song then return "" end
 		return song:GetGroupName()
+	end
+	if steps.IsAutogen and steps:IsAutogen() then
+		return "Autogen"
 	end
 	if steps.GetAuthorCredit then
 		-- All three of these are plausible places for the author name.
