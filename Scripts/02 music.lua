@@ -1,5 +1,6 @@
 local bpm_list= {}
 local by_bpm= {}
+local loop_folder= "kloop_archive/"
 
 local function find_insertion_index(list, entry)
 	if not list[1] then return 1 end
@@ -20,7 +21,11 @@ local function find_insertion_index(list, entry)
 	return upper, lower
 end
 
+local theme_loop_folder= THEME:GetCurrentThemeDirectory() .. "/Sounds/" ..
+	loop_folder
+
 function add_music_loop_entry(bpm, len, name)
+	if not FILEMAN:DoesFileExist(theme_loop_folder .. name) then return end
 	bpm= math.floor(bpm)
 	local insert_at= find_insertion_index(bpm_list, bpm)
 	if insert_at then
@@ -94,7 +99,7 @@ function play_sample_music(force, ignore_current)
 			songpath, sample_start, sample_len, fade_time, fade_time, true, true)
 	else
 		local name, len= rand_song_for_bpm(prev_bpm)
-		local path= THEME:GetPathS("", "kloop_archive/" .. name, true)
+		local path= THEME:GetPathS("", loop_folder .. name, true)
 		SOUND:PlayMusicPart(path, 0, len, 0, 0)
 	end
 end
