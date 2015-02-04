@@ -38,6 +38,7 @@ end
 function rand_song_for_bpm(bpm)
 	local upper, lower= find_insertion_index(bpm_list, math.floor(bpm))
 	local use_bpm= bpm_list[1]
+	if not use_bpm then return "", 0 end
 	if upper then
 		if lower then
 			if bpm_list[upper] - bpm > bpm - bpm_list[lower] then
@@ -57,9 +58,6 @@ function rand_song_for_bpm(bpm)
 	end
 	local songs_of_bpm= by_bpm[use_bpm]
 	if not songs_of_bpm then
-		lua.ReportScriptError(
-			"No songs found for bpm " .. use_bpm .. " (" .. bpm .. ").\n" ..
-				"Range: " .. tostring(lower) .. ", " .. tostring(upper))
 		return "", 0
 	end
 	local choice= 1
