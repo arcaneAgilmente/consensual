@@ -256,6 +256,7 @@ end
 
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "pain_display.lua"))
+dofile(THEME:GetPathO("", "art_helpers.lua"))
 
 local steps_display= setmetatable({}, steps_display_interface_mt)
 local pain_displays= {
@@ -709,6 +710,7 @@ local codes= {
 	{ name= "change_song", fake= true, "MenuRight" },
 	{ name= "change_song", fake= true, "Left" },
 	{ name= "change_song", fake= true, "Right" },
+	{ name= "play_song", ignore_release= true, games= {"pump"}, "Center" },
 	{ name= "sort_mode", ignore_release= true, games= {"dance", "techno"},
 		"Up", "Down", "Up", "Down" },
 	{ name= "sort_mode", ignore_release= true, games= {"pump", "techno"},
@@ -1218,6 +1220,108 @@ local function maybe_help()
 	end
 end
 
+local function cdtitle()
+	if scrambler_mode then
+		swapping_amv(
+			"CDTitle", 346, 146, 48, 48, 8, 8, nil, "_", false, true, true, {
+				OnCommand= play_set,
+				CurrentSongChangedMessageCommand= play_set,
+				SetCommand= function(self)
+					local song= GAMESTATE:GetCurrentSong()
+					if song and song:HasCDTitle()then
+						self:playcommand("ChangeTexture", {song:GetCDTitlePath()})
+						self:visible(true)
+					else
+						self:visible(false)
+					end
+				end,
+		})
+	else
+		return Def.Sprite{
+			Name="CDTitle", InitCommand=cmd(x,346;y,146),
+			OnCommand= cmd(playcommand, "Set"),
+			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
+			SetCommand= function(self)
+				-- Courses can't have CDTitles, so gamestate_get_curr_song isn't used.
+				local song= GAMESTATE:GetCurrentSong()
+				if song and song:HasCDTitle()then
+					self:LoadBanner(song:GetCDTitlePath())
+					self:visible(true)
+					-- Jousway suggests fucking people with fucking huge cdtitles.
+					scale_to_fit(self, 48, 48)
+				else
+					self:visible(false)
+				end
+			end
+		}
+	end
+end
+
+local function banner()
+	if scrambler_mode then
+		return swapping_amv(
+			"Banner", banner_x, banner_y, banner_w, banner_h, 16, 5, nil, "_",
+			false, true, true, {
+				CurrentCourseChangedMessageCommand= play_set,
+				CurrentSongChangedMessageCommand= play_set,
+				SetCommand= function(self)
+					local song= GAMESTATE:GetCurrentSong() or GAMESTATE:GetCurrentCourse()
+					if song and song:HasBanner() then
+						self:playcommand("ChangeTexture", {song:GetBannerPath()})
+						self:visible(true)
+					else
+						self:visible(false)
+					end
+				end,
+				current_group_changedMessageCommand= function(self, param)
+					local name= param[1]
+					if songman_does_group_exist(name) then
+						local path= songman_get_group_banner_path(name)
+						if path and path ~= "" then
+							self:playcommand("ChangeTexture", {path})
+							self:visible(true)
+						else
+							self:visible(false)
+						end
+					else
+						self:visible(false)
+					end
+				end,
+		})
+	else
+		return Def.Sprite{
+			Name="Banner", InitCommand=cmd(xy, banner_x, banner_y),
+			CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
+			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
+			SetCommand= function(self)
+				local song= gamestate_get_curr_song()
+				if song and song:HasBanner()then
+					self:LoadBanner(song:GetBannerPath())
+					self:visible(true)
+					scale_to_fit(self, banner_w, banner_h)
+				else
+					self:visible(false)
+				end
+			end,
+			current_group_changedMessageCommand= function(self, param)
+				local name= param[1]
+				if songman_does_group_exist(name) then
+					local path= songman_get_group_banner_path(name)
+					if path and path ~= "" then
+						self:LoadBanner(path)
+						self:visible(true)
+						scale_to_fit(self, banner_w, banner_h)
+					else
+						self:visible(false)
+					end
+				else
+					self:visible(false)
+				end
+			end
+		}
+	end
+end
+
 return Def.ActorFrame {
 	InitCommand= function(self)
 		self:SetUpdateFunction(Update)
@@ -1283,6 +1387,7 @@ return Def.ActorFrame {
 		SCSetCommand= function(self)
 			steps_display:update_steps_set()
 			self:playcommand("Set")
+			update_prev_song_bpm()
 		end,
 		SetCommand= function(self)
 			update_pain(PLAYER_1)
@@ -1302,53 +1407,7 @@ return Def.ActorFrame {
 	special_menu_displays[PLAYER_2]:create_actors(
 		"P2_menu", rpane_x, pane_y + pane_yoff, max_pain_rows, pane_w - 16,
 		pane_text_height, pane_text_zoom, true, true),
-	Def.Sprite {
-		Name="CDTitle", InitCommand=cmd(x,346;y,146),
-		OnCommand= cmd(playcommand, "Set"),
-		CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
-		SetCommand= function(self)
-			-- Courses can't have CDTitles, so gamestate_get_curr_song isn't used.
-			local song= GAMESTATE:GetCurrentSong()
-			if song and song:HasCDTitle()then
-				self:LoadBanner(song:GetCDTitlePath())
-				self:visible(true)
-				-- Jousway suggests fucking people with fucking huge cdtitles.
-				scale_to_fit(self, 48, 48)
-			else
-				self:visible(false)
-			end
-		end
-	},
-	Def.Sprite {
-		Name="Banner", InitCommand=cmd(xy, banner_x, banner_y),
-		CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
-		CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
-		SetCommand= function(self)
-			local song= gamestate_get_curr_song()
-			if song and song:HasBanner()then
-				self:LoadBanner(song:GetBannerPath())
-				self:visible(true)
-				scale_to_fit(self, banner_w, banner_h)
-			else
-				self:visible(false)
-			end
-		end,
-		current_group_changedMessageCommand= function(self, param)
-			local name= param[1]
-			if songman_does_group_exist(name) then
-				local path= songman_get_group_banner_path(name)
-				if path and path ~= "" then
-					self:LoadBanner(path)
-					self:visible(true)
-					scale_to_fit(self, banner_w, banner_h)
-				else
-					self:visible(false)
-				end
-			else
-				self:visible(false)
-			end
-		end
-	},
+	cdtitle(), banner(),
 	normal_text("SongName", "", fetch_color("music_select.song_name"), nil,
 							title_x, title_y, 1, left,
 							{ CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),

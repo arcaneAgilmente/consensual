@@ -25,6 +25,7 @@ local default_config= {
 	transition_split_min= 1,
 	transition_split_max= 64,
 	transition_meta_var_max= 64,
+	transition_type= "random",
 
 	menus_have_ud= true,
 
@@ -50,6 +51,8 @@ local default_config= {
 	},
 }
 
+transition_type_enum= {"skew", "scramble", "random"}
+
 sorted_initial_menu_ops= {
 	"single_choice",
 	"versus_choice",
@@ -58,7 +61,7 @@ sorted_initial_menu_ops= {
 	"stepmania_ops",
 	"consensual_ops",
 	"color_config",
-	"edit_choice", -- coming soon
+	"edit_choice",
 	"exit_choice",
 }
 

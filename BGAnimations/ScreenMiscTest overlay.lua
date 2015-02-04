@@ -1,18 +1,15 @@
 local function input(event)
 	if event.type == "InputEventType_Release" then return false end
 	if event.DeviceInput.button == "DeviceButton_w" then
-	elseif event.DeviceInput.button == "DeviceButton_s" then
-	elseif event.DeviceInput.button == "DeviceButton_d" then
-	elseif event.DeviceInput.button == "DeviceButton_a" then
-	elseif event.DeviceInput.button == "DeviceButton_q" then
-	elseif event.DeviceInput.button == "DeviceButton_e" then
-	elseif event.DeviceInput.button == "DeviceButton_x" then
-	elseif event.DeviceInput.button == "DeviceButton_z" then
+	elseif event.DeviceInput.button == "DeviceButton_w" then
 	end
 end
 
+local white= {1, 1, 1, 1}
+
 local args= {
 	OnCommand= function(self)
+		local screen= SCREENMAN:GetTopScreen()
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
 	end,
 }

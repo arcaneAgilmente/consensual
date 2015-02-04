@@ -170,6 +170,7 @@ local sigil_centers= {
 }
 
 dofile(THEME:GetPathO("", "sigil.lua"))
+dofile(THEME:GetPathO("", "art_helpers.lua"))
 
 local sigil_feedback_interface= {}
 function sigil_feedback_interface:create_actors(name, fx, fy, player_number)
@@ -266,7 +267,7 @@ function score_feedback_interface:update(player_stage_stats)
 		self.container:y(_screen.h)
 		self.meter:vertalign(bottom)
 	end
-	self.meter:zoomy(score^((score+1)^((score*2.718281828459045))))
+	self.meter:zoomy(math.min(1, score^((score+1)^((score*2.718281828459045)))))
 end
 
 local score_feedback_interface_mt= { __index= score_feedback_interface }
@@ -936,6 +937,24 @@ local function make_special_actors_for_players()
 			})
 		end
 		--[[
+		a[#a+1]= Def.BitmapText{
+			Font= THEME:GetPathF("Common", "Normal"), InitCommand= function(self)
+				self:diffuse(Color.White)
+				self:xy(author_centers[v][1], author_centers[v][2]+24)
+			end,
+			["CurrentSteps"..ToEnumShortString(v).."ChangedMessageCommand"]=
+				function(self)
+					local steps= GAMESTATE:GetCurrentSteps(v)
+					local song= GAMESTATE:GetCurrentSong()
+					if not steps or not song then self:settext("NPS: N/A") return end
+					local song_len= song:GetLastSecond() - song:GetFirstSecond()
+					local radar= steps:GetRadarValues(v)
+					local notes= radar:GetValue("RadarCategory_TapsAndHolds") +
+						radar:GetValue("RadarCategory_Jumps") +
+						radar:GetValue("RadarCategory_Hands")
+					self:settext(("NPS: %.2f"):format(notes / song_len))
+				end
+		}
 		a[#a+1]= normal_text(
 			"toasties", "", nil, fetch_color("gameplay.text_stroke"),
 				author_centers[v][1], author_centers[v][2]+24, 1, center,
@@ -1127,8 +1146,74 @@ local function miss_all(col, tns, bright)
 	return mircol[col], "TapNoteScore_W5", bright
 end
 
+local swap_start_beat= false
+local swapper= false
+local function swapper_starter(self)
+	if not swap_start_beat or not swapper then return end
+	local song_pos= GAMESTATE:GetSongPosition()
+	if song_pos:GetSongBeat() > swap_start_beat then
+		swapper:SetSecondsIntoAnimation(0):SetDecodeMovie(false)
+		swap_start_beat= false
+	end
+end
+
+local movie_exts= {
+	avi= true, f4v= true, flv= true, mkv= true, mp4= true, mpeg= true,
+	mpg= true, mov= true, ogv= true, webm= true, wmv= true,
+}
+
+local function bg_swap()
+	if scrambler_mode then
+		return swapping_amv(
+			"swapper", _screen.cx, _screen.cy, _screen.w, _screen.h, 16, 10, nil,
+			"_", false, true, true, {
+				Def.ActorFrame{
+					InitCommand= function(self)
+						self:SetUpdateFunction(swapper_starter)
+					end,
+				},
+				CurrentSongChangedMessageCommand= function(self, param)
+					local song= GAMESTATE:GetCurrentSong()
+					local path= false
+					swapper= self:GetChild("amv")
+					self:visible(false)
+					if song:HasBGChanges() then
+						local changes= song:GetBGChanges()
+						if changes[1] then
+							local ext= changes[1].file1:sub(-4, -1)
+							if movie_exts[ext] then
+								path= song:GetSongDir() .. changes[1].file1
+								swap_start_beat= changes[1].start_beat
+							else
+							end
+						end
+					elseif song:HasBackground() then
+						path= song:GetBackgroundPath()
+					end
+					if path then
+						self:playcommand("ChangeTexture", {path}):visible(true)
+							:queuecommand("HideBG")
+					else
+						self:visible(false)
+					end
+				end,
+				HideBGCommand= function(self)
+					SCREENMAN:GetTopScreen():GetChild("SongBackground"):visible(false)
+				end,
+				Def.Quad{
+					InitCommand= function(self) self:FullScreen()
+							:diffuse{0, 0, 0, 1-PREFSMAN:GetPreference("BGBrightness")}
+					end
+				}
+		})
+	else
+		return Def.Actor{}
+	end
+end
+
 return Def.ActorFrame {
 	Name= "SGPbgf",
+	bg_swap(),
 	make_special_actors_for_players(),
 	Def.Actor{
 		Name= "timer actor",
@@ -1140,6 +1225,13 @@ return Def.ActorFrame {
 	Def.Actor{
 		Name= "Cleaner S22", OnCommand= function(self)
 			screen_gameplay= SCREENMAN:GetTopScreen()
+			if false then
+			screen_gameplay:AddWrapperState()
+				:pulse():effectmagnitude(.5, 1.5, 0)
+			screen_gameplay:xy(-_screen.cx, -_screen.cy)
+				:AddWrapperState():xy(_screen.cx, _screen.cy)
+				:spin():effectmagnitude(0, 0, 180)
+			end
 			screen_gameplay:HasteLifeSwitchPoint(.5, true)
 				:HasteTimeBetweenUpdates(4, true)
 				:HasteAddAmounts({-.25, 0, .25}, true)
@@ -1187,6 +1279,19 @@ return Def.ActorFrame {
 				side_actors[pn]=
 					screen_gameplay:GetChild("Player" .. ToEnumShortString(pn))
 				notefields[pn]= side_actors[pn]:GetChild("NoteField")
+				local nx= side_actors[pn]:GetX()
+				local ny= side_actors[pn]:GetY()
+				local tocx= nx - (_screen.w*.5)
+				local tocy= (ny - (_screen.h*.5)) * 0
+				if false then
+				notefields[pn]:AddWrapperState()
+					:pulse():effectmagnitude(1.5, .5, 0)
+				notefields[pn]:AddWrapperState()
+					:bob():effectmagnitude(tocx*.25, tocy*.5, 0)
+				notefields[pn]:xy(tocx, -tocy)
+					:AddWrapperState():xy(-tocx, tocy)
+					:spin():effectmagnitude(0, 0, -180)
+				end
 				if notefields[pn].get_column_actors then
 					notecolumns[pn]= notefields[pn]:get_column_actors()
 					local spread= cons_players[pn].column_angle or 0

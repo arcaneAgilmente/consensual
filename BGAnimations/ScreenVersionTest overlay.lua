@@ -16,9 +16,9 @@ end
 
 if PREFSMAN:GetPreference("IgnoredDialogs") ~= ""
 and GAMESTATE:GetCurrentGame():GetName():lower() ~= "kickbox" then
+	PREFSMAN:SetPreference("IgnoredDialogs", "")
 	show_message= true
-	message= "... I hate you.  Press f to clear IgnoredDialogs and report problems so they can be fixed."
-	hate= true
+	message= "If you see errors, report them with any information you have so they can be fixed."
 end
 
 dofile(THEME:GetPathO("", "art_helpers.lua"))

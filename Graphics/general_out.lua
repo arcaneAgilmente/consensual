@@ -43,6 +43,39 @@ local tex_load_time= 0
 local vert_set_time= 0
 local tex_pos_time= 0
 
+local scramble_chosen= false
+if conf_data.transition_type == "scramble" then
+	scramble_chosen= true
+elseif conf_data.transition_type == "random" then
+	scramble_chosen= (math.random(2) == 1)
+end
+if scrambler_mode then scramble_chosen= true end
+if not ActorMultiVertex.SetStateProperties then scramble_chosen= false end
+
+if scramble_chosen then
+	local trans_start_time= 0
+	xq= math.max(xq, 2)
+	yq= math.max(yq, 2)
+	return Def.ActorFrame{
+		Def.Actor{
+			StartTransitioningCommand= function(self)
+				trans_start_time= GetTimeSinceStart()
+			end,
+		},
+		swapping_amv("swapper", 0, 0, _screen.w, _screen.h, xq, yq, "__screen__",
+								 "StartTransitioning", true, false),
+		Def.Quad{
+			Name= "transcover", StartTransitioningCommand= function(self)
+				local trans_end_time= GetTimeSinceStart()
+				self:diffuse(Alpha(fetch_color("bg"), 0)):xy(_screen.cx, _screen.cy)
+					:setsize(_screen.w, _screen.h)
+					:sleep(trans_end_time - trans_start_time)
+					:sleep(trans_time/2):linear(trans_time/2):diffusealpha(1)
+			end
+		}
+	}
+end
+
 local unskewed_verts= {}
 local skewed_verts= {}
 local function random_var()

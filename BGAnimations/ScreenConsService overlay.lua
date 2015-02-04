@@ -182,6 +182,15 @@ local function key_get_set(key_name)
 	return {get= key_get(key_name), set= key_set(key_name)}
 end
 
+local function trans_type_extra()
+	return {
+		name= "transition_type", enum= transition_type_enum, fake_enum= true,
+		get= function() return config_data.transition_type end,
+		set= function(value) config_data.transition_type= value end,
+		obj_get= noop_nil
+	}
+end
+
 local function imop(show_name, op_name)
 	return {name= show_name,
 					init= function() return config_data.initial_menu_ops[op_name] end,
@@ -224,6 +233,8 @@ local consensual_options= {
 	 args= make_extra_for_conf_val("transition_split_max", 0, 0, 1)},
 	{name= "transition_meta_var_max", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("transition_meta_var_max", 0, 0, 1)},
+	{name= "transition_type", meta= options_sets.enum_option,
+	 args= trans_type_extra()},
 	{name= "initial_menu_choices", meta= options_sets.special_functions,
 	 args= {eles= im_options}},
 }

@@ -4,6 +4,8 @@ function noop_true() return true end
 function noop_blank() return "" end
 function noop_nil() end
 function noop_retarg(...) return ... end
+-- For all those actors that need this for various things.
+function play_set(self) self:playcommand("Set") end
 
 function gte_nil(value, min)
 	if min then
@@ -386,9 +388,11 @@ function aprf_check()
 	end
 	if month == 3 and day == 1 and PREFSMAN:GetPreference("EasterEggs") then
 		april_fools= true
+		scrambler_mode= true
 		activate_confetti("day", true)
 	else
 		april_fools= false
+		scrambler_mode= false
 	end
 	if month == 10 and day == 7 and PREFSMAN:GetPreference("EasterEggs") then
 		kyzentun_birthday= true
@@ -444,8 +448,9 @@ end
 
 function april_spin(self)
 	if april_fools then
-		self:spin()
-		self:effectmagnitude(0, 0, .1)
+		self:xy(-_screen.cx, -_screen.cy)
+			:AddWrapperState():xy(_screen.cx, _screen.cy)
+			:spin():effectmagnitude(0, 0, .1)
 	end
 end
 
@@ -786,30 +791,6 @@ convert_code_name_to_display_text= {
 	kyzentun_mode="Kyzentun",
 	unjoin="Unjoin Other",
 }
-
-local fade_time= 1
--- TODO:  Add a system for adding attract/bg music lists.
-function play_sample_music()
-	if GAMESTATE:IsCourseMode() then return end
-	local song= GAMESTATE:GetCurrentSong()
-	if song then
-		local songpath= song:GetMusicPath()
-		local sample_start= song:GetSampleStart()
-		local sample_len= song:GetSampleLength()
-		if songpath and sample_start and sample_len then
-			SOUND:PlayMusicPart(songpath, sample_start,
-													sample_len, fade_time, fade_time, true, true)
-		else
-			SOUND:PlayMusicPart("", 0, 0, fade_time, fade_time)
-		end
-	else
-		SOUND:PlayMusicPart("", 0, 0, fade_time, fade_time)
-	end
-end
-
-function stop_music()
-	SOUND:PlayMusicPart("", 0, 0)
-end
 
 local function ymd_timestamp()
 	local y= Year()

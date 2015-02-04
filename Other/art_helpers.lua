@@ -537,3 +537,115 @@ function unfolding_text(name, x, y, text, color, unfold_time, scale, thick,
 	end
 	return Def.ActorFrame(args)
 end
+
+local vc= color("#ffffff")
+function swapping_amv(name, x, y, w, h, xq, yq, texname, activate_name,
+											reload_tex, center, init_activate, commands)
+	local next_swap_time= 0
+	local function update(self)
+		if GetTimeSinceStart() < next_swap_time then return end
+		next_swap_time= GetTimeSinceStart() + .0625
+		local amv= self:GetChild("amv")
+		local num_states= amv:GetNumQuadStates()
+		if num_states < 2 then return end
+		local x= math.random(0, xq-1)
+		local y= math.random(0, yq-1)
+		local sx= x
+		local sy= y
+		local choice= math.random(4)
+		if choice == 1 then
+			sy= y-1
+			if sy < 0 then sy= yq-1 end
+		elseif choice == 2 then
+			sx= x-1
+			if sx < 0 then sx= xq-1 end
+		elseif choice == 3 then
+			sy= y+1
+			if sy >= yq then sy= 0 end
+		else
+			sx= x+1
+			if sx >= xq then sx= 0 end
+		end
+		local first= ((x * yq) + y) + 1
+		local second= ((sx * yq) + sy) + 1
+		second= force_to_range(1, second, num_states)
+		local first_state= amv:GetQuadState(first)
+		local second_state= amv:GetQuadState(second)
+		amv:SetQuadState(first, second_state)
+			:SetQuadState(second, first_state)
+			:ForceStateUpdate()
+	end
+	local com= "Command"
+	local frame_act= activate_name
+	if init_activate then frame_act= "Init" end
+	local args={
+		Name= name, [frame_act..com]= function(self)
+			self:SetUpdateFunction(update)
+				:playcommand("SubInit")
+		end,
+		Def.ActorMultiVertex{
+			Name= "amv", InitCommand= function(self) amv= self:xy(x, y) end,
+			[activate_name..com]= function(self)
+				if texname then
+					self:playcommand("ChangeTexture", {texname})
+				end
+			end,
+			ChangeTextureCommand= function(self, param)
+				next_swap_time= 0
+				self:LoadTexture(param[1])
+				local tex= self:GetTexture()
+				if reload_tex then tex:Reload() end
+				local iw= tex:GetImageWidth()
+				local ih= tex:GetImageHeight()
+				local image_aspect= iw / ih
+				local space_aspect= w / h
+				local sw, sh= w, h
+				if image_aspect < space_aspect then
+					sw= h * image_aspect
+				else
+					sh= w / image_aspect
+				end
+				local disp_space_x= iw / xq
+				local disp_space_y= ih / yq
+				local spx= sw / xq
+				local spy= sh / yq
+				local hw= sw * .5
+				local hh= sh * .5
+				local verts= {}
+				local states= {}
+				for x= 0, xq-1 do
+					local lx= x * spx
+					if center then lx= lx - hw end
+					local rx= lx + spx
+					local disp_lx= math.floor(x * disp_space_x)
+					local disp_rx= math.floor(disp_lx + disp_space_x)
+					for y= 0, yq-1 do
+						local ty= y * spy
+						if center then ty= ty - hh end
+						local by= ty + spy
+						local disp_ty= math.floor(y * disp_space_y)
+						local disp_by= math.floor(disp_ty + disp_space_y)
+						verts[#verts+1]= {{lx, ty, 0}, vc}
+						verts[#verts+1]= {{rx, ty, 0}, vc}
+						verts[#verts+1]= {{rx, by, 0}, vc}
+						verts[#verts+1]= {{lx, by, 0}, vc}
+						states[#states+1]= {{disp_lx, disp_ty, disp_rx, disp_by}, 0}
+						self:AddQuadState(#states)
+					end
+				end
+				self:SetDrawState{Mode="DrawMode_Quads"}:SetVertices(verts)
+					:animate(true):SetUseAnimationState(true):SetStateProperties(states)
+			end
+		},
+	}
+	if commands then
+		for k, v in pairs(commands) do
+			if type(k) == "number" then
+				args[#args+1]= v
+			else
+				args[k]= v
+			end
+		end
+	end
+	return Def.ActorFrame(args)
+end

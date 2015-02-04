@@ -308,7 +308,7 @@ local banner_info_mt= {
 			local cur_song= gamestate_get_curr_song()
 			local song_name= ""
 			if cur_song then song_name= cur_song:GetDisplayFullTitle() end
-			return Def.ActorFrame{
+			local args= {
 				Name= "song_stuff",
 				InitCommand= function(subself)
 					self.container= subself
@@ -347,6 +347,20 @@ local banner_info_mt= {
 					end
 				})
 			}
+			if scrambler_mode then
+				args[#args+1]= swapping_amv(
+					"swapper", 0, 56, 256, 80, 16, 5, nil, "_", false, true, true, {
+						SubInitCommand= function(subself)
+							if cur_song and cur_song:HasBanner() then
+								subself:playcommand(
+									"ChangeTexture", {cur_song:GetBannerPath()})
+							else
+								subself:visible(false)
+							end
+						end,
+				})
+			end
+			return Def.ActorFrame(args)
 		end,
 		hide= function(self) self.container:visible(false) end,
 		unhide= function(self) self.container:visible(true) end,
@@ -1765,6 +1779,14 @@ return Def.ActorFrame{
 	reward_indicator:create_actors("reward", SCREEN_CENTER_X, SCREEN_TOP+150),
 	judge_key:create_actors(),
 	make_graph_actors(),
+	Def.Actor{
+		InitCommand= function(self)
+			self:queuecommand("music")
+		end,
+		musicCommand= function(self)
+			play_sample_music(true, true)
+		end
+	},
 	Def.ActorFrame{
 		Name= "Honmono dayo",
 		OnCommand= function(self)

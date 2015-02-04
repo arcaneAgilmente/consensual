@@ -800,11 +800,20 @@ options_sets.enum_option= {
 			self.cursor_pos= 1
 			self.get= extra.get
 			self.set= extra.set
+			self.fake_enum= extra.fake_enum
 			self.ops_obj= extra.obj_get(player_number)
 			local cv= self:get_val()
 			for i, v in ipairs(extra.enum) do
 				self.enum_vals[#self.enum_vals+1]= v
-				self.info_set[#self.info_set+1]= {text= ToEnumShortString(v), underline= v == cv}
+				self.info_set[#self.info_set+1]= {
+					text= self:short_string(v), underline= v == cv}
+			end
+		end,
+		short_string= function(self, val)
+			if self.fake_enum then
+				return val
+			else
+				return ToEnumShortString(val)
 			end
 		end,
 		interpret_start= function(self)
@@ -822,7 +831,7 @@ options_sets.enum_option= {
 				else
 					self.set(self.enum_vals[self.cursor_pos-1])
 				end
-				self.display:set_display(ToEnumShortString(self:get_val()))
+				self.display:set_display(self:short_string(self:get_val()))
 				return true
 			else
 				return false
@@ -837,7 +846,7 @@ options_sets.enum_option= {
 		end,
 		set_status= function(self)
 			self.display:set_heading(self.name)
-			self.display:set_display(ToEnumShortString(self:get_val()))
+			self.display:set_display(self:short_string(self:get_val()))
 		end
 }}
 

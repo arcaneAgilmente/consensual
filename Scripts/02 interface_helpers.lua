@@ -282,8 +282,17 @@ function rec_calc_actor_pos(actor)
 	if not actor then return 0, 0 end
 	local x= actor:GetDestX()
 	local y= actor:GetDestY()
+	local wx, wy= 0, 0
+	if actor.GetNumWrapperStates then
+		local wrappers= actor:GetNumWrapperStates()
+		for i= 1, wrappers do
+			local nitori= actor:GetWrapperState(i)
+			wx= wx + nitori:GetDestX()
+			wy= wy + nitori:GetDestY()
+		end
+	end
 	local px, py= rec_calc_actor_pos(actor:GetParent())
-	return x+px, y+py
+	return x+px+wx, y+py+wy
 end
 
 local frame_tester_interface= {}

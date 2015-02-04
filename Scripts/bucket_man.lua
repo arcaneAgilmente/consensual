@@ -873,7 +873,7 @@ function music_whale:post_sort_update()
 	else
 		self:set_display_bucket(self.sorted_songs, 1)
 	end
-	play_sample_music()
+	play_sample_music(GAMESTATE:GetCurrentSong())
 end
 
 function music_whale:resort_for_new_style()

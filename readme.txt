@@ -1,3 +1,6 @@
+I'm going to rewrite this in more detail soon.  For now, see the comment at the bottom of Scripts/02 music.lua for instructions on adding menu loop music.
+
+
 Some theme elements might overlap with each other if the aspect ratio isn't 16:10.  If they do, report your aspect ratio, resolution, and the elements to Kyzentun so they can be fixed.
 
 This theme is only tested on the tip of the github repository.  It should work on the latest nightly build.  It will not work on SM5 beta 3.
