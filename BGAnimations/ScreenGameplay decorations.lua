@@ -14,7 +14,9 @@ local feedback_judgements= {
 	"TapNoteScore_W3", "TapNoteScore_W2", "TapNoteScore_W1"
 }
 
+local wrapper_layers= 3 -- x, y, z rotation
 local screen_gameplay= false
+local gameplay_wrappers= {}
 local song_opts= GAMESTATE:GetSongOptionsObject("ModsLevel_Current")
 
 local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
@@ -54,6 +56,7 @@ local swap_on_xs= {}
 local side_toggles= {}
 local side_actors= {}
 local notefields= {}
+local notefield_wrappers= {}
 local notecolumns= {}
 local next_chuunibyou= {[PLAYER_1]= 0, [PLAYER_2]= 0}
 local chuunibyou_state= {[PLAYER_1]= true, [PLAYER_2]= true}
@@ -857,6 +860,59 @@ local function Update(self)
 	end
 end
 
+local tilt_scale= 1
+local tilters= {
+	addrotationx= {
+		screen_layer= 1,
+		note_layer= 3,
+		{
+			tilt_scale,
+			Down= true, DownLeft= true,
+		},
+		{
+			-tilt_scale,
+			Up= true, DownRight= true,
+		},
+	},
+	addrotationy= {
+		screen_layer= 2,
+		note_layer= 2,
+		{
+			tilt_scale,
+			Right= true, UpRight= true,
+		},
+		{
+			-tilt_scale,
+			Left= true, UpLeft= true,
+		},
+	},
+}
+
+local function tilt_input(event)
+	if event.type == "InputEventType_Release" then return end
+	local pn= event.PlayerNumber
+	if not pn then return end
+	local button= event.button
+	if not button then return end
+	for tilt_name, parts in pairs(tilters) do
+		for i, part in ipairs(parts) do
+			if part[button] then
+				local screen_layer= parts.screen_layer
+				local note_layer= parts.note_layer
+				if gameplay_wrappers[screen_layer][tilt_name] then
+					gameplay_wrappers[screen_layer][tilt_name](
+						gameplay_wrappers[screen_layer], part[1])
+					for sub_pn, wrapper in pairs(notefield_wrappers) do
+						wrapper[note_layer][tilt_name](wrapper[note_layer], -part[1])
+					end
+				else
+					lua.ReportScriptError("Bad tilt name: " .. tilt_name)
+				end
+			end
+		end
+	end
+end
+
 local author_centers= {
 	[PLAYER_1]= { SCREEN_RIGHT * .25, SCREEN_TOP + (line_spacing*1.5) },
 	[PLAYER_2]= { SCREEN_RIGHT * .75, SCREEN_TOP + (line_spacing*1.5) }
@@ -1180,7 +1236,7 @@ local function bg_swap()
 					if song:HasBGChanges() then
 						local changes= song:GetBGChanges()
 						if changes[1] then
-							local ext= changes[1].file1:sub(-4, -1)
+							local ext= changes[1].file1:sub(-4, -1):lower()
 							if movie_exts[ext] then
 								path= song:GetSongDir() .. changes[1].file1
 								swap_start_beat= changes[1].start_beat
@@ -1225,13 +1281,14 @@ return Def.ActorFrame {
 	Def.Actor{
 		Name= "Cleaner S22", OnCommand= function(self)
 			screen_gameplay= SCREENMAN:GetTopScreen()
-			if false then
-			screen_gameplay:AddWrapperState()
-				:pulse():effectmagnitude(.5, 1.5, 0)
-			screen_gameplay:xy(-_screen.cx, -_screen.cy)
-				:AddWrapperState():xy(_screen.cx, _screen.cy)
-				:spin():effectmagnitude(0, 0, 180)
+			if tilt_mode then
+				screen_gameplay:AddInputCallback(tilt_input)
 			end
+			screen_gameplay:xy(-_screen.cx, -_screen.cy)
+			for i= 1, wrapper_layers do
+				gameplay_wrappers[i]= screen_gameplay:AddWrapperState()
+			end
+			gameplay_wrappers[wrapper_layers]:xy(_screen.cx, _screen.cy)
 			screen_gameplay:HasteLifeSwitchPoint(.5, true)
 				:HasteTimeBetweenUpdates(4, true)
 				:HasteAddAmounts({-.25, 0, .25}, true)
@@ -1279,46 +1336,46 @@ return Def.ActorFrame {
 				side_actors[pn]=
 					screen_gameplay:GetChild("Player" .. ToEnumShortString(pn))
 				notefields[pn]= side_actors[pn]:GetChild("NoteField")
-				local nx= side_actors[pn]:GetX()
-				local ny= side_actors[pn]:GetY()
-				local tocx= nx - (_screen.w*.5)
-				local tocy= (ny - (_screen.h*.5)) * 0
-				if false then
-				notefields[pn]:AddWrapperState()
-					:pulse():effectmagnitude(1.5, .5, 0)
-				notefields[pn]:AddWrapperState()
-					:bob():effectmagnitude(tocx*.25, tocy*.5, 0)
-				notefields[pn]:xy(tocx, -tocy)
-					:AddWrapperState():xy(-tocx, tocy)
-					:spin():effectmagnitude(0, 0, -180)
-				end
-				if notefields[pn].get_column_actors then
-					notecolumns[pn]= notefields[pn]:get_column_actors()
-					local spread= cons_players[pn].column_angle or 0
-					if hate then spread= math.random(-120, 120) end
-					local per= spread / (#notecolumns[pn] - 1)
-					local start= (spread * -.5) - per
-					for i= 1, #notecolumns[pn] do
-						notecolumns[pn][i]:rotationz(start + (i * per))
+				if notefields[pn] then
+					local nx= side_actors[pn]:GetX()
+					local ny= side_actors[pn]:GetY()
+					local tocx= nx - (_screen.w*.5)
+					local tocy= (ny - (_screen.h*.5)) * 0
+					notefields[pn]:xy(tocx, -tocy)
+					notefield_wrappers[pn]= {}
+					for i= 1, wrapper_layers do
+						notefield_wrappers[pn][i]= notefields[pn]:AddWrapperState()
 					end
-				end
-				if cons_players[pn].side_swap or force_swap then
-					side_swap_vals[pn]= cons_players[pn].side_swap or
-						cons_players[other_player[pn]].side_swap
-					local mod_res= side_swap_vals[pn] % 1
-					if mod_res == 0 then mod_res= 1 end
-					swap_on_xs[pn]= player_sides[pn] + (side_diffs[pn] * mod_res)
-					side_actors[pn]:x(swap_on_xs[pn])
-					side_toggles[pn]= true
-				end
-				if cons_players[pn].confidence and cons_players[pn].confidence > 0 then
-					confidence_data[pn]= {
-						active= false, chance= cons_players[pn].confidence
-					}
-					notefields[pn]:SetStepCallback(step_callback(pn))
-					notefields[pn]:SetSetPressedCallback(setpressed_callback(pn))
-					notefields[pn]:SetDidTapNoteCallback(didtapnote_callback(pn))
-					notefields[pn]:SetDidHoldNoteCallback(didholdnote_callback(pn))
+					notefield_wrappers[pn][wrapper_layers]:xy(-tocx, tocy)
+					if notefields[pn].get_column_actors then
+						notecolumns[pn]= notefields[pn]:get_column_actors()
+						local spread= cons_players[pn].column_angle or 0
+						if hate then spread= math.random(-120, 120) end
+						local per= spread / (#notecolumns[pn] - 1)
+						local start= (spread * -.5) - per
+						for i= 1, #notecolumns[pn] do
+							notecolumns[pn][i]:rotationz(start + (i * per))
+						end
+					end
+					if cons_players[pn].side_swap or force_swap then
+						side_swap_vals[pn]= cons_players[pn].side_swap or
+							cons_players[other_player[pn]].side_swap
+						local mod_res= side_swap_vals[pn] % 1
+						if mod_res == 0 then mod_res= 1 end
+						swap_on_xs[pn]= player_sides[pn] + (side_diffs[pn] * mod_res)
+						side_actors[pn]:x(swap_on_xs[pn])
+						side_toggles[pn]= true
+					end
+					if cons_players[pn].confidence
+					and cons_players[pn].confidence > 0 then
+						confidence_data[pn]= {
+							active= false, chance= cons_players[pn].confidence
+						}
+						notefields[pn]:SetStepCallback(step_callback(pn))
+						notefields[pn]:SetSetPressedCallback(setpressed_callback(pn))
+						notefields[pn]:SetDidTapNoteCallback(didtapnote_callback(pn))
+						notefields[pn]:SetDidHoldNoteCallback(didholdnote_callback(pn))
+					end
 				end
 			end
 			if unacc_enable_votes == #enabled_players and

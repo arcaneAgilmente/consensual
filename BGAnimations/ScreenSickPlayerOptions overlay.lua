@@ -1070,6 +1070,32 @@ for i, tns in ipairs{
 	}
 end
 
+local ultra_special_effects= {
+	eles= {
+		{ name= "Distortion", init= function() return global_distortion_mode end,
+			set= function() global_distortion_mode= true end,
+			unset= function() global_distortion_mode= false end},
+		{ name= "Permfetti", init= function() return get_confetti("perm") end,
+			set= function() activate_confetti("perm", true) end,
+			unset= function() activate_confetti("perm", false) end},
+		{ name= "April Fools", init= function() return april_fools end,
+			set= function() april_fools= true end,
+			unset= function() april_fools= false end},
+}}
+
+local special_effects= {
+	eles= {
+		{ name= "Confetti", init= function() return get_confetti("credit") end,
+			set= function() activate_confetti("credit", true) end,
+			unset= function() activate_confetti("credit", false) end},
+		{ name= "Scrambler", init= function() return scrambler_mode end,
+			set= function() scrambler_mode= true end,
+			unset= function() scrambler_mode= false end},
+		{ name= "Input Tilt", init= function() return tilt_mode end,
+			set= function() tilt_mode= true end,
+			unset= function() tilt_mode= false end},
+}}
+
 local special= {
 	{ name= "Spline Demos", meta= options_sets.special_functions, level= 4,
 		args= {
@@ -1087,24 +1113,10 @@ local special= {
 					set= function(pn) cons_players[pn].zoom_splines_demo= true end,
 					unset= function(pn) cons_players[pn].zoom_splines_demo= false end},
 	}}},
-	{ name= "Distortion", meta= options_sets.special_functions, level= 5,
-		args= {
-			eles= {
-				{ name= "On", init= function() return global_distortion_mode end,
-					set= function() global_distortion_mode= true end,
-					unset= function() global_distortion_mode= false end}}}},
-	{ name= "Confetti", meta= options_sets.special_functions, level= 4,
-		args= {
-			eles= {
-				{ name= "On", init= function() return get_confetti("credit") end,
-					set= function() activate_confetti("credit", true) end,
-					unset= function() activate_confetti("credit", false) end}}}},
-	{ name= "Permfetti", meta= options_sets.special_functions, level= 5,
-		args= {
-			eles= {
-				{ name= "On", init= function() return get_confetti("perm") end,
-					set= function() activate_confetti("perm", true) end,
-					unset= function() activate_confetti("perm", false) end}}}},
+	{ name= "Tokubetsu Effects", meta= options_sets.special_functions, level= 5,
+		args= ultra_special_effects},
+	{ name= "Effects", meta= options_sets.special_functions, level= 4,
+		args= special_effects},
 	{ name= "Next Screen", meta= options_sets.special_functions, level= 4,
 		args= {
 			eles= {

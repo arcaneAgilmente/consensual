@@ -389,10 +389,12 @@ function aprf_check()
 	if month == 3 and day == 1 and PREFSMAN:GetPreference("EasterEggs") then
 		april_fools= true
 		scrambler_mode= true
+		tilt_mode= true
 		activate_confetti("day", true)
 	else
 		april_fools= false
 		scrambler_mode= false
+		tilt_mode= false
 	end
 	if month == 10 and day == 7 and PREFSMAN:GetPreference("EasterEggs") then
 		kyzentun_birthday= true
@@ -450,7 +452,7 @@ function april_spin(self)
 	if april_fools then
 		self:xy(-_screen.cx, -_screen.cy)
 			:AddWrapperState():xy(_screen.cx, _screen.cy)
-			:spin():effectmagnitude(0, 0, .1)
+			:spin():effectmagnitude(0, 0, (math.random()-.5)*.1)
 	end
 end
 

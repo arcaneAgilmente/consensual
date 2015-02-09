@@ -107,7 +107,6 @@ local function get_pad_arrow_for_col(pn, col)
 		return column_to_pad_arrow_map[pn][steps_type][col]
 	else
 		return col
---		lua.ReportScriptError("No translation for stepstype: " .. steps_type)
 	end
 end
 

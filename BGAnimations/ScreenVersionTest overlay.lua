@@ -2,10 +2,16 @@ local version_failed= false
 local show_message= false
 local message= ""
 local next_screen= "ScreenInitialMenu"
+
+if not Actor.AddWrapperState then
+	show_message= true
+	message= "You should upgrade to Stepmania 5.0.5.  Some special effects require functions added in Stepmania 5.0.5."
+end
+
 if not NoteField or not NoteField.SetStepCallback then
 	version_failed= true
 	show_message= true
-	message= "Your version of Stepmania is too old for this version of Consensual.\nUpgrade to a nightly build made on or after 2014/12/14.\nhttp://smnightly.katzepower.com/  (build #864 should work)\nSwitching to a different theme."
+	message= "Your version of Stepmania is too old for this version of Consensual.\nUpgrade to Stepmania 5.0.5.\nSwitching to a different theme."
 end
 
 if not PREFSMAN:GetPreference("SmoothLines") then
