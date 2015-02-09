@@ -225,6 +225,9 @@ local consensual_options= {
 	 args= time_conf("screen_demo_idle_time", 0, 1, 2)},
 	{name= "set_demo_show", meta= options_sets.adjustable_float,
 	 args= time_conf("screen_demo_show_time", 0, 1, 2)},
+	-- Not worth the effort right now.
+--	{name= "set_line_height", meta= options_sets.adjustable_float,
+--	 args= make_extra_for_conf_val("line_height", 0, 0, 1)},
 	{name= "sex_per_clock_change", meta= options_sets.adjustable_float,
 	 args= time_conf("seconds_per_clock_change", 0, 0, 3)},
 	{name= "transition_split_min", meta= options_sets.adjustable_float,
@@ -331,8 +334,7 @@ return Def.ActorFrame{
 	OnCommand= function(self)
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
 	end,
-	config_menu:create_actors(
-		"menu", 0, 16, _screen.w, _screen.h, _screen.h / 24 - 3, nil),
+	config_menu:create_actors("menu", 0, 16, _screen.w, _screen.h, nil),
 	pain_display:create_actors("pain", _screen.w*.75, 80, nil, 184, .625),
 	helper:create_actors("helper", config_data.service_help_time, "ConsService", ""),
 	Def.ActorFrame{

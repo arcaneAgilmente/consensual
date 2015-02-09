@@ -13,6 +13,8 @@ activate_confetti("credit", false)
 in_edit_mode= false
 true_gameplay= false
 
+local line_height= get_line_height()
+
 local profile_list= {}
 for p= 0, PROFILEMAN:GetNumLocalProfiles()-1 do
 	local profile= PROFILEMAN:GetLocalProfileFromIndex(p)
@@ -199,16 +201,25 @@ local function create_actors()
 			Alpha(fetch_color("initial_menu.menu_bg"), .5),
 			SCREEN_CENTER_X, SCREEN_CENTER_Y)
 	end
+	local used_by_stats= line_height * 3
+	local playmode_height= 108
+	local playmode_pos= used_by_stats+line_height
+	local main_height= math.min(
+		#menu_options * line_height,
+		_screen.h - used_by_stats - playmode_height - 120)
 	args[#args+1]= menu_display:create_actors(
-		"Menu", SCREEN_CENTER_X, SCREEN_CENTER_Y - 0, math.min(6, #menu_options),
-		disp_width, 24, 1, true, true)
+		"Menu", SCREEN_CENTER_X, playmode_pos + playmode_height + line_height,
+		main_height,
+		disp_width, line_height, 1, true, true)
 	args[#args+1]= playmode_display:create_actors(
-		"Playmode", SCREEN_CENTER_X, SCREEN_CENTER_Y - 132, 3, disp_width, 24, 1,
-		false, true)
+		"Playmode", SCREEN_CENTER_X, playmode_pos,
+		playmode_height, disp_width, line_height, 1, false, true)
+	local prof_menu_height= _screen.h*.25
 	for k, prod in pairs(profile_displays) do
 		args[#args+1]= prod:create_actors(
-			ToEnumShortString(k) .. "_profiles", prod_xs[k], star_y - (24 * 2.75),
-			5, disp_width, 24, 1, false, true)
+			ToEnumShortString(k) .. "_profiles", prod_xs[k],
+			star_y - ((prof_menu_height*.5)-(line_height*.5)),
+			prof_menu_height, disp_width, line_height, 1, false, true)
 	end
 	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
 		args[#args+1]= cursors[rpn]:create_actors(
@@ -573,8 +584,8 @@ local args= {
 		InitCommand= function(self)
 									 self:xy(SCREEN_CENTER_X, SCREEN_TOP)
 								 end,
-		normal_text("songs", num_songs .. " Songs", fetch_color("initial_menu.song_count"), nil, 0, 12),
-		normal_text("groups", num_groups .. " Groups", fetch_color("initial_menu.song_count"), nil, 0, 36),
+		normal_text("songs", num_songs .. " Songs", fetch_color("initial_menu.song_count"), nil, 0, line_height*.5),
+		normal_text("groups", num_groups .. " Groups", fetch_color("initial_menu.song_count"), nil, 0, line_height*1.5),
 	},
   Def.ActorFrame{
 		Name="time", InitCommand= function(self)
@@ -599,12 +610,12 @@ local args= {
 		Font= "Common Normal", Text= get_string_wrapper("Common", "special_day"),
 		InitCommand= function(self)
 			self:zoom(.5):xy(_screen.cx, SCREEN_BOTTOM-60)
-				:wrapwidthpixels((SCREEN_WIDTH-32)*2):vertspacing(-8)
+				:wrapwidthpixels((SCREEN_WIDTH-32)*2):vertspacing(line_height - 32)
 				:diffuse(fetch_color("text")):strokecolor(fetch_color("stroke"))
 				:visible(special_day or false)
 		end
 	},
-	credit_reporter(SCREEN_CENTER_X, SCREEN_TOP+60, true),
+	credit_reporter(SCREEN_CENTER_X, SCREEN_TOP+(line_height*2.5), true),
 	fail_message:create_actors("why", SCREEN_CENTER_X, SCREEN_CENTER_Y-48),
 }
 

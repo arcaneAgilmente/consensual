@@ -18,7 +18,7 @@
 -- See ScreenSickPlayerOptions for a complicated example.
 
 local move_time= 0.1
-local line_height= 24
+local line_height= get_line_height()
 
 local option_item_mt= {
 	__index= {
@@ -189,11 +189,28 @@ local option_item_value_mt= {
 
 option_display_mt= {
 	__index= {
-		create_actors= function(self, name, x, y, el_count, el_width, el_height,
-														el_zoom, no_heading, no_display, value_style)
+		create_actors= function(
+				self, name, x, y, display_height, el_width, el_height, el_zoom,
+				no_heading, no_display, value_style)
+			local el_count= 1
+			if display_height < 32 then
+--				lua.ReportScriptError("The display '" .. name .. "' needs to have its height set.")
+				el_count= display_height
+			else
+				if not no_heading then
+					display_height= display_height - el_height
+				end
+				if not no_display then
+					display_height= display_height - el_height
+				end
+				if not no_heading or not no_display then
+					display_height= display_height - (el_height * .5)
+				end
+				el_count= math.floor(display_height / el_height)
+			end
 			self.name= name
 			self.el_width= el_width or SCREEN_WIDTH
-			self.el_height= el_height or 24
+			self.el_height= el_height or line_height
 			self.el_zoom= el_zoom or 1
 			self.no_heading= no_heading
 			self.no_display= no_display
@@ -933,7 +950,7 @@ end
 menu_stack_mt= {
 	__index= {
 		create_actors= function(
-				self, name, x, y, width, height, elements, player_number)
+				self, name, x, y, width, height, player_number)
 			self.name= name
 			self.player_number= player_number
 			self.options_set_stack= {}
@@ -958,7 +975,7 @@ menu_stack_mt= {
 			for i, disp in ipairs(self.displays) do
 				args[#args+1]= disp:create_actors(
 					"disp" .. i, off+sep * (i-1), 0,
-					elements, disp_el_width_limit, line_height, 1)
+					height, disp_el_width_limit, line_height, 1)
 			end
 			args[#args+1]= self.cursor:create_actors(
 				"cursor", sep, 0, 1, pcolor, fetch_color("player.hilight"),

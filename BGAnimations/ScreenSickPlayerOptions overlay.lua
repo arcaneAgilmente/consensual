@@ -1,4 +1,4 @@
-local line_height= 24
+local line_height= get_line_height()
 local option_set_elements= (SCREEN_HEIGHT / line_height) - 5
 local sect_width= SCREEN_WIDTH/2
 local sect_height= SCREEN_HEIGHT
@@ -914,9 +914,9 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		normal_text("name", pname, pcolor, nil, 8, line_height / 2, 1, left),
 		bpm:create_actors("bpm", pn, sect_width/2, line_height*1.5),
 	}
+	local status_size= line_height*2.5
 	args[#args+1]= menu:create_actors(
-		"m" .. pn, mx, my+line_height*2.5, sect_width, sect_height,
-		option_set_elements, pn)
+		"m" .. pn, mx, my+status_size, sect_width, sect_height-status_size, pn)
 	menus[pn]= menu
 	bpm_disps[pn]= bpm
 	frames[pn]= frame

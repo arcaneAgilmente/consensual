@@ -2,6 +2,8 @@ if not arrow_amv then
 	dofile(THEME:GetPathO("", "art_helpers.lua"))
 end
 
+local line_height= get_line_height()
+
 -- pain menu structure: (back and done are in each level, but omitted here)
 -- done
 -- make wide/make narrow
@@ -106,7 +108,7 @@ options_sets.pain_menu= {
 				"frame", .5, 80, 68, fetch_color("rev_bg"), fetch_color("bg"), 0, 24)
 			self.own_display= setmetatable({}, option_display_mt)
 			args[#args+1]= self.own_display:create_actors(
-				"display", 0, 0, 5, 80, 12, .5, true, true)
+				"display", 0, 0, 60, 80, 12, .5, true, true)
 			args[#args+1]= arrow_amv(
 				"dec_arrow", -10, 0, 6, 12, 4, fetch_color("text_other"))
 			args[#args+1]= arrow_amv(

@@ -38,6 +38,8 @@ local default_config= {
 	screen_demo_idle_time= 10,
 	screen_demo_show_time= 120,
 
+	line_height= 24,
+
 	initial_menu_ops= {
 		single_choice= true,
 		versus_choice= true,
@@ -67,6 +69,10 @@ sorted_initial_menu_ops= {
 
 misc_config= create_setting("misc config", "misc_config.lua", default_config, -1)
 misc_config:load()
+
+function get_line_height()
+	return misc_config:get_data().line_height
+end
 
 function ud_menus()
 	return misc_config:get_data().menus_have_ud

@@ -1,3 +1,4 @@
+local line_height= get_line_height()
 local cg_thickness= 24
 local lg_thickness= 40
 local banner_container= false
@@ -1427,7 +1428,7 @@ local function make_player_specific_actors()
 		if #enabled_players > 1 then
 			args[#args+1]= profile_reports[v]:create_actors(v)
 			args[#args+1]= special_menu_displays[v]:create_actors(
-				"menu", 0, 0, 12, 120, 24, 1, true, true)
+				"menu", 0, 0, 288, 120, line_height, 1, true, true)
 		end
 		args[#args+1]= dance_pads[v]:create_actors("dance_pad", 0, -34, 10)
 		args[#args+1]= besties[v].machine:create_actors(
@@ -1445,7 +1446,7 @@ local function make_player_specific_actors()
 			fetch_color("evaluation.score_report.bg"), 0, 0)
 		args[#args+1]= profile_reports[this]:create_actors(this)
 		args[#args+1]= special_menu_displays[this]:create_actors(
-			"menu", 0, 0, 12, 160, 24, 1, true, true)
+			"menu", 0, 0, 288, 160, line_height, 1, true, true)
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
 	end
 	-- In its own loop to make sure they're above all other actors.

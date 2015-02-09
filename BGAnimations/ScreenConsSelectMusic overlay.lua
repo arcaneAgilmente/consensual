@@ -1402,10 +1402,10 @@ return Def.ActorFrame {
 	pain_displays[PLAYER_2]:create_actors(
 		"P2_pain", rpane_x, pane_y + pane_yoff - pane_text_height, PLAYER_2, pane_w, pane_text_zoom),
 	special_menu_displays[PLAYER_1]:create_actors(
-		"P1_menu", lpane_x, pane_y + pane_yoff, max_pain_rows, pane_w - 16,
+		"P1_menu", lpane_x, pane_y + pane_yoff, pane_h, pane_w - 16,
 		pane_text_height, pane_text_zoom, true, true),
 	special_menu_displays[PLAYER_2]:create_actors(
-		"P2_menu", rpane_x, pane_y + pane_yoff, max_pain_rows, pane_w - 16,
+		"P2_menu", rpane_x, pane_y + pane_yoff, pane_h, pane_w - 16,
 		pane_text_height, pane_text_zoom, true, true),
 	cdtitle(), banner(),
 	normal_text("SongName", "", fetch_color("music_select.song_name"), nil,
