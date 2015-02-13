@@ -71,6 +71,9 @@ local args= {
 				somebody_holding_start= true
 			end
 		end
+		if not somebody_holding_start then
+			update_player_stats_after_song()
+		end
 		for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 			local pss= STATSMAN:GetCurStageStats():GetPlayerStageStats(pn)
 			if not pss:GetFailed() and not somebody_holding_start then

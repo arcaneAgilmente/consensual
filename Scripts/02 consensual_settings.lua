@@ -453,11 +453,16 @@ function update_rating_cap()
 	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		if cons_players[pn].rating_cap < 0 then
 			chart_rating_cap= -1
+			break
 		else
 			chart_rating_cap= math.max(cons_players[pn].rating_cap, chart_rating_cap)
 		end
 	end
 	return old_cap ~= chart_rating_cap
+end
+
+function get_rating_cap()
+	return chart_rating_cap
 end
 
 function disable_rating_cap()

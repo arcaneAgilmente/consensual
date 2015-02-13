@@ -69,8 +69,8 @@ local function step_artist(song)
 end
 
 local nps_player= false
-local function set_nps_player()
-	nps_player= GAMESTATE:GetEnabledPlayers()[1]
+local function set_nps_player(pn)
+	nps_player= pn or GAMESTATE:GetEnabledPlayers()[1]
 end
 
 local function note_count(song)
@@ -95,6 +95,13 @@ local function note_count(song)
 	end
 end
 
+function calc_nps(pn, song_len, steps)
+	local radar= steps:GetRadarValues(pn)
+	return (radar:GetValue("RadarCategory_TapsAndHolds") +
+						radar:GetValue("RadarCategory_Jumps") +
+						radar:GetValue("RadarCategory_Hands")) / song_len
+end
+
 local function nps(song)
 	if song.GetStepsByStepsType then
 		local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
@@ -104,11 +111,7 @@ local function nps(song)
 		local radar
 		local len= song_get_length(song)
 		for i, v in ipairs(all_steps) do
-			radar= v:GetRadarValues(nps_player)
-			local nps= (radar:GetValue("RadarCategory_TapsAndHolds") +
-											radar:GetValue("RadarCategory_Jumps") +
-											radar:GetValue("RadarCategory_Hands")) / len
-			ret[#ret+1]= math.round(nps * 100) / 100
+			ret[#ret+1]= math.round(calc_nps(nps_player, len, v) * 100) / 100
 		end
 		if #ret > 0 then
 			return ret
@@ -287,6 +290,15 @@ local title_sort= {
 local group_sort= {
 	name= "Group", get_names= generic_get_wrapper("GetGroupName"),
 		can_join= noop_false, group_similar= true}
+local nps_sort= {
+	name= "NPS", get_names= nps, returns_multiple= true,
+	pre_sort_func= set_nps_player}
+local any_meter_sort= {
+	name= "Any Meter", get_names= any_meter, returns_multiple= true}
+
+function get_group_sort_info() return group_sort end
+function get_nps_sort_info() return nps_sort end
+function get_any_meter_sort_info() return any_meter_sort end
 
 local shared_sort_factors= {
 	group_sort,
@@ -308,8 +320,7 @@ local song_sort_factors= {
 	{ name= "Step Artist", get_names= step_artist, returns_multiple= true},
 	{ name= "Note Count", get_names= note_count, returns_multiple= true,
 		pre_sort_func= set_nps_player},
-	{ name= "NPS", get_names= nps, returns_multiple= true,
-		pre_sort_func= set_nps_player},
+	nps_sort,
 }
 
 local course_sort_factors= {
@@ -336,9 +347,7 @@ local function make_favor_tag_sorts()
 end
 
 
-local meter_sort_factors= {}
-meter_sort_factors[1]= {
-	name= "Any Meter", get_names= any_meter, returns_multiple= true}
+local meter_sort_factors= {any_meter_sort}
 for d, diff in pairs(difficulty_list) do
 	meter_sort_factors[#meter_sort_factors+1]= {
 		name= diff.name .. " Meter", get_names= difficulty_wrapper(diff.diff)}
@@ -561,8 +570,23 @@ function bucket_man_interface:initialize()
 		set_song_mode()
 	end
 	rival_bucket= make_rival_bucket()
+	self.filter_functions= {song_short_and_uncensored}
 	self:style_filter_songs()
 	self.cur_sort_info= get_sort_info()[1]
+end
+
+function bucket_man_interface:add_filter_function(func)
+	self.filter_functions[#self.filter_functions+1]= func
+end
+
+function bucket_man_interface:remove_filter_function(func)
+	for i, f in ipairs(self.filter_functions) do
+		if f == func then table.remove(self.filter_functions, i) return end
+	end
+end
+
+function bucket_man_interface:clear_filter_functions()
+	self.filter_functions= {song_short_and_uncensored}
 end
 
 function bucket_man_interface:style_filter_songs()
@@ -594,20 +618,24 @@ function bucket_man_interface:style_filter_songs()
 	self.style_filtered_songs= filtered_songs
 end
 
-function bucket_man_interface:filter_songs(filter_func)
+function bucket_man_interface:filter_songs()
 	if not self.style_filtered_songs then
-		Trace("bucket_man_interface:  filter_songs operates on already style-filtered songs.")
-		return
-	end
-	if not filter_func then
-		Trace("bucket_man_interface:  Forgot to pass a filter_func to filter_songs.")
+		lua.ReportScriptError("bucket_man_interface:  filter_songs operates on already style-filtered songs.")
 		return
 	end
 	local refiltered_songs= {}
 	local num_songs= #self.style_filtered_songs
+	local num_filters= #self.filter_functions
 	for i= 1, num_songs do
 		local song= self.style_filtered_songs[i]
-		if filter_func(song) then
+		local show= true
+		for f= 1, num_filters do
+			if not self.filter_functions[f](song) then
+				show= false
+				break
+			end
+		end
+		if show then
 			refiltered_songs[#refiltered_songs+1]= song
 		end
 		if i % 1000 == 0 then maybe_yield("Filtering", fracstr(i, num_songs)) end
@@ -621,21 +649,33 @@ else
 	bucket_man= setmetatable({}, bucket_man_interface_mt)
 end
 
+local function filter_work()
+	bucket_man:filter_songs()
+end
+
 local function sort_work()
 --	Trace("Sorting by: " .. bucket_man.cur_sort_info.name)
 	update_rating_cap()
 	local filter_start= GetTimeSinceStart()
-	bucket_man:filter_songs(song_short_and_uncensored)
+	bucket_man.filtered_songs= {}
+	while not bucket_man.filtered_songs[2] do
+		bucket_man:filter_songs()
+		-- TODO:  The case where the player filters out all songs should be
+		-- handled better.
+		if not bucket_man.filtered_songs[2] then
+			if #bucket_man.filter_functions > 1 then
+				bucket_man.filter_functions[#bucket_man.filter_functions]= nil
+			elseif get_rating_cap() > 0 then
+				disable_rating_cap()
+			else
+				break
+			end
+		end
+	end
 	local filter_end= GetTimeSinceStart()
 	local sfcount= #bucket_man.style_filtered_songs
 	maybe_yield("filtered", sfcount .. "/" .. sfcount)
---	Trace("Filtering took " .. filter_end - filter_start)
-	-- TODO:  The case where the player manages to set their rating cap to
-	-- filter out all songs should be handled better.
-	if #bucket_man.filtered_songs < 1 then
-		disable_rating_cap()
-		bucket_man:filter_songs(song_short_and_uncensored)
-	end
+--	lua.ReportScriptError("Filtering took " .. filter_end - filter_start)
 	local csi= bucket_man.cur_sort_info
 	if csi.pre_sort_func then
 		csi.pre_sort_func(csi.pre_sort_arg)
@@ -645,13 +685,18 @@ local function sort_work()
 	bucket_man.sorted_songs= bucket_sort(
 		bucket_man.filtered_songs, {csi, title_sort})
 	local sort_end= GetTimeSinceStart()
---	Trace("Converting + sorting took " .. sort_end - sort_start)
+--	lua.ReportScriptError("Converting + sorting took " .. sort_end - sort_start)
 end
 
 local song_sort_worker= false
 
 function make_song_sort_worker()
 	song_sort_worker= coroutine.create(sort_work)
+	return song_sort_worker
+end
+
+function make_song_filter_worker()
+	song_sort_worker= coroutine.create(filter_work)
 	return song_sort_worker
 end
 
@@ -1204,7 +1249,7 @@ function music_whale:set_stuff_from_curr_element()
 	end
 end
 
-function music_whale:interact_with_element()
+function music_whale:interact_with_element(pn)
 	local curr_element= self.sick_wheel:get_info_at_focus_pos()
 	if curr_element.bucket_info then
 		if curr_element.is_current_group then
@@ -1225,6 +1270,9 @@ function music_whale:interact_with_element()
 		-- Problem:  Picking the current type when on a Random or Previous Song
 		-- choice is a useful way of seeing what group that item came from.
 		bucket_man.cur_sort_info= curr_element.sort_info
+		if curr_element.sort_info.pre_sort_func == set_nps_player then
+			curr_element.sort_info.pre_sort_arg= pn
+		end
 		return coroutine.create(sort_work),
 		function() self:post_sort_update() end
 	elseif (curr_element.song_info or curr_element.random_info) and

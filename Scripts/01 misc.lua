@@ -860,7 +860,7 @@ end
 function string_in_table(str, tab)
 	if not str or not tab then return false end
 	for i, s in ipairs(tab) do
-		if s == str then return true end
+		if s == str then return i end
 	end
 	return false
 end

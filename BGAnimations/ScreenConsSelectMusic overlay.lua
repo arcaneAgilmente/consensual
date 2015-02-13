@@ -842,7 +842,7 @@ local code_functions= {
 			change_sort_text(music_wheel.current_sort_name)
 		end,
 		play_song= function(pn)
-			local needs_work, after_func= music_wheel:interact_with_element()
+			local needs_work, after_func= music_wheel:interact_with_element(pn)
 			if needs_work then
 				activate_status(needs_work, after_func)
 			else

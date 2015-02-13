@@ -156,7 +156,7 @@ local function input(event)
 				end
 			end
 			SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-			trans_new_screen(Branch.AfterGameplay())
+			trans_new_screen(cons_branches.after_heart())
 		end
 	end
 end

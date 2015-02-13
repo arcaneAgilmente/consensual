@@ -8,12 +8,6 @@ local function can_have_special_actors()
 		screen_name == "ScreenDemonstration"
 end
 
--- The order of these elements also affects the coloring of the score meter.
-local feedback_judgements= {
-	"TapNoteScore_Miss", "TapNoteScore_W5", "TapNoteScore_W4",
-	"TapNoteScore_W3", "TapNoteScore_W2", "TapNoteScore_W1"
-}
-
 local wrapper_layers= 3 -- x, y, z rotation
 local screen_gameplay= false
 local gameplay_wrappers= {}
@@ -248,14 +242,16 @@ function score_feedback_interface:update(player_stage_stats)
 		self.meter:diffuse(c)
 	end
 	if fake_score then
-		for i, fj in ipairs(feedback_judgements) do
+		for i= #feedback_judgements, 1, -1 do
+			local fj= feedback_judgements[i]
 			if fake_score.judge_counts[fj] > 0 then
 				set_color(judge_to_color(fj))
 				break
 			end
 		end
 	else
-		for i, fj in ipairs(feedback_judgements) do
+		for i= #feedback_judgements, 1, -1 do
+			local fj= feedback_judgements[i]
 			if player_stage_stats:GetTapNoteScores(fj) > 0 then
 				set_color(judge_to_color(fj))
 				break
@@ -369,14 +365,16 @@ local numerical_score_feedback_mt= {
 			end
 			local text_color= fetch_color("text")
 			if fake_score then
-				for i, fj in ipairs(feedback_judgements) do
+				for i= #feedback_judgements, 1, -1 do
+					local fj= feedback_judgements[i]
 					if fake_score.judge_counts[fj] > 0 then
 						text_color= judge_to_color(fj)
 						break
 					end
 				end
 			else
-				for i, fj in ipairs(feedback_judgements) do
+				for i= #feedback_judgements, 1, -1 do
+					local fj= feedback_judgements[i]
 					if pss:GetTapNoteScores(fj) > 0 then
 						text_color= judge_to_color(fj)
 						break

@@ -10,6 +10,7 @@ SOUND:StopMusic()
 play_sample_music(true)
 aprf_check()
 activate_confetti("credit", false)
+workout_mode= nil
 in_edit_mode= false
 true_gameplay= false
 
@@ -51,7 +52,13 @@ local function check_play_nonstop()
 	return playmode == "PlayMode_Nonstop"
 end
 local function set_play_nonstop()
-	playmode= "PlayMode_Nonstop" -- Disabled until course mode is worth supporting.
+	playmode= "PlayMode_Nonstop"
+end
+local function check_play_workout()
+	return playmode == "PlayMode_Workout"
+end
+local function set_play_workout()
+	playmode= "PlayMode_Workout"
 end
 
 local playmode_menu_init= {
@@ -60,6 +67,8 @@ local playmode_menu_init= {
 			unset= noop_false},
 		{ name= "Nonstop", init= check_play_nonstop, set= set_play_nonstop,
 			unset= noop_false},
+--		{ name= "Workout", init= check_play_workout, set= set_play_workout,
+--			unset= noop_false},
 }}
 local playmode_menu= setmetatable({}, options_sets.mutually_exclusive_special_functions)
 playmode_menu:initialize(nil, playmode_menu_init)
@@ -328,10 +337,14 @@ local function finalize_and_exit(pns)
 	end
 	set_time_remaining_to_default()
 	prev_picked_song= nil
-	bucket_man:initialize()
-	worker= make_song_sort_worker()
 	true_gameplay= true
-	trans_new_screen("ScreenConsSelectMusic")
+	if workout_mode then
+		trans_new_screen("ScreenWorkoutConfig")
+	else
+		bucket_man:initialize()
+		worker= make_song_sort_worker()
+		trans_new_screen("ScreenConsSelectMusic")
+	end
 end
 
 -- Players have to be joined before Screen:Finish can be called, but Screen:Finish can fail for various reasons, and joining uses up credits.
@@ -372,6 +385,10 @@ local function attempt_play(pns, presser, choice_name)
 		end
 		if join_success then
 			set_current_style(first_compat_style(#pns))
+			if playmode == "PlayMode_Workout" then
+				workout_mode= {}
+				set_play_regular()
+			end
 			set_current_playmode(playmode)
 			finalize_and_exit(pns)
 			return

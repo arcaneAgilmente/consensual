@@ -98,8 +98,8 @@ add_value_set(TapNoteScore)
 add_value_set(HoldNoteScore)
 
 local tns_reverse= TapNoteScore:Reverse()
-local tns_cont_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToContinueCombo")]
-local tns_maint_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToMaintainCombo")]
+local tns_cont_combo= tns_cont_combo()
+local tns_maint_combo= tns_maint_combo()
 local tns_inc_miss_combo= tns_reverse[THEME:GetMetric("Gameplay", "MaxScoreToIncrementMissCombo")]
 
 local prev_combo= -1

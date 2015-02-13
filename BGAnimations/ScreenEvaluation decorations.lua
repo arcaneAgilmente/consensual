@@ -3,120 +3,21 @@ local cg_thickness= 24
 local lg_thickness= 40
 local banner_container= false
 local banner_image= false
-local reward_time= 0
 local eval_stroke= fetch_color("evaluation.stroke")
 local graph_colors= fetch_color("evaluation.graphs")
-do
-	local conversions= {
-		{1, 60, ""}, {60, 60, ":"}, {3600, 24, ":"}, {86400, 365, "/"},
-		{31557600, 0, "/"}
-	}
-	function seconds_to_time_string(seconds)
-		local ret= ""
-		for i, v in ipairs(conversions) do
-			local part= math.floor(seconds / v[1])
-			if v[2] > 0 then part= part % v[2] end
-			if seconds >= v[1] then
-				if part < 10 then
-					part= "0" .. part
-				end
-				ret= part .. v[3] .. ret
-			end
-		end
-		return ret
-	end
-end
 
 dofile(THEME:GetPathO("", "art_helpers.lua"))
+dofile(THEME:GetPathO("", "eval_parts.lua"))
 
-local tns_reverse= TapNoteScore:Reverse()
-local tnss_that_affect_combo= {
-	TapNoteScore_W1= true,
-	TapNoteScore_W2= true,
-	TapNoteScore_W3= true,
-	TapNoteScore_W4= true,
-	TapNoteScore_W5= true,
-	TapNoteScore_Miss= true,
-}
-local tns_cont_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToContinueCombo")]
-local tns_maint_combo= tns_reverse[THEME:GetMetric("Gameplay", "MinScoreToMaintainCombo")]
-local tnss_that_can_be_early= {
-	TapNoteScore_W1= true,
-	TapNoteScore_W2= true,
-	TapNoteScore_W3= true,
-	TapNoteScore_W4= true,
-	TapNoteScore_W5= true,
-}
-
--- style compatibility issue:  Dance, Kickbox, Pump, and Techno are the only supported games.
-local column_to_pad_arrow_map= {
-	[PLAYER_1]= {
-		StepsType_Dance_Single= {4, 8, 2, 6},
-		StepsType_Dance_Double= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Couple= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Solo= {4, 1, 8, 2, 3, 6},
-		StepsType_Dance_Threepanel= {1, 8, 3},
-		StepsType_Dance_Routine= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Pump_Single= {7, 1, 5, 3, 9},
-		StepsType_Pump_Halfdouble= {5, 3, 9, 16, 10, 14},
-		StepsType_Pump_Double= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Couple= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Routine= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Techno_Single4= {4, 8, 2, 6},
-		StepsType_Techno_Single5= {7, 1, 5, 3, 9},
-		StepsType_Techno_Single8= {1, 2, 3, 4, 6, 7, 8, 9},
-		StepsType_Techno_Double4= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Techno_Double5= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Techno_Double8= {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
-		StepsType_Kickbox_Human= {1, 4, 5, 8},
-		StepsType_Kickbox_Quadarm= {3, 4, 5, 6},
-		StepsType_Kickbox_Insect= {1, 3, 4, 5, 6, 8},
-		StepsType_Kickbox_Arachnid= {1, 2, 3, 4, 5, 6, 7, 8},
-	},
-	[PLAYER_2]= {
-		StepsType_Dance_Single= {13, 17, 11, 15},
-		StepsType_Dance_Double= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Couple= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Solo= {13, 10, 17, 11, 12, 15},
-		StepsType_Dance_Threepanel= {10, 17, 12},
-		StepsType_Dance_Routine= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Pump_Single= {16, 10, 14, 12, 18},
-		StepsType_Pump_Halfdouble= {5, 3, 9, 16, 10, 14},
-		StepsType_Pump_Double= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Couple= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Routine= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Techno_Single4= {13, 17, 11, 15},
-		StepsType_Techno_Single5= {16, 10, 14, 12, 18},
-		StepsType_Techno_Single8= {10, 11, 12, 13, 15, 16, 17, 18},
-		StepsType_Techno_Double4= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Techno_Double5= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Techno_Double8= {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
-		StepsType_Kickbox_Human= {1, 4, 5, 8},
-		StepsType_Kickbox_Quadarm= {3, 4, 5, 6},
-		StepsType_Kickbox_Insect= {1, 3, 4, 5, 6, 8},
-		StepsType_Kickbox_Arachnid= {1, 2, 3, 4, 5, 6, 7, 8},
-}}
-
-local score_datas= {}
 local score_data_viewing_indices= {}
-
-local function get_pad_arrow_for_col(pn, col)
-	-- 0 is the index for the combined stats of all panels
-	if col == 0 then return 0 end
-	local steps_type= gamestate_get_curr_steps(pn):GetStepsType()
-	if column_to_pad_arrow_map[pn][steps_type] then
-		return column_to_pad_arrow_map[pn][steps_type][col]
-	else
-		return col
-	end
-end
 
 local function color_dance_pad_by_score(pn, pad)
 	local steps_type= gamestate_get_curr_steps(pn):GetStepsType()
 	local col_score= cons_players[pn].column_scores
-	if column_to_pad_arrow_map[pn][steps_type] then
+	local controller_map= get_controller_stepstype_map(pn, steps_type)
+	if controller_map then
 		for c= 0, #col_score do
-			local arrow_id= column_to_pad_arrow_map[pn][steps_type][c]
+			local arrow_id= controller_map[c]
 			if arrow_id then
 				pad:color_arrow(arrow_id, color_for_score(col_score[c].dp/col_score[c].mdp))
 				pad.arrows[arrow_id]:SetVertices(vert_colors)
@@ -447,13 +348,7 @@ local reward_time_mt= {
 }}
 
 local reward_indicator= setmetatable({}, reward_time_mt)
-local feedback_judgements= {
-	"TapNoteScore_W1", "TapNoteScore_W2", "TapNoteScore_W3",
-	"TapNoteScore_W4", "TapNoteScore_W5", "TapNoteScore_Miss"
-}
-local holdnote_names= {
-	"HoldNoteScore_Held", "HoldNoteScore_LetGo", "HoldNoteScore_MissedHold"
-}
+
 -- +1 for column label
 -- +1 for max_combo
 local scrows= #feedback_judgements + #holdnote_names + 2
@@ -865,143 +760,6 @@ local score_report_mt= {
 		end
 }}
 
-local profile_report_interface= {}
-local profile_report_interface_mt= { __index= profile_report_interface }
-function profile_report_interface:create_actors(player_number)
-	self.player_number= player_number
-	self.name= "profile_report"
-	local spacing= 12
-	local difa= 0
-	if #GAMESTATE:GetEnabledPlayers() == 1 then
-		difa= 1
-	end
-	local args= {
-		Name= self.name, InitCommand= function(subself)
-			subself:diffusealpha(difa)
-			self.container= subself
-		end
-	}
-	local pro= PROFILEMAN:GetProfile(player_number)
-	if pro then
-		args[#args+1]= normal_text(
-			"pname", pro:GetDisplayName(), nil, eval_stroke, 0, 0)
-		local things_in_list= {}
-		do
-			local goal_seconds= pro:GetGoalSeconds()
-			local gameplay_seconds= pro:GetTotalGameplaySeconds()
-			things_in_list[#things_in_list+1]= {
-				name= "Played Time", number= seconds_to_time_string(gameplay_seconds)}
-			if goal_seconds > 0 then
-				things_in_list[#things_in_list+1]= {
-					name= "Goal Time", number= seconds_to_time_string(goal_seconds)}
-			end
-		end
-		do
-			local percent= "%.2f%%"
-			local num= "%.2f"
-			local goal_calories= pro:GetGoalCalories()
-			local today_calories= pro:GetCaloriesBurnedToday()
-			local total_calories= pro:GetTotalCaloriesBurned()
-			local goal_pct= (today_calories/goal_calories)*100
-			local pstats= STATSMAN:GetCurStageStats():GetPlayerStageStats(player_number)
-			local song_calories= pstats:GetCaloriesBurned()
-			things_in_list[#things_in_list+1]= {
-				name= "Weight", number= num:format(pro:GetWeightPounds())}
-			if pro.GetIgnoreStepCountCalories and pro:GetIgnoreStepCountCalories() then
-				song_calories= cons_players[player_number].last_song_calories
-				things_in_list[#things_in_list+1]= {
-					name= "Heart Rate", number= cons_players[player_number].last_song_heart_rate}
-			end
-			things_in_list[#things_in_list+1]= {
-				name= "Calories Song", number= num:format(song_calories)}
-			things_in_list[#things_in_list+1]= {
-				name= "Calories Today", number= num:format(today_calories)}
-			if goal_calories > 0 then
-				things_in_list[#things_in_list+1]= {
-					name= "Goal Calories", number= num:format(goal_calories)}
-				things_in_list[#things_in_list+1]= {
-					name= "Goal Percent", number= percent:format(goal_pct),
-					color= percent_to_color(goal_pct/100)}
-			end
-			things_in_list[#things_in_list+1]= {
-				name= "Total Calories", number= num:format(total_calories)}
-		end
-		things_in_list[#things_in_list+1]= {
-			name= "Sessions", number= pro:GetTotalSessions() }
-		things_in_list[#things_in_list+1]= {
-			name= "Session time",
-			number= seconds_to_time_string(pro:GetTotalSessionSeconds()) }
-		things_in_list[#things_in_list+1]= {
-			name= "Songs played", number= pro:GetNumTotalSongsPlayed() }
-		if not GAMESTATE:IsCourseMode() then
-			things_in_list[#things_in_list+1]= {
-				name= "This song played",
-				number= pro:GetSongNumTimesPlayed(GAMESTATE:GetCurrentSong()) }
-		end
-		do
-			local toasts= pro:GetNumToasties()
-			local songs= pro:GetNumTotalSongsPlayed()
-			local toast_pct= toasts / songs
-			local color= percent_to_color((toast_pct-.75)*4)
-			things_in_list[#things_in_list+1]= {
-				name= "Toasties", number= pro:GetNumToasties(), color= color}
-		end
-		if pro.GetTotalDancePoints then
-			things_in_list[#things_in_list+1]= {
-				name= "Dance Points", number= pro:GetTotalDancePoints() }
-		end
-		do
-			local taps= pro:GetTotalTapsAndHolds() + pro:GetTotalJumps() +
-				pro:GetTotalHands()
-			local level= 0
-			local calc_taps= 0
-			local prev_calc_taps= 0
-			local level_diff= 0
-			repeat
-				level= level + 1
-				calc_taps= math.round(((400*level)^(1+level/140)+(level*(level+1)*(level+2)*100)/10)^(1+(100-level)/1000))
-				level_diff= calc_taps - prev_calc_taps
-				prev_calc_taps= calc_taps
-			until calc_taps > taps
-			if level > cons_players[player_number].experience_level
-			and player_using_profile(player_number) then
-				activate_confetti("earned", true)
-				cons_players[player_number].experience_level= level
-			end
-			things_in_list[#things_in_list+1]= {
-				name= "Experience Level", number= level }
-			things_in_list[#things_in_list+1]= {
-				name= "Experience", number= taps }
-			things_in_list[#things_in_list+1]= {
-				name= "Taps to next level", number= calc_taps - taps,
-				color= color_percent_above(1-((calc_taps-taps) / level_diff), .5)}
-		end
-		things_in_list[#things_in_list+1]= {
-			name= "Taps", number= pro:GetTotalTapsAndHolds() }
-		things_in_list[#things_in_list+1]= {
-			name= "Hands", number= pro:GetTotalHands() }
-		things_in_list[#things_in_list+1]= {
-			name= "Holds", number= pro:GetTotalHolds() }
-		things_in_list[#things_in_list+1]= {
-			name= "Jumps", number= pro:GetTotalJumps() }
-		things_in_list[#things_in_list+1]= {
-			name= "Mines", number= pro:GetTotalMines() }
-		things_in_list[#things_in_list+1]= {
-			name= "Lifts", number= pro:GetTotalLifts() }
-		local sep= 90
-		for i, thing in ipairs(things_in_list) do
-			local y= spacing * (i) + 12
-			args[#args+1]= normal_text(
-				thing.name .. "t", get_string_wrapper("ProfileData", thing.name),
-				nil, eval_stroke, -sep, y, .5, left)
-			args[#args+1]= normal_text(
-				thing.name .. "n", thing.number, thing.color, eval_stroke,
-				sep, y, .5, right)
-		end
-	end
-	return Def.ActorFrame(args)
-end
-
 local judge_key_mt= {
 	__index= {
 		create_actors= function(self)
@@ -1149,45 +907,25 @@ local song_props= {
 	{name= "end_credit", level= 4},
 }
 
-local special_menus= {
-	{
-		[PLAYER_1]= setmetatable({}, options_sets.menu),
-		[PLAYER_2]= setmetatable({}, options_sets.menu),
-		level= 2,
-	},{
-		[PLAYER_1]= setmetatable({}, options_sets.tags_menu),
-		[PLAYER_2]= setmetatable({}, options_sets.tags_menu),
-		level= 3,
-	},{
-		[PLAYER_1]= setmetatable({}, options_sets.special_functions),
-		[PLAYER_2]= setmetatable({}, options_sets.special_functions),
-		level= 2,
-}}
-local menu_args= {
-	{
-		[PLAYER_1]= {PLAYER_1, song_props, true},
-		[PLAYER_2]= {PLAYER_2, song_props, true},
-	},{
-		[PLAYER_1]= {PLAYER_1, false},
-		[PLAYER_2]= {PLAYER_2, false},
-	},{
-		[PLAYER_1]= {PLAYER_1, flag_ex, true},
-		[PLAYER_2]= {PLAYER_2, flag_ex, true},
-}}
+local special_menus= {{level= 2}, {level= 3}, {level= 2}}
+local menu_args= {{}, {}, {}}
+local player_cursors= {}
+local score_reports= {}
+local profile_reports= {}
+for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+	special_menus[1][pn]= setmetatable({}, options_sets.menu)
+	special_menus[2][pn]= setmetatable({}, options_sets.tags_menu)
+	special_menus[3][pn]= setmetatable({}, options_sets.special_functions)
+	menu_args[1][pn]= {pn, song_props, true}
+	menu_args[2][pn]= {pn, false}
+	menu_args[3][pn]= {pn, flag_ex, true}
+	player_cursors[pn]= setmetatable({}, cursor_mt)
+	score_reports[pn]= setmetatable({}, score_report_mt)
+	profile_reports[pn]= setmetatable({}, profile_report_mt)
+end
 
-local player_cursors= {
-	[PLAYER_1]= setmetatable({}, cursor_mt),
-	[PLAYER_2]= setmetatable({}, cursor_mt)
-}
-
-local score_reports= { [PLAYER_1]= {}, [PLAYER_2]= {}}
-setmetatable(score_reports[PLAYER_1], score_report_mt)
-setmetatable(score_reports[PLAYER_2], score_report_mt)
-
-local profile_reports= { [PLAYER_1]= {}, [PLAYER_2]= {}}
-setmetatable(profile_reports[PLAYER_1], profile_report_interface_mt)
-setmetatable(profile_reports[PLAYER_2], profile_report_interface_mt)
-
+-- frame_helpers isn't handled inside the loop above because both helpers are
+-- always needed.
 local frame_helpers= { [PLAYER_1]= {}, [PLAYER_2]= {}}
 setmetatable(frame_helpers[PLAYER_1], frame_helper_mt)
 setmetatable(frame_helpers[PLAYER_2], frame_helper_mt)
@@ -1426,7 +1164,7 @@ local function make_player_specific_actors()
 			fetch_color("evaluation.score_report.bg"), 0, 0)
 		args[#args+1]= score_reports[v]:create_actors(v)
 		if #enabled_players > 1 then
-			args[#args+1]= profile_reports[v]:create_actors(v)
+			args[#args+1]= profile_reports[v]:create_actors(v, true)
 			args[#args+1]= special_menu_displays[v]:create_actors(
 				"menu", 0, 0, 288, 120, line_height, 1, true, true)
 		end
@@ -1444,7 +1182,7 @@ local function make_player_specific_actors()
 		args[#args+1]= frame_helpers[other]:create_actors(
 			"frame", 2, 0, 0, pn_to_color(this),
 			fetch_color("evaluation.score_report.bg"), 0, 0)
-		args[#args+1]= profile_reports[this]:create_actors(this)
+		args[#args+1]= profile_reports[this]:create_actors(this, false)
 		args[#args+1]= special_menu_displays[this]:create_actors(
 			"menu", 0, 0, 288, 160, line_height, 1, true, true)
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
@@ -1464,7 +1202,7 @@ local function find_actors(self)
 	update_bestiality()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
 	local players_container= self:GetChild("players")
-	reward_indicator:set(judge_key.right - judge_key.left, reward_time)
+	reward_indicator:set(judge_key.right - judge_key.left, last_song_reward_time)
 	local graphs= self:GetChild("graphs")
 	local left_graph_edge= SCREEN_LEFT
 	local right_graph_edge= SCREEN_RIGHT
@@ -1514,151 +1252,11 @@ local function find_actors(self)
 	end
 end
 
-local function add_column_score_to_session(pn, session_stats, col_id, col_score)
-	local session_col_id= get_pad_arrow_for_col(pn, col_id)
-	local sesscol= session_stats[session_col_id]
-	-- Prevent reloading the screen from increasing session stats.
-	local stage_seed= GAMESTATE:GetStageSeed()
-	if stage_seed == sesscol.stage_seed then return end
-	sesscol.stage_seed= stage_seed
-	sesscol.dp= sesscol.dp + col_score.dp
-	sesscol.mdp= sesscol.mdp + col_score.mdp
-	sesscol.max_combo= math.max(sesscol.max_combo, col_score.max_combo)
-	for i, tim in ipairs(col_score.step_timings) do
-		if sesscol.judge_counts.early[tim.judge] then
-			if tnss_that_can_be_early[tim.judge] and (tim.offset or 0) >= 0 then
-				sesscol.judge_counts.late[tim.judge]=
-					sesscol.judge_counts.late[tim.judge] + 1
-			else
-				sesscol.judge_counts.early[tim.judge]=
-					sesscol.judge_counts.early[tim.judge] + 1
-			end
-		end
-	end
-end
-
-local function crunch_combo_data_for_column(col)
-	local step_timings= col.step_timings
-	local max_combo= 0
-	local curr_combo= 0
-	local combo_data= {}
-	local curr_combo_start= 0
-	local function end_combo(time)
-		if curr_combo > 0 then
-			max_combo= math.max(curr_combo, max_combo)
-			combo_data[#combo_data+1]= {
-				StartSecond= curr_combo_start,
-				SizeSeconds= time - curr_combo_start,
-				Count= curr_combo}
-		end
-		curr_combo= 0
-	end
-	for i, tim in ipairs(step_timings) do
-		if tnss_that_affect_combo[tim.judge] then
-			local revj= tns_reverse[tim.judge]
-			if revj >= tns_cont_combo then
-				if curr_combo == 0 then
-					curr_combo_start= tim.time
-				end
-				curr_combo= curr_combo + 1
-			elseif revj < tns_maint_combo then
-				end_combo(tim.time)
-			end
-		end
-	end
-	if #step_timings > 0 then
-		end_combo(step_timings[#step_timings].time)
-	end
-	col.max_combo= max_combo
-	col.combo_data= combo_data
-end
-
-local function save_column_scores(pn)
-	if not GAMESTATE:IsCourseMode() then
-		local profile_dir= false
-		if pn == PLAYER_1 then
-			profile_dir= PROFILEMAN:GetProfileDir("ProfileSlot_Player1")
-		else
-			profile_dir= PROFILEMAN:GetProfileDir("ProfileSlot_Player2")
-		end
-		local cur_song= gamestate_get_curr_song()
-		local song_name= "unknown_song"
-		if cur_song then song_name= cur_song:GetDisplayFullTitle() end
-		if profile_dir then
-			local file_handle= RageFileUtil.CreateRageFile()
-			local file_name= profile_dir .. "/song_scores/" .. song_name .. "_column_scores.lua"
-			local all_attempts= {}
-			if FILEMAN:DoesFileExist(file_name) then
-				all_attempts= dofile(file_name)
-			end
-			local function pad_num(num)
-				if num < 10 then return "0" .. num
-				else return num end
-			end
-			cons_players[pn].column_scores.timestamp= Year() .. "_" .. pad_num(MonthOfYear()) .. "_" .. pad_num(DayOfMonth()) .. "_" .. pad_num(Hour()) .. "_" .. pad_num(Minute()) .. "_" .. pad_num(Second())
-			all_attempts[#all_attempts+1]= cons_players[pn].column_scores
-			if not file_handle:Open(file_name, 2) then
-				Trace("Could not open '" .. file_name .. "' to write column scores.")
-			else
-				local output= "return " .. lua_table_to_string(all_attempts) .. "\n"
-				file_handle:Write(output)
-				file_handle:Close()
-				file_handle:destroy()
-				Trace("column scores written to '" .. file_name .. "'")
-			end
-		else
-			Trace("Nil profile dir, unable to write column scores.")
-		end
-	end
-end
-
 do
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
-	local highest_score= 0
-	local curstats= STATSMAN:GetCurStageStats()
-	local stage_seed= 0
 	for i, v in ipairs(enabled_players) do
-		if not GAMESTATE:IsEventMode() then
-			local play_history= cons_players[v].play_history
---			Trace("Adding song to play_history with timestamp " ..
---							tostring(prev_song_start_timestamp) .. "-" ..
---							tostring(prev_song_end_timestamp))
-			play_history[#play_history+1]= {
-				song= gamestate_get_curr_song(), steps= gamestate_get_curr_steps(v),
-				start= prev_song_start_timestamp, finish= prev_song_end_timestamp}
-		end
-		score_datas[v]= {}
-		local pstats= curstats:GetPlayerStageStats(v)
-		for i= 0, #cons_players[v].column_scores do
-			score_datas[v][i]= cons_players[v].column_scores[i]
-		end
-		score_datas[v][0].dp= pstats:GetActualDancePoints()
-		score_datas[v][0].mdp= pstats:GetPossibleDancePoints()
-		score_datas[v][0].max_combo= pstats:MaxCombo()
-		for i, fj in ipairs(feedback_judgements) do
-			score_datas[v][0].judge_counts[fj]= pstats:GetTapNoteScores(fj)
-		end
-		for i, hj in ipairs(holdnote_names) do
-			score_datas[v][0].judge_counts[hj]= pstats:GetHoldNoteScores(hj)
-		end
-		cons_players[v].fake_score.mdp= score_datas[v][0].mdp
 		score_data_viewing_indices[v]= 0
-		highest_score= math.max(highest_score,
-			pstats:GetActualDancePoints() / pstats:GetPossibleDancePoints())
-		--save_column_scores(v)
-		stage_seed= cons_players[v].session_stats[0].stage_seed
-		add_column_score_to_session(v, cons_players[v].session_stats, 0, score_datas[v][0])
-		for ic= 1, #cons_players[v].column_scores do
-			crunch_combo_data_for_column(cons_players[v].column_scores[ic])
-			add_column_score_to_session(v, cons_players[v].session_stats, ic, cons_players[v].column_scores[ic])
-		end
-		cons_players[v].unacceptable_score.enabled= nil
 	end
-	reward_time= convert_score_to_time(highest_score)
-	if GAMESTATE:GetStageSeed() ~= stage_seed then
-		reduce_time_remaining(-reward_time)
-	end
-	unacc_reset_count= nil
 end
 
 set_visible_score_data= function(pn, index)
@@ -1675,13 +1273,13 @@ set_visible_score_data= function(pn, index)
 		profile_reports[pn].container:diffusealpha(1)
 		size_frame_to_report(frame_helpers[pn], profile_reports[pn].container, true)
 	else
-		score_reports[pn]:set(pn, index, score_datas[pn][index])
+		score_reports[pn]:set(pn, index, cons_players[pn].score_data[index])
 		score_reports[pn].container:diffusealpha(1)
 		size_frame_to_report(frame_helpers[pn], score_reports[pn].container)
 		if not showing_profile_on_other_side then
 			profile_reports[pn].container:diffusealpha(0)
 		end
-		combo_graphs[pn]:set(score_datas[pn][index].step_timings)
+		combo_graphs[pn]:set(cons_players[pn].score_data[index].step_timings)
 	end
 end
 
@@ -1718,7 +1316,7 @@ local function input(event)
 		or not cons_players[pn].flags.eval.profile_data then
 			view_min= 0
 		end
-		local view_max= #score_datas[pn]
+		local view_max= #cons_players[pn].score_data
 		if cons_players[pn].flags.eval.lock_per_arrow then
 			view_max= 0
 		end
