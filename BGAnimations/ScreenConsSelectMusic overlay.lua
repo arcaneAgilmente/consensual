@@ -676,6 +676,7 @@ local menu_codes= {
 	{name= "close_group", hold_buttons= {"MenuLeft", "MenuRight"},
 	 release_trigger= "Start", canceled_by_others= false},
 	{name= "close_group", hold_buttons= {"Left", "Right"},
+	 games= {"dance", "techno"},
 	 release_trigger= "Start", canceled_by_others= false},
 }
 do
@@ -708,8 +709,8 @@ end
 local codes= {
 	{ name= "change_song", fake= true, "MenuLeft" },
 	{ name= "change_song", fake= true, "MenuRight" },
-	{ name= "change_song", fake= true, "Left" },
-	{ name= "change_song", fake= true, "Right" },
+	{ name= "change_song", fake= true, games= {"dance", "techno"}, "Left" },
+	{ name= "change_song", fake= true, games= {"dance", "techno"}, "Right" },
 	{ name= "play_song", ignore_release= true, games= {"pump"}, "Center" },
 	{ name= "sort_mode", ignore_release= true, games= {"dance", "techno"},
 		"Up", "Down", "Up", "Down" },

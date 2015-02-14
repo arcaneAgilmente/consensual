@@ -311,13 +311,14 @@ local shared_sort_factors= {
 local song_sort_factors= {
 	{ name= "BPM", get_names= get_song_bpm},
 	{ name= "Artist", get_names= generic_get_wrapper("GetDisplayArtist"),
-		uses_depth= true},
+		uses_depth= true, insensitive_names= true},
 	{ name= "Genre", get_names= generic_get_wrapper("GetGenre"),
-		uses_depth= true},
+		uses_depth= true, insensitive_names= true},
 	{ name= "Length", get_names= length},
 	-- Disabled, causes stepmania to eat all ram and hang.
 	-- Left in as disabled so it's known to not work.
-	{ name= "Step Artist", get_names= step_artist, returns_multiple= true},
+	{ name= "Step Artist", insensitive_names= true, get_names= step_artist,
+		returns_multiple= true},
 	{ name= "Note Count", get_names= note_count, returns_multiple= true,
 		pre_sort_func= set_nps_player},
 	nps_sort,

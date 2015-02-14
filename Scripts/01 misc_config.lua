@@ -35,7 +35,7 @@ local default_config= {
 	color_config_key= "DeviceButton_b",
 	censor_privilege_key= "DeviceButton_c",
 
-	screen_demo_idle_time= 10,
+	screen_demo_idle_time= 60,
 	screen_demo_show_time= 120,
 
 	line_height= 24,

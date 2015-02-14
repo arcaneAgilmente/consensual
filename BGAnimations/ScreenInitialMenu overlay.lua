@@ -309,7 +309,7 @@ local function worker_update()
 			worker= false
 		end
 	else
-		if idle_limit > 1
+		if idle_limit > 1 and not SCREENMAN:GetTopScreen():IsTransitioning()
 			and GetTimeSinceStart() - last_input_time > idle_limit
 		and misc_config:get_data().screen_demo_show_time > 10 then
 			set_song_mode()
