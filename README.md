@@ -401,6 +401,210 @@ in the Consensual Service menu.
 
 
 
+## Player Options Screen
+Consensual's options screen is organized around nested menus.
+
+The profile's Options Level changes which menus are visible on this screen.
+At OL 1, Speed, Perspective, Noteskin, Options Level, Rating Cap, and Profile
+Options are the only choices.  Above OL 1, Noteskin moves into Decorations,
+and Options Level and Rating Cap move into Special.
+
+In general, the choices that are hidden at lower OL are expected to be used
+by fewer people, or need some experimentation to understand.  OL 4 shows
+everything.
+
+Each player uses half the screen for their menus, no shared cursor or shared
+screen problems.  Each player has two menu displays, one for the menu they
+are currently on, and one for the menu it is inside.  To solve the problem of
+new players accidentally going into the Player Options Screen and getting
+confused, the players' cursors start on the "Play Song" option, which makes
+it very clear how to leave the screen without doing anything.
+
+Every menu on the Options Screen has a header and a status field.  The header
+is usually the name of the menu or the name of the modifier that is being
+set.  The status field is usually the current value of the modifer.  
+Every menu also has a "back" element at the top of the list that confirms the
+current setting and goes back to the previous menu.
+
+### Menu Types
+
+#### Adjustable Float  
+Most themes limit modifiers to simple on/off toggles, or a few choices
+between 0% and 100%.  Consensual is written to allow setting any modifier
+to any value, unless the internal code in Stepmania forces it to be an
+on/off switch.  
+Choices:
+* "+n" increases the value
+* "-n" decreases the value
+* "scale*10" multiplies the n used to change the value by 10.
+* "scale/10" divides the n used to change the value by 10.
+* "*pi" is a special choice that only appears for the spin modifiers.  It
+	toggles whether the value is a multiple of pi.
+* "Round" rounds the value to the nearest whole number.
+* "Reset" resets the value to 0.
+
+#### Special Modifiers
+Most of the modifiers are more fun to learn about through experimenting, but
+some are worth mentioning here.
+
+* BG Brightness  
+	Instead of a screen filter, the BG Brightness preference is in the Special
+	menu.
+* Perspective  
+	The Perspective has the old style choices of Incoming, Space, Hallway, and
+	Distant, but also has Skew and Tilt.  Internally, Incoming and Space apply
+	both Skew and Tilt, and Hallway and Distant only apply Tilt.  Having Skew
+	and Tilt separated allows trying out different values for them.
+* Profile Options  
+	This allows you to set the data that is stored in the profile without using
+	Stepmania's normal profile managing screen or editing the Editable.ini
+	file.
+* Playback Options  
+	This contains the Rate modifier and the Haste modifier.  Haste can be
+	negative.
+* Floaty Mods  
+	Practically every mod in Stepmania is a number, so they're all in here,
+	organized by type.
+* Judgment Y/Combo Y  
+	The position of the judgment and combo can be set like any other modifier.
+	A negative value moves the judgment up.  The combo position is relative to
+	the judgment.  The screen is 480 units tall, so -240 moves the judgment to
+	the top.
+* Chart Mods  
+	The various mods for modifying the chart are in here.
+* Song Tags  
+	The same tags menu that was discussed on the Select Music Screen.
+* Decorations  
+	Many things that appear on the Gameplay and Evaluation screens can be
+	toggled on or off with flags.  Evaluation Flags and Gameplay Flags will be
+	listed on their screens.  
+	Interface Flags:  
+	Easier Random, Harder Random, Same Random, and Score Random toggle
+	per-player Random items on the music wheel.  They use the meter of the last
+	chart played, and allow picking a random song with an easier, harder, or
+	same meter chart.  Score Random uses the score to decide whether its songs
+	should be easier or harder.  
+	Straight Floats toggles whether to show modifiers as numbers from 0 to 1 or
+	percents from 0% to 100%.  
+	Verbose BPM toggles whether the speed modifier is shown next to the bpm.
+* Unacceptable Score  
+	Sometimes, a score is too bad to accept finishing the song with.  This
+	allows you to set a threshold for automatically resetting to the beginning
+	of the song if you can't get the score you want.  It can be set to either a
+	maximum number of dance points missed, or a minimum score percentage.  The
+	number of times to reset is also configurable.
+* Kick Recover Time  
+	If you're not in kickbox mode, this shouldn't even be visible.  In kickbox
+	mode, this sets the amount of time that must be before and after a kick in
+	a chart made by the autogen system.
+* Next Screen  
+	Hit Start on the Select Music option in this menu to immediately go there.
+
+
+## Gameplay Screen
+The song progress bar at the bottom of the screen cycles through several
+colors to indicate progress through color coding, and has the current time
+and the song length.
+
+This is a list of the flags in the Gameplay Flags section of Decorations on
+the Player Options Screen.
+* allow_toasty  
+	This toggles whether the player should have toasties appear.  Toasties are
+	still recorded in the profile, this only toggles the feedback for them.
+	You'll have to discover what the toasty effects are yourself.
+* bpm_meter  
+	Toggles the BPM display.
+* chart_info  
+	Toggles the chart info that lists the step artist, difficulty, and meter.
+* combo_confetti  
+	If this is off, the player will not get confetti for reaching 1000 combo.
+* dance_points / pct_score  
+	The score display can show the percent score, the dance points, or both, or
+	neither.
+* score_splash  
+	At the end of the screen, a score over 96.875% earns a score splash,
+	colored by how close to 100% it is.
+* Combo Splash Threshold  
+	Use this to set the minimum full combo quality for a combo splash.  The
+	combo splash is always colored by the worst judgment earned, if it appears.
+* judge  
+	A list of every judgment earned is placed behind the notefield.
+* offset  
+	The judgment contains a colored rectangle showing how far early/late a note
+	was hit.  If the rectangle is left of center, the note was hit early.
+* score_confetti  
+	A score above 99.5% earns confetti, unless you don't want it.
+* score_meter  
+	Next to the life bar is a meter showing the current score as a rectangle.
+	It grows according to a formula chosen to make the difference between 98%
+	and 99% much bigger than the difference between 50% and 51%, to reflect the
+	relative difficulty of improving higher scores.  For the curious, this is
+	the formula:  score^((score+1)^((score*e)))
+* sigil  
+	The sigil is a piece of art that tracks your current score out of what is
+	currently possible.
+
+
+## Heart Rate Entry Screen
+If one of the profiles in use has heart rate based calorie calculation
+enabled, the Heart Rate Entry Screen will appear between Gameplay and
+Evaluation.  Simply use the timer to take your pulse and enter it with the
+numpad.
+
+
+## Evaluation Screen
+In single player, score data is on the player's side, and profile data is on
+the opposite side.  In versus, profile data can be accessed by pressing left
+or right.
+
+If Select is held longer than .3 seconds, a screenshot is taken and named
+with the current song and saved to the player's profile.
+
+If that profile's Options Level is 2 or higher, the menu can be brought up by
+tapping Select.  This has options for changing the Favor level, tagging the
+song, toggling the flags for this screen, or ending the credit.
+
+Each of the flags toggles a different element on the screen.  Turn them all
+off, and you're left with just the song background.  The banner, judge_list,
+and reward elements are shared, so if either player has them on, they are
+shown.
+* chart_info
+* pct_score
+* dance_points
+* offset
+* score_early_late
+* lock_per_arrow  
+	Per-arrow scores can be accessed by turning this flag off and using left or
+	right.
+* color_combo
+* color_life_by_value
+* color_life_by_combo
+* pct_column
+* song_column
+* session_column
+* sum_column  
+	The sum column shows a total of the judgment it is next to, plus the number
+	of better judgments.
+* best_scores
+* profile_data
+* combo_graph
+* life_graph
+* style_pad
+* banner
+* judge_list
+* reward
+
+
+## Name Entry Screen
+The name entry screen has rows with the alphanumerics and some symbols.  The
+down and up arrows at the beginning and end of each row are for moving the
+cursor between rows if there aren't Menu Up and Menu Down buttons.
+
+There are also choices on the bottom row for scrolling the score lists, if
+more than 3 songs were played, and for taking a screenshot.
+
+
+## Consensual Service Menu
 
 
 This guide is getting way too long.  Come back later for the Player Options

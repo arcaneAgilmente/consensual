@@ -1149,9 +1149,11 @@ local special= {
 		args= extra_for_dspeed_max("Driven Max")},
 	player_conf_float("Options Level", "options_level", 1, 0, 0, 0, 1, 4),
 	player_conf_float("Rating Cap", "rating_cap", 2, 0, 0, 1, nil, nil),
-	{ name= "Autogen Arg 1", meta= options_sets.adjustable_float, level= 4,
+	{ name= "Kick Recover Time", meta= options_sets.adjustable_float, level= 4,
 		args= extra_for_agen_arg(1), req_func= function()
-			if GAMESTATE.GetAutoGenFarg then return true end return false end},
+			if GAMESTATE.GetAutoGenFarg
+			and GAMESTATE:GetCurrentGame():GetName():lower() == "kickbox" then
+				return true end return false end},
 	-- TODO?  Add support for these?
 	--"StaticBackground", "RandomBGOnly", "SaveReplay" }),
 }
