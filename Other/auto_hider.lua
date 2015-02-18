@@ -33,12 +33,23 @@ updatable_help_mt= {
 			self.translation_section= translation_section
 			self.default_help= get_string_wrapper(translation_section,default_help)
 			self.hide_time= hide_time
-			self.hider_params= {
-				Name= name, HideTime= self.hide_time, InitCommand= function(subself)
+			return Def.ActorFrame{
+				Name= name, InitCommand= function(subself)
 					self.container= subself
 					subself:xy(_screen.cx, _screen.cy)
 					self.text= subself:GetChild("text")
 					self.text:wrapwidthpixels(SCREEN_WIDTH-20):vertspacing(-8)
+					if self.hide_time < 0 then self.hide_time= 2^16 end
+					subself:hibernate(self.hide_time)
+				end,
+				OnCommand= function(subself)
+					local function input(event)
+						if event.PlayerNumber then
+							if self.hide_time < 0 then self.hide_time= 2^16 end
+							subself:hibernate(self.hide_time)
+						end
+					end
+					SCREENMAN:GetTopScreen():AddInputCallback(input)
 				end,
 				self.frame:create_actors(
 					"frame", 1, 0, 0, fetch_color("rev_bg"), fetch_color("help.bg"),
@@ -47,7 +58,6 @@ updatable_help_mt= {
 					"text", "", fetch_color("help.text"), fetch_color("help.stroke"),
 					0, 0, 1, center),
 			}
-			return Def.AutoHider(self.hider_params)
 		end,
 		update_text= function(self, text, alt_text)
 			local match= get_string_wrapper(self.translation_section, text)
@@ -67,6 +77,6 @@ updatable_help_mt= {
 			end
 		end,
 		update_hide_time= function(self, time)
-			self.hider_params.Hide_Time= time
+			self.hide_time= time
 		end
 }}

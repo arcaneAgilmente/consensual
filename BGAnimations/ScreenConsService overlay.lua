@@ -225,6 +225,8 @@ local consensual_options= {
 	 args= time_conf("screen_demo_idle_time", 0, 1, 2)},
 	{name= "set_demo_show", meta= options_sets.adjustable_float,
 	 args= time_conf("screen_demo_show_time", 0, 1, 2)},
+	{name= "set_star_points", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("max_star_points", 0, 1, 3)},
 	-- Not worth the effort right now.
 --	{name= "set_line_height", meta= options_sets.adjustable_float,
 --	 args= make_extra_for_conf_val("line_height", 0, 0, 1)},

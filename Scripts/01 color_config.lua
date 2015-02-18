@@ -668,6 +668,12 @@ function color_percent_above(val, above, set_name)
 	return percent_to_color((val-above)/(1-above), false, true, set_name)
 end
 
+function color_number_above(val, above, set_name)
+	set_name= set_name or "number"
+	local set= fetch_color(set_name)
+	return color_in_set(set, val-above, false, true, true)
+end
+
 score_color_threshold= 31/32
 
 function color_for_score(score)

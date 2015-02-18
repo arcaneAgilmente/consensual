@@ -7,6 +7,7 @@ end
 local reset_end= GetTimeSinceStart()
 --Trace("Reset time: " .. reset_end - reset_start)
 SOUND:StopMusic()
+turn_censoring_on()
 play_sample_music(true)
 aprf_check()
 activate_confetti("credit", false)
@@ -191,6 +192,9 @@ local function rescale_stars()
 	local scale_factor= DISPLAY:GetDisplayHeight() / SCREEN_HEIGHT
 	local circ= radius * math.pi * 2
 	star_points= math.round(circ * scale_factor * 1)
+	if misc_config:get_data().max_star_points > 2 then
+		star_points= math.min(star_points, misc_config:get_data().max_star_points)
+	end
 	local apmul= 1
 	if april_fools then apmul= 4 end
 	stars[1]:repoint(star_points, radius * apmul)

@@ -4,7 +4,7 @@ A theme for stepmania.
 
 Minimalist in graphics, maximalist in functionality.
 
-This theme requires Stepmania 5.0.5.
+This theme requires Stepmania 5.0.5 or any newer 5.0.x version.
 
 ## Short feature list:
 * Deeper music wheel sorting.
@@ -23,6 +23,28 @@ This theme requires Stepmania 5.0.5.
 * Confetti.
 * Customizable color system.
 * Unique toasties.
+* Random menu music system (if you supply the music and bpm and length data)
+
+# Acknowledgments and Thanks
+* shakesoda let me walk in and shape Stepmania however I wanted, even giving
+	me direct commit access when he didn't have time to review my pull requests
+	anymore.  The only limitation was that backwards compatibility with theme
+	code written for SM5 beta 2 had to be maintained.
+* freem still hangs out in the IRC channel to give occasional advice and
+	moral support.
+* dbk2 occasionally finds problems and tests stuff for me when he has time
+	away from his thesis.  Also big on the moral support.
+* hellrazor funded the kickbox game mode.  Now if only he would try it
+	out... ;)
+* Midiman polished the SM5 default theme so that I didn't have to.
+* roothorick handles lower-level Stepmania problems like versioning and
+	fullscreen on Linux.
+* Mad Matt was the other loose cannon adding features to Stepmania's theme
+	engine, until he split off to work on his own fork without the hindrance
+	of maitaining compatibility.
+* Vospi read all of the very long release notes I wrote for SM5 beta 4 and
+	Stepmania 5.0.5.  This guide is longer than both of those put together, so
+	be warned before you start reading.
 
 # Profiles:
 If you don't normally use a named profile on Stepmania, you should create
@@ -48,6 +70,12 @@ Dance and Kickbox are the primary supported game modes in Consensual.
 Pump and Techno are secondarily supported.  
 Other game modes should work, but might have problems that need to be
 reported.
+
+# Menu Music:
+The music system in Consensual takes the bpm of the previous song and finds
+an entry in the menu music list with a similar bpm and plays that entry.
+Scripts/02 music.lua has a comment explaining how to add menu music entries
+at the end of the file.
 
 
 # In Depth Guide
@@ -605,8 +633,192 @@ more than 3 songs were played, and for taking a screenshot.
 
 
 ## Consensual Service Menu
+Everything in the Consensual Service Menu has a help popup to explain it, so
+this section is going to be about the inner workings of some systems.  
+The default time for the help popup is 10 seconds of idle, but this can be
+configured in the Help Config section, and the change is applied without
+reloading the service menu.
+
+### Censoring System
+Consensual has a censoring system that allows a machine operator to mark
+songs as censored.  When a song is marked, it is removed from the music wheel
+and is not selected by any Random item.  The list of censored songs is saved
+to Save/consensual_settings/censor_list.lua so that the machine operator can
+look at it later to decide whether to delete the song.
+
+To use the censoring system, you must either be on Select Music, or
+Evaluation.  Press the Censor Privilege Key on a keyboard (default is 'c',
+this can be configured), and the censoring options will be added to the menu
+for that screen, and the menu will be accessible even if the player's Options
+Level is too low.
+
+Censor and Uncensor mark or unmark the current song.  If a bucket is
+currently selected on the music wheel, then all songs inside the bucket are
+marked or unmarked.  This includes all songs inside buckets inside the
+bucket, and so on.
+
+Toggle Censoring temporarily puts censored songs back on the music wheel.
+They are marked with a special color so they can be easily seen.  The next
+time the credit ends, censoring will be turned back on.  This allows the
+machine operator to undo an accidental censoring.
+
+Songs that are marked as censored are not deleted because it is not as easy
+to reverse a deletion as it is to remove an entry in the censor list.  The
+filenames in the censor list are relative to Stepmania's internal view of the
+filesystem, because Stepmania doesn't (and shouldn't) tell the theme where
+songs really are.  If the filename starts with "/AdditionalSongs/", then it
+is inside one of the folders loaded from the AdditionalSongFolders
+preference.
 
 
-This guide is getting way too long.  Come back later for the Player Options
-Screen, Gameplay Screen, Evaluation Screen, Name Entry Screen, Consensual
-Service Menu, and Color Config menu.
+### Points of interest:
+* #### Help Config
+Set the Service Help Time to a convenient value like 1 and read the info.
+
+* #### Consensual Config Key
+* #### Color Config Key
+The initial menu recognizes two special keys, outside the normal mapping.
+These are intended to be used by the machine operator to access the
+Consensual Service Menu or the Color Config when those menu options are
+hidden.
+
+* #### Censor Privilege Key
+Set this to the key you wish to use to enable the censor menu options on
+Select Music and Evaluation.
+
+* #### Initial Menu Choices allows you to turn off each choice on the initial
+menu.  Use it when preparing for an event or configuring for arcade use to
+hide things like Edit Mode and Exit.
+
+* #### Idle to Demo Time and Demo Show Time
+Can be used to turn off demo mode.
+
+* #### Set Star Points
+Used to reduce the detail level of the stars on the initial menu if turning
+on SmoothLines doesn't bring the frame rate up enough.
+
+* #### MenuUp/Down and Select
+If you have a Select button on your cabinet, you should make sure you use the
+Set Have Select Button option to let Consensual know.  This enables various
+things that require a select button on Select Music, such as changing
+difficulty by holding Select and tapping MenuLeft/Right.  If this option is
+not set to Yes, the things that rely on having Select use alternatives
+instead, and using the Select button won't work.
+
+If you have MenuUp and MenuDown buttons, or are using a dance pad for
+navigation (which translates the pad's up/down into MenuUp/Down), or similar
+change Set Menus Have Up/Down to Yes to allow menus to be navigated with the
+up/down instead of only left/right.
+
+* #### Timed Sets
+Consensual uses a timed sets for credits.  Instead of allowing players to
+pick 3 songs, players get 6 minutes of song time.  Playing a song uses up
+time, scoring high gives a small reward, and when the time runs out, the
+credit is over.
+
+The current remaining time is added to the Grace Time, and all songs shorter
+than that total are filtered out.  When the current remaining time is below
+Min Remaining Time, or no songs are left after filtering, the credit is over.
+
+The player can be rewarded with either a percentage of the song's length, or
+a flat amount of time.  Be careful when configuring the reward time to not
+configure it to allow playing forever.
+
+The reward for a good score is applied regardless of the song's difficulty
+or meter, so it's not restricted to only experienced players.
+
+* #### Flags Config/Pane Config
+These two options are used to configure the preset flag/pane config slots
+discussed on Select Music.
+
+
+
+## Color Config Screen
+Every color used by Consensual can be configured here.  Except this screen.
+This screen uses hardcoded colors to keep someone from accidentally making
+it unreadable.
+
+Colors can be set to specific hex code value, or set to reference another
+color by name.  When setting a color to reference another color, you must
+supply the full path to the color like this: "accent.violet".  This example
+tells Consensual to look inside the group named "accent" for a color named
+"violet" and use that.
+
+Most elements use the basic colors at the top level, such as "text" and
+"stroke".  More important elements have their own named groups for the colors
+they use.
+
+Set Alpha is provided as a separate menu option so that the same alpha can
+be applied to all colors in a group.
+
+bg is used to color the background layers of things.  It should be a color
+that text will stand out well from.
+
+bg_shadow is an alternate background color.
+
+rev_bg and rev_bg_shadow color frames around elements that aren't associated
+with a player.
+
+text and text_other are used to color text.
+
+stroke is used for the stroke layer on text to make it stand out when it's
+not on something colored with a bg color (like the text on Gameplay.
+
+accent is a group of colors used to have names for common colors.  Mostly,
+these are referenced by credits, player, judgment, difficulty, percent, and
+so on.
+
+credits is the color used by the credit display on the initial menu.
+
+player contains the colors used to color things associated with one or both
+players, like the cursors or the frames around pane info, or results on
+Evaluation.
+
+judgment contains the colors used to color the judgment text on Gameplay and
+to color code results on Evaluation.
+
+difficulty contains the colors used to color the difficulty selector on \
+Select Music.
+
+percent is used by various elements that need to show some progress from a
+low value to a high value.  You can add more numbered elements to this group
+to show progress with a finer granularity, or remove elements to make the
+granularity larger.
+
+number is used to color ascending numbers that don't have a fixed range.  Add
+more entries to make the colors extend higher.  (actually this is only used
+to color chart meter ratings above 12 right now)
+
+score is used to color scores above 96.875%.  More entries means more colors
+in that range.  Since this references percent by default, changes to percent
+will affect this too.
+
+bpm is used color bpms that are above 200 or below 100.
+
+speed is used to color reading speeds above 400.
+
+hours is used to color the clock on the initial menu.  It cycles through the
+colors in this group.
+
+help is used to color the help layer and text.
+
+music_select has the colors for the elements on Music Select.  
+music_select.sort_head is the color of the word "Sort", which is the header
+for the sort info.  
+music_select.sort_type is the color for the name of the current sort.  
+
+gameplay.failed, gameplay.normal_exit, and gameplay.cancel are used to color
+the circular wipe that is used when gameplay ends without a combo or score
+splash.  
+gameplay.lifemeter.battery has the colors used for the sections on the
+battery life bar.
+
+prompt is used for coloring text entry prompts.
+
+score_list is used for coloring the high score lists shown on Name Entry.
+
+
+
+## Congratulations
+You scrolled to the end of the guide.  If you actually read it all, even
+bigger congratulations.

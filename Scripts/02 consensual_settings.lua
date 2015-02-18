@@ -446,6 +446,10 @@ function toggle_censoring()
 	censoring_on= not censoring_on
 end
 
+function turn_censoring_on()
+	censoring_on= true
+end
+
 local chart_rating_cap= -1
 function update_rating_cap()
 	local old_cap= chart_rating_cap

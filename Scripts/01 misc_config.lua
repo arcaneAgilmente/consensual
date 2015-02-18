@@ -40,6 +40,8 @@ local default_config= {
 
 	line_height= 24,
 
+	max_star_points= -1,
+
 	initial_menu_ops= {
 		single_choice= true,
 		versus_choice= true,
