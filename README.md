@@ -295,7 +295,7 @@ Special options are marked in bold.  Sort options that can be explained by
 "sorts by <name of sort option>" are only listed by name.
 * Group
 * Title
-* #### * Word In Title  
+* #### Word In Title *
 	This splits the titles of the songs into words, then sorts songs into
 	buckets based on those words.  Think of it as giving you the ability to
 	find a song when you only know one word in its title.
@@ -303,14 +303,14 @@ Special options are marked in bold.  Sort options that can be explained by
 * Artist
 * Genre
 * Length
-* #### * Step Artist  
+* #### Step Artist *
 	Charts for songs are made by step artists, who usually put their name in a
 	field in the file.  This allows you to search for charts made by a
 	particular step artist.
-* #### * Note Count  
+* #### Note Count *
 	This adds up the number of taps, jumps, and hands in a chart and sorts by
 	the resulting total.
-* #### * NPS  
+* #### NPS *
 	This uses the Note Count total divided by the length of the song as the
 	notes per second to sort the songs.
 * Meter  
@@ -320,7 +320,7 @@ Special options are marked in bold.  Sort options that can be explained by
 * #### Favor  
 	The choices in this bucket sort the songs by the Favor value recorded in
 	the selected profile.
-* #### * Tag  
+* #### Tag *
 	The choices in this bucket sort the songs by the Tags applied to them in
 	the selected profile.
 * #### Score
@@ -415,7 +415,8 @@ modes.
 The Interface Flags and Pane Info settings for each configuration can be set
 in the Consensual Service menu.  
 * Config Slot 1:  
-	Pad Code: Disabled because I hit U, U, D, D, L, R, L, R, on accident.  
+	Pad Code: Disabled because I hit U, U, D, D, L, R, L, R, on accident when
+	changing difficulty and then picking a song.  
 	Rating Cap 5, Options Level 1  
 * Config Slot 2:  
 	Pad Code: L, D, R, L, D, R  
@@ -596,6 +597,8 @@ Each of the flags toggles a different element on the screen.  Turn them all
 off, and you're left with just the song background.  The banner, judge_list,
 and reward elements are shared, so if either player has them on, they are
 shown.
+
+Flag list:
 * chart_info
 * pct_score
 * dance_points
@@ -673,63 +676,65 @@ preference.
 
 ### Points of interest:
 * #### Help Config
-Set the Service Help Time to a convenient value like 1 and read the info.
+	Set the Service Help Time to a convenient value like 1 and read the info.
 
 * #### Consensual Config Key
 * #### Color Config Key
-The initial menu recognizes two special keys, outside the normal mapping.
-These are intended to be used by the machine operator to access the
-Consensual Service Menu or the Color Config when those menu options are
-hidden.
+	The initial menu recognizes two special keys, outside the normal mapping.
+	These are intended to be used by the machine operator to access the
+	Consensual Service Menu or the Color Config when those menu options are
+	hidden.
 
 * #### Censor Privilege Key
-Set this to the key you wish to use to enable the censor menu options on
-Select Music and Evaluation.
+	Set this to the key you wish to use to enable the censor menu options on
+	Select Music and Evaluation.
 
-* #### Initial Menu Choices allows you to turn off each choice on the initial
-menu.  Use it when preparing for an event or configuring for arcade use to
-hide things like Edit Mode and Exit.
+* #### Initial Menu Choices
+	Allows you to turn off each choice on the initial menu.  Use it when
+	preparing for an event or configuring for arcade use to hide things like
+	Edit Mode and Exit.
 
 * #### Idle to Demo Time and Demo Show Time
-Can be used to turn off demo mode.
+	Can be used to turn off demo mode.
 
 * #### Set Star Points
-Used to reduce the detail level of the stars on the initial menu if turning
-on SmoothLines doesn't bring the frame rate up enough.
+	Used to reduce the detail level of the stars on the initial menu if turning
+	on SmoothLines doesn't bring the frame rate up enough.
 
 * #### MenuUp/Down and Select
-If you have a Select button on your cabinet, you should make sure you use the
-Set Have Select Button option to let Consensual know.  This enables various
-things that require a select button on Select Music, such as changing
-difficulty by holding Select and tapping MenuLeft/Right.  If this option is
-not set to Yes, the things that rely on having Select use alternatives
-instead, and using the Select button won't work.
+	If you have a Select button on your cabinet, you should make sure you use
+	the Set Have Select Button option to let Consensual know.  This enables
+	various things that require a select button on Select Music, such as
+	changing difficulty by holding Select and tapping MenuLeft/Right.  If this
+	option is not set to Yes, the things that rely on having Select use
+	alternatives instead, and using the Select button won't work.
 
-If you have MenuUp and MenuDown buttons, or are using a dance pad for
-navigation (which translates the pad's up/down into MenuUp/Down), or similar
-change Set Menus Have Up/Down to Yes to allow menus to be navigated with the
-up/down instead of only left/right.
+	If you have MenuUp and MenuDown buttons, or are using a dance pad for
+	navigation (which translates the pad's up/down into MenuUp/Down), or
+	similar change Set Menus Have Up/Down to Yes to allow menus to be navigated
+	with the up/down instead of only left/right.
 
 * #### Timed Sets
-Consensual uses a timed sets for credits.  Instead of allowing players to
-pick 3 songs, players get 6 minutes of song time.  Playing a song uses up
-time, scoring high gives a small reward, and when the time runs out, the
-credit is over.
+	Consensual uses a timed sets for credits.  Instead of allowing players to
+	pick 3 songs, players get 6 minutes of song time.  Playing a song uses up
+	time, scoring high gives a small reward, and when the time runs out, the
+	credit is over.
 
-The current remaining time is added to the Grace Time, and all songs shorter
-than that total are filtered out.  When the current remaining time is below
-Min Remaining Time, or no songs are left after filtering, the credit is over.
+	The current remaining time is added to the Grace Time, and all songs
+	shorter than that total are filtered out.  When the current remaining time
+	is below Min Remaining Time, or no songs are left after filtering, the
+	credit is over.
 
-The player can be rewarded with either a percentage of the song's length, or
-a flat amount of time.  Be careful when configuring the reward time to not
-configure it to allow playing forever.
+	The player can be rewarded with either a percentage of the song's length,
+	or a flat amount of time.  Be careful when configuring the reward time to
+	not configure it to allow playing forever.
 
-The reward for a good score is applied regardless of the song's difficulty
-or meter, so it's not restricted to only experienced players.
+	The reward for a good score is applied regardless of the song's difficulty
+	or meter, so it's not restricted to only experienced players.
 
 * #### Flags Config/Pane Config
-These two options are used to configure the preset flag/pane config slots
-discussed on Select Music.
+	These two options are used to configure the preset flag/pane config slots
+	discussed on Select Music.
 
 
 
