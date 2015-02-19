@@ -671,7 +671,7 @@ end
 function color_number_above(val, above, set_name)
 	set_name= set_name or "number"
 	local set= fetch_color(set_name)
-	return color_in_set(set, val-above, false, true, true)
+	return color_in_set(set, val-above, false, false, false)
 end
 
 score_color_threshold= 31/32

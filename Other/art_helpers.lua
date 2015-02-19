@@ -358,83 +358,91 @@ function random_grow_column(name, x, y, bottom_color, top_color, w, step_time, e
 	}
 end
 
+local pad_image_names= {
+	dance= "pad_outline",
+	pump= "pad_outline",
+	techno= "pad_outline",
+	kickbox= "kickboxes",
+}
+
 dance_pad_mt= {
 	__index= {
-		create_actors= function(self, name, x, y, panel_width)
+		create_actors= function(self, name, x, y, pn)
 			self.name= name
 			local sepw= .5
-			local function sep(name, x, y, w, h)
-				return Def.Quad{
-					Name= name, InitCommand= function(self)
-						self:xy(x, y):setsize(w, h):diffuse(fetch_color("rev_bg"))
-				end}
-			end
-			local function pad_half(name, x, y)
-				local args= {
-					Name= name, InitCommand= cmd(xy, x, y),
-					Def.Quad{
-						Name= "bg", InitCommand= function(self)
-							self:setsize(panel_width * 3 + sepw, panel_width * 3 + sepw)
-								:diffuse(fetch_color("bg"))
-					end},
-					sep("sep1", 0, panel_width * -1.5, panel_width * 3, sepw),
-					sep("sep2", 0, panel_width * -.5, panel_width * 3, sepw),
-					sep("sep3", 0, panel_width * .5, panel_width * 3, sepw),
-					sep("sep4", 0, panel_width * 1.5, panel_width * 3, sepw),
-					sep("sep5", panel_width * -1.5, 0, sepw, panel_width * 3),
-					sep("sep6", panel_width * -.5, 0, sepw, panel_width * 3),
-					sep("sep7", panel_width * .5, 0, sepw, panel_width * 3),
-					sep("sep8", panel_width * 1.5, 0, sepw, panel_width * 3),
-				}
-				local panel_poses= {
-					{-1, -1, -45}, {0, -1, 0}, {1, -1, 45},
-					{-1, 0, -90}, {0, 0, 0}, {1, 0, 90},
-					{-1, 1, -135}, {0, 1, 180}, {1, 1, 135}}
-				for p= 1, 9 do
-					local px= panel_width * panel_poses[p][1]
-					local py= panel_width * panel_poses[p][2]
-					args[#args+1]= Def.Quad{
-						Name= "dai"..p, InitCommand= function(self)
-							self:xy(px, py):setsize(panel_width, panel_width)
-								:diffuse(Alpha(fetch_color("rev_bg_shadow"), 0))
-					end}
-					if p == 5 then
-						args[#args+1]= circle_amv(
-							"daa"..p, px, py, (panel_width-3)/2, 12)
-					else
-						args[#args+1]= dance_arrow_amv(
-							"daa"..p, px, py, panel_poses[p][3], panel_width-3)
-					end
-				end
-				return Def.ActorFrame(args)
-			end
-			return Def.ActorFrame{
+			local args= {
 				Name= name, InitCommand= function(subself)
-					subself:xy(x, y)
 					self.container= subself
-					self.indicators= {}
-					self.arrows= {}
-					local function load_half(frame)
-						for p= 1, 9 do
-							self.indicators[#self.indicators+1]= frame:GetChild("dai"..p)
-							self.arrows[#self.arrows+1]= frame:GetChild("daa"..p)
+					subself:xy(x, y)
+					self:init()
+				end,
+				Def.Quad{
+					Name= "pad_bg", InitCommand= function(subself) self.bg= subself end
+				},
+			}
+			local game_name= GAMESTATE:GetCurrentGame():GetName():lower()
+			if pad_image_names[game_name] then
+				args[#args+1]= Def.Sprite{
+					Name= "pad_fg", Texture= THEME:GetPathG(
+						"", "controller_icons/" .. pad_image_names[game_name]),
+					InitCommand= function(subself) self.fg= subself end
+				}
+			end
+			local panel_positions= get_controller_panel_positions(pn)
+			local minx, maxx, miny, maxy= 0, 0, 0, 0
+			for i, pos in ipairs(panel_positions) do
+				minx= math.min(minx, pos[2])
+				maxx= math.max(maxx, pos[2])
+				miny= math.min(miny, pos[3])
+				maxy= math.max(maxy, pos[3])
+			end
+			local panel_size= 10
+			local button_size= 8
+			local controller_height= 32
+			local width= (maxx - minx) + 1
+			local height= (maxy - miny) + 1
+			local scale= controller_height / (height * panel_size)
+			local panel_scale= panel_size * scale
+			local button_scale= button_size * scale
+			self.pad_width= width * panel_scale
+			self.pad_height= height * panel_scale
+			self.indicators= {}
+			self.arrows= {}
+			for i, pos in ipairs(panel_positions) do
+				local px= pos[2] * panel_scale
+				local py= pos[3] * panel_scale
+				args[#args+1]= Def.Quad{
+					Name= "dai"..i, InitCommand= function(subself)
+						self.indicators[i]= subself
+						subself:xy(px, py):setsize(panel_scale, panel_scale)
+							:diffuse(Alpha(fetch_color("rev_bg_shadow"), 0))
+					end
+				}
+				args[#args+1]= Def.Sprite{
+					Name= "daa"..i,
+					Texture= THEME:GetPathG("", "controller_icons/" .. pos[1]),
+					InitCommand= function(subself)
+						self.arrows[i]= subself
+						subself:xy(px, py):setsize(button_scale, button_scale)
+							:diffusealpha(0)
+						if math.abs(pos[4]) == 1 then
+							subself:zoomx(pos[4])
+						else
+							subself:rotationz(pos[4])
 						end
 					end
-					load_half(subself:GetChild("halfa"))
-					load_half(subself:GetChild("halfb"))
-				end,
-				pad_half("halfa", panel_width * -1.5, 0),
-				pad_half("halfb", panel_width * 1.5, 0)
-			}
+				}
+			end
+			return Def.ActorFrame(args)
+		end,
+		init= function(self)
+			self.bg:setsize(self.pad_width, self.pad_height)
+				:diffuse(fetch_color("bg_shadow"))
+			self.fg:setsize(self.pad_width, self.pad_height)
 		end,
 		color_arrow= function(self, aid, color)
 			if self.arrows[aid] then
-				local num_verts= self.arrows[aid]:GetNumVertices()
-				local vert_colors= {}
-				for vc= 1, num_verts do
-					vert_colors[vc]= {color}
-				end
-				self.arrows[aid]:SetVertices(vert_colors)
+				self.arrows[aid]:diffuse(color)
 			end
 		end,
 		toggle_indicator= function(self, aid)

@@ -32,22 +32,22 @@ holdnote_names= {
 -- style compatibility issue:  Dance, Kickbox, Pump, and Techno are the only supported games.
 local column_to_pad_arrow_map= {
 	[PLAYER_1]= {
-		StepsType_Dance_Single= {4, 8, 2, 6},
-		StepsType_Dance_Double= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Couple= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Solo= {4, 1, 8, 2, 3, 6},
-		StepsType_Dance_Threepanel= {1, 8, 3},
-		StepsType_Dance_Routine= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Pump_Single= {7, 1, 5, 3, 9},
-		StepsType_Pump_Halfdouble= {5, 3, 9, 16, 10, 14},
-		StepsType_Pump_Double= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Couple= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Routine= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Techno_Single4= {4, 8, 2, 6},
-		StepsType_Techno_Single5= {7, 1, 5, 3, 9},
+		StepsType_Dance_Single= {1, 3, 4, 6},
+		StepsType_Dance_Double= {1, 3, 4, 6, 7, 9, 10, 12},
+		StepsType_Dance_Couple= {1, 3, 4, 6, 7, 9, 10, 12},
+		StepsType_Dance_Solo= {1, 2, 3, 4, 5, 6},
+		StepsType_Dance_Threepanel= {1, 3, 6},
+		StepsType_Dance_Routine= {1, 3, 4, 6, 7, 9, 10, 12},
+		StepsType_Pump_Single= {1, 2, 3, 4, 5},
+		StepsType_Pump_Halfdouble= {3, 4, 5, 6, 7, 8},
+		StepsType_Pump_Double= {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+		StepsType_Pump_Couple= {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+		StepsType_Pump_Routine= {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+		StepsType_Techno_Single4= {2, 4, 6, 8},
+		StepsType_Techno_Single5= {1, 3, 5, 7, 9},
 		StepsType_Techno_Single8= {1, 2, 3, 4, 6, 7, 8, 9},
-		StepsType_Techno_Double4= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Techno_Double5= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Techno_Double4= {2, 4, 6, 8, 11, 13, 15, 17},
+		StepsType_Techno_Double5= {1, 3, 5, 7, 9, 10, 12, 14, 16, 18},
 		StepsType_Techno_Double8= {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
 		StepsType_Kickbox_Human= {1, 4, 5, 8},
 		StepsType_Kickbox_Quadarm= {3, 4, 5, 6},
@@ -55,28 +55,75 @@ local column_to_pad_arrow_map= {
 		StepsType_Kickbox_Arachnid= {1, 2, 3, 4, 5, 6, 7, 8},
 	},
 	[PLAYER_2]= {
-		StepsType_Dance_Single= {13, 17, 11, 15},
-		StepsType_Dance_Double= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Couple= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Dance_Solo= {13, 10, 17, 11, 12, 15},
-		StepsType_Dance_Threepanel= {10, 17, 12},
-		StepsType_Dance_Routine= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Pump_Single= {16, 10, 14, 12, 18},
-		StepsType_Pump_Halfdouble= {5, 3, 9, 16, 10, 14},
-		StepsType_Pump_Double= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Couple= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Pump_Routine= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
-		StepsType_Techno_Single4= {13, 17, 11, 15},
-		StepsType_Techno_Single5= {16, 10, 14, 12, 18},
+		StepsType_Dance_Single= {7, 9, 10, 12},
+		StepsType_Dance_Double= {1, 3, 4, 6, 7, 9, 10, 12},
+		StepsType_Dance_Couple= {1, 3, 4, 6, 7, 9, 10, 12},
+		StepsType_Dance_Solo= {7, 8, 9, 10, 11, 12},
+		StepsType_Dance_Threepanel= {7, 9, 12},
+		StepsType_Dance_Routine= {1, 3, 4, 6, 7, 9, 10, 12},
+		StepsType_Pump_Single= {6, 7, 8, 9, 10},
+		StepsType_Pump_Halfdouble= {3, 4, 5, 6, 7, 8},
+		StepsType_Pump_Double= {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+		StepsType_Pump_Couple= {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+		StepsType_Pump_Routine= {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+		StepsType_Techno_Single4= {11, 13, 15, 17},
+		StepsType_Techno_Single5= {10, 12, 14, 16, 18},
 		StepsType_Techno_Single8= {10, 11, 12, 13, 15, 16, 17, 18},
-		StepsType_Techno_Double4= {4, 8, 2, 6, 13, 17, 11, 15},
-		StepsType_Techno_Double5= {7, 1, 5, 3, 9, 16, 10, 14, 12, 18},
+		StepsType_Techno_Double4= {2, 4, 6, 8, 11, 13, 15, 17},
+		StepsType_Techno_Double5= {1, 3, 5, 7, 9, 10, 12, 14, 16, 18},
 		StepsType_Techno_Double8= {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18},
 		StepsType_Kickbox_Human= {1, 4, 5, 8},
 		StepsType_Kickbox_Quadarm= {3, 4, 5, 6},
 		StepsType_Kickbox_Insect= {1, 3, 4, 5, 6, 8},
 		StepsType_Kickbox_Arachnid= {1, 2, 3, 4, 5, 6, 7, 8},
 }}
+
+local pad_position_map= {
+	dance= {
+		{"arrow", -2.5, 0, -90}, {"arrow", -2.5, -1, -45}, {"arrow", -1.5, 1, 180},
+		{"arrow", -1.5, -1, 0}, {"arrow", -.5, -1, 45}, {"arrow", -.5, 0, 90},
+		{"arrow", .5, 0, -90}, {"arrow", .5, -1, -45}, {"arrow", 1.5, 1, 180},
+		{"arrow", 1.5, -1, 0}, {"arrow", 2.5, -1, 45}, {"arrow", 2.5, 0, 90},
+	},
+	pump= {
+		{"arrow", -2.5, 1, -135}, {"arrow", -2.5, -1, -45}, {"circle", -1.5, 0, 0},
+		{"arrow", -.5, -1, 45}, {"arrow", -.5, 1, 135},
+		{"arrow", .5, 1, -135}, {"arrow", .5, -1, -45}, {"circle", 1.5, 0, 0},
+		{"arrow", 2.5, -1, 45}, {"arrow", 2.5, 1, 135},
+	},
+	techno= {
+		{"arrow", -2.5, 1, -135}, {"arrow", -2.5, 0, -90},{"arrow", -2.5, -1, -45},
+		{"arrow", -1.5, 1, 180}, {"circle", -1.5, 0, 0}, {"arrow", -1.5, -1, 0},
+		{"arrow", -.5, -1, 45}, {"arrow", -.5, 0, 90}, {"arrow", -.5, 1, 135},
+		{"arrow", .5, 1, -135}, {"arrow", .5, 0, -90}, {"arrow", .5, -1, -45},
+		{"arrow", 1.5, 1, 180}, {"circle", -1.5, 0, 0}, {"arrow", 1.5, -1, 0},
+		{"arrow", 2.5, -1, 45}, {"arrow", 2.5, 0, 90}, {"arrow", 2.5, 1, 135},
+	},
+	kickbox= {
+		{"foot", -1.5, .5, 1}, {"foot", -1.5, -.5, 1},
+		{"fist", -.5, -.5, 1}, {"fist", -.5, .5, 1},
+		{"fist", .5, .5, -1}, {"fist", .5, -.5, -1},
+		{"foot", 1.5, -.5, -1}, {"foot", 1.5, .5, -1}
+	},
+}
+
+function get_controller_panel_positions(pn)
+	local game_name= GAMESTATE:GetCurrentGame():GetName():lower()
+	if pad_position_map[game_name] then
+		return pad_position_map[game_name]
+	end
+	local style= GAMESTATE:GetCurrentStyle(pn)
+	if style then
+		local cols= style:ColumnsPerPlayer()
+		local start= cols - (cols / 2)
+		local ret= {}
+		for i= 1, cols do
+			ret[i]= {"circle", start + (i-1), 0, 0}
+		end
+		return ret
+	end
+	return {}
+end
 
 function get_controller_stepstype_map(pn, steps_type)
 	return column_to_pad_arrow_map[pn][steps_type]

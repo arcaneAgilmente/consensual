@@ -20,7 +20,6 @@ local function color_dance_pad_by_score(pn, pad)
 			local arrow_id= controller_map[c]
 			if arrow_id then
 				pad:color_arrow(arrow_id, color_for_score(col_score[c].dp/col_score[c].mdp))
-				pad.arrows[arrow_id]:SetVertices(vert_colors)
 			end
 		end
 	end
@@ -1157,21 +1156,21 @@ local report_y= SCREEN_TOP+160
 local function make_player_specific_actors()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
 	local all_actors= { Name= "players" }
-	for k, v in pairs(enabled_players) do
-		local args= { Name= v, InitCommand=cmd(x,player_xs[v];y,report_y;vertalign,top) }
-		args[#args+1]= frame_helpers[v]:create_actors(
-			"frame", 2, 0, 0, pn_to_color(v),
+	for k, pn in pairs(enabled_players) do
+		local args= { Name= pn, InitCommand=cmd(x,player_xs[pn];y,report_y;vertalign,top) }
+		args[#args+1]= frame_helpers[pn]:create_actors(
+			"frame", 2, 0, 0, pn_to_color(pn),
 			fetch_color("evaluation.score_report.bg"), 0, 0)
-		args[#args+1]= score_reports[v]:create_actors(v)
+		args[#args+1]= score_reports[pn]:create_actors(pn)
 		if #enabled_players > 1 then
-			args[#args+1]= profile_reports[v]:create_actors(v, true)
-			args[#args+1]= special_menu_displays[v]:create_actors(
+			args[#args+1]= profile_reports[pn]:create_actors(pn, true)
+			args[#args+1]= special_menu_displays[pn]:create_actors(
 				"menu", 0, 0, 288, 120, line_height, 1, true, true)
 		end
-		args[#args+1]= dance_pads[v]:create_actors("dance_pad", 0, -34, 10)
-		args[#args+1]= besties[v].machine:create_actors(
+		args[#args+1]= dance_pads[pn]:create_actors("dance_pad", 0, -34, pn)
+		args[#args+1]= besties[pn].machine:create_actors(
 			"mbest", 0, -114, 1, "Machine Best")
-		args[#args+1]= besties[v].player:create_actors(
+		args[#args+1]= besties[pn].player:create_actors(
 			"pbest", 0, -72, 1, "Player Best")
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
 	end
@@ -1202,7 +1201,8 @@ local function find_actors(self)
 	update_bestiality()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
 	local players_container= self:GetChild("players")
-	reward_indicator:set(judge_key.right - judge_key.left, last_song_reward_time)
+	reward_indicator:set(
+		judge_key.right - judge_key.left, last_song_reward_time or 0)
 	local graphs= self:GetChild("graphs")
 	local left_graph_edge= SCREEN_LEFT
 	local right_graph_edge= SCREEN_RIGHT
