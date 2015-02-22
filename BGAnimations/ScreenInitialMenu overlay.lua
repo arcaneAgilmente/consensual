@@ -603,10 +603,14 @@ local args= {
 	Def.ActorFrame{
 		Name= "song report",
 		InitCommand= function(self)
-									 self:xy(SCREEN_CENTER_X, SCREEN_TOP)
-								 end,
-		normal_text("songs", num_songs .. " Songs", fetch_color("initial_menu.song_count"), nil, 0, line_height*.5),
-		normal_text("groups", num_groups .. " Groups", fetch_color("initial_menu.song_count"), nil, 0, line_height*1.5),
+			self:xy(_screen.cx, 0)
+		end,
+		normal_text(
+			"songs", num_songs.." Songs", fetch_color("initial_menu.song_count"),
+			fetch_color("stroke"), 0, line_height*.5),
+		normal_text(
+			"groups",num_groups.." Groups",fetch_color("initial_menu.song_count"),
+			fetch_color("stroke"), 0, line_height*1.5),
 	},
   Def.ActorFrame{
 		Name="time", InitCommand= function(self)

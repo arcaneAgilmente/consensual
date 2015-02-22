@@ -107,6 +107,76 @@ local pad_position_map= {
 	},
 }
 
+local spatial_receptor_positions= {
+	StepsType_Dance_Single= {{-1, 0}, {0, 1}, {0, -1}, {1, 0}},
+	StepsType_Dance_Double= {{-3, 0}, {-2, 1}, {-2, -1}, {-1, 0},
+		{1, 0}, {2, 1}, {2, -1}, {3, 0}},
+	StepsType_Dance_Couple= {{-3, 0}, {-2, 1}, {-2, -1}, {-1, 0},
+		{1, 0}, {2, 1}, {2, -1}, {3, 0}},
+	StepsType_Dance_Solo= {{-1, 0}, {-1, -1}, {0, 1}, {0, -1}, {1, -1}, {1, 0}},
+	StepsType_Dance_Threepanel= {{-1, 0}, {0, 1}, {1, 0}},
+	StepsType_Dance_Routine= {{-3, 0}, {-2, 1}, {-2, -1}, {-1, 0},
+		{1, 0}, {2, 1}, {2, -1}, {3, 0}},
+--	StepsType_Pump_Single= {},
+--	StepsType_Pump_Halfdouble= {},
+--	StepsType_Pump_Double= {},
+--	StepsType_Pump_Couple= {},
+--	StepsType_Pump_Routine= {},
+	StepsType_Techno_Single4= {{-1, 0}, {0, 1}, {0, -1}, {1, 0}},
+--	StepsType_Techno_Single5= {},
+--	StepsType_Techno_Single8= {},
+	StepsType_Techno_Double4= {{-3, 0}, {-2, 1}, {-2, -1}, {-1, 0},
+		{1, 0}, {2, 1}, {2, -1}, {3, 0}},
+--	StepsType_Techno_Double5= {},
+--	StepsType_Techno_Double8= {},
+--	StepsType_Kickbox_Human= {},
+--	StepsType_Kickbox_Quadarm= {},
+--	StepsType_Kickbox_Insect= {},
+--	StepsType_Kickbox_Arachnid= {},
+}
+
+local spatial_panel_positions= {
+	StepsType_Dance_Single= {Left= {-1, 0}, Down= {0, 1}, Up= {0, -1},
+													 Right= {1, 0}},
+	StepsType_Dance_Double= {Left= {-1, 0}, Down= {0, 1}, Up= {0, -1},
+													 Right= {1, 0}},
+	StepsType_Dance_Couple= {Left= {-1, 0}, Down= {0, 1}, Up= {0, -1},
+													 Right= {1, 0}},
+	StepsType_Dance_Solo= {Left= {-1, 0}, UpLeft= {-1, -1}, Down= {0, 1},
+												 Up= {0, -1}, UpRight= {1, -1}, Right= {1, 0}},
+	StepsType_Dance_Threepanel= {Left= {-1, 0}, Down= {0, 1}, Right= {1, 0}},
+	StepsType_Dance_Routine= {Left= {-1, 0}, Down= {0, 1}, Up= {0, -1},
+													 Right= {1, 0}},
+--	StepsType_Pump_Single= {},
+--	StepsType_Pump_Halfdouble= {},
+--	StepsType_Pump_Double= {},
+--	StepsType_Pump_Couple= {},
+--	StepsType_Pump_Routine= {},
+	StepsType_Techno_Single4= {Left= {-1, 0}, Down= {0, 1}, Up= {0, -1},
+													 Right= {1, 0}},
+--	StepsType_Techno_Single5= {},
+--	StepsType_Techno_Single8= {},
+	StepsType_Techno_Double4= {Left= {-1, 0}, Down= {0, 1}, Up= {0, -1},
+													 Right= {1, 0}},
+--	StepsType_Techno_Double5= {},
+--	StepsType_Techno_Double8= {},
+--	StepsType_Kickbox_Human= {},
+--	StepsType_Kickbox_Quadarm= {},
+--	StepsType_Kickbox_Insect= {},
+--	StepsType_Kickbox_Arachnid= {},
+}
+
+function get_spatial_panel_positions(stepstype, num_columns)
+	if spatial_panel_positions[stepstype] then
+		return spatial_panel_positions[stepstype]
+	end
+	local ret= {}
+	for i= 1, num_columns do
+		ret[i]= {(i-1) - (num_columns / 2), 0}
+	end
+	return ret
+end
+
 function get_controller_panel_positions(pn)
 	local game_name= GAMESTATE:GetCurrentGame():GetName():lower()
 	if pad_position_map[game_name] then
@@ -123,6 +193,18 @@ function get_controller_panel_positions(pn)
 		return ret
 	end
 	return {}
+end
+
+function get_spatial_receptor_positions(stepstype, num_columns)
+	if spatial_receptor_positions[stepstype] then
+		return spatial_receptor_positions[stepstype]
+	end
+	local separation= 360 / #notecolumns[pn]
+	local receptor_positions= calc_circle_verts(1, #notecolumns[pn], 180, 180)
+	for i, pos in ipairs(receptor_positions) do
+		receptor_positions[i]= pos[1]
+	end
+	return receptor_positions
 end
 
 function get_controller_stepstype_map(pn, steps_type)

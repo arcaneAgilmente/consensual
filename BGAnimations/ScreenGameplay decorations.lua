@@ -5,6 +5,7 @@ rate_coordinator:initialize()
 local function can_have_special_actors()
 	local screen_name= Var("LoadingScreen")
 	return screen_name == "ScreenGameplay" or
+		screen_name == "ScreenGameplayShared" or
 		screen_name == "ScreenDemonstration"
 end
 
@@ -794,7 +795,8 @@ local function Update(self)
 						local start= (spread * -.5) - per
 						notecolumns[v][i]:rotationz(start + (i * per))
 					end
-					if cons_players[v].pos_splines_demo then
+					if cons_players[v].pos_splines_demo
+					and not cons_players[v].spatial_arrows then
 						local handler= notecolumns[v][i]:get_pos_handler()
 						handler:set_beats_per_t(64/math.random(1, 32))
 							:set_spline_mode("NoteColumnSplineMode_Offset")
@@ -909,6 +911,46 @@ local function tilt_input(event)
 			end
 		end
 	end
+end
+
+local facing_history_size= 8
+local function average_facing(history)
+	local angle= 0
+	for i= 1, facing_history_size do
+		angle= angle + history[i]
+	end
+	angle= angle / facing_history_size
+	return angle
+	--[[
+	local x= 0
+	local y= 0
+	for i= 1, #history do
+		x= x + history[i][1]
+		y= y + history[i][1]
+	end
+	x= x / #history
+	y= y / #history
+	return math.atan2(y, x)
+	]]
+end
+
+local function facing_input(event)
+	if event.type ~= "InputEventType_FirstPress" then return end
+	local pn= event.PlayerNumber
+	local player= cons_players[pn]
+	if not player or not player.spatial_turning or not notefields[pn] then
+		return end
+	local button= event.button
+	local position= player.panel_positions[button]
+	if not position then return end
+	local angle= math.atan2(position[2], position[1])
+	player.facing_history[player.facing_history_pos]= angle
+	player.facing_history_pos= player.facing_history_pos + 1
+	if player.facing_history_pos > facing_history_size then
+		player.facing_history_pos= 1
+	end
+	local facing= average_facing(player.facing_history)
+	notefields[pn]:stoptweening():linear(.25):rotationz(facing/math.pi*180 + 90)
 end
 
 local author_centers= {
@@ -1282,6 +1324,7 @@ return Def.ActorFrame {
 			if tilt_mode then
 				screen_gameplay:AddInputCallback(tilt_input)
 			end
+			screen_gameplay:AddInputCallback(facing_input)
 			screen_gameplay:xy(-_screen.cx, -_screen.cy)
 			for i= 1, wrapper_layers do
 				gameplay_wrappers[i]= screen_gameplay:AddWrapperState()
@@ -1347,12 +1390,39 @@ return Def.ActorFrame {
 					notefield_wrappers[pn][wrapper_layers]:xy(-tocx, tocy)
 					if notefields[pn].get_column_actors then
 						notecolumns[pn]= notefields[pn]:get_column_actors()
-						local spread= cons_players[pn].column_angle or 0
-						if hate then spread= math.random(-120, 120) end
-						local per= spread / (#notecolumns[pn] - 1)
-						local start= (spread * -.5) - per
-						for i= 1, #notecolumns[pn] do
-							notecolumns[pn][i]:rotationz(start + (i * per))
+						if cons_players[pn].spatial_turning then
+							cons_players[pn].facing_history= {}
+							cons_players[pn].panel_positions= get_spatial_panel_positions(
+								cons_players[pn].prev_steps:GetStepsType(), #notecolumns[pn])
+							cons_players[pn].facing_history_pos= 1
+							for i= 1, facing_history_size do
+								cons_players[pn].facing_history[i]= 0
+							end
+						end
+						if cons_players[pn].spatial_arrows then
+							notefields[pn]:addy(tocy)
+							notefields[pn]:addx(-tocx)
+							local positions= get_spatial_receptor_positions(
+								cons_players[pn].prev_steps:GetStepsType(), #notecolumns[pn])
+							for i, pos in ipairs(positions) do
+								local sx= pos[1] * 64
+								local sy= pos[2] * 64
+								local ex= pos[1] * 10 * 64
+								local ey= pos[2] * 10 * 64
+								local handler= notecolumns[pn][i]:get_pos_handler()
+								handler:set_spline_mode("NoteColumnSplineMode_Position")
+									:set_beats_per_t(8)
+									:get_spline():set_size(2):set_point(1, {sx, sy})
+									:set_point(2, {ex, ey}):solve()
+							end
+						else
+							local spread= cons_players[pn].column_angle or 0
+							if hate then spread= math.random(-120, 120) end
+							local per= spread / (#notecolumns[pn] - 1)
+							local start= (spread * -.5) - per
+							for i= 1, #notecolumns[pn] do
+								notecolumns[pn][i]:rotationz(start + (i * per))
+							end
 						end
 					end
 					if cons_players[pn].side_swap or force_swap then

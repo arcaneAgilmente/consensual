@@ -1094,6 +1094,14 @@ local special_effects= {
 		{ name= "Input Tilt", init= function() return tilt_mode end,
 			set= function() tilt_mode= true end,
 			unset= function() tilt_mode= false end},
+		{ name= "Spatial Arrows",
+			init= function(pn) return cons_players[pn].spatial_arrows or false end,
+			set= function(pn) cons_players[pn].spatial_arrows= true end,
+			unset= function(pn) cons_players[pn].spatial_arrows= false end},
+		{ name= "Spatial Turning",
+			init= function(pn) return cons_players[pn].spatial_turning or false end,
+			set= function(pn) cons_players[pn].spatial_turning= true end,
+			unset= function(pn) cons_players[pn].spatial_turning= false end},
 }}
 
 local special= {
