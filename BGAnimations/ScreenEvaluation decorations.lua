@@ -509,6 +509,8 @@ local score_report_mt= {
 			self.song_col= setmetatable({}, number_set_mt)
 			self.session_col= setmetatable({}, number_set_mt)
 			self.sum_col= setmetatable({}, number_set_mt)
+			Trace("Grade config:")
+			rec_print_table(grade_config:get_data())
 			local args= {
 				Name= name,
 				InitCommand= function(subself)
@@ -526,7 +528,10 @@ local score_report_mt= {
 				normal_text("chart_info", "",
 					fetch_color("evaluation.score_report.chart_info"),
 					eval_stroke, 0,0,self.scale),
-				normal_text("grade", "", nil, eval_stroke, 0, 0, self.scale),
+				Def.Sprite{
+					Name= "grade",
+					Texture= THEME:GetPathG("", "grades/"..grade_config:get_data().file)
+				},
 				normal_text("score", "", nil, eval_stroke, 0, 0, self.scale),
 				normal_text("dp", "", nil, eval_stroke, 0, 0, self.scale*.5),
 				normal_text("offavgms", "", nil, eval_stroke, 0, 0, self.scale),
@@ -555,12 +560,13 @@ local score_report_mt= {
 			if flags.chart_info then
 				self.chart_info:settext(
 					chart_info_text(gamestate_get_curr_steps(player_number),
-													gamestate_get_curr_song()))
+													gamestate_get_curr_song())):visible(true)
 				width_limit_text(self.chart_info, allowed_width, self.scale)
 				next_y= next_y + self.spacing
 			else
-				self.chart_info:settext("")
+				self.chart_info:settext(""):visible(false)
 			end
+			local after_info_y= next_y
 			do -- score stuff
 				-- TODO: session stats for score?  The data is calculated, but not displayed.
 				local adp= score_data.dp
@@ -574,46 +580,27 @@ local score_report_mt= {
 				local lower= 10^-precision
 				local percent_score= fmat:format(math.floor(adp/mdp * raise) * lower)
 				local score_color= color_for_score(adp/mdp)
-				local score_y= next_y
-				if false and flags.grade then
-					self.grade:settext(convert_score_to_grade(score_data.judge_counts))
-					local centered= false
-					if flags.pct_score then
-						centered= false
-					else
-						centered= true
-					end
-					if centered then
-						self.grade:xy(0, score_y):zoom(1):vertalign(middle)
-					else
-						local zoom= 1
-						local y= score_y + 8 - (line_height * .5)
-						zoom= zoom + .5
-						if flags.offset then
-							zoom= zoom + 1.5
-						end
-						self.grade:xy(-88, y):zoom(zoom):vertalign(top)
-					end
-				else
-					self.grade:settext("")
-				end
 				if flags.pct_score then
-					self.score:settext(percent_score):diffuse(score_color):y(score_y)
-					if false and flags.grade then
-						self.score:x(0)
-					else
-						self.score:x(0)
-					end
-				else
-					self.score:settext("")
-				end
-				if flags.grade or flags.pct_score then
+					self.score:settext(percent_score):diffuse(score_color)
+						:xy(0, next_y):zoomx(self.score:GetZoomY()):visible(true)
 					next_y= next_y + (self.spacing * .75)
+				else
+					self.score:settext(""):visible(false)
 				end
 				if flags.dance_points then
-					self.dp:settext(adp .. " / " .. mdp):diffuse(score_color):y(next_y)
+					if flags.pct_score then
+						self.dp:zoom(.5)
+					else
+						self.dp:zoom(1)
+						next_y= next_y + (self.spacing * .25)
+					end
+					self.dp:settext(adp.." / "..mdp):diffuse(score_color)
+						:xy(0, next_y):zoomx(self.dp:GetZoomY()):visible(true)
+					if not flags.pct_score then
+						next_y= next_y + (self.spacing * .5)
+					end
 				else
-					self.dp:settext("")
+					self.dp:settext(""):visible(false)
 				end
 				next_y= next_y + (self.spacing * .25)
 			end
@@ -632,7 +619,7 @@ local score_report_mt= {
 						offset_total= offset_total + tim.offset
 					end
 				end
-				local off_precision= 1 --math.ceil(math.log(offs_judged) / math.log(10))
+				local off_precision= 1
 				local function offavground(avg)
 					return math.round(avg * 10^(3+off_precision)) / 10^(off_precision)
 				end
@@ -648,16 +635,53 @@ local score_report_mt= {
 				local avg_text= " "..get_string_wrapper("ScreenEvaluation", "avg")
 				local tot_text= " "..get_string_wrapper("ScreenEvaluation", "tot")
 				next_y= next_y + (self.spacing * .5)
-				self.offavgms:settext(offavg..ms_text..avg_text):y(next_y)
-					:diffuse(offcolor):visible(true)
+				self.offavgms:settext(offavg..ms_text..avg_text):xy(0, next_y)
+					:diffuse(offcolor):zoomx(self.offavgms:GetZoomY()):visible(true)
 				width_limit_text(self.offavgms, allowed_width, self.scale)
 				next_y= next_y + (self.spacing * .75)
-				self.offms:settext(offscore..ms_text..tot_text):y(next_y)
-					:diffuse(offcolor):visible(true)
+				self.offms:settext(offscore..ms_text..tot_text):xy(0, next_y)
+					:diffuse(offcolor):zoomx(self.offms:GetZoomY()):visible(true)
 				next_y= next_y + (self.spacing * .25)
 			else
-				self.offavgms:visible(false)
-				self.offms:visible(false)
+				self.offavgms:settext(""):visible(false)
+				self.offms:settext(""):visible(false)
+			end
+			if flags.grade then
+				local grade_width= 64 + 8
+				local grade_id= convert_score_to_grade(score_data.judge_counts)
+				local y= 46
+				if not flags.chart_info then
+					y= 32
+				end
+				self.grade:setstate(
+					math.min(grade_id, self.grade:GetNumStates()-1))
+					:animate(false):y(y):visible(true)
+				scale_to_fit(self.grade, 64, 64)
+				next_y= after_info_y + (self.spacing * 2.5)
+				local widest_header= 0
+				for i, actor in ipairs{
+					{flags.pct_score, self.score}, {flags.dance_points, self.dp},
+					{flags.offset, self.offavgms}, {flags.offset, self.offms}} do
+					if actor[1] then
+						widest_header= math.max(widest_header, actor[2]:GetZoomedWidth())
+					end
+				end
+				if widest_header == 0 then
+					self.grade:x(0)
+				elseif allowed_width / 2 < (widest_header / 2) + 72 then
+					self.grade:x(-(allowed_width / 2) + (grade_width/2))
+					local remain= allowed_width - grade_width
+					local other_x= self.grade:GetX() + (remain/2) + (grade_width/2)
+					for i, actor in ipairs{
+						self.score, self.dp, self.offavgms, self.offms} do
+						width_limit_text(actor, remain - 4, actor:GetZoomY())
+						actor:x(other_x)
+					end
+				else
+					self.grade:x(-((widest_header/2)+4 + (grade_width/2)))
+				end
+			else
+				self.grade:visible(false)
 			end
 			do -- columns
 				local pct_data= {{}}

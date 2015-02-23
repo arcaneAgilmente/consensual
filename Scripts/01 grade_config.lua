@@ -1,59 +1,37 @@
-local grade_configs= {
-	default= {},
+local named_configs= {
+	default= {
+		file= "default_grades",
+		1, .9975, .995, .99, .985, .975, .965, .945,
+			.925, .885, .845, .765, .685, .525, .365, .045
+	},
 	itg= {
-		{"****", 1},
-		{"***", .99},
-		{"**", .98},
-		{"*", .96},
-		{"S+", .94},
-		{"S", .92},
-		{"S-", .89},
-		{"A+", .86},
-		{"A", .83},
-		{"A-", .80},
-		{"B+", .76},
-		{"B", .72},
-		{"B-", .68},
-		{"C+", .64},
-		{"C", .60},
-		{"C-", .55},
-		{"D", 0},
+		file= "default_grades",
+		1, .99, .98, .96, .94, .92, .89, .86, .83, .80, .76, .72, .68, .64,
+			.60, .55, 0,
 	},
 	sm5= {
-		{"AAA", 1},
-		{"AA", .93},
-		{"A", .8},
-		{"B", .65},
-		{"C", .45},
-		{"D", 0},
+		file= "default_grades",
+		1, .93, .8, .65, .45, 0,
 	},
 }
-do
-	local grades= "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	local w1_value= THEME:GetMetric("ScoreKeeperNormal", "GradeWeightW1")
-	local miss_value= THEME:GetMetric("ScoreKeeperNormal", "GradeWeightMiss")
-	local min_score= miss_value / w1_value
-	local diff= (min_score - 1) / (#grades-1)
-	local cur_score= 1
-	for i= 1, #grades do
-		grade_configs.default[i]= {grades:sub(i, i), cur_score}
-		cur_score= cur_score + diff
-	end
-end
 
 grade_config_names= {
 	"default", "itg", "sm5"
 }
 
-grade_config= create_setting("grade_config", "grade_config.lua", grade_configs.default, 0)
+grade_config= create_setting("grade_config", "grade_config.lua", named_configs.default, 0)
 
 local function sanity_check_grades()
 	local grades= grade_config:get_data()
 	for key, grade in pairs(grades) do
-		if type(key) ~= "number" or type(grade) ~= "table"
-		or type(grade[1]) ~= "string" or type(grade[2]) ~= "number" then
+		if type(key) == "string" and key ~= "file" then
+			grades[key]= nil
+		elseif type(key) ~= "number" then
 			grades[key]= nil
 		end
+	end
+	if type(grades.file) ~= "string" then
+		grades.file= "default_grades"
 	end
 end
 
@@ -62,39 +40,39 @@ grade_config:load()
 sanity_check_grades()
 
 function set_grade_config(name)
-	if grade_configs[name] then
-		grade_config:set_data(nil, DeepCopy(grade_configs[name]))
+	if named_configs[name] then
+		grade_config:set_data(nil, DeepCopy(named_configs[name]))
 		sanity_check_grades()
 	end
 end
 
 local gradable_judges= {
-"CheckpointHit",
-"CheckpointMiss",
-"Held",
-"HitMine",
-"MissedHold",
-"LetGo",
-"Miss",
-"W1",
-"W2",
-"W3",
-"W4",
-"W5",
+	"CheckpointHit",
+	"CheckpointMiss",
+	"Held",
+	"HitMine",
+	"MissedHold",
+	"LetGo",
+	"Miss",
+	"W1",
+	"W2",
+	"W3",
+	"W4",
+	"W5",
 }
 
 local better_judges= {
-CheckpointHit= "CheckpointHit",
-CheckpointMiss= "CheckpointHit",
-Held= "Held",
-MissedHold= "Held",
-LetGo= "Held",
-Miss= "W1",
-W1= "W1",
-W2= "W1",
-W3= "W1",
-W4= "W1",
-W5= "W1",
+	CheckpointHit= "CheckpointHit",
+	CheckpointMiss= "CheckpointHit",
+	Held= "Held",
+	MissedHold= "Held",
+	LetGo= "Held",
+	Miss= "W1",
+	W1= "W1",
+	W2= "W1",
+	W3= "W1",
+	W4= "W1",
+	W5= "W1",
 }
 
 function convert_score_to_grade(judge_counts)
@@ -115,7 +93,7 @@ function convert_score_to_grade(judge_counts)
 	local score= adp / mdp
 	local grades= grade_config:get_data()
 	for i= 1, #grades do
-		if score >= grades[i][2] then return grades[i][1] end
+		if score >= grades[i] then return i end
 	end
-	return grades[#grades][1]
+	return #grades
 end
