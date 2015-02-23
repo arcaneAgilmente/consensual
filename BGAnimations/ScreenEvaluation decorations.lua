@@ -514,6 +514,7 @@ local score_report_mt= {
 				InitCommand= function(subself)
 					self.container= subself
 					self.chart_info= subself:GetChild("chart_info")
+					self.grade= subself:GetChild("grade")
 					self.score= subself:GetChild("score")
 					self.dp= subself:GetChild("dp")
 					self.offavgms= subself:GetChild("offavgms")
@@ -525,6 +526,7 @@ local score_report_mt= {
 				normal_text("chart_info", "",
 					fetch_color("evaluation.score_report.chart_info"),
 					eval_stroke, 0,0,self.scale),
+				normal_text("grade", "", nil, eval_stroke, 0, 0, self.scale),
 				normal_text("score", "", nil, eval_stroke, 0, 0, self.scale),
 				normal_text("dp", "", nil, eval_stroke, 0, 0, self.scale*.5),
 				normal_text("offavgms", "", nil, eval_stroke, 0, 0, self.scale),
@@ -572,11 +574,41 @@ local score_report_mt= {
 				local lower= 10^-precision
 				local percent_score= fmat:format(math.floor(adp/mdp * raise) * lower)
 				local score_color= color_for_score(adp/mdp)
+				local score_y= next_y
+				if false and flags.grade then
+					self.grade:settext(convert_score_to_grade(score_data.judge_counts))
+					local centered= false
+					if flags.pct_score then
+						centered= false
+					else
+						centered= true
+					end
+					if centered then
+						self.grade:xy(0, score_y):zoom(1):vertalign(middle)
+					else
+						local zoom= 1
+						local y= score_y + 8 - (line_height * .5)
+						zoom= zoom + .5
+						if flags.offset then
+							zoom= zoom + 1.5
+						end
+						self.grade:xy(-88, y):zoom(zoom):vertalign(top)
+					end
+				else
+					self.grade:settext("")
+				end
 				if flags.pct_score then
-					self.score:settext(percent_score):diffuse(score_color):y(next_y)
-					next_y= next_y + (self.spacing * .75)
+					self.score:settext(percent_score):diffuse(score_color):y(score_y)
+					if false and flags.grade then
+						self.score:x(0)
+					else
+						self.score:x(0)
+					end
 				else
 					self.score:settext("")
+				end
+				if flags.grade or flags.pct_score then
+					next_y= next_y + (self.spacing * .75)
 				end
 				if flags.dance_points then
 					self.dp:settext(adp .. " / " .. mdp):diffuse(score_color):y(next_y)
@@ -600,7 +632,7 @@ local score_report_mt= {
 						offset_total= offset_total + tim.offset
 					end
 				end
-				local off_precision= math.ceil(math.log(offs_judged) / math.log(10))
+				local off_precision= 1 --math.ceil(math.log(offs_judged) / math.log(10))
 				local function offavground(avg)
 					return math.round(avg * 10^(3+off_precision)) / 10^(off_precision)
 				end

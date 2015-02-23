@@ -8,6 +8,7 @@ local default_flag_set= {
 		color_life_by_combo= {false, false, true},
 		combo_graph= {true},
 		dance_points= {true},
+		grade= {true},
 		judge_list= {true},
 		life_graph= {true},
 		lock_per_arrow= {true, true, true, false},
@@ -49,6 +50,7 @@ local default_flag_set= {
 sorted_flag_names= {
 	{type= "eval",
 	 "chart_info",
+	 "grade",
 	 "pct_score",
 	 "dance_points",
 	 "offset",
