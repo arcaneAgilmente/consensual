@@ -41,7 +41,9 @@ sanity_check_grades()
 
 function set_grade_config(name)
 	if named_configs[name] then
+		local old_file= grade_config:get_data().file
 		grade_config:set_data(nil, DeepCopy(named_configs[name]))
+		grade_config:get_data().file= old_file
 		sanity_check_grades()
 	end
 end
@@ -75,6 +77,15 @@ local better_judges= {
 	W5= "W1",
 }
 
+local colorable_judges= {
+	TapNoteScore_W1= true,
+	TapNoteScore_W2= true,
+	TapNoteScore_W3= true,
+	TapNoteScore_W4= true,
+	TapNoteScore_W5= true,
+	TapNoteScore_Miss= true,
+}
+
 function convert_score_to_grade(judge_counts)
 	local weights= {}
 	for i, judge in ipairs(gradable_judges) do
@@ -83,17 +94,28 @@ function convert_score_to_grade(judge_counts)
 	end
 	local mdp= 0
 	local adp= 0
+	local worst_tns_val= 20
+	local worst_tns_judge= ""
+	local tns_reverse= TapNoteScore:Reverse()
 	for judge, count in pairs(judge_counts) do
+		if judge:sub(1, 12) == "TapNoteScore" then
+			if colorable_judges[judge] and count > 0
+			and (worst_tns_judge == "" or tns_reverse[judge] < worst_tns_val) then
+				worst_tns_judge= judge
+				worst_tns_val= tns_reverse[judge]
+			end
+		end
 		local short= ToEnumShortString(judge)
 		if better_judges[short] then
 			mdp= mdp + ((weights[better_judges[short]] or 0) * count)
 		end
 		adp= adp + ((weights[short] or 0) * count)
 	end
+	local color= judge_to_color(worst_tns_judge)
 	local score= adp / mdp
 	local grades= grade_config:get_data()
 	for i= 1, #grades do
-		if score >= grades[i] then return i end
+		if score >= grades[i] then return i, color end
 	end
-	return #grades
+	return #grades, color
 end

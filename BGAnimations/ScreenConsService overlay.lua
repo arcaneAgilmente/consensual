@@ -154,6 +154,92 @@ do -- make an option for each pain slot.
 	end
 end
 
+local grade_data= grade_config:get_data()
+local function fmt_gpct(i)
+	return ("%.4f%%"):format(i)
+end
+local function grade_val_conf(index)
+	return {
+		name= fmt_gpct(grade_data[index]*100), meta= options_sets.adjustable_float,
+		args= {
+			name= fmt_gpct(grade_data[index]*100), min_scale= -4, scale= 1, max_scale= 1,
+			initial_value= function() return grade_data[index]*100 end,
+			set= function(pn, value) grade_data[index]= value/100 end,
+			val_to_text= function(pn, value) return fmt_gpct(value) end,
+	}}
+end
+
+local function gen_grade_image_menu()
+	local eles= {}
+	local function add_images_in_dir(dir)
+		local image_list= FILEMAN:GetDirListing(dir)
+		for i= 1, #image_list do
+			local image= image_list[i]:sub(1, -5)
+			local first_space= image:find(" ")
+			if first_space then
+				image= image:sub(1, first_space-1)
+			end
+			eles[i]= {
+				name= image, init= function() return grade_data.file == image end,
+				set= function() grade_data.file= image end,
+				unset= function() end}
+		end
+	end
+	for i, dir in ipairs(cons_theme_dir_list) do
+		add_images_in_dir(dir .. "Graphics/grades/")
+	end
+	return {
+		name= "change_image",
+		meta= options_sets.mutually_exclusive_special_functions,
+		args= {eles= eles}, disallow_unset= true
+	}
+end
+
+local function gen_grade_options()
+	local ret= {
+		recall_init_on_pop= true,
+		name= "grade_config",
+		special_handler= function(menu, data)
+			if data.name == "save_grade_config" then
+				grade_config:save()
+				return {}
+			elseif data.name == "change_image" then
+				grade_config:set_dirty()
+				return {ret_data= {true, gen_grade_image_menu()}}
+			elseif data.name == "add_grade" then
+				grade_config:set_dirty()
+				grade_data[#grade_data+1]= 0
+				return {recall_init= true}
+			elseif data.name == "remove_grade" then
+				grade_config:set_dirty()
+				if #grade_data > 1 then
+					grade_data[#grade_data]= nil
+				end
+				return {recall_init= true}
+			elseif data.name:sub(1, 3) == "set" then
+				grade_config:set_dirty()
+				set_grade_config(data.name:sub(5, -1))
+				grade_data= grade_config:get_data()
+				return {recall_init= true}
+			else
+				grade_config:set_dirty()
+				return {ret_data= {true, data}}
+			end
+		end,
+		{name= "save_grade_config"},
+		{name= "change_image"},
+	}
+	for i, name in ipairs(grade_config_names) do
+		ret[#ret+1]= {name= "set_" .. name}
+	end
+	for i= 1, #grade_data do
+		ret[#ret+1]= grade_val_conf(i)
+	end
+	ret[#ret+1]= {name= "add_grade"}
+	ret[#ret+1]= {name= "remove_grade"}
+	return ret
+end
+
 local press_prompt= {}
 local on_press_prompt= false
 local function key_get(key_name)
@@ -273,6 +359,7 @@ local menu_items= {
 	{name= "help_config", meta= options_sets.menu, args= help_options},
 	{name= "flags_config", meta= options_sets.menu, args= flag_slot_options},
 	{name= "pain_config", meta= options_sets.menu, args= pain_slot_options},
+	{name= "grade_config", meta= options_sets.menu, args= gen_grade_options},
 	{name= "confetti_config", meta= options_sets.menu, args= confetti_options},
 }
 

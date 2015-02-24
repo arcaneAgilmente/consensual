@@ -21,11 +21,17 @@ local function find_insertion_index(list, entry)
 	return upper, lower
 end
 
-local theme_loop_folder= THEME:GetCurrentThemeDirectory() .. "/Sounds/" ..
-	loop_folder
+local theme_loop_folder= "Sounds/" .. loop_folder
 
 function add_music_loop_entry(bpm, len, name)
-	if not FILEMAN:DoesFileExist(theme_loop_folder .. name) then return end
+	local exists_in_a_theme= false
+	for i, dir in ipairs(cons_theme_dir_list) do
+		if FILEMAN:DoesFileExist(dir .. theme_loop_folder .. name) then
+			exists_in_a_theme= true
+			break
+		end
+	end
+	if not exists_in_a_theme then return end
 	bpm= math.floor(bpm)
 	local insert_at= find_insertion_index(bpm_list, bpm)
 	if insert_at then

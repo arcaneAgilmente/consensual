@@ -31,6 +31,15 @@ function max_nil(a, b)
 	return (gte_nil(a, b) and a) or b
 end
 
+-- Fun fact:  Because this file is in consensual/Scripts, while it is being
+-- loaded, THEME:GetCurrentThemeDirectory returns "Themes/consensual".
+-- So this table exists to allow things that run after script loading is
+-- finished to look inside the consensual theme dir when they run for a
+-- theme that uses consensual as a fallback theme.
+-- Themes using consensual as a fallback should have a file in Scripts that
+-- adds their theme dir to this list.
+cons_theme_dir_list= {THEME:GetCurrentThemeDirectory()}
+
 all_player_indices= {PLAYER_1, PLAYER_2}
 other_player= { [PLAYER_1]= PLAYER_2, [PLAYER_2]= PLAYER_1}
 

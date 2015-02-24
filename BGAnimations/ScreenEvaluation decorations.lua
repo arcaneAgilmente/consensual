@@ -648,13 +648,19 @@ local score_report_mt= {
 			end
 			if flags.grade then
 				local grade_width= 64 + 8
-				local grade_id= convert_score_to_grade(score_data.judge_counts)
+				local grade_id, grade_color= convert_score_to_grade(
+					score_data.judge_counts)
 				local y= 46
 				if not flags.chart_info then
 					y= 32
 				end
+				if flags.color_grade then
+					self.grade:diffuse(adjust_luma(grade_color, 2))
+				else
+					self.grade:diffuse(color("#ffffff"))
+				end
 				self.grade:setstate(
-					math.min(grade_id, self.grade:GetNumStates()-1))
+					math.min(grade_id-1, self.grade:GetNumStates()-1))
 					:animate(false):y(y):visible(true)
 				scale_to_fit(self.grade, 64, 64)
 				next_y= after_info_y + (self.spacing * 2.5)

@@ -414,11 +414,20 @@ options_sets= {}
 options_sets.menu= {
 	__index= {
 		initialize= function(self, player_number, initializer_args, no_up, up_text)
-			self.menu_data= initializer_args
-			self.name= initializer_args.name or ""
+			self.init_args= initializer_args
 			self.player_number= player_number
 			self.no_up= no_up
 			self.up_text= up_text
+			self:recall_init()
+		end,
+		recall_init= function(self)
+			self.menu_data= self.init_args
+			if type(self.init_args) == "function" then
+				self.menu_data= self.init_args()
+			end
+			self.name= self.menu_data.name or ""
+			self.recall_init_on_pop= self.menu_data.recall_init_on_pop
+			self.special_handler= self.menu_data.special_handler
 			self:reset_info()
 		end,
 		reset_info= function(self)
@@ -518,10 +527,22 @@ options_sets.menu= {
 		end,
 		interpret_start= function(self)
 			local data= self.shown_data[self:id_minus_up(self.cursor_pos)]
-			if data then
-				return true, data
+			if self.special_handler then
+				local handler_ret= self.special_handler(self, data)
+				if handler_ret.recall_init then
+					self:recall_init()
+					return true
+				elseif handler_ret.ret_data then
+					return unpack(handler_ret.ret_data)
+				else
+					return false
+				end
 			else
-				return false
+				if data then
+					return true, data
+				else
+					return false
+				end
 			end
 		end,
 		get_item_name= function(self, pos)
@@ -1024,6 +1045,9 @@ menu_stack_mt= {
 					next_display= 2
 				end
 				top_set:set_display(self.displays[next_display])
+				if top_set.recall_init_on_pop then
+					top_set:recall_init()
+				end
 				top_set:recheck_levels()
 				next_display= next_display + 1
 				if self.displays[next_display] then

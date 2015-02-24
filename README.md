@@ -19,6 +19,7 @@ This theme requires Stepmania 5.0.5 or any newer 5.0.x version.
 * Customizable pane info.
 * Customizable gameplay elements.
 * Customizable evaluation info.
+* Customizable grading system.
 * Individual customizations saved to profiles.
 * Confetti.
 * Customizable color system.
@@ -45,6 +46,7 @@ This theme requires Stepmania 5.0.5 or any newer 5.0.x version.
 * Vospi read all of the very long release notes I wrote for SM5 beta 4 and
 	Stepmania 5.0.5.  This guide is longer than both of those put together, so
 	be warned before you start reading.
+* milistisia made various feature suggestiongs.
 
 # Profiles:
 If you don't normally use a named profile on Stepmania, you should create
@@ -731,6 +733,12 @@ preference.
 
 	The reward for a good score is applied regardless of the song's difficulty
 	or meter, so it's not restricted to only experienced players.
+
+* #### Grading Config
+	The grading system can be configured to have any number of tiers, and use
+	any image you feel like adding, as long as it's a sprite sheet.  The help
+	tooltips should explain it well enough.  Make sure to pick the
+	"Save Grading Config" option after configuring it to what you want.
 
 * #### Flags Config/Pane Config
 	These two options are used to configure the preset flag/pane config slots
