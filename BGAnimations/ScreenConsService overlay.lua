@@ -240,6 +240,57 @@ local function gen_grade_options()
 	return ret
 end
 
+local scoring_data= scoring_config:get_data()
+local function set_scoring_half(from, to)
+	scoring_config:set_dirty()
+	for name, value in pairs(scoring_data) do
+		if name:find(to) then
+			scoring_data[name]= scoring_data[from .. name:sub(#from+1, -1)]
+		end
+	end
+end
+
+local function scoring_options()
+	local percent_score= {}
+	local grade= {}
+	local ret= {
+		special_handler= function(menu, data)
+			if data.name == "set_percent_to_grade" then
+				set_scoring_half("Grade", "PercentScore")
+				return {ret_data= {true}}
+			elseif data.name == "set_grade_to_percent" then
+				set_scoring_half("PercentScore", "Grade")
+				return {ret_data= {true}}
+			else
+				return {ret_data= {true, data}}
+			end
+		end,
+		{name= "percent_score", meta= options_sets.menu, args= percent_score},
+		{name= "grade", meta= options_sets.menu, args= grade},
+		{name= "set_percent_to_grade"},
+		{name= "set_grade_to_percent"},
+	}
+	for i, name in ipairs(THEME:GetMetricNamesInGroup("ScoreKeeperNormal")) do
+		if scoring_data[name] then
+			local entry= {
+				name= name, meta= options_sets.adjustable_float, args= {
+					name= name, min_scale= -3, scale= 0, max_scale= 3,
+					initial_value= function() return scoring_data[name] end,
+					set= function(pn, value) scoring_config:set_dirty()
+						scoring_data[name]= value end,
+			}}
+			if name:find("PercentScore") then
+				percent_score[#percent_score+1]= entry
+			elseif name:find("Grade") then
+				grade[#grade+1]= entry
+			else
+				ret[#ret+1]= entry
+			end
+		end
+	end
+	return ret
+end
+
 local press_prompt= {}
 local on_press_prompt= false
 local function key_get(key_name)
@@ -360,6 +411,7 @@ local menu_items= {
 	{name= "flags_config", meta= options_sets.menu, args= flag_slot_options},
 	{name= "pain_config", meta= options_sets.menu, args= pain_slot_options},
 	{name= "grade_config", meta= options_sets.menu, args= gen_grade_options},
+	{name= "scoring_config", meta= options_sets.menu, args= scoring_options()},
 	{name= "confetti_config", meta= options_sets.menu, args= confetti_options},
 }
 
@@ -404,6 +456,7 @@ local function input(event)
 					update_confetti_count()
 					machine_flag_setting:save()
 					machine_pain_setting:save()
+					scoring_config:save()
 					trans_new_screen("ScreenInitialMenu")
 				end
 			end
