@@ -7,6 +7,28 @@ function noop_retarg(...) return ... end
 -- For all those actors that need this for various things.
 function play_set(self) self:playcommand("Set") end
 
+-- Remove foreach_by_sorted_keys and foreach_ordered when 5.0.7 is released
+-- because they are in _fallback's Scripts.
+function foreach_by_sorted_keys(tbl, keys, func)
+	table.sort(keys)
+	for _, key in ipairs(keys) do func(key, tbl[key]) end
+end
+
+function foreach_ordered( tbl, func )
+	local string_keys= {}
+	local number_keys= {}
+	for k,_ in pairs(tbl) do
+		if type(k) == "string" then
+			table.insert(string_keys, k)
+		elseif type(k) == "number" then
+			table.insert(number_keys, k)
+		end
+	end
+	-- iterate in sorted order
+	foreach_by_sorted_keys(tbl, number_keys, func)
+	foreach_by_sorted_keys(tbl, string_keys, func)
+end
+
 function gte_nil(value, min)
 	if min then
 		return value >= min

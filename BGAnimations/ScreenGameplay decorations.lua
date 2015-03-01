@@ -1276,12 +1276,13 @@ local function bg_swap()
 					if song:HasBGChanges() then
 						local changes= song:GetBGChanges()
 						if changes[1] then
-							local ext= changes[1].file1:sub(-4, -1):lower()
-							if movie_exts[ext] then
+							local ext= changes[1].file1:match("[^.]+$") or ""
+							if movie_exts[ext:lower()] then
 								path= song:GetSongDir() .. changes[1].file1
 								swap_start_beat= changes[1].start_beat
 							else
 							end
+						else
 						end
 					elseif song:HasBackground() then
 						path= song:GetBackgroundPath()

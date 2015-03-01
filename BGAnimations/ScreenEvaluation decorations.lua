@@ -1123,11 +1123,11 @@ local function filter_input_for_menus(pn, code, press)
 			if press == "InputEventType_FirstPress" then
 				select_press_times[pn]= GetTimeSinceStart()
 			elseif press == "InputEventType_Release" then
-				if GetTimeSinceStart() - select_press_times[pn] <
-				special_menu_activate_time then
+				local hold_time= GetTimeSinceStart() - select_press_times[pn]
+				if hold_time < special_menu_activate_time then
 					set_special_menu(pn, 1)
 					handled= true
-				else
+				elseif hold_time > special_menu_activate_time * 4 then
 					perform_screenshot(pn)
 					handled= true
 				end

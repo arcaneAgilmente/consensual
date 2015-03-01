@@ -428,6 +428,7 @@ options_sets.menu= {
 			self.name= self.menu_data.name or ""
 			self.recall_init_on_pop= self.menu_data.recall_init_on_pop
 			self.special_handler= self.menu_data.special_handler
+			self:set_status()
 			self:reset_info()
 		end,
 		reset_info= function(self)
@@ -515,7 +516,7 @@ options_sets.menu= {
 		set_status= function(self)
 			if self.display then
 				self.display:set_heading(self.name or "")
-				self.display:set_display("")
+				self.display:set_display(self.menu_data.status or "")
 			end
 		end,
 		update= function(self)

@@ -20,6 +20,8 @@ This theme requires Stepmania 5.0.5 or any newer 5.0.x version.
 * Customizable gameplay elements.
 * Customizable evaluation info.
 * Customizable grading system.
+* Customizable scoring values.
+* Menu for picking global offset from a list of choices.
 * Individual customizations saved to profiles.
 * Confetti.
 * Customizable color system.
@@ -739,6 +741,16 @@ preference.
 	any image you feel like adding, as long as it's a sprite sheet.  The help
 	tooltips should explain it well enough.  Make sure to pick the
 	"Save Grading Config" option after configuring it to what you want.
+
+* #### Scoring Config
+	After changing any of the values in the scoring config, you must hit
+	Shift+F2 to reload metrics or restart Stepmania for the changes to take
+	effect.
+
+* #### Offset Choices
+	The offset choices menu allows you to create a list of different global
+	offsets to choose from before starting a credit.  This is useful if you
+	play on pad and keyboard and need different offsets for each.
 
 * #### Flags Config/Pane Config
 	These two options are used to configure the preset flag/pane config slots

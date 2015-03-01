@@ -11,7 +11,7 @@ local width= .1
 local args= {
 	OnCommand= function(self)
 		local screen= SCREENMAN:GetTopScreen()
-		SCREENMAN:GetTopScreen():AddInputCallback(input)
+		SCREENMAN:GetTopScreen():AddInputCallback()
 	end,
 	Def.Quad{
 		InitCommand= function(self)

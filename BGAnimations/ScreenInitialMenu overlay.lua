@@ -128,11 +128,27 @@ profile_menus[PLAYER_2]:initialize(PLAYER_2)
 set_option_set_metatables()
 
 local main_menu= setmetatable({}, options_sets.menu)
+local offset_menu_data= get_offset_menu()
+local offset_menu_open= false
+local offset_menus= {}
+
+for i, pn in ipairs{PLAYER_1, PLAYER_2} do
+	offset_menus[pn]= setmetatable({}, offset_menu_data.meta)
+	offset_menus[pn]:initialize(pn, offset_menu_data.args)
+end
+
 local menu_options= {}
 do
 	local menu_config= misc_config:get_data().initial_menu_ops
 	for i, op_name in ipairs(sorted_initial_menu_ops) do
+		local have= false
 		if menu_config[op_name] then
+			have= true
+		end
+		if op_name == "offset_choice" then
+			if not offset_menu_data.args.eles[1] then have= false end
+		end
+		if have then
 			menu_options[#menu_options+1]= {name= op_name}
 		end
 	end
@@ -141,14 +157,16 @@ main_menu:initialize(nil, menu_options, true)
 local choosing_menu= 1
 local choosing_playmode= 2
 local choosing_profile= 3
+local choosing_offset= 4
 local choosing_states= {
 	[PLAYER_1]= choosing_menu, [PLAYER_2]= choosing_menu }
 local cursor_poses= { [PLAYER_1]= 1, [PLAYER_2]= 1 }
 local menu_name_to_number= {
-	["playmode_choice"]= choosing_playmode,
-	["profile_choice"]= choosing_profile,
+	playmode_choice= choosing_playmode,
+	profile_choice= choosing_profile,
+	offset_choice= choosing_offset,
 }
-local all_menus= { main_menu, playmode_menu, profile_menus }
+local all_menus= { main_menu, playmode_menu, profile_menus, offset_menus }
 --for i, m in ipairs(all_menus) do
 --	Trace("Menu " .. i .. " " .. tostring(m))
 --end
@@ -160,6 +178,10 @@ local profile_displays= {
 	[PLAYER_1]= setmetatable({}, option_display_mt),
 	[PLAYER_2]= setmetatable({}, option_display_mt)
 }
+local offset_displays= {
+	[PLAYER_1]= setmetatable({}, option_display_mt),
+	[PLAYER_2]= setmetatable({}, option_display_mt)
+}
 local prod_xs= {
 	[PLAYER_1]= SCREEN_CENTER_X - SCREEN_WIDTH / 4,
 	[PLAYER_2]= SCREEN_CENTER_X + SCREEN_WIDTH / 4,
@@ -168,6 +190,9 @@ local all_displays= {
 	menu_display, playmode_display
 }
 for k, v in pairs(profile_displays) do
+	all_displays[#all_displays+1]= v
+end
+for k, v in pairs(offset_displays) do
 	all_displays[#all_displays+1]= v
 end
 local display_frames= {}
@@ -234,6 +259,12 @@ local function create_actors()
 			star_y - ((prof_menu_height*.5)-(line_height*.5)),
 			prof_menu_height, disp_width, line_height, 1, false, true)
 	end
+	for k, offd in pairs(offset_displays) do
+		args[#args+1]= offd:create_actors(
+			"global_offset", prod_xs[k],
+			star_y - ((prof_menu_height*.5)-(line_height*.5)),
+			prof_menu_height, disp_width, line_height, 1, false, true)
+	end
 	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
 		args[#args+1]= cursors[rpn]:create_actors(
 			rpn .. "_cursor", 0, 0, 1, pn_to_color(rpn),
@@ -262,6 +293,12 @@ local function find_actors(container)
 		prod:set_underline_color(pn_to_color(k))
 		profile_menus[k]:set_display(prod)
 		prod:hide()
+	end
+	for k, offd in pairs(offset_displays) do
+		offd.container:x(star_xs[k])
+		offd:set_underline_color(pn_to_color(k))
+		offset_menus[k]:set_display(offd)
+		offd:hide()
 	end
 	for i, frame in ipairs(display_frames) do
 		size_display_frame(i, frame)
@@ -403,8 +440,8 @@ end
 
 local function interpret_code(pn, code)
 	local current_menu= all_menus[choosing_states[pn]]
-	if current_menu == profile_menus then
-		current_menu= profile_menus[pn]
+	if current_menu == profile_menus or current_menu == offset_menus then
+		current_menu= current_menu[pn]
 	end
 	--Trace("Code " .. code .. " from " .. pn .. " to " .. tostring(current_menu))
 	-- The menu system was designed and created around having one cursor, and
@@ -442,6 +479,9 @@ local function interpret_code(pn, code)
 					if extra == "profile_choice" then
 						profile_menus[pn]:initialize(pn)
 						profile_menus[pn]:set_display(profile_displays[pn])
+					elseif extra == "offset_choice" then
+						offset_menus[pn]:initialize(pn, offset_menu_data.args)
+						offset_menus[pn]:set_display(offset_displays[pn])
 					end
 					choosing_states[pn]= new_menu
 					cursor_poses[pn]= 1
@@ -466,11 +506,21 @@ local function interpret_code(pn, code)
 	return handled
 end
 
+local function a_player_on_personal_menu()
+	for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
+		if choosing_states[pn] == choosing_profile
+		or choosing_states[pn] == choosing_offset then
+			return true
+		end
+	end
+	return false
+end
+
 local function update_cursor_pos()
 	for i, rpn in ipairs({PLAYER_1, PLAYER_2}) do
 		local current_menu= all_menus[choosing_states[rpn]]
-		if current_menu == profile_menus then
-			current_menu= profile_menus[rpn]
+		if current_menu == profile_menus or current_menu == offset_menus then
+			current_menu= current_menu[rpn]
 		end
 		current_menu.display:unhide()
 		current_menu.cursor_pos= cursor_poses[rpn]
@@ -493,7 +543,7 @@ local function update_cursor_pos()
 	end
 	if choosing_states[PLAYER_1] == choosing_states[PLAYER_2] and
 		cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] and
-	choosing_states[PLAYER_1] ~= choosing_profile then
+		not a_player_on_personal_menu() then
 		cursors[PLAYER_1]:left_half()
 		cursors[PLAYER_2]:right_half()
 	else
@@ -517,7 +567,7 @@ local function input(event)
 		set_prev_song_bpm(math.random(60, 200))
 		play_sample_music(true)
 	elseif event.DeviceInput.button == "DeviceButton_n" then
---		trans_new_screen("ScreenMiscTest")
+		trans_new_screen("ScreenMiscTest")
 	end
 	--[[
 	if event.DeviceInput.button == "DeviceButton_n" then

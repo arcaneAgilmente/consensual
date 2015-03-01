@@ -191,8 +191,7 @@ local function gen_grade_image_menu()
 	return {
 		name= "change_image",
 		meta= options_sets.mutually_exclusive_special_functions,
-		args= {eles= eles}, disallow_unset= true
-	}
+		args= {eles= eles}, disallow_unset= true}
 end
 
 local function gen_grade_options()
@@ -344,6 +343,7 @@ local im_options= {
 	imop("im_have_consops", "consensual_ops"),
 	imop("im_have_colconf", "color_config"),
 	imop("im_have_edit", "edit_choice"),
+	imop("im_have_offset", "offset_choice"),
 	imop("im_have_exit", "exit_choice"),
 }
 
@@ -413,6 +413,7 @@ local menu_items= {
 	{name= "grade_config", meta= options_sets.menu, args= gen_grade_options},
 	{name= "scoring_config", meta= options_sets.menu, args= scoring_options()},
 	{name= "confetti_config", meta= options_sets.menu, args= confetti_options},
+	{name= "offset_config", meta= options_sets.menu, args= get_offset_service_menu},
 }
 
 local config_menu= setmetatable({}, menu_stack_mt)

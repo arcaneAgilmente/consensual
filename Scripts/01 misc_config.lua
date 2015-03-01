@@ -51,6 +51,7 @@ local default_config= {
 		consensual_ops= true,
 		color_config= true,
 		edit_choice= true,
+		offset_choice= true,
 		exit_choice= true,
 	},
 }
@@ -66,6 +67,7 @@ sorted_initial_menu_ops= {
 	"consensual_ops",
 	"color_config",
 	"edit_choice",
+	"offset_choice",
 	"exit_choice",
 }
 
