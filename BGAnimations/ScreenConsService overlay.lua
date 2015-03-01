@@ -265,7 +265,7 @@ local function scoring_options()
 			end
 		end,
 		{name= "percent_score", meta= options_sets.menu, args= percent_score},
-		{name= "grade", meta= options_sets.menu, args= grade},
+		{name= "grade_weights", meta= options_sets.menu, args= grade},
 		{name= "set_percent_to_grade"},
 		{name= "set_grade_to_percent"},
 	}

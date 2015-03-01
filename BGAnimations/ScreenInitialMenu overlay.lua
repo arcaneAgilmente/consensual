@@ -283,6 +283,7 @@ local function find_actors(container)
 		all_displays[i]:scroll(1)
 		local disp_cont= all_displays[i].container
 		frame:resize_to_outline(disp_cont, 8)
+		all_displays[i]:set_el_geo(frame.w-16, nil, nil)
 		frame:move(disp_cont:GetX(), disp_cont:GetY() + frame.h/2-18)
 		frame:hide()
 	end
