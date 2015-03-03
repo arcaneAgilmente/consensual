@@ -12,6 +12,7 @@ local function add_style_to_lists(style)
 	-- Why is couple-edit marked as OnePlayerTwoSides?  I'm throwing it out as
 	-- unsupported rather than trying to write special case code for it.
 	if stame == "couple-edit" then return end
+	if stame == "couple" then return end
 	if not stepstype_to_style[stepstype] then
 		stepstype_to_style[stepstype]= {}
 	end

@@ -1296,7 +1296,7 @@ local function banner()
 			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
 			SetCommand= function(self)
 				local song= gamestate_get_curr_song()
-				if song and song:HasBanner()then
+				if song and song:HasBanner() then
 					self:LoadBanner(song:GetBannerPath())
 					self:visible(true)
 					scale_to_fit(self, banner_w, banner_h)

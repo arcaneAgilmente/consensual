@@ -326,7 +326,11 @@ function lua_table_to_string(t, indent, line_pos)
 			v_str= ("%q"):format(v)
 		elseif type(v) == "number" then
 			if v ~= math.floor(v) then
-				v_str= ("%.3f"):format(v)
+				v_str= ("%.6f"):format(v)
+				local last_nonz= v_str:reverse():find("[^0]")
+				if last_nonz then
+					v_str= v_str:sub(1, -last_nonz)
+				end
 			else
 				v_str= tostring(v)
 			end
