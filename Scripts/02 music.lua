@@ -98,13 +98,11 @@ function play_sample_music(force, ignore_current)
 	if song and not ignore_current then
 		local song_dir= song:GetSongDir()
 		local songpath= song:GetMusicPath()
+		if song.GetPreviewMusicPath then
+			songpath= song:GetPreviewMusicPath()
+		end
 		local sample_start= song:GetSampleStart()
 		local sample_len= song:GetSampleLength()
-		local preview= song_dir .. "preview.ogg"
-		if FILEMAN:DoesFileExist(preview) then
-			songpath= preview
-			sample_start= 0
-		end
 		SOUND:PlayMusicPart(
 			songpath, sample_start, sample_len, fade_time, fade_time, true, true)
 	else

@@ -28,6 +28,7 @@ local default_config= {
 	transition_type= "random",
 
 	menus_have_ud= true,
+	show_startup_time= true,
 
 	seconds_per_clock_change= 3600,
 

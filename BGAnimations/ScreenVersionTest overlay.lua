@@ -83,5 +83,18 @@ return Def.ActorFrame{
 	},
 	unfolding_text(
 		"logo", _screen.cx, _screen.cy, "Consensual", fetch_color("text"),
-		unfold_time, nil, nil, .5)
+		unfold_time, nil, nil, .5),
+	Def.BitmapText{
+		Font= "Common Normal", InitCommand= function(self)
+			if misc_config:get_data().show_startup_time then
+				if not startup_time then
+					startup_time= GetTimeSinceStart()
+				end
+				Warn("Startup time: " .. startup_time)
+				self:zoom(.5):xy(_screen.cx, SCREEN_BOTTOM-48)
+					:settext("Startup time: " .. startup_time)
+					:diffuse(fetch_color("text")):strokecolor(fetch_color("stroke"))
+			end
+		end
+	},
 }

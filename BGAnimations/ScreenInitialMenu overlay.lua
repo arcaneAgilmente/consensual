@@ -568,7 +568,7 @@ local function input(event)
 		set_prev_song_bpm(math.random(60, 200))
 		play_sample_music(true)
 	elseif event.DeviceInput.button == "DeviceButton_n" then
-		trans_new_screen("ScreenMiscTest")
+--		trans_new_screen("ScreenMiscTest")
 	end
 	--[[
 	if event.DeviceInput.button == "DeviceButton_n" then
@@ -674,12 +674,11 @@ local args= {
   },
 	Def.BitmapText{
 		Font= "Common Normal", InitCommand= function(self)
-			if true then self:visible(false) end
-			if not startup_time then
-				startup_time= GetTimeSinceStart()
+			if misc_config:get_data().show_startup_time then
+				self:zoom(.5):xy(_screen.cx, SCREEN_BOTTOM-48)
+					:settext("Startup time: " .. startup_time)
+					:diffuse(fetch_color("text")):strokecolor(fetch_color("stroke"))
 			end
-			self:zoom(.5):xy(_screen.cx, SCREEN_BOTTOM-48)
-				:diffuse(fetch_color("text")):strokecolor(fetch_color("stroke"))
 		end
 	},
 	Def.BitmapText{
