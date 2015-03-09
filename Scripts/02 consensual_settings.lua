@@ -95,7 +95,7 @@ function cons_player:kyzentun_mode()
 	self.combo_splash_threshold= "TapNoteScore_Miss"
 	self.combo_graph_threshold= "TapNoteScore_Miss"
 	self.sigil_data.detail= 32
-	activate_confetti("perm", true)
+	activate_confetti("credit", true)
 end
 
 function cons_player:combo_qual_reset()

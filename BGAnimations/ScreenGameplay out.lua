@@ -71,9 +71,7 @@ local args= {
 				somebody_holding_start= true
 			end
 		end
-		if not somebody_holding_start then
-			update_player_stats_after_song()
-		end
+		update_player_stats_after_song()
 		for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 			local pss= STATSMAN:GetCurStageStats():GetPlayerStageStats(pn)
 			if not pss:GetFailed() and not somebody_holding_start then
@@ -89,17 +87,20 @@ local args= {
 					earned_combo_splash[pn]= true
 				end
 				local score= pss:GetActualDancePoints()/pss:GetPossibleDancePoints()
-				if score >= .995 and
-				cons_players[pn].flags.gameplay.score_confetti then
+				if score >= .995
+					and not somebody_holding_start
+				and cons_players[pn].flags.gameplay.score_confetti then
 					activate_confetti("earned", true)
 				end
-				if score > score_color_threshold and
-				cons_players[pn].flags.gameplay.score_splash then
+				if score > score_color_threshold
+					and not somebody_holding_start
+				and cons_players[pn].flags.gameplay.score_splash then
 					earned_score_splash[pn]= true
 					self:GetChild(pn.."score"):playcommand("splash")
 					nobody_earned_splash= false
 				end
-				if earned_combo_splash[pn] then
+				if earned_combo_splash[pn]
+				and not somebody_holding_start then
 					self:GetChild(pn.."combo"):playcommand("splash")
 					nobody_earned_splash= false
 				end

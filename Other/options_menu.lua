@@ -193,7 +193,7 @@ option_display_mt= {
 				self, name, x, y, display_height, el_width, el_height, el_zoom,
 				no_heading, no_display, value_style)
 			local el_count= 1
-			if display_height < 32 then
+			if display_height < 20 then
 --				lua.ReportScriptError("The display '" .. name .. "' needs to have its height set.")
 				el_count= display_height
 			else
