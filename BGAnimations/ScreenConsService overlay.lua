@@ -217,7 +217,7 @@ local function gen_grade_options()
 				return {recall_init= true}
 			elseif data.name:sub(1, 3) == "set" then
 				grade_config:set_dirty()
-				set_grade_config(data.name:sub(5, -1))
+				set_grade_config(data.name:sub(11, -1))
 				grade_data= grade_config:get_data()
 				return {recall_init= true}
 			else
@@ -229,7 +229,7 @@ local function gen_grade_options()
 		{name= "change_image"},
 	}
 	for i, name in ipairs(grade_config_names) do
-		ret[#ret+1]= {name= "set_" .. name}
+		ret[#ret+1]= {name= "set_grade_" .. name}
 	end
 	for i= 1, #grade_data do
 		ret[#ret+1]= grade_val_conf(i)
@@ -286,6 +286,39 @@ local function scoring_options()
 				ret[#ret+1]= entry
 			end
 		end
+	end
+	return ret
+end
+
+local life_data= life_config:get_data()
+local function life_val_conf(name)
+	return {
+		name= name, meta= options_sets.adjustable_float, args= {
+			name= name, min_scale= -4, scale= -3, max_scale= -1,
+			initial_value= function() return life_data[name] end,
+			set= function(pn, value) life_data[name]= value end,
+			validator= function(value) return value >= -1 and value <= 1 end,
+	}}
+end
+
+local function life_options()
+	local ret= {
+		special_handler= function(menu, data)
+			if data.name:sub(1, 3) == "set" then
+				life_config:set_dirty()
+				set_life_config(data.name:sub(10, -1))
+				life_data= life_config:get_data()
+				return {ret_data= {true}}
+			else
+				return {ret_data= {true, data}}
+			end
+		end,
+	}
+	for i, name in ipairs(life_config_names) do
+		ret[#ret+1]= {name= "set_life_" .. name}
+	end
+	for i, name in ipairs(life_config_value_names) do
+		ret[#ret+1]= life_val_conf(name)
 	end
 	return ret
 end
@@ -412,6 +445,7 @@ local menu_items= {
 	{name= "pain_config", meta= options_sets.menu, args= pain_slot_options},
 	{name= "grade_config", meta= options_sets.menu, args= gen_grade_options},
 	{name= "scoring_config", meta= options_sets.menu, args= scoring_options()},
+	{name= "life_config", meta= options_sets.menu, args= life_options()},
 	{name= "confetti_config", meta= options_sets.menu, args= confetti_options},
 	{name= "offset_config", meta= options_sets.menu, args= get_offset_service_menu},
 }
@@ -458,6 +492,7 @@ local function input(event)
 					machine_flag_setting:save()
 					machine_pain_setting:save()
 					scoring_config:save()
+					life_config:save()
 					trans_new_screen("ScreenInitialMenu")
 				end
 			end

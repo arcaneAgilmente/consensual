@@ -21,6 +21,7 @@ This theme requires Stepmania 5.0.5 or any newer 5.0.x version.
 * Customizable evaluation info.
 * Customizable grading system.
 * Customizable scoring values.
+* Customizable life values.
 * Menu for picking global offset from a list of choices.
 * Individual customizations saved to profiles.
 * Confetti.
