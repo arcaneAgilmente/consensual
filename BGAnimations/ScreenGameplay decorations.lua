@@ -913,29 +913,8 @@ local function tilt_input(event)
 	end
 end
 
-local facing_history_size= 8
-local function average_facing(history)
-	local angle= 0
-	for i= 1, facing_history_size do
-		angle= angle + history[i]
-	end
-	angle= angle / facing_history_size
-	return angle
-	--[[
-	local x= 0
-	local y= 0
-	for i= 1, #history do
-		x= x + history[i][1]
-		y= y + history[i][1]
-	end
-	x= x / #history
-	y= y / #history
-	return math.atan2(y, x)
-	]]
-end
-
 local function facing_input(event)
-	if event.type ~= "InputEventType_FirstPress" then return end
+	if event.type == "InputEventType_Release" then return end
 	local pn= event.PlayerNumber
 	local player= cons_players[pn]
 	if not player or not player.spatial_turning or not notefields[pn] then
@@ -943,14 +922,15 @@ local function facing_input(event)
 	local button= event.button
 	local position= player.panel_positions[button]
 	if not position then return end
-	local angle= math.atan2(position[2], position[1])
-	player.facing_history[player.facing_history_pos]= angle
-	player.facing_history_pos= player.facing_history_pos + 1
-	if player.facing_history_pos > facing_history_size then
-		player.facing_history_pos= 1
+	cons_players[pn].facing_angle= cons_players[pn].facing_angle + (.02 * position[1])
+	cons_players[pn].facing_angle= approach(cons_players[pn].facing_angle, 0, .02 * math.abs(position[2]))
+	local angle= cons_players[pn].facing_angle - math.pi*.5
+	local anti= (-angle) - math.pi*.5
+	notefields[pn]:rotationz(angle/math.pi*180 + 90)
+	for i, actor in ipairs(notefields[pn]:get_column_actors()) do
+		actor:get_rot_handler():get_spline():set_point(1, {0, 0, anti})
+		:set_point(2, {0, 0, ani})
 	end
-	local facing= average_facing(player.facing_history)
-	notefields[pn]:stoptweening():linear(.25):rotationz(facing/math.pi*180 + 90)
 end
 
 local author_centers= {
@@ -1392,12 +1372,15 @@ return Def.ActorFrame {
 					if notefields[pn].get_column_actors then
 						notecolumns[pn]= notefields[pn]:get_column_actors()
 						if cons_players[pn].spatial_turning then
-							cons_players[pn].facing_history= {}
 							cons_players[pn].panel_positions= get_spatial_panel_positions(
 								cons_players[pn].prev_steps:GetStepsType(), #notecolumns[pn])
-							cons_players[pn].facing_history_pos= 1
-							for i= 1, facing_history_size do
-								cons_players[pn].facing_history[i]= 0
+							cons_players[pn].facing_angle= 0
+							for i, actor in ipairs(notefields[pn]:get_column_actors()) do
+								actor:get_rot_handler():set_spline_mode("NoteColumnSplineMode_Position")
+									:set_beats_per_t(8)
+									:get_spline():set_size(2)
+									:set_point(1, {0, 0, 0})
+									:set_point(2, {0, 0, 0}):solve()
 							end
 						end
 						if cons_players[pn].spatial_arrows then

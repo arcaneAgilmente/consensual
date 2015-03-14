@@ -122,6 +122,60 @@ local function nps(song)
 	end
 end
 
+local timing_segments= {
+	{"Stops", "GetStops"},
+	{"Delays", "GetDelays"},
+	{"BPM Changes", "GetBPMs"},
+	{"Warps", "GetWarps"},
+	{"Tickcounts", "GetTickcounts"},
+	{"Speed Changes", "GetSpeeds"},
+	{"Scroll Changes", "GetScrolls"},
+	{"Combo Multipliers", "GetCombos"},
+}
+
+local function timing_data_wrapper(func_name)
+	return function(song)
+		if song.GetStepsByStepsType then
+			local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
+			local filter_type= curr_style:GetStepsType()
+			local all_steps= song:GetStepsByStepsType(filter_type)
+			local high_count= 0
+			for i, steps in ipairs(all_steps) do
+				local timing_data= steps:GetTimingData()
+				local count= #timing_data[func_name](timing_data, true)
+				if count > high_count then
+					high_count= count
+				end
+			end
+			return {high_count}
+		else
+			return {0}
+		end
+	end
+end
+
+local function timing_segment_count(song)
+	if song.GetStepsByStepsType then
+		local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
+		local filter_type= curr_style:GetStepsType()
+		local all_steps= song:GetStepsByStepsType(filter_type)
+		local high_count= 0
+		for i, steps in ipairs(all_steps) do
+			local timing_data= steps:GetTimingData()
+			local count= 0
+			for i, seg_info in ipairs(timing_segments) do
+				count= count + #timing_data[seg_info[2]](timing_data, true)
+			end
+			if count > high_count then
+				high_count= count
+			end
+		end
+		return {high_count}
+	else
+		return {0}
+	end
+end
+
 local function by_words(song)
 	return split_string_to_words(song:GetDisplayMainTitle())
 end
@@ -308,6 +362,22 @@ local shared_sort_factors= {
 		can_join= noop_true, insensitive_names= true, returns_multiple= true},
 }
 
+local function make_bucket_from_factors(name, factors)
+	return {
+		name= {value= name, source= {name= "make from " .. name}},
+		contents= factors}
+end
+
+local timing_sort_factors= {
+	{ name= "Timing Segment Total", get_names= timing_segment_count,
+		pre_sort_func= set_nps_player},
+}
+for i, seg_info in ipairs(timing_segments) do
+	timing_sort_factors[#timing_sort_factors+1]= {
+		name= seg_info[1], get_names= timing_data_wrapper(seg_info[2]),
+		pre_sort_func= set_nps_player}
+end
+
 local song_sort_factors= {
 	{ name= "BPM", get_names= get_song_bpm},
 	{ name= "Artist", get_names= generic_get_wrapper("GetDisplayArtist"),
@@ -315,13 +385,12 @@ local song_sort_factors= {
 	{ name= "Genre", get_names= generic_get_wrapper("GetGenre"),
 		uses_depth= true, insensitive_names= true},
 	{ name= "Length", get_names= length},
-	-- Disabled, causes stepmania to eat all ram and hang.
-	-- Left in as disabled so it's known to not work.
 	{ name= "Step Artist", insensitive_names= true, get_names= step_artist,
 		returns_multiple= true},
 	{ name= "Note Count", get_names= note_count, returns_multiple= true,
 		pre_sort_func= set_nps_player},
 	nps_sort,
+	make_bucket_from_factors("Timing Data", timing_sort_factors),
 }
 
 local course_sort_factors= {
@@ -379,12 +448,6 @@ local score_factor_bucket= {
 		 score_sub_bucket_maker(open_score, "Open", "Scores"),
 		 score_sub_bucket_maker(num_scores, "Total", "Scores"),
 }}
-
-local function make_bucket_from_factors(name, factors)
-	return {
-		name= {value= name, source= {name= "make from " .. name}},
-		contents= factors}
-end
 
 local function make_rival_bucket()
 	local source= {name= "make_rival_bucket"}
