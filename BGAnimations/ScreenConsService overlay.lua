@@ -389,6 +389,8 @@ local consensual_options= {
 	 args= key_get_set("censor_privilege_key")},
 	{name= "set_have_select", meta= options_sets.boolean_option,
 	 args= make_extra_for_bool_val("have_select_button", "Yes", "No")},
+	{name= "set_cursor_button_icon_size", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("cursor_button_icon_size", -2, -1, 0)},
 	{name= "set_ud_menus", meta= options_sets.boolean_option,
 	 args= make_extra_for_bool_val("menus_have_ud", "Yes", "No")},
 	{name= "set_demo_idle", meta= options_sets.adjustable_float,

@@ -332,10 +332,11 @@ end
 local function generic_icon_sprite(button, side, add_to)
 	local path= THEME:GetPathG("", "button_icons/"..button..".png", true)
 	if not path or path == "" then return nil end
+	local icon_scale= misc_config:get_data().cursor_button_icon_size
 	local args= {
 		Name= button, Texture= path, InitCommand= function(self)
 			add_to[#add_to+1]= {side, self}
-			scale_to_fit(self, 16, 16)
+			scale_to_fit(self, 16 * icon_scale, 16 * icon_scale)
 			self:diffusealpha(.5)
 			if side == "top" then
 				self:vertalign(bottom)

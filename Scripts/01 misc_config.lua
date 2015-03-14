@@ -27,6 +27,7 @@ local default_config= {
 	transition_meta_var_max= 64,
 	transition_type= "random",
 
+	cursor_button_icon_size= 1,
 	menus_have_ud= true,
 	show_startup_time= true,
 
