@@ -1128,10 +1128,12 @@ local function get_code_texts_for_game()
 end
 
 local to_open= get_string_wrapper("SelectMusic", "to_open")
-local function exp_text(exp_name, x, y, attrib_color)
+local to_close= get_string_wrapper("SelectMusic", "to_close")
+local to_play= get_string_wrapper("SelectMusic", "to_play")
+local function exp_text(exp_name, x, y, to_interact, attrib_color)
 	local str= get_string_wrapper("SelectMusic", exp_name)
 	return normal_text(
-		exp_name, str .. " " .. to_open, fetch_color("help.text"), fetch_color("help.stroke"), x, y, .75, left, {
+		exp_name, str .. " " .. to_interact, fetch_color("help.text"), fetch_color("help.stroke"), x, y, .75, left, {
 			InitCommand= function(self)
 				self:AddAttribute(0, {Length=#str, Diffuse= fetch_color(attrib_color)})
 			end
@@ -1146,9 +1148,9 @@ local help_args= {
 				:setsize(SCREEN_WIDTH, SCREEN_HEIGHT):diffuse(fetch_color("help.bg"))
 		end
 	},
-	exp_text("group_exp", 8, 12, "music_select.music_wheel.group"),
-	exp_text("current_group_exp", 8, 36, "music_select.music_wheel.current_group"),
-	exp_text("song_exp", 8, 60, "music_select.music_wheel.song"),
+	exp_text("group_exp", 8, 12, to_open, "music_select.music_wheel.group"),
+	exp_text("current_group_exp", 8, 36, to_close, "music_select.music_wheel.current_group"),
+	exp_text("song_exp", 8, 60, to_play, "music_select.music_wheel.song"),
 	Def.ActorFrame{
 		Name= "diffex", InitCommand= cmd(xy, 156, 195),
 		-- TODO?  duplicate the actual entry in the steps_display that is being
