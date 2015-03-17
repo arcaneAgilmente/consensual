@@ -220,6 +220,9 @@ local function rescale_stars()
 	if misc_config:get_data().max_star_points > 2 then
 		star_points= math.min(star_points, misc_config:get_data().max_star_points)
 	end
+	if misc_config:get_data().disable_extra_processing then
+		star_points= 16
+	end
 	local apmul= 1
 	if april_fools then apmul= 4 end
 	stars[1]:repoint(star_points, radius * apmul)
@@ -568,7 +571,7 @@ local function input(event)
 		set_prev_song_bpm(math.random(60, 200))
 		play_sample_music(true)
 	elseif event.DeviceInput.button == "DeviceButton_n" then
---		trans_new_screen("ScreenMiscTest")
+		trans_new_screen("ScreenMiscTest")
 	end
 	--[[
 	if event.DeviceInput.button == "DeviceButton_n" then

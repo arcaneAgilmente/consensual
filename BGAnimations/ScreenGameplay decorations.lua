@@ -13,6 +13,7 @@ local wrapper_layers= 3 -- x, y, z rotation
 local screen_gameplay= false
 local gameplay_wrappers= {}
 local song_opts= GAMESTATE:GetSongOptionsObject("ModsLevel_Current")
+local disable_extra_processing= misc_config:get_data().disable_extra_processing
 
 local receptor_min= THEME:GetMetric("Player", "ReceptorArrowsYStandard")
 local receptor_max= THEME:GetMetric("Player", "ReceptorArrowsYReverse")
@@ -434,7 +435,7 @@ function song_progress_bar_interface:create_actors()
 	self.stroke_color= fetch_color("gameplay.song_progress_bar.stroke")
 	self.progress_colors= fetch_color("gameplay.song_progress_bar.progression")
 	self.length_colors= fetch_color("gameplay.song_progress_bar.length")
-	return Def.ActorFrame{
+	local args= {
 		Name= self.name, InitCommand= function(subself)
 			subself:xy(spb_x, spb_y)
 			self.container= subself
@@ -443,12 +444,17 @@ function song_progress_bar_interface:create_actors()
 			self.song_first_second= 0
 			self.song_len= 1
 		end,
-		self.frame:create_actors(
+		normal_text(
+			"time", "", fetch_color("text"), fetch_color("gameplay.song_progress_bar.stroke"),
+			0, -spb_time_off)
+	}
+	if not disable_extra_processing then
+		args[#args+1]= self.frame:create_actors(
 			"frame", .5, spb_width, spb_height,
 			fetch_color("gameplay.song_progress_bar.frame"),
 			fetch_color("gameplay.song_progress_bar.bg"),
-			0, 0),
-		Def.Quad{
+			0, 0)
+		args[#args+1]= Def.Quad{
 			Name= "filler", InitCommand=
 				function(self)
 					self:diffuse(
@@ -456,10 +462,9 @@ function song_progress_bar_interface:create_actors()
 						:x(spb_width * -.5):horizalign(left)
 						:setsize(spb_width, spb_height-1):zoomx(0)
 				end
-		},
-		normal_text("time", "", nil, fetch_color("gameplay.song_progress_bar.stroke"),
-		0, -spb_time_off)
-	}
+		}
+	end
+	return Def.ActorFrame(args)
 end
 
 function song_progress_bar_interface:set_from_song()
@@ -476,22 +481,31 @@ end
 function song_progress_bar_interface:update()
 	local cur_seconds= (GAMESTATE:GetCurMusicSeconds() -self.song_first_second)
 		/ (song_opts:MusicRate() * screen_gameplay:GetHasteRate())
-	local zoom= cur_seconds / self.song_len
-	local cur_color= color_in_set(self.progress_colors, math.ceil(zoom * #self.progress_colors), false, false, false)
-	self.filler:diffuse(cur_color):zoomx(zoom)
+	local cur_color= false
+	if not disable_extra_processing then
+		local zoom= cur_seconds / self.song_len
+		cur_color= color_in_set(self.progress_colors, math.ceil(zoom * #self.progress_colors), false, false, false)
+		self.filler:diffuse(cur_color):zoomx(zoom)
+	end
 	cur_seconds= math.floor(cur_seconds)
 	if cur_seconds ~= self.prev_second then
 		self.prev_second= cur_seconds
-		local parts= {
-			{secs_to_str(cur_seconds), Alpha(cur_color, 1)},
-			{" / ", self.text_color},
-			{secs_to_str(self.song_len), self.text_color},
-		}
-		if self.song_len > 120 then
-			parts[3][2]= color_in_set(
-				self.length_colors, math.ceil((self.song_len-120)/15), false, false, false)
+		if disable_extra_processing then
+			self.time:settext(
+					table.concat({secs_to_str(cur_seconds), " / ",
+												secs_to_str(self.song_len)}))
+		else
+			local parts= {
+				{secs_to_str(cur_seconds), Alpha(cur_color, 1)},
+				{" / ", self.text_color},
+				{secs_to_str(self.song_len), self.text_color},
+			}
+			if self.song_len > 120 then
+				parts[3][2]= color_in_set(
+					self.length_colors, math.ceil((self.song_len-120)/15), false, false, false)
+			end
+			set_text_from_parts(self.time, parts)
 		end
-		set_text_from_parts(self.time, parts)
 	end
 end
 local song_progress_bar= setmetatable({}, song_progress_bar_interface_mt)
@@ -727,17 +741,17 @@ local function Update(self)
 		Trace("SGbg.Update:  curstats is nil.")
 	end
 	song_progress_bar:update()
-	for k, v in pairs(enabled_players) do
-		player= cons_players[v]
+	for i, pn in pairs(enabled_players) do
+		player= cons_players[pn]
 		local unmine_time= player.unmine_time
 		if unmine_time and unmine_time <= get_screen_time() then
-			player.mine_data.unapply(v)
+			player.mine_data.unapply(pn)
 			player.mine_data= nil
 			player.unmine_time= nil
 		end
 		local speed_info= player:get_speed_info()
 		if speed_info.mode == "CX" and screen_gameplay.GetTrueBPS then
-			local this_bps= screen_gameplay:GetTrueBPS(v)
+			local this_bps= screen_gameplay:GetTrueBPS(pn)
 			if speed_info.prev_bps ~= this_bps and this_bps > 0 then
 				speed_info.prev_bps= this_bps
 				local xmod= (speed_info.speed) / (this_bps * 60)
@@ -745,9 +759,9 @@ local function Update(self)
 				player.current_options:XMod(xmod)
 			end
 		end
-		local song_pos= GAMESTATE:GetPlayerState(v):GetSongPosition()
+		local song_pos= GAMESTATE:GetPlayerState(pn):GetSongPosition()
 		if speed_info.mode == "D" then
-			local this_bps= screen_gameplay:GetTrueBPS(v)
+			local this_bps= screen_gameplay:GetTrueBPS(pn)
 			local discard, approach= player.song_options:Centered()
 			if approach == 0 then
 				if not song_pos:GetFreeze() and not song_pos:GetDelay() then
@@ -778,26 +792,26 @@ local function Update(self)
 			end
 		end
 		if player.chuunibyou and player.chuunibyou > 0 then
-			if song_pos:GetSongBeat() > next_chuunibyou[v] then
-				chuunibyou_state[v]= not chuunibyou_state[v]
-				side_actors[v]:x(chuunibyou_sides[chuunibyou_state[v]])
-				next_chuunibyou[v]= next_chuunibyou[v] + player.chuunibyou
+			if song_pos:GetSongBeat() > next_chuunibyou[pn] then
+				chuunibyou_state[pn]= not chuunibyou_state[pn]
+				side_actors[pn]:x(chuunibyou_sides[chuunibyou_state[pn]])
+				next_chuunibyou[pn]= next_chuunibyou[pn] + player.chuunibyou
 			end
 		end
-		if notecolumns[v] and get_screen_time() > next_spline_change_time then
+		if notecolumns[pn] and get_screen_time() > next_spline_change_time then
 			next_spline_change_time= next_spline_change_time + 20
-			if cons_players[v].pos_splines_demo or cons_players[v].rot_splines_demo
-			or cons_players[v].zoom_splines_demo then
-				for i= 1, #notecolumns[v] do
+			if cons_players[pn].pos_splines_demo or cons_players[pn].rot_splines_demo
+			or cons_players[pn].zoom_splines_demo then
+				for i= 1, #notecolumns[pn] do
 					if hate then
 						local spread= math.random(-120, 120)
-						local per= spread / (#notecolumns[v] - 1)
+						local per= spread / (#notecolumns[pn] - 1)
 						local start= (spread * -.5) - per
-						notecolumns[v][i]:rotationz(start + (i * per))
+						notecolumns[pn][i]:rotationz(start + (i * per))
 					end
-					if cons_players[v].pos_splines_demo
-					and not cons_players[v].spatial_arrows then
-						local handler= notecolumns[v][i]:get_pos_handler()
+					if cons_players[pn].pos_splines_demo
+					and not cons_players[pn].spatial_arrows then
+						local handler= notecolumns[pn][i]:get_pos_handler()
 						handler:set_beats_per_t(64/math.random(1, 32))
 							:set_spline_mode("NoteColumnSplineMode_Offset")
 							:set_subtract_song_beat(false)
@@ -809,12 +823,11 @@ local function Update(self)
 						end
 						spline:solve()
 					end
-					if cons_players[v].rot_splines_demo then
-						local handler= notecolumns[v][i]:get_rot_handler()
+					if cons_players[pn].rot_splines_demo then
+						local handler= notecolumns[pn][i]:get_rot_handler()
 						handler:set_beats_per_t(64/math.random(1, 32))
 							:set_spline_mode("NoteColumnSplineMode_Position")
 							:set_subtract_song_beat(false)
-						--:set_subtract_song_beat(math.random(1, 2) == 1)
 						local spline= handler:get_spline()
 						local num_points= math.random(1, 8)
 						spline:set_loop(true):set_size(num_points)
@@ -829,8 +842,8 @@ local function Update(self)
 						end
 						spline:solve()
 					end
-					if cons_players[v].zoom_splines_demo then
-						local handler= notecolumns[v][i]:get_zoom_handler()
+					if cons_players[pn].zoom_splines_demo then
+						local handler= notecolumns[pn][i]:get_zoom_handler()
 						handler:set_beats_per_t(64/math.random(1, 32))
 							:set_spline_mode("NoteColumnSplineMode_Position")
 							:set_subtract_song_beat(false)
@@ -842,20 +855,17 @@ local function Update(self)
 						end
 						spline:solve()
 					end
-					notecolumns[v][i]:linear(20)
+					notecolumns[pn][i]:linear(20)
 				end
 			end
 		end
-		if (side_swap_vals[v] or 0) > 1 then
-			if side_toggles[v] then
-				side_actors[v]:x(player_sides[v])
+		if (side_swap_vals[pn] or 0) > 1 then
+			if side_toggles[pn] then
+				side_actors[pn]:x(player_sides[pn])
 			else
-				side_actors[v]:x(swap_on_xs[v])
+				side_actors[pn]:x(swap_on_xs[pn])
 			end
-			side_toggles[v]= not side_toggles[v]
-		end
-		for fk, fv in pairs(feedback_things[v]) do
-			if fv.update then fv:update(pstats[v]) end
+			side_toggles[pn]= not side_toggles[pn]
 		end
 	end
 end
@@ -1329,6 +1339,9 @@ return Def.ActorFrame {
 			local unacc_reset_limit= misc_config:get_data().gameplay_reset_limit
 			local curstats= STATSMAN:GetCurStageStats()
 			for i, pn in ipairs(enabled_players) do
+				for fk, fv in pairs(feedback_things[pn]) do
+					if fv.update then fv:update(pstats[pn]) end
+				end
 				cons_players[pn].prev_steps= gamestate_get_curr_steps(pn)
 				cons_players[pn]:stage_stats_reset()
 				cons_players[pn]:combo_qual_reset()
@@ -1460,6 +1473,9 @@ return Def.ActorFrame {
 		JudgmentMessageCommand= function(self, param)
 			local pn= param.Player
 			local confidence= confidence_data[pn]
+			for fk, fv in pairs(feedback_things[pn]) do
+				if fv.update then fv:update(pstats[pn]) end
+			end
 			if confidence then
 				if confidence.active then
 					if confidence.chance < 100 then

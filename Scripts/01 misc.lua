@@ -911,4 +911,10 @@ function end_credit_now()
 	trans_new_screen(next_screen)
 end
 
+function life_on(self)
+	if misc_config:get_data().disable_extra_processing then
+		self:hibernate(math.huge)
+	end
+end
+
 music_wheel_width= SCREEN_WIDTH*.3125

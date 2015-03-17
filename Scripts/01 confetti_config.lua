@@ -19,6 +19,9 @@ local function maybe_rand(a, b)
 end
 
 function confetti_count()
+	if misc_config:get_data().disable_extra_processing then
+		return 0
+	end
 	return confetti_data.amount
 end
 

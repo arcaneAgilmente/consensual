@@ -7,6 +7,8 @@ end
 
 local white= {1, 1, 1, 1}
 
+local texpath= ""
+
 local width= .1
 local args= {
 	OnCommand= function(self)

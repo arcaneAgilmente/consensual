@@ -22,6 +22,8 @@ local default_config= {
 	gameplay_reset_limit= 5,
 	have_select_button= true,
 
+	disable_extra_processing= false,
+
 	transition_split_min= 1,
 	transition_split_max= 64,
 	transition_meta_var_max= 64,

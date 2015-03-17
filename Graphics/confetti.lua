@@ -6,9 +6,10 @@ return Def.ActorFrame{
 	TriggerCommand= function(self)
 		self:stoptweening():hibernate(confetti_hibernate()):queuecommand("Fall")
 	end,
-	HideCommand= cmd(visible, false),
+	HideCommand= cmd(hibernate,math.huge;visible, false),
 	FallCommand= function(self)
-		self:stoptweening():visible(true):xy(confetti_x(), confetti_fall_start())
+		self:stoptweening():hibernate(0):visible(true)
+			:xy(confetti_x(), confetti_fall_start())
 			:linear(confetti_fall_time()):y(confetti_fall_end())
 		local part= self:GetChild("part")
 		part:setsize(confetti_size(), confetti_size()):diffuse(confetti_color())

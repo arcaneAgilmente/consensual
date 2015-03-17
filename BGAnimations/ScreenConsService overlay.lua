@@ -404,6 +404,8 @@ local consensual_options= {
 --	 args= make_extra_for_conf_val("line_height", 0, 0, 1)},
 	{name= "sex_per_clock_change", meta= options_sets.adjustable_float,
 	 args= time_conf("seconds_per_clock_change", 0, 0, 3)},
+	{name= "disable_extra_processing", meta= options_sets.boolean_option,
+	 args= make_extra_for_bool_val("disable_extra_processing", "Yes", "No")},
 	{name= "transition_split_min", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("transition_split_min", 0, 0, 1)},
 	{name= "transition_split_max", meta= options_sets.adjustable_float,

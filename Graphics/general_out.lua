@@ -23,6 +23,12 @@ end
 local yq= math.ceil(xq / ratio)
 local max_var= 0
 local meta_var_max= conf_data.transition_meta_var_max
+if misc_config:get_data().disable_extra_processing then
+	xq= math.min(xq, 2)
+	yq= math.min(yq, 2)
+	meta_var_max= 0
+end
+
 if meta_var_max > 0 then
 	meta_var_max= force_to_range(1, math.ceil(meta_var_max), 96)
 	local var_var= .125

@@ -236,6 +236,9 @@ function random_grow_circle(name, x, y, center_color, edge_color, step_time, end
 				if type(edge_color) == "function" then edge_color= edge_color() end
 				local verts= {{{0, 0, 0}, center_color}}
 				local points= 128
+				if misc_config:get_data().disable_extra_processing then
+					points= 16
+				end
 				for i= 1, points+1 do
 					verts[#verts+1]= {{0, 0, 0}, edge_color}
 				end
@@ -265,6 +268,10 @@ function random_grow_circle(name, x, y, center_color, edge_color, step_time, end
 			local verts= {{{0, 0, 0}, center_color}}
 			local points= 512
 			local spp= 64
+			if misc_config:get_data().disable_extra_processing then
+				points= 64
+				spp= 4
+			end
 			for i= 1, points+1 do
 				verts[#verts+1]= {{0, 0, 0}, edge_color}
 			end
@@ -328,6 +335,9 @@ function random_grow_column(name, x, y, bottom_color, top_color, w, step_time, e
 			if type(end_h) == "function" then end_h= end_h() end
 			local sx= w*-.5
 			local cols= 64
+			if misc_config:get_data().disable_extra_processing then
+				cols= 4
+			end
 			local xdiff= w / cols
 			local verts= {}
 			for i= 1, cols*8 do
