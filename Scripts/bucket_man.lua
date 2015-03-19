@@ -996,98 +996,132 @@ function music_whale:resort_for_new_style()
 	function() self:post_sort_update() end
 end
 
-function music_whale:add_player_randoms(disp_bucket, player_number)
-	if GetPreviousPlayerSteps and GAMESTATE:IsPlayerEnabled(player_number) then
-		local prev_steps= GetPreviousPlayerSteps(player_number)
-		local sn= ToEnumShortString(player_number)
-		if prev_steps then
-			local prev_meter= prev_steps:GetMeter()
-			local sbd= ConvertScoreToFootRateChange(
-				prev_meter, GetPreviousPlayerScore(player_number))
-			local sbd_str= " "
-			if sbd >= 0 then
-				sbd_str= sbd_str .. "+" .. sbd
-			else
-				sbd_str= sbd_str .. sbd
+local function add_player_randoms(filters, candies, pn)
+	local prev_steps= GetPreviousPlayerSteps(pn)
+	local sn= ToEnumShortString(pn)
+	local interface_flags= cons_players[pn].flags.interface
+	local function ritem_name(type_name)
+		return sn .. get_string_wrapper("MusicWheel", type_name)
+	end
+	local use_prev= interface_flags.easier_random or interface_flags.same_random
+	or interface_flags.harder_random or interface_flags.score_random
+	if prev_steps and use_prev then
+		local prev_meter= prev_steps:GetMeter()
+		local sbd= ConvertScoreToFootRateChange(
+			prev_meter, GetPreviousPlayerScore(pn))
+		local sbd_str= " "
+		if sbd >= 0 then
+			sbd_str= sbd_str .. "+" .. sbd
+		else
+			sbd_str= sbd_str .. sbd
+		end
+		local prev_easier= {}
+		local prev_same= {}
+		local prev_harder= {}
+		local prev_sbd= {}
+		filters[#filters+1]= function(item)
+			local song= item.el
+			local steps_list= get_filtered_sorted_steps_list(song)
+			for i, steps in ipairs(steps_list) do
+				local meter= steps:GetMeter()
+				if interface_flags.easier_random and meter == prev_meter - 1 then
+					prev_easier[#prev_easier+1]= song
+				end
+				if interface_flags.same_random and meter == prev_meter then
+					prev_same[#prev_same+1]= song
+				end
+				if interface_flags.harder_random and meter == prev_meter + 1 then
+					prev_harder[#prev_harder+1]= song
+				end
+				if interface_flags.score_random and meter == prev_meter + sbd then
+					prev_sbd[#prev_sbd+1]= song
+				end
 			end
-			local prev_easier= {}
-			local prev_same= {}
-			local prev_harder= {}
-			local prev_sbd= {}
-			local interface_flags= cons_players[player_number].flags.interface
-			local function candy_filter(item)
-				local song= item.el
-				if check_censor_list(song) then return end
-				local steps_list= get_filtered_sorted_steps_list(song)
-				for i, v in ipairs(steps_list) do
-					local meter= v:GetMeter()
-					if interface_flags.easier_random and meter == prev_meter - 1 then
-						prev_easier[#prev_easier+1]= song
-					end
-					if interface_flags.same_random and meter == prev_meter then
-						prev_same[#prev_same+1]= song
-					end
-					if interface_flags.harder_random and meter == prev_meter + 1 then
-						prev_harder[#prev_harder+1]= song
-					end
-					if interface_flags.score_random and meter == prev_meter + sbd then
-						prev_sbd[#prev_sbd+1]= song
+		end
+		candies[#candies+1]= {
+			name= sn .. "Random Easier", disp_name= ritem_name("Random Easier"),
+			candy= prev_easier}
+		candies[#candies+1]= {
+			name= sn .. "Random Same", disp_name= ritem_name("Random Same"),
+			candy= prev_same}
+		candies[#candies+1]= {
+			name= sn .. "Random Harder", disp_name= ritem_name("Random Harder"),
+			candy= prev_harder}
+		candies[#candies+1]= {
+			name= sn .. "Random SB", disp_name= ritem_name("Random") .. sbd_str,
+			candy= prev_sbd}
+	end
+	local preferred_diff= GAMESTATE:GetPreferredDifficulty(pn) or
+		"Difficulty_Beginner"
+	local curr_steps_type= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
+	local profile= PROFILEMAN:GetProfile(pn)
+	if profile and
+	(interface_flags.unplayed_random or interface_flags.low_score_random) then
+		local unplayed_candy= {}
+		local low_score_candy= {}
+		filters[#filters+1]= function(item)
+			local song= item.el
+			local steps_list= get_filtered_sorted_steps_list(song)
+			for i, steps in ipairs(steps_list) do
+				if steps:GetDifficulty() == preferred_diff
+					and steps:GetStepsType() == curr_steps_type then
+					local score_list= profile:GetHighScoreListIfExists(song, steps)
+					if score_list then
+						if #score_list:GetHighScores() > 0 then
+							local score= score_list:GetHighScores()[1]:GetPercentDP()
+							if score < cons_players[pn].low_score_random_threshold
+							and score > .05 then
+								low_score_candy[#low_score_candy+1]= song
+							else
+								unplayed_candy[#unplayed_candy+1]= song
+							end
+						else
+							unplayed_candy[#unplayed_candy+1]= song
+						end
+					else
+						unplayed_candy[#unplayed_candy+1]= song
 					end
 				end
 			end
-			if interface_flags.easier_random or interface_flags.same_random
-			or interface_flags.harder_random or interface_flags.score_random then
-				bucket_traverse(
-					self.curr_bucket.contents or self.curr_bucket, nil, candy_filter)
-			end
-			local function ritem_name(type_name)
-				return sn .. get_string_wrapper("MusicWheel", type_name)
-			end
-			if #prev_easier > 0 then
-				disp_bucket[#disp_bucket+1]= {
-					name= sn .. "Random Easier", is_special= true,
-					disp_name= ritem_name("Random Easier"),
-					random_info= {candidate_set= prev_easier}}
-			end
-			if #prev_same > 0 then
-				disp_bucket[#disp_bucket+1]= {
-					name= sn .. "Random Same", is_special= true,
-					disp_name= ritem_name("Random Same"),
-					random_info= {candidate_set= prev_same}}
-			end
-			if #prev_harder > 0 then
-				disp_bucket[#disp_bucket+1]= {
-					name= sn .. "Random Harder", is_special= true,
-					disp_name= ritem_name("Random Harder"),
-					random_info= {candidate_set= prev_harder}}
-			end
-			if #prev_sbd > 0 then
-				disp_bucket[#disp_bucket+1]= {
-					name= sn .. "Random SB", is_special= true,
-					disp_name= ritem_name("Random") .. sbd_str,
-					random_info= {candidate_set= prev_sbd}}
-			end
 		end
+		candies[#candies+1]= {
+			name= sn .. "Random Unplayed", disp_name= ritem_name("Random Unplayed"),
+			candy= unplayed_candy}
+		candies[#candies+1]= {
+			name= sn .. "Random Low Score", disp_name= ritem_name("Random Low Score"),
+			candy= low_score_candy}
 	end
 end
 
 function music_whale:add_randoms(bucket)
-	local candidates= {}
-	local function add_to_candidates(el)
+	local general_candy= {}
+	local function general_random(el)
 		if check_censor_list(el.el) then return end
-		candidates[#candidates+1]= el.el
+		general_candy[#general_candy+1]= el.el
+	end
+	local filters= {general_random}
+	local candies= {{name= "Random", candy= general_candy}}
+	if not GAMESTATE:IsCourseMode() then
+		for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+			add_player_randoms(filters, candies, pn)
+		end
+	end
+	local function kidney(item)
+		if check_censor_list(item.el) then return end
+		for i= 1, #filters do
+			filters[i](item)
+		end
 	end
 	bucket_traverse(
-		self.curr_bucket.contents or self.curr_bucket, nil, add_to_candidates)
-	if #candidates > 0 then
-		bucket[#bucket+1]= {
-			name= "Random", is_special= true,
-			disp_name= get_string_wrapper("MusicWheel", "Random"),
-			random_info= {candidate_set= candidates}}
-	end
-	if not GAMESTATE:IsCourseMode() then
-		self:add_player_randoms(bucket, PLAYER_1)
-		self:add_player_randoms(bucket, PLAYER_2)
+		self.curr_bucket.contents or self.curr_bucket, nil, kidney)
+	for i, candy in ipairs(candies) do
+		local disp_name= candy.disp_name or
+			get_string_wrapper("MusicWheel", candy.name)
+		if #candy.candy > 0 then
+			bucket[#bucket+1]= {
+				name= candy.name, disp_name= disp_name, is_special= true,
+				random_info= {candidate_set= candy.candy}}
+		end
 	end
 end
 

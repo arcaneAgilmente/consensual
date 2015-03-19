@@ -1197,6 +1197,8 @@ local decorations= {
 		args= {eles= combo_threshold_options, disallow_unset= true}},
 	{ name= "Combo Graph Threshold", meta= options_sets.mutually_exclusive_special_functions,
 		args= {eles= combo_graph_threshold_options, disallow_unset= true}},
+	player_conf_float("Low Score Random Threshold",
+										"low_score_random_threshold", 3, -4, -2, -1, 0, 1),
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
 	{ name= "Sigil Size", meta= options_sets.adjustable_float,

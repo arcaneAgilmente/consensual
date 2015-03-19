@@ -43,6 +43,8 @@ local default_flag_set= {
 		harder_random= {false, false, true},
 		same_random= {false, true},
 		score_random= {false, false, false, true},
+		unplayed_random= {false, false, true},
+		low_score_random= {false, false, false, true},
 		straight_floats= {false, false, false, true},
 		verbose_bpm= {false, false, false, true},
 	}
@@ -93,6 +95,8 @@ sorted_flag_names= {
 	 "harder_random",
 	 "same_random",
 	 "score_random",
+	 "unplayed_random",
+	 "low_score_random",
 	 "straight_floats",
 	 "verbose_bpm",
 	}
@@ -215,6 +219,7 @@ local default_config= {
 	toasty_level= 1,
 	combo_splash_threshold= "TapNoteScore_W3",
 	combo_graph_threshold= "TapNoteScore_W3",
+	low_score_random_threshold= .9,
 	preferred_style= "single",
 	experience_level= 1, -- To ease triggering confetti on gaining a level.
 	judgment_offset= -30,

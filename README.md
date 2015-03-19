@@ -513,11 +513,14 @@ some are worth mentioning here.
 	toggled on or off with flags.  Evaluation Flags and Gameplay Flags will be
 	listed on their screens.  
 	Interface Flags:  
-	Easier Random, Harder Random, Same Random, and Score Random toggle
-	per-player Random items on the music wheel.  They use the meter of the last
-	chart played, and allow picking a random song with an easier, harder, or
-	same meter chart.  Score Random uses the score to decide whether its songs
-	should be easier or harder.  
+	The ones with Random in the name toggle per-player Random items on the music
+	wheel.  Some use the meter of the last chart played, and allow picking a
+	random song with an easier, harder, or same meter chart.  Score Random uses
+	the score to decide whether its songs should be easier or harder.  
+	Unplayed Random picks a random song that has not been played on the current
+	difficulty.  
+	Low Score Random picks a random song where the player has scored below the
+	percent set in Low Score Random Threshold.
 	Straight Floats toggles whether to show modifiers as numbers from 0 to 1 or
 	percents from 0% to 100%.  
 	Verbose BPM toggles whether the speed modifier is shown next to the bpm.
