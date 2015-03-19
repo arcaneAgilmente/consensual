@@ -1069,11 +1069,10 @@ local function add_player_randoms(filters, candies, pn)
 					if score_list then
 						if #score_list:GetHighScores() > 0 then
 							local score= score_list:GetHighScores()[1]:GetPercentDP()
-							if score < cons_players[pn].low_score_random_threshold
-							and score > .05 then
-								low_score_candy[#low_score_candy+1]= song
-							else
+							if score < .05 then
 								unplayed_candy[#unplayed_candy+1]= song
+							elseif score < cons_players[pn].low_score_random_threshold then
+								low_score_candy[#low_score_candy+1]= song
 							end
 						else
 							unplayed_candy[#unplayed_candy+1]= song
