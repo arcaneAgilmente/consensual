@@ -918,3 +918,4 @@ function life_on(self)
 end
 
 music_wheel_width= SCREEN_WIDTH*.3125
+mini_menu_width= math.min(_screen.w*.9, 480*.9)

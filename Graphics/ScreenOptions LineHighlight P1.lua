@@ -6,7 +6,7 @@ return Def.ActorFrame{
 	Def.Actor{
 		OnCommand= function(self)
 			self:GetParent():draworder(2):GetParent():SortByDrawOrder()
-			cursor:refit(nil, nil, 304, 20)
+			cursor:refit(nil, nil, mini_menu_width+8, 20)
 		end,
 		ChangeCommand= function(self)
 			self:GetParent():stoptweening():linear(.1)
