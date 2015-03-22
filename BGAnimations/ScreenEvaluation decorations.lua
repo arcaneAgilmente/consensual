@@ -509,8 +509,6 @@ local score_report_mt= {
 			self.song_col= setmetatable({}, number_set_mt)
 			self.session_col= setmetatable({}, number_set_mt)
 			self.sum_col= setmetatable({}, number_set_mt)
-			Trace("Grade config:")
-			rec_print_table(grade_config:get_data())
 			local args= {
 				Name= name,
 				InitCommand= function(subself)

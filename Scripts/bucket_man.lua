@@ -360,6 +360,15 @@ local shared_sort_factors= {
 	-- Fun fact:  Implemented 2 days before Anime Banzai 2014, just to show off.
 	{ name= "Word In Title", get_names= by_words, uses_depth= true,
 		can_join= noop_true, insensitive_names= true, returns_multiple= true},
+	{ name= "Favor+Group", multi_level_sort= true, get_names= noop_blank,
+		{name= "Favor", get_names= favor_wrapper("ProfileSlot_Machine"), can_join= noop_false},
+		group_sort,
+	},
+	{ name= "Tag+Group", multi_level_sort= true, get_names= noop_blank,
+		{name= "Tag", get_names= tag_wrapper("ProfileSlot_Machine"), can_join= noop_false,
+		 returns_multiple= true},
+		group_sort,
+	},
 }
 
 local function make_bucket_from_factors(name, factors)
@@ -744,10 +753,17 @@ local function sort_work()
 	if csi.pre_sort_func then
 		csi.pre_sort_func(csi.pre_sort_arg)
 	end
+	local sort_factors= {csi}
+	if csi.multi_level_sort then
+		for i, factor in ipairs(csi) do
+			sort_factors[i]= factor
+		end
+	end
+	sort_factors[#sort_factors+1]= title_sort
 	bucket_man.current_sort_name= csi.name
 	local sort_start= GetTimeSinceStart()
 	bucket_man.sorted_songs= bucket_sort(
-		bucket_man.filtered_songs, {csi, title_sort})
+		bucket_man.filtered_songs, sort_factors)
 	local sort_end= GetTimeSinceStart()
 --	lua.ReportScriptError("Converting + sorting took " .. sort_end - sort_start)
 end

@@ -271,7 +271,7 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 				break
 			end
 		end
-		if not already_in_combined_history then
+		if not already_in_combined_history and history_entry.finish then
 			combined_play_history[#combined_play_history+1]= history_entry
 		end
 	end
