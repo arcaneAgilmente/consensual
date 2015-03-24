@@ -244,7 +244,7 @@ local function set_scoring_half(from, to)
 	scoring_config:set_dirty()
 	for name, value in pairs(scoring_data) do
 		if name:find(to) then
-			scoring_data[name]= scoring_data[from .. name:sub(#from+1, -1)]
+			scoring_data[name]= scoring_data[from .. name:sub(#to+1, -1)]
 		end
 	end
 end

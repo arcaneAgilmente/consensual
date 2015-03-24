@@ -559,21 +559,29 @@ local function set_closest_steps_to_preferred(pn)
 			else
 				local this_difference= math.abs(
 					Difficulty:Compare(preferred_diff, steps:GetDifficulty()))
-				local this_style= stepstype_to_style[steps:GetStepsType()]
-					[GAMESTATE:GetNumPlayersEnabled()].name
-				if closest.style == pref_style then
-					if this_style == pref_style and
-					this_difference < closest.diff_diff then
-						closest= {
-							steps= steps, diff_diff= this_difference, style= this_style}
+				local this_style= false
+				local sts_entry= stepstype_to_style[steps:GetStepsType()]
+				if sts_entry then
+					sts_entry= sts_entry[GAMESTATE:GetNumPlayersEnabled()]
+					if sts_entry then
+						this_style= sts_entry.name
 					end
-				else
-					if this_style == pref_style then
-						closest= {
-							steps= steps, diff_diff= this_difference, style= this_style}
-					elseif this_difference < closest.diff_diff then
-						closest= {
-							steps= steps, diff_diff= this_difference, style= this_style}
+				end
+				if this_style then
+					if closest.style == pref_style then
+						if this_style == pref_style and
+						this_difference < closest.diff_diff then
+							closest= {
+								steps= steps, diff_diff= this_difference, style= this_style}
+						end
+					else
+						if this_style == pref_style then
+							closest= {
+								steps= steps, diff_diff= this_difference, style= this_style}
+						elseif this_difference < closest.diff_diff then
+							closest= {
+								steps= steps, diff_diff= this_difference, style= this_style}
+						end
 					end
 				end
 			end
