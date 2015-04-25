@@ -1,6 +1,26 @@
 local settings_prefix= "/consensual_settings/"
 global_cur_game= GAMESTATE:GetCurrentGame():GetName():lower()
 
+function get_element_by_path(container, path)
+	local parts= split_name(path)
+	local current= container
+	for i= 1, #parts do
+		current= current[parts[i]]
+		if not current then return end
+	end
+	return current
+end
+
+function set_element_by_path(container, path, value)
+	local parts= split_name(path)
+	local current= container
+	for i= 1, #parts-1 do
+		current= current[parts[i]]
+		if not current then return end
+	end
+	current[parts[#parts]]= value
+end
+
 function force_table_elements_to_match_type(candidate, must_match, depth_remaining)
 	for k, v in pairs(candidate) do
 		if type(must_match[k]) ~= type(v) then
@@ -25,7 +45,7 @@ local function slot_to_prof_dir(slot, reason)
 	if slot and slot ~= "ProfileSlot_Invalid" then
 		prof_dir= PROFILEMAN:GetProfileDir(slot)
 		if not prof_dir or prof_dir == "" then
-			--Warn("Could not fetch profile dir to " .. reason .. ".")
+			--lua.ReportScriptError("Could not fetch profile dir to " .. reason .. " for " .. tostring(slot))
 			return
 		end
 	end
@@ -66,7 +86,7 @@ local setting_mt= {
 			if not prof_dir then
 				self.data_set[slot]= DeepCopy(self.default)
 			else
-				local fname= prof_dir .. settings_prefix .. self.file
+				local fname= self:get_filename(slot)
 				if not FILEMAN:DoesFileExist(fname) then
 					self.data_set[slot]= DeepCopy(self.default)
 				else
@@ -105,12 +125,16 @@ local setting_mt= {
 			self.dirty_table[slot]= nil
 			self.data_set[slot]= nil
 		end,
+		get_filename= function(self, slot)
+			slot= slot or "ProfileSlot_Invalid"
+			local prof_dir= slot_to_prof_dir(slot, "write " .. self.name)
+			if not prof_dir then return end
+			return prof_dir .. settings_prefix .. self.file
+		end,
 		save= function(self, slot)
 			slot= slot or "ProfileSlot_Invalid"
 			if not self:check_dirty(slot) then return end
-			local prof_dir= slot_to_prof_dir(slot, "write " .. self.name)
-			if not prof_dir then return end
-			local fname= prof_dir .. settings_prefix .. self.file
+			local fname= self:get_filename(slot)
 			local file_handle= RageFileUtil.CreateRageFile()
 			if not file_handle:Open(fname, 2) then
 				Warn("Could not open '" .. fname .. "' to write " .. self.name .. ".")

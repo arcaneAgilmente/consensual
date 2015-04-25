@@ -82,9 +82,7 @@ local function note_count(song)
 		local radar
 		for i, v in ipairs(all_steps) do
 			radar= v:GetRadarValues(nps_player)
-			ret[#ret+1]= radar:GetValue("RadarCategory_TapsAndHolds") +
-				radar:GetValue("RadarCategory_Jumps") +
-				radar:GetValue("RadarCategory_Hands")
+			ret[#ret+1]= radar:GetValue("RadarCategory_Notes")
 		end
 		if #ret > 0 then
 			return ret
@@ -97,9 +95,7 @@ end
 
 function calc_nps(pn, song_len, steps)
 	local radar= steps:GetRadarValues(pn)
-	return (radar:GetValue("RadarCategory_TapsAndHolds") +
-						radar:GetValue("RadarCategory_Jumps") +
-						radar:GetValue("RadarCategory_Hands")) / song_len
+	return radar:GetValue("RadarCategory_Notes") / song_len
 end
 
 local function nps(song)
@@ -348,7 +344,7 @@ local nps_sort= {
 	name= "NPS", get_names= nps, returns_multiple= true,
 	pre_sort_func= set_nps_player}
 local any_meter_sort= {
-	name= "Any Meter", get_names= any_meter, returns_multiple= true}
+	name= "Any Meter", get_names= any_meter, returns_multiple= true, can_join= noop_false}
 
 function get_group_sort_info() return group_sort end
 function get_nps_sort_info() return nps_sort end

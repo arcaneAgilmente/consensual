@@ -56,7 +56,7 @@ function set_confetti_side(side)
 end
 
 function confetti_x()
-	return math.random(xmin, xmax)
+	return (math.random() * (xmax - xmin)) + xmin
 end
 
 function confetti_fall_start()

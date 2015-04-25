@@ -282,7 +282,7 @@ local function lookup_named_element(group, name)
 	return nil
 end
 
-local function split_name(refstring)
+function split_name(refstring)
 	local parts= {}
 	local cur_part_start= 1
 	for i= 1, #refstring do

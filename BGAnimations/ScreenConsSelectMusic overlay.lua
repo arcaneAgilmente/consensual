@@ -279,7 +279,7 @@ local privileged_props= false
 local function privileged(pn)
 	return privileged_props
 end
-PREFSMAN:SetPreference("Center1Player", false)
+
 local function convert_xml_exists()
 	if convert_xml_bgs then return true end
 	return false

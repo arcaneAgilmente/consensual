@@ -141,3 +141,47 @@ profile_report_mt= {
 			return Def.ActorFrame(args)
 		end
 }}
+
+local fractional_radars= {
+	RadarCategory_Stream= true,
+	RadarCategory_Voltage= true,
+	RadarCategory_Air= true,
+	RadarCategory_Freeze= true,
+	RadarCategory_Chaos= true,
+}
+
+radar_report_mt= {
+	__index= {
+		create_actors= function(self, pn, hide)
+			self.pn= pn
+			self.name= "radar_report"
+			local spacing= 12
+			local difa= 1
+			if hide then difa= 0 end
+			local args= {
+				Name= self.name, InitCommand= function(subself)
+					subself:diffusealpha(difa)
+					self.container= subself
+				end
+			}
+			local pss= STATSMAN:GetCurStageStats():GetPlayerStageStats(pn)
+			local radar_possible= pss:GetRadarPossible();
+			local radar_actual= pss:GetRadarActual();
+			for i, cat in ipairs(RadarCategory) do
+				local y= spacing * i + 12
+				local cat_name= get_string_wrapper("RadarCategory", cat)
+				local cat_value= ""
+				local poss= radar_possible:GetValue(cat)
+				local actu= radar_actual:GetValue(cat)
+				if fractional_radars[cat] then
+					cat_value= ("%.2f"):format(actu*poss) .. " / " .. ("%.2f"):format(poss)
+				else
+					cat_value= actu .. " / " .. poss
+				end
+				args[#args+1]= normal_text(
+					cat, cat_name .. ": " .. cat_value,
+					fetch_color("text"), eval_stroke, 0, y, .5)
+			end
+			return Def.ActorFrame(args)
+		end
+}}

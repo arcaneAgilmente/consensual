@@ -30,6 +30,7 @@ load_tags("ProfileSlot_Machine")
 
 local num_songs= SONGMAN:GetNumSongs()
 local num_groups= SONGMAN:GetNumSongGroups()
+local num_courses= SONGMAN:GetNumCourses()
 local frame_helper= setmetatable({}, frame_helper_mt)
 
 local playmode= "PlayMode_Regular"
@@ -571,7 +572,7 @@ local function input(event)
 		set_prev_song_bpm(math.random(60, 200))
 		play_sample_music(true)
 	elseif event.DeviceInput.button == "DeviceButton_n" then
-		trans_new_screen("ScreenMiscTest")
+--		trans_new_screen("ScreenMiscTest")
 	end
 	--[[
 	if event.DeviceInput.button == "DeviceButton_n" then
@@ -665,6 +666,9 @@ local args= {
 		normal_text(
 			"groups",num_groups.." Groups",fetch_color("initial_menu.song_count"),
 			fetch_color("stroke"), 0, line_height*1.5),
+		normal_text(
+			"courses",num_courses.." Courses",fetch_color("initial_menu.song_count"),
+			fetch_color("stroke"), 0, line_height*2.5),
 	},
   Def.ActorFrame{
 		Name="time", InitCommand= function(self)

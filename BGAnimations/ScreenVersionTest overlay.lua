@@ -30,11 +30,38 @@ end
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 local unfold_time= 4
 
+local function continue()
+	if version_failed or hate then
+		local theme_names= THEME:GetSelectableThemeNames()
+		local simply_love= false
+		local ultralight= false
+		for i, name in ipairs(theme_names) do
+			if name == "Simply Love" or name == "Simply-Love-SM5" then
+				simply_love= name
+			elseif name == "ultralight" then
+				ultralight= name
+			end
+		end
+		if simply_love then
+			THEME:SetTheme(simply_love)
+		elseif ultralight then
+			THEME:SetTheme(ultralight)
+		else
+			THEME:SetTheme("default")
+		end
+	else
+		trans_new_screen(next_screen)
+	end
+end
+
 local function input(event)
 	if event.DeviceInput.button == "DeviceButton_f" then
 		PREFSMAN:SetPreference("IgnoredDialogs", "")
 		hate= false
 		next_screen= "ScreenInitialMenu"
+	elseif event.type == "InputEventType_FirstPress"
+	and event.GameButton == "Start" then
+		continue()
 	end
 end
 
@@ -58,27 +85,7 @@ return Def.ActorFrame{
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
 		end,
 		ContinueCommand= function(self)
-			if version_failed or hate then
-				local theme_names= THEME:GetSelectableThemeNames()
-				local simply_love= false
-				local ultralight= false
-				for i, name in ipairs(theme_names) do
-					if name == "Simply Love" or name == "Simply-Love-SM5" then
-						simply_love= name
-					elseif name == "ultralight" then
-						ultralight= name
-					end
-				end
-				if simply_love then
-					THEME:SetTheme(simply_love)
-				elseif ultralight then
-					THEME:SetTheme(ultralight)
-				else
-					THEME:SetTheme("default")
-				end
-			else
-				trans_new_screen(next_screen)
-			end
+			continue()
 		end
 	},
 	unfolding_text(

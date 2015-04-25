@@ -712,11 +712,15 @@ local function player_conf_float(
 		name= disp_name, meta= options_sets.adjustable_float, level= level,
 		args= {
 			name= disp_name, min_scale= mins, scale= scal, max_scale= maxs,
-			initial_value= function(pn) return cons_players[pn][field_name] or 0 end,
+			initial_value= function(pn)
+				return get_element_by_path(cons_players[pn], field_name) or 0
+			end,
 			validator= function(value)
 				return gte_nil(value, minv) and lte_nil(value, maxv)
 			end,
-			set= function(pn, value) cons_players[pn][field_name]= value end
+			set= function(pn, value)
+				set_element_by_path(cons_players[pn], field_name, value)
+			end
 	}}
 end
 
@@ -982,8 +986,19 @@ local floaty_mods= {
 	player_conf_float("Confidence Shaker", "confidence", 4, 0, 0, 2, 0, 100),
 	player_conf_float("Column Angle", "column_angle", 4, 0, 0, 2, nil, nil),
 	player_conf_float("Toasty Level", "toasty_level", 4, 0, 0, 0, 1, 16),
-	player_conf_float("Judgement Y", "judgment_offset", 1, 0, 1, 2, nil, nil),
-	player_conf_float("Combo Y", "combo_offset", 1, 0, 1, 2, nil, nil),
+}
+
+local gameplay_layout= {
+	player_conf_float("Notefield Y",
+		"gameplay_element_positions.notefield_yoffset", 1, 0, 1, 2, nil, nil),
+	player_conf_float("Judgement X",
+		"gameplay_element_positions.judgment_xoffset", 1, 0, 1, 2, nil, nil),
+	player_conf_float("Judgement Y",
+		"gameplay_element_positions.judgment_yoffset", 1, 0, 1, 2, nil, nil),
+	player_conf_float("Combo X",
+		"gameplay_element_positions.combo_xoffset", 1, 0, 1, 2, nil, nil),
+	player_conf_float("Combo Y",
+		"gameplay_element_positions.combo_yoffset", 1, 0, 1, 2, nil, nil),
 }
 
 local chart_mods= {
@@ -1102,6 +1117,10 @@ local special_effects= {
 			init= function(pn) return cons_players[pn].spatial_turning or false end,
 			set= function(pn) cons_players[pn].spatial_turning= true end,
 			unset= function(pn) cons_players[pn].spatial_turning= false end},
+		{ name= "Let's Have Fun!",
+			init= function(pn) return cons_players[pn].man_lets_have_fun or false end,
+			set= function(pn) cons_players[pn].man_lets_have_fun= true end,
+			unset= function(pn) cons_players[pn].man_lets_have_fun= false end},
 }}
 
 local special= {
@@ -1187,6 +1206,7 @@ local playback_options= {
 }
 
 local decorations= {
+	{ name= "Gameplay Layout", meta= options_sets.menu, args= gameplay_layout},
 	{ name= "Evaluation Flags", meta= options_sets.special_functions,
 		args= { eles= eval_flag_eles}},
 	{ name= "Gameplay Flags", meta= options_sets.special_functions,

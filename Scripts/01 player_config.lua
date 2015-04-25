@@ -33,6 +33,7 @@ local default_flag_set= {
 		judge= {false, false, true},
 		offset= {false, false, false, true},
 		pct_score= {true},
+		reverse_tilts_judge= {true},
 		score_confetti= {true},
 		score_meter= {true},
 		score_splash= {true},
@@ -86,6 +87,7 @@ sorted_flag_names= {
 	 "score_splash",
 	 "judge",
 	 "offset",
+	 "reverse_tilts_judge",
 	 "score_confetti",
 	 "score_meter",
 	 "sigil",
@@ -207,6 +209,26 @@ sorted_mine_effect_names= {
 	"none",
 }
 
+local v1config= {
+	speed_info= {mode= "m", speed= 250},
+	sigil_data= {detail= 16, size= 150},
+	dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false},
+	mine_effect= sorted_mine_effect_names[1],
+	options_level= 1,
+	rating_cap= -1,
+	toasty_level= 1,
+	combo_splash_threshold= "TapNoteScore_W3",
+	combo_graph_threshold= "TapNoteScore_W3",
+	low_score_random_threshold= .9,
+	preferred_style= "single",
+	experience_level= 1, -- To ease triggering confetti on gaining a level.
+	judgment_hoffset= 0,
+	judgment_offset= -30,
+	combo_hoffset= 0,
+	combo_offset= 60,
+	ALL_SETTINGS_MIGRATED_TO_V2= false,
+}
+
 local default_config= {
 	speed_info= {mode= "m", speed= 250},
 	sigil_data= {detail= 16, size= 150},
@@ -222,11 +244,47 @@ local default_config= {
 	low_score_random_threshold= .9,
 	preferred_style= "single",
 	experience_level= 1, -- To ease triggering confetti on gaining a level.
-	judgment_offset= -30,
-	combo_offset= 60,
+	gameplay_element_positions= {
+		judgment_xoffset= 0,
+		judgment_yoffset= -30,
+		combo_xoffset= 0,
+		combo_yoffset= 60,
+		notefield_yoffset= 0,
+	},
 }
 
-player_config= create_setting("player_config", "player_config.lua", default_config, -1)
+v1_player_config= create_setting("player_config", "player_config.lua", v1config, -1)
+player_config= create_setting("player_config", "player_config_v2.lua", default_config, -1)
+
+function update_old_player_config(prof_slot, config)
+	local fname= v1_player_config:get_filename(prof_slot)
+	if not fname then return end
+	if FILEMAN:DoesFileExist(fname) then
+		local old_config= v1_player_config:load(prof_slot)
+		if old_config.ALL_SETTINGS_MIGRATED_TO_V2 then return end
+		old_config.ALL_SETTINGS_MIGRATED_TO_V2= true
+		v1_player_config:set_dirty(prof_slot)
+		v1_player_config:save(prof_slot)
+		local to_deep_copy= {"speed_info", "sigil_data", "dspeed"}
+		local to_straight_copy= {
+			"mine_effect", "options_level", "rating_cap", "toasty_level",
+			"combo_splash_threshold", "combo_graph_threshold", "preferred_style",
+			"experience_level"}
+		for i, tdc in ipairs(to_deep_copy) do
+			config[tdc]= DeepCopy(old_config[tdc])
+		end
+		for i, tsc in ipairs(to_straight_copy) do
+			config[tsc]= old_config[tsc]
+		end
+		config.gameplay_element_positions.judgment_xoffset=
+			old_config.judgment_hoffset
+		config.gameplay_element_positions.judgment_yoffset=
+			old_config.judgment_offset
+		config.gameplay_element_positions.combo_xoffset= old_config.combo_hoffset
+		config.gameplay_element_positions.combo_yoffset= old_config.combo_offset
+		SCREENMAN:SystemMessage("Loaded old player config from '" .. fname .. "'.  That config file can be safely deleted.")
+	end
+end
 
 function get_preferred_style(pn)
 	return player_config:get_data(pn_to_profile_slot(pn)).preferred_style

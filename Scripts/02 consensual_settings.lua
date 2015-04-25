@@ -262,6 +262,7 @@ function cons_player:set_ops_from_profile(profile)
 	self.flags= profile_flag_setting:load(prof_slot)
 	self.style_config= style_config:load(prof_slot)
 	local config= player_config:load(prof_slot)
+	update_old_player_config(prof_slot, config)
 	for k, v in pairs(config) do
 		self[k]= v
 	end
@@ -617,14 +618,19 @@ function cons_set_current_steps(pn, steps)
 end
 
 function JudgmentTransformCommand( self, params )
-	local y = cons_players[params.Player].judgment_offset or -30
+	local elpos= cons_players[params.Player].gameplay_element_positions
+	local rev_tilt= cons_players[params.Player].flags.gameplay.reverse_tilts_judge
+	local x= elpos.judgment_xoffset or 0
+	local y= elpos.judgment_yoffset or -30
 	if params.bReverse then
 		y = y * -1
-		self:rotationx(180)
+		if rev_tilt then
+			self:rotationx(180)
+		end
 	else
 		self:rotationx(0)
 	end
-	if params.bCentered then
+	if params.bCentered and rev_tilt then
 		if params.Player == PLAYER_1 then
 			self:rotationz(90)
 		else
@@ -633,8 +639,7 @@ function JudgmentTransformCommand( self, params )
 	else
 		self:rotationz(0)
 	end
-	self:x( 0 )
-	self:y( y )
+	self:xy(x, y)
 end
 
 function SaveProfileCustom(profile, dir)

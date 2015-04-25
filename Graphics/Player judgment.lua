@@ -4,7 +4,9 @@ local player= Var "Player"
 local Judgment
 local tani= setmetatable({upper= true}, text_and_number_interface_mt)
 local tani_params= {
-	sy= cons_players[player].combo_offset or 30, tx= 8, nx= -8, ta= left, na= right, text_section= "Combo"
+	sx= cons_players[player].gameplay_element_positions.combo_xoffset or 0,
+	sy= cons_players[player].gameplay_element_positions.combo_yoffset or 30,
+	tx= 8, nx= -8, ta= left, na= right, text_section= "Combo"
 }
 local OffsetQuad
 
@@ -242,7 +244,6 @@ local args= {
 						end
 					end
 					if taps then add_set(taps) end
-					if holds then add_set(holds) end
 				end
 				if param.HoldNoteScore and col_scores then
 					add_to_col(col_scores[0], param.HoldNoteScore, max_step_value)

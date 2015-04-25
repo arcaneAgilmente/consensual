@@ -39,6 +39,41 @@ local judge_centers= {
 	[PLAYER_2]= { SCREEN_CENTER_X + (SCREEN_CENTER_X / 2), judge_y}
 }
 
+local note_drift_minx= _screen.w * .15
+local note_drift_maxx= _screen.w * .85
+local note_drift_miny= _screen.h * .25
+local note_drift_maxy= _screen.h * .5
+local note_drift_minzx= .5
+local note_drift_maxzx= 2
+local zx_diff= note_drift_maxzx - note_drift_minzx
+local function rand_note_drift(min, max)
+	return math.random(min, max)
+end
+local function rand_xnote_drift()
+	return rand_note_drift(note_drift_minx, note_drift_maxx)
+end
+local function rand_ynote_drift()
+	return rand_note_drift(note_drift_miny, note_drift_maxy)
+end
+local function rand_zoomx_drift()
+	return (math.random() * zx_diff) + note_drift_minzx
+end
+local note_drift_indices= {[PLAYER_1]= {1, 2, 3}, [PLAYER_2]= {4, 5, 6}}
+local note_drift_speeds= {}
+local note_drift_currents= {}
+local note_drift_goals= {}
+for i= 1, 4, 3 do
+	note_drift_speeds[i]= 1
+	note_drift_speeds[i+1]= 1
+	note_drift_speeds[i+2]= .01
+	note_drift_currents[i]= rand_xnote_drift()
+	note_drift_currents[i+1]= rand_ynote_drift()
+	note_drift_currents[i+2]= rand_zoomx_drift()
+	note_drift_goals[i]= rand_xnote_drift()
+	note_drift_goals[i+1]= rand_ynote_drift()
+	note_drift_goals[i+2]= rand_zoomx_drift()
+end
+
 local player_sides= {
 	[PLAYER_1]=
 		THEME:GetMetric("ScreenGameplay", "PlayerP1OnePlayerOneSideX"),
@@ -741,8 +776,24 @@ local function Update(self)
 		Trace("SGbg.Update:  curstats is nil.")
 	end
 	song_progress_bar:update()
+	multiapproach(note_drift_currents, note_drift_goals, note_drift_speeds)
 	for i, pn in pairs(enabled_players) do
 		player= cons_players[pn]
+		if player.man_lets_have_fun and notefields[pn] then
+			local xin= note_drift_indices[pn][1]
+			local yin= note_drift_indices[pn][2]
+			local zin= note_drift_indices[pn][3]
+			side_actors[pn]:xy(note_drift_currents[xin], note_drift_currents[yin])
+				:zoomx(note_drift_currents[zin])
+			for i, info in ipairs{{xin, rand_xnote_drift},
+				{yin, rand_ynote_drift}, {zin, rand_zoomx_drift}} do
+				local index= info[1]
+				if math.abs(note_drift_currents[index] - note_drift_goals[index])
+				< .001 then
+					note_drift_goals[index]= info[2]()
+				end
+			end
+		end
 		local unmine_time= player.unmine_time
 		if unmine_time and unmine_time <= get_screen_time() then
 			player.mine_data.unapply(pn)
@@ -1370,6 +1421,7 @@ return Def.ActorFrame {
 				set_speed_from_speed_info(cons_players[pn])
 				side_actors[pn]=
 					screen_gameplay:GetChild("Player" .. ToEnumShortString(pn))
+				side_actors[pn]:addy(cons_players[pn].gameplay_element_positions.notefield_yoffset)
 				notefields[pn]= side_actors[pn]:GetChild("NoteField")
 				if notefields[pn] then
 					local nx= side_actors[pn]:GetX()
@@ -1384,6 +1436,13 @@ return Def.ActorFrame {
 					notefield_wrappers[pn][wrapper_layers]:xy(-tocx, tocy)
 					if notefields[pn].get_column_actors then
 						notecolumns[pn]= notefields[pn]:get_column_actors()
+						local period= 1 / screen_gameplay:GetTrueBPS(pn)
+						if cons_players[pn].man_lets_have_fun then
+							for i, actor in ipairs(notecolumns[pn]) do
+								actor:rainbow():effectperiod(period*i)
+									:effectoffset(math.random()*period)
+							end
+						end
 						if cons_players[pn].spatial_turning then
 							cons_players[pn].panel_positions= get_spatial_panel_positions(
 								cons_players[pn].prev_steps:GetStepsType(), #notecolumns[pn])

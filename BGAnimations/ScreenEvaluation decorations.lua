@@ -768,6 +768,13 @@ local score_report_mt= {
 				local max_combo= score_data.max_combo
 				if max_combo then
 					local percent= max_combo / judge_totals[1]
+					if string_in_table("RadarCategory_Notes", RadarCategory) then
+						if col_id == 0 then
+							percent= max_combo / STATSMAN:GetCurStageStats()
+								:GetPlayerStageStats(player_number):GetRadarPossible()
+								:GetValue("RadarCategory_Notes")
+						end
+					end
 					local pcent= tostring(math.round(percent * 100)) .. "%"
 					if judge_totals[1] <= 0 or max_combo == 0 then pcent= "" end
 					pct_data[#pct_data+1]= {
@@ -981,6 +988,7 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	player_cursors[pn]= setmetatable({}, cursor_mt)
 	score_reports[pn]= setmetatable({}, score_report_mt)
 	profile_reports[pn]= setmetatable({}, profile_report_mt)
+--	profile_reports[pn]= setmetatable({}, radar_report_mt)
 end
 
 -- frame_helpers isn't handled inside the loop above because both helpers are
@@ -1122,7 +1130,7 @@ local function filter_input_for_menus(pn, code, press)
 				select_press_times[pn]= GetTimeSinceStart()
 			elseif press == "InputEventType_Release" then
 				local hold_time= GetTimeSinceStart() - select_press_times[pn]
-				if hold_time < special_menu_activate_time then
+				if select_press_times[pn] == 0 or hold_time < special_menu_activate_time then
 					set_special_menu(pn, 1)
 					handled= true
 				elseif hold_time > special_menu_activate_time * 4 then
