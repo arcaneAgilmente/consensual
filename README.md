@@ -16,6 +16,7 @@ This theme requires Stepmania 5.0.5 or any newer 5.0.x version.
 * Auto Set Style.
 * Patched songs cost their full amount.
 * Every mod can be set to any value.
+* Every mod can be set to persist between sessions.
 * Customizable pane info.
 * Customizable gameplay elements.
 * Customizable evaluation info.
@@ -461,6 +462,18 @@ Every menu also has a "back" element at the top of the list that confirms the
 current setting and goes back to the previous menu.
 
 ### Menu Types
+
+#### Set Peristent
+Every modifier has a Set Persistent choice on the menu.  When Set Persistent
+is chosen, the current value of the modifier is saved to the profile and it
+will be set to that value every session.  
+Song modifiers like Music Rate and Haste must be set to persistent to not be
+reset after every song.  
+Most settings that do not have the Set Persistent choice were already
+persistent.  The things in the Decorations->Effects and Spline Demos menus
+don't have the Set Persistent choice because they're abnormal and probably
+not something that anyone wants to persist.  
+If there's anything that doesn't persist that needs to, send in a suggestion.
 
 #### Adjustable Float  
 Most themes limit modifiers to simple on/off toggles, or a few choices

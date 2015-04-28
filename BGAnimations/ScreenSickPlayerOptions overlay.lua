@@ -585,24 +585,6 @@ dofile(THEME:GetPathO("", "tags_menu.lua"))
 
 set_option_set_metatables()
 
-local function set_clear_for_player(player_number)
-	if true then
-		Trace("Clear option disabled until partial clear of player data is added.")
-		return
-	end
-	GAMESTATE:ApplyGameCommand("mod,clearall", player_number)
-	-- SM5 will crash if a noteskin is not applied after clearing all mods.
-	-- Apply the default noteskin first in case Cel doesn't exist.
-	local default_noteskin= THEME:GetMetric("Common", "DefaultNoteSkinName")
-	local prev_note, succeeded= cons_players[player_number].song_options:NoteSkin("uswcelsm5")
-	if not succeeded then
-		prev_note, succeeded= cons_players[player_number].song_options:NoteSkin(default_noteskin)
-		if not succeeded then
-			Warn("Failed to set default noteskin when clearing player options.  Please do not delete the default noteskin.")
-		end
-	end
-end
-
 local function generic_fake_judge_element(judge_name)
 	return {name= judge_name, init= check_fake_judge(judge_name),
 					set= set_fake_judge(judge_name), unset= unset_fake_judge}
@@ -725,7 +707,7 @@ local function extra_for_sigil_size()
 end
 
 local function player_conf_float(
-		disp_name, field_name, level, mins, scal, maxs, minv, maxv, persist)
+		disp_name, field_name, level, mins, scal, maxs, minv, maxv)
 	return {
 		name= disp_name, meta= options_sets.adjustable_float, level= level,
 		args= {
@@ -739,6 +721,25 @@ local function player_conf_float(
 			end,
 			set= function(pn, value)
 				set_element_by_path(cons_players[pn], field_name, value)
+			end
+	}}
+end
+
+local function player_cons_mod(
+		disp_name, field_name, level, mins, scal, maxs, minv, maxv, persist)
+	return {
+		name= disp_name, meta= options_sets.adjustable_float, level= level,
+		args= {
+			can_persist= persist, persist_type= persist, persist_name= field_name,
+			name= disp_name, min_scale= mins, scale= scal, max_scale= maxs,
+			initial_value= function(pn)
+				return get_element_by_path(cons_players[pn], field_name) or 0
+			end,
+			validator= function(value)
+				return gte_nil(value, minv) and lte_nil(value, maxv)
+			end,
+			set= function(pn, value)
+				cons_players[pn]:set_cons_mod(field_name, value)
 			end
 	}}
 end
@@ -996,10 +997,10 @@ local floaty_mods= {
 		args= make_menu_of_float_set(target_mods) },
 	{ name= "Visibility", meta= options_sets.menu,
 		args= make_menu_of_float_set(visibility_mods) },
-	player_conf_float("Side Swap", "side_swap", 5, -2, 0, 0, nil, nil, "cons"),
-	player_conf_float("Chuunibyou", "chuunibyou", 4, -2, 0, 4, nil, nil, "cons"),
-	player_conf_float("Confidence Shaker", "confidence", 4, 0, 0, 2, 0, 100, "cons"),
-	player_conf_float("Column Angle", "column_angle", 4, 0, 0, 2, nil, nil, "cons"),
+	player_cons_mod("Side Swap", "side_swap", 5, -2, 0, 0, nil, nil, "cons"),
+	player_cons_mod("Chuunibyou", "chuunibyou", 4, -2, 0, 4, nil, nil, "cons"),
+	player_cons_mod("Confidence Shaker", "confidence", 4, 0, 0, 2, 0, 100, "cons"),
+	player_cons_mod("Column Angle", "column_angle", 4, 0, 0, 2, nil, nil, "cons"),
 	player_conf_float("Toasty Level", "toasty_level", 4, 0, 0, 0, 1, 16),
 }
 
@@ -1100,6 +1101,15 @@ for i, tns in ipairs{
 	}
 end
 
+local function bool_effect_setter(disp_name, demo_name)
+	return {
+		name= disp_name,
+		init= function(pn) return cons_players[pn][demo_name] end,
+		set= function(pn) cons_players[pn]:set_cons_mod(demo_name, true) end,
+		unset= function(pn) cons_players[pn]:set_cons_mod(demo_name, false) end,
+	}
+end
+
 local ultra_special_effects= {
 	eles= {
 		{ name= "Distortion", init= function() return global_distortion_mode end,
@@ -1124,48 +1134,28 @@ local special_effects= {
 		{ name= "Input Tilt", init= function() return tilt_mode end,
 			set= function() tilt_mode= true end,
 			unset= function() tilt_mode= false end},
-		{ name= "Spatial Arrows",
-			init= function(pn) return cons_players[pn].spatial_arrows or false end,
-			set= function(pn) cons_players[pn].spatial_arrows= true end,
-			unset= function(pn) cons_players[pn].spatial_arrows= false end},
-		{ name= "Spatial Turning",
-			init= function(pn) return cons_players[pn].spatial_turning or false end,
-			set= function(pn) cons_players[pn].spatial_turning= true end,
-			unset= function(pn) cons_players[pn].spatial_turning= false end},
-		{ name= "Let's Have Fun!",
-			init= function(pn) return cons_players[pn].man_lets_have_fun or false end,
-			set= function(pn) cons_players[pn].man_lets_have_fun= true end,
-			unset= function(pn) cons_players[pn].man_lets_have_fun= false end},
+		bool_effect_setter("Spatial Arrows", "spatial_arrows"),
+		bool_effect_setter("Spatial Turning", "spatial_turning"),
+		bool_effect_setter("Let's Have Fun!", "man_lets_have_fun"),
 }}
 
 local special= {
 	{ name= "Spline Demos", meta= options_sets.special_functions, level= 4,
 		args= {
 			eles= {
-				{ name= "Position",
-					init= function(pn) return cons_players[pn].pos_splines_demo end,
-					set= function(pn) cons_players[pn].pos_splines_demo= true end,
-					unset= function(pn) cons_players[pn].pos_splines_demo= false end},
-				{ name= "Rotation",
-					init= function(pn) return cons_players[pn].rot_splines_demo end,
-					set= function(pn) cons_players[pn].rot_splines_demo= true end,
-					unset= function(pn) cons_players[pn].rot_splines_demo= false end},
-				{ name= "Zoom",
-					init= function(pn) return cons_players[pn].zoom_splines_demo end,
-					set= function(pn) cons_players[pn].zoom_splines_demo= true end,
-					unset= function(pn) cons_players[pn].zoom_splines_demo= false end},
+				bool_effect_setter("Position", "pos_splines_demo"),
+				bool_effect_setter("Rotation", "rot_splines_demo"),
+				bool_effect_setter("Zoom", "zoom_splines_demo"),
 	}}},
 	{ name= "Tokubetsu Effects", meta= options_sets.special_functions, level= 5,
 		args= ultra_special_effects},
 	{ name= "Effects", meta= options_sets.special_functions, level= 4,
 		args= special_effects},
-	{ name= "Next Screen", meta= options_sets.special_functions, level= 4,
-		args= {
-			eles= {
-				{ name= "Select Music", init= noop_false, set= function()
-						SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
-						trans_new_screen("ScreenConsSelectMusic")
-				end, unset= noop_nil}}}},
+	{ name= "Go To Select Music" ,meta= "execute", level= 4,
+		execute= function()
+			SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
+			trans_new_screen("ScreenConsSelectMusic")
+		end, unset= noop_nil},
 	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options, level= 4},
 	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions, level= 4,
 		args= {eles= {
@@ -1282,9 +1272,8 @@ local base_options= {
 	{ name= "Song tags", meta= options_sets.tags_menu, args= true, level= 4},
 	{ name= "Chart mods", meta= options_sets.menu, args= chart_mods, level= 2},
 	{ name= "Floaty mods", meta= options_sets.menu, args= floaty_mods, level= 2},
-	--{ name= "Clear", meta= options_sets.special_functions,
-	--	args= { eles= {{name= "clearall", init= noop_false,
-	--									set= set_clear_for_player, unset= noop_false}}}},
+	{ name= "Reset Mods", meta= "execute", level= 1,
+		execute= function(pn) cons_players[pn]:reset_to_persistent_mods() end,},
 }
 
 function args:InitCommand()

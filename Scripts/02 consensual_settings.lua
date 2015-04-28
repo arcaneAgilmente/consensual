@@ -271,7 +271,12 @@ function cons_player:set_ops_from_profile(profile)
 		self:persist_mod("Tilt", ops:Tilt())
 		self:persist_mod("Skew", ops:Skew())
 	end
-	reset_mods(ops)
+	self:reset_to_persistent_mods()
+end
+
+function cons_player:reset_to_persistent_mods()
+	local ops= self.preferred_options
+	reset_mods(self, ops)
 	for name, value in pairs(self.persistent_mods) do
 		if ops[name] then
 			ops[name](ops, value)
@@ -279,11 +284,17 @@ function cons_player:set_ops_from_profile(profile)
 	end
 	for name, value in pairs(self.cons_persistent_mods) do
 		if not self[name] then
-			self[name]= value
+			self:set_cons_mod(name, value)
 		else
 			cons_persistent_mods[name]= nil
 		end
 	end
+end
+
+function cons_player:set_cons_mod(name, value)
+	if not self.cons_mods_set then self.cons_mods_set= {} end
+	self.cons_mods_set[name]= value and true or nil
+	self[name]= value
 end
 
 function cons_player:persist_mod(name, value, persist_type)
@@ -712,7 +723,7 @@ function ops_level(pn)
 	return cons_players[pn].options_level
 end
 
-function reset_mods(ops)
+function reset_mods(player, ops)
 	local specific_mods= {
 		{"LifeSetting", "LifeType_Bar"},
 		{"DrainSetting", "DrainType_Normal"},
@@ -747,5 +758,11 @@ function reset_mods(ops)
 	end
 	for i, mod in ipairs(float_mods) do
 		ops[mod](ops, 0)
+	end
+	if player.cons_mods_set then
+		for name, i in pairs(player.cons_mods_set) do
+			player[name]= nil
+		end
+		player.cons_mods_set= {}
 	end
 end

@@ -1136,6 +1136,8 @@ menu_stack_mt= {
 					if new_set_data.meta == "external_interface" then
 						self:enter_external_mode()
 						new_set_data.extern(new_set_data.args)
+					elseif new_set_data.meta == "execute" then
+						new_set_data.execute(self.player_number)
 					else
 						self:push_options_set_stack(new_set_data.meta, new_set_data.args)
 					end
