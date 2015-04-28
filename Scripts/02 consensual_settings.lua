@@ -262,9 +262,44 @@ function cons_player:set_ops_from_profile(profile)
 	self.flags= profile_flag_setting:load(prof_slot)
 	self.style_config= style_config:load(prof_slot)
 	local config= player_config:load(prof_slot)
-	update_old_player_config(prof_slot, config)
+	local migrated= update_old_player_config(prof_slot, config)
 	for k, v in pairs(config) do
 		self[k]= v
+	end
+	local ops= self.preferred_options
+	if migrated then
+		self:persist_mod("Tilt", ops:Tilt())
+		self:persist_mod("Skew", ops:Skew())
+	end
+	reset_mods(ops)
+	for name, value in pairs(self.persistent_mods) do
+		if ops[name] then
+			ops[name](ops, value)
+		end
+	end
+	for name, value in pairs(self.cons_persistent_mods) do
+		if not self[name] then
+			self[name]= value
+		else
+			cons_persistent_mods[name]= nil
+		end
+	end
+end
+
+function cons_player:persist_mod(name, value, persist_type)
+	if not value or value == 0 then value= nil end
+	if type(value) == "number" and math.abs(value) < .001 then
+		value= nil
+	end
+	if value and name == "MusicRate" and math.abs(value - 1) < .01 then
+		value= nil
+	end
+	if persist_type == "cons" then
+		self.cons_persistent_mods[name]= value
+	elseif persist_type == "song" then
+		self.persistent_song_mods[name]= value
+	else
+		self.persistent_mods[name]= value
 	end
 end
 
@@ -675,4 +710,42 @@ end
 
 function ops_level(pn)
 	return cons_players[pn].options_level
+end
+
+function reset_mods(ops)
+	local specific_mods= {
+		{"LifeSetting", "LifeType_Bar"},
+		{"DrainSetting", "DrainType_Normal"},
+		{"BatteryLives", 4},
+		{"TimeSpacing", 0},
+		{"MaxScrollBPM", 0},
+		{"ScrollSpeed", 1},
+		{"ScrollBPM", 200},
+	}
+	local bool_mods= {
+		"TurnNone", "Mirror", "Backwards", "Left", "Right", "Shuffle",
+		"SoftShuffle", "SuperShuffle", "NoHolds", "NoRolls", "NoMines",
+		"Little", "Wide", "Big", "Quick", "BMRize", "Skippy", "Mines",
+		"AttackMines", "Echo", "Stomp", "Planted", "Floored", "Twister",
+		"HoldRolls", "NoJumps", "NoHands", "NoLifts", "NoFakes", "NoQuads",
+		"NoStretch", "MuteOnError",
+	}
+	local float_mods= {
+		"Boost", "Brake", "Wave", "Expand", "Boomerang", "Drunk", "Dizzy",
+		"Confusion", "Mini", "Tiny", "Flip", "Invert", "Tornado", "Tipsy",
+		"Bumpy", "Beat", "Xmode", "Twirl", "Roll", "Hidden", "HiddenOffset",
+		"Sudden", "SuddenOffset", "Stealth", "Blink", "RandomVanish", "Reverse",
+		"Split", "Alternate", "Cross", "Centered", "Dark", "Blind", "Cover",
+		"RandAttack", "NoAttack", "PlayerAutoPlay", "Tilt", "Skew", "Passmark",
+		"RandomSpeed",
+	}
+	for i, mod in ipairs(specific_mods) do
+		ops[mod[1]](ops, mod[2])
+	end
+	for i, mod in ipairs(bool_mods) do
+		ops[mod](ops, false)
+	end
+	for i, mod in ipairs(float_mods) do
+		ops[mod](ops, 0)
+	end
 end

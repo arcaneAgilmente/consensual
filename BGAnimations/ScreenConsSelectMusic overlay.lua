@@ -56,6 +56,17 @@ end
 update_player_profile(PLAYER_1)
 update_player_profile(PLAYER_2)
 
+do
+	local song_ops= GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred")
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		for name, value in pairs(cons_players[pn].persistent_song_mods) do
+			if song_ops[name] then
+				song_ops[name](song_ops, value)
+			end
+		end
+	end
+end
+
 local function ensure_enough_stages()
 	-- Give everybody enough tokens to play, as a way of disabling the stage system.
 	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do

@@ -231,6 +231,9 @@ local v1config= {
 
 local default_config= {
 	speed_info= {mode= "m", speed= 250},
+	persistent_mods= {},
+	cons_persistent_mods= {},
+	persistent_song_mods= {},
 	sigil_data= {detail= 16, size= 150},
 	dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false},
 	mine_effect= sorted_mine_effect_names[1],
@@ -254,7 +257,7 @@ local default_config= {
 }
 
 v1_player_config= create_setting("player_config", "player_config.lua", v1config, -1)
-player_config= create_setting("player_config", "player_config_v2.lua", default_config, -1)
+player_config= create_setting("player_config", "player_config_v2.lua", default_config, -1, {"persistent_mods", "cons_persistent_mods", "persistent_song_mods"})
 
 function update_old_player_config(prof_slot, config)
 	local fname= v1_player_config:get_filename(prof_slot)
@@ -283,6 +286,7 @@ function update_old_player_config(prof_slot, config)
 		config.gameplay_element_positions.combo_xoffset= old_config.combo_hoffset
 		config.gameplay_element_positions.combo_yoffset= old_config.combo_offset
 		SCREENMAN:SystemMessage("Loaded old player config from '" .. fname .. "'.  That config file can be safely deleted.")
+		return true
 	end
 end
 

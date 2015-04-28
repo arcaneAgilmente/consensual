@@ -21,12 +21,14 @@ function set_element_by_path(container, path, value)
 	current[parts[#parts]]= value
 end
 
-function force_table_elements_to_match_type(candidate, must_match, depth_remaining)
+function force_table_elements_to_match_type(candidate, must_match, depth_remaining, exceptions)
 	for k, v in pairs(candidate) do
-		if type(must_match[k]) ~= type(v) then
-			candidate[k]= nil
-		elseif type(v) == "table" and depth_remaining ~= 0 then
-			force_table_elements_to_match_type(v, must_match[k], depth_remaining-1)
+		if not string_in_table(k, exceptions) then
+			if type(must_match[k]) ~= type(v) then
+				candidate[k]= nil
+			elseif type(v) == "table" and depth_remaining ~= 0 then
+				force_table_elements_to_match_type(v, must_match[k], depth_remaining-1, exceptions)
+			end
 		end
 	end
 	for k, v in pairs(must_match) do
@@ -70,7 +72,7 @@ end
 
 local setting_mt= {
 	__index= {
-		init= function(self, name, file, default, match_depth)
+		init= function(self, name, file, default, match_depth, exceptions)
 			assert(type(default) == "table", "default for setting must be a table.")
 			self.name= name
 			self.file= file
@@ -78,6 +80,7 @@ local setting_mt= {
 			self.match_depth= match_depth
 			self.dirty_table= {}
 			self.data_set= {}
+			self.exceptions= exceptions
 			return self
 		end,
 		load= function(self, slot)
@@ -94,7 +97,7 @@ local setting_mt= {
 					if type(from_file) == "table" then
 						if self.match_depth and self.match_depth ~= 0 then
 							force_table_elements_to_match_type(
-								from_file, self.default, self.match_depth-1)
+								from_file, self.default, self.match_depth-1, self.exceptions)
 						end
 						self.data_set[slot]= from_file
 					else
@@ -152,8 +155,8 @@ local setting_mt= {
 		end
 }}
 
-function create_setting(name, file, default, match_depth)
-	return setmetatable({}, setting_mt):init(name, file, default, match_depth)
+function create_setting(name, file, default, match_depth, exceptions)
+	return setmetatable({}, setting_mt):init(name, file, default, match_depth, exceptions)
 end
 
 function write_str_to_file(str, fname, str_name)

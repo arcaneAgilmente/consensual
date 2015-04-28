@@ -490,6 +490,8 @@ local function input(event)
 		else
 			if not config_menu:interpret_code(code) then
 				if code == "Start" and config_menu:can_exit_screen() then
+					local metrics_need_to_be_reloaded= scoring_config:check_dirty() or
+						life_config:check_dirty()
 					misc_config:save()
 					confetti_config:save()
 					update_confetti_count()
@@ -497,6 +499,9 @@ local function input(event)
 					machine_pain_setting:save()
 					scoring_config:save()
 					life_config:save()
+					if metrics_need_to_be_reloaded then
+						THEME:ReloadMetrics()
+					end
 					trans_new_screen("ScreenInitialMenu")
 				end
 			end

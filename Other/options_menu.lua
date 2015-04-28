@@ -320,6 +320,10 @@ function up_element()
 	return {text= "&leftarrow;"}
 end
 
+function persist_element()
+	return {text= "Set Persistent"}
+end
+
 option_set_general_mt= {
 	__index= {
 		set_player_info= function(self, player_number)
@@ -767,7 +771,7 @@ options_sets.adjustable_float= {
 					self:set_new_scale(new_scale)
 					self:set_new_val(new_value)
 					return true
-				end
+				end,
 			}
 			if extra.is_angle then
 				-- insert the pi option before the Round option.
@@ -785,6 +789,18 @@ options_sets.adjustable_float= {
 				end
 				table.insert(self.info_set, pi_pos, {text= "*"..self.pi_text})
 				table.insert(self.menu_functions, pi_pos, pi_function)
+			end
+			if extra.can_persist then
+				self.info_set[#self.info_set+1]= persist_element()
+				self.menu_functions[#self.menu_functions+1]= function()
+					cons_players[self.player_number]:persist_mod(
+						extra.persist_name or self.name,
+						self:cooked_val(self.current_value), extra.persist_type)
+					self.info_set[self.cursor_pos].underline= true
+					self.display:set_element_info(
+						self.cursor_pos, self.info_set[self.cursor_pos])
+					return true
+				end
 			end
 		end,
 		interpret_start= function(self)
@@ -804,15 +820,17 @@ options_sets.adjustable_float= {
 				self.display:set_display(val_text)
 			end
 		end,
+		cooked_val= function(self, nval)
+			if self.pi_exp then return nval * math.pi end
+			return nval
+		end,
 		set_new_val= function(self, nval)
 			local raise= 10^-self.min_scale_used
 			local lower= 10^self.min_scale_used
 			local rounded_val= math.round(nval * raise) * lower
 			if self.validator(rounded_val) then
 				self.current_value= rounded_val
-				if self.pi_exp then
-					rounded_val= rounded_val * math.pi
-				end
+				rounded_val= self:cooked_val(rounded_val)
 				self.set(self.player_number, rounded_val)
 				self:set_status()
 			end
@@ -841,11 +859,17 @@ options_sets.enum_option= {
 			self.set= extra.set
 			self.fake_enum= extra.fake_enum
 			self.ops_obj= extra.obj_get(player_number)
+			self.can_persist= extra.can_persist
+			self.persist_type= extra.persist_type
+			self.persist_name= extra.persist_name or self.name
 			local cv= self:get_val()
 			for i, v in ipairs(extra.enum) do
 				self.enum_vals[#self.enum_vals+1]= v
 				self.info_set[#self.info_set+1]= {
 					text= self:short_string(v), underline= v == cv}
+			end
+			if self.can_persist then
+				self.info_set[#self.info_set+1]= persist_element()
 			end
 		end,
 		short_string= function(self, val)
@@ -856,6 +880,21 @@ options_sets.enum_option= {
 			end
 		end,
 		interpret_start= function(self)
+			if self.can_persist and self.cursor_pos == #self.info_set then
+				local chosen= 0
+				for i= 1, #self.info_set do
+					if self.info_set[i].underline then
+						chosen= i-1
+					end
+				end
+				if self.enum_vals[chosen] then
+					cons_players[self.player_number]:persist_mod(
+						self.persist_name, self.enum_vals[chosen], self.persist_type)
+					self.info_set[self.cursor_pos].underline= true
+					self.display:set_element_info(self.cursor_pos, self.info_set[self.cursor_pos])
+				end
+				return true
+			end
 			if self.cursor_pos > 1 then
 				for i, info in ipairs(self.info_set) do
 					if info.underline then

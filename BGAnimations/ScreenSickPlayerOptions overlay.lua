@@ -281,6 +281,7 @@ options_sets.assorted_bools= {
 				local is_set= mod_player(self.player_number, op)
 				self.info_set[#self.info_set+1]= {text= op, underline= is_set}
 			end
+			self.info_set[#self.info_set+1]= persist_element()
 			self.cursor_pos= 1
 		end,
 		set_status= function(self)
@@ -298,6 +299,14 @@ options_sets.assorted_bools= {
 				end
 				info.underline= not info.underline
 				self.display:set_element_info(self.cursor_pos, info)
+				return true
+			elseif self.cursor_pos == #self.info_set then
+				for i= 1, #self.ops do
+					local op= self.ops[i]
+					cons_players[self.player_number]:persist_mod(op, self.info_set[i+1])
+				end
+				self.info_set[self.cursor_pos].underline= true
+				self.display:set_element_info(self.cursor_pos, self.info_set[self.cursor_pos])
 				return true
 			else
 				return false
@@ -394,6 +403,7 @@ options_sets.rate_mod= {
 				self.info_set[#self.info_set+1]= {text= vt}
 			end
 			self.info_set[#self.info_set+1]= {text= "Reset"}
+			self.info_set[#self.info_set+1]= persist_element()
 			rate_coordinator:add_to_notify(self)
 		end,
 		destructor= function(self)
@@ -408,8 +418,15 @@ options_sets.rate_mod= {
 			if self.increments[incs_pos] then
 				self:set_new_val(self.current_value + self.increments[incs_pos])
 				return true
-			elseif self.cursor_pos == #self.info_set then
+			elseif self.cursor_pos == #self.info_set-1 then
 				self:set_new_val(1)
+				return true
+			elseif self.cursor_pos == #self.info_set then
+				cons_players[self.player_number]:persist_mod(
+					"MusicRate", self.current_value, "song")
+				self.info_set[self.cursor_pos].underline= true
+				self.display:set_element_info(
+					self.cursor_pos, self.info_set[self.cursor_pos])
 				return true
 			else
 				return false
@@ -599,6 +616,7 @@ end
 local function extra_for_adj_float_mod(mod_name, is_angle)
 	return {
 		name= mod_name,
+		can_persist= true,
 		min_scale= -4,
 		scale= -1,
 		max_scale= 1,
@@ -707,10 +725,11 @@ local function extra_for_sigil_size()
 end
 
 local function player_conf_float(
-		disp_name, field_name, level, mins, scal, maxs, minv, maxv)
+		disp_name, field_name, level, mins, scal, maxs, minv, maxv, persist)
 	return {
 		name= disp_name, meta= options_sets.adjustable_float, level= level,
 		args= {
+			can_persist= persist, persist_type= persist, persist_name= field_name,
 			name= disp_name, min_scale= mins, scale= scal, max_scale= maxs,
 			initial_value= function(pn)
 				return get_element_by_path(cons_players[pn], field_name) or 0
@@ -730,22 +749,15 @@ local function extra_for_lives()
 		min_scale= 0,
 		scale= 0,
 		max_scale= 4,
+		can_persist= true,
 		initial_value= function(player_number)
-			if PlayerOptions.BatteryLives then
-				return mod_player(player_number, "BatteryLives")
-			else
-				return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives()
-			end
+			return mod_player(player_number, "BatteryLives")
 		end,
 		validator= function(value)
 			return value >= 1
 		end,
 		set= function(player_number, value)
-			if PlayerOptions.BatteryLives then
-				mod_player(player_number, "BatteryLives", value)
-			else
-				return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):BatteryLives(value)
-			end
+			mod_player(player_number, "BatteryLives", value)
 		end
 	}
 end
@@ -756,6 +768,7 @@ local function extra_for_haste()
 		min_scale= -2,
 		scale= 0,
 		max_scale= 0,
+		can_persist= true, persist_type= "song",
 		initial_value= function(player_number)
 			return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste()
 		end,
@@ -875,6 +888,7 @@ local function player_enum(name, enum, func_name)
 	end
 	return {
 		name= name, meta= options_sets.enum_option, args= {
+			can_persist= true, persist_name= func_name,
 			get= PlayerOptions[func_name], set= set,
 			enum= enum, obj_get= pops_get }}
 end
@@ -882,6 +896,7 @@ end
 local function song_enum(name, enum, func_name)
 	return {
 		name= name, meta= options_sets.enum_option, args= {
+			can_persist= true, persist_name= func_name, persist_type= "song",
 			get= SongOptions[func_name], set= SongOptions[func_name], enum= enum,
 			obj_get= function() return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred") end }}
 end
@@ -981,10 +996,10 @@ local floaty_mods= {
 		args= make_menu_of_float_set(target_mods) },
 	{ name= "Visibility", meta= options_sets.menu,
 		args= make_menu_of_float_set(visibility_mods) },
-	player_conf_float("Side Swap", "side_swap", 5, -2, 0, 0, nil, nil),
-	player_conf_float("Chuunibyou", "chuunibyou", 4, -2, 0, 4, nil, nil),
-	player_conf_float("Confidence Shaker", "confidence", 4, 0, 0, 2, 0, 100),
-	player_conf_float("Column Angle", "column_angle", 4, 0, 0, 2, nil, nil),
+	player_conf_float("Side Swap", "side_swap", 5, -2, 0, 0, nil, nil, "cons"),
+	player_conf_float("Chuunibyou", "chuunibyou", 4, -2, 0, 4, nil, nil, "cons"),
+	player_conf_float("Confidence Shaker", "confidence", 4, 0, 0, 2, 0, 100, "cons"),
+	player_conf_float("Column Angle", "column_angle", 4, 0, 0, 2, nil, nil, "cons"),
 	player_conf_float("Toasty Level", "toasty_level", 4, 0, 0, 0, 1, 16),
 }
 
@@ -1240,23 +1255,13 @@ local profile_options= {
 		args= make_profile_bool_extra("Gender", "Male", "Female", "IsMale")},
 }
 
-local life_options= {}
-if PlayerOptions.LifeSetting then
-	life_options= {
-		player_enum("Life", LifeType, "LifeSetting"),
-		player_enum("Drain", DrainType, "DrainSetting"),
-		player_enum("Fail", FailType, "FailSetting"),
-		{ name= "Battery Lives", meta= options_sets.adjustable_float,
-			args= extra_for_lives()},
-	}
-else
-	life_options= {
-		song_enum("Drain", DrainType, "DrainSetting"),
-		player_enum("Fail", FailType, "FailSetting"),
-		{ name= "Battery Lives", meta= options_sets.adjustable_float,
-			args= extra_for_lives()},
-	}
-end
+local life_options= {
+	player_enum("Life", LifeType, "LifeSetting"),
+	player_enum("Drain", DrainType, "DrainSetting"),
+	player_enum("Fail", FailType, "FailSetting"),
+	{ name= "Battery Lives", meta= options_sets.adjustable_float,
+		args= extra_for_lives()},
+}
 
 local base_options= {
 	{ name= "Speed", meta= options_sets.speed, level= 1},
