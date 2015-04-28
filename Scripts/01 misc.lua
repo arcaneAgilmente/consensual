@@ -892,14 +892,6 @@ function int_to_bool(i)
 	return false
 end
 
-function string_in_table(str, tab)
-	if not str or not tab then return false end
-	for i, s in ipairs(tab) do
-		if s == str then return i end
-	end
-	return false
-end
-
 function end_credit_now()
 	local next_screen= "ScreenInitialMenu"
 	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do

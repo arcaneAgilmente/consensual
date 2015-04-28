@@ -21,6 +21,14 @@ function set_element_by_path(container, path, value)
 	current[parts[#parts]]= value
 end
 
+function string_in_table(str, tab)
+	if not str or not tab then return false end
+	for i, s in ipairs(tab) do
+		if s == str then return i end
+	end
+	return false
+end
+
 function force_table_elements_to_match_type(candidate, must_match, depth_remaining, exceptions)
 	for k, v in pairs(candidate) do
 		if not string_in_table(k, exceptions) then
