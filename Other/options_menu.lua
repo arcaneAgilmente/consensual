@@ -324,6 +324,17 @@ function persist_element()
 	return {text= "Set Persistent"}
 end
 
+function unpersist_element()
+	return {text= "Unset Persistent"}
+end
+
+function persist_value_text(value)
+	return get_string_wrapper("OptionNames", "Persist Value:") .. tostring(value)
+end
+function persist_value_element(value)
+	return {text= persist_value_text(value)}
+end
+
 option_set_general_mt= {
 	__index= {
 		set_player_info= function(self, player_number)
@@ -716,6 +727,7 @@ options_sets.adjustable_float= {
 			--rec_print_table(extra)
 			assert(extra, "adjustable_float passed a nil extra table.")
 			self.name= extra.name
+			self.persist_name= extra.persist_name or self.name
 			self.cursor_pos= 1
 			self.player_number= player_number
 			self.reset_value= extra.reset_value or 0
@@ -793,14 +805,27 @@ options_sets.adjustable_float= {
 			if extra.can_persist then
 				self.info_set[#self.info_set+1]= persist_element()
 				self.menu_functions[#self.menu_functions+1]= function()
+					local new_val= self:cooked_val(self.current_value)
 					cons_players[self.player_number]:persist_mod(
-						extra.persist_name or self.name,
-						self:cooked_val(self.current_value), extra.persist_type)
-					self.info_set[self.cursor_pos].underline= true
+						self.persist_name, new_val, extra.persist_type)
+					self.info_set[#self.info_set].text= persist_value_text(new_val)
 					self.display:set_element_info(
-						self.cursor_pos, self.info_set[self.cursor_pos])
+						#self.info_set, self.info_set[#self.info_set])
 					return true
 				end
+				self.info_set[#self.info_set+1]= unpersist_element()
+				self.menu_functions[#self.menu_functions+1]= function()
+					cons_players[self.player_number]:unpersist_mod(
+						self.persist_name, extra.persist_type)
+					self.info_set[#self.info_set].text= persist_value_text(nil)
+					self.display:set_element_info(
+						#self.info_set, self.info_set[#self.info_set])
+					return true
+				end
+				self.info_set[#self.info_set+1]= persist_value_element(
+					cons_players[self.player_number]:get_persist_mod_value(
+						self.persist_name, extra.persist_type))
+				self.menu_functions[#self.menu_functions+1]= noop_true
 			end
 		end,
 		interpret_start= function(self)

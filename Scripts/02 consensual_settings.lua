@@ -297,6 +297,16 @@ function cons_player:set_cons_mod(name, value)
 	self[name]= value
 end
 
+function cons_player:unpersist_mod(name, persist_type)
+	if persist_type == "cons" then
+		self.cons_persistent_mods[name]= nil
+	elseif persist_type == "song" then
+		self.persistent_song_mods[name]= nil
+	else
+		self.persistent_mods[name]= nil
+	end
+end
+
 function cons_player:persist_mod(name, value, persist_type)
 	if not value or value == 0 then value= nil end
 	if type(value) == "number" and math.abs(value) < .001 then
@@ -311,6 +321,16 @@ function cons_player:persist_mod(name, value, persist_type)
 		self.persistent_song_mods[name]= value
 	else
 		self.persistent_mods[name]= value
+	end
+end
+
+function cons_player:get_persist_mod_value(name, persist_type)
+	if persist_type == "cons" then
+		return self.cons_persistent_mods[name]
+	elseif persist_type == "song" then
+		return self.persistent_song_mods[name]
+	else
+		return self.persistent_mods[name]
 	end
 end
 

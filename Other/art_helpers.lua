@@ -448,7 +448,9 @@ dance_pad_mt= {
 		init= function(self)
 			self.bg:setsize(self.pad_width, self.pad_height)
 				:diffuse(fetch_color("bg_shadow"))
-			self.fg:setsize(self.pad_width, self.pad_height)
+			if self.fg then
+				self.fg:setsize(self.pad_width, self.pad_height)
+			end
 		end,
 		color_arrow= function(self, aid, color)
 			if self.arrows[aid] then

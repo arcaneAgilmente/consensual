@@ -282,6 +282,7 @@ options_sets.assorted_bools= {
 				self.info_set[#self.info_set+1]= {text= op, underline= is_set}
 			end
 			self.info_set[#self.info_set+1]= persist_element()
+			self.info_set[#self.info_set+1]= unpersist_element()
 			self.cursor_pos= 1
 		end,
 		set_status= function(self)
@@ -300,13 +301,22 @@ options_sets.assorted_bools= {
 				info.underline= not info.underline
 				self.display:set_element_info(self.cursor_pos, info)
 				return true
-			elseif self.cursor_pos == #self.info_set then
+			elseif self.cursor_pos == #self.info_set-1 then
 				for i= 1, #self.ops do
 					local op= self.ops[i]
-					cons_players[self.player_number]:persist_mod(op, self.info_set[i+1])
+					cons_players[self.player_number]:persist_mod(op, self.info_set[i+1].underline)
 				end
 				self.info_set[self.cursor_pos].underline= true
 				self.display:set_element_info(self.cursor_pos, self.info_set[self.cursor_pos])
+				return true
+			elseif self.cursor_pos == #self.info_set then
+				for i= 1, #self.ops do
+					local op= self.ops[i]
+					cons_players[self.player_number]:unpersist_mod(op)
+				end
+				local persist_pos= #self.info_set-1
+				self.info_set[persist_pos].underline= true
+				self.display:set_element_info(persist_pos, self.info_set[persist_pos])
 				return true
 			else
 				return false
