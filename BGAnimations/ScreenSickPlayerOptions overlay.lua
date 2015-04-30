@@ -281,8 +281,10 @@ options_sets.assorted_bools= {
 				local is_set= mod_player(self.player_number, op)
 				self.info_set[#self.info_set+1]= {text= op, underline= is_set}
 			end
-			self.info_set[#self.info_set+1]= persist_element()
-			self.info_set[#self.info_set+1]= unpersist_element()
+			if player_using_profile(self.player_number) then
+				self.info_set[#self.info_set+1]= persist_element()
+				self.info_set[#self.info_set+1]= unpersist_element()
+			end
 			self.cursor_pos= 1
 		end,
 		set_status= function(self)
@@ -301,26 +303,28 @@ options_sets.assorted_bools= {
 				info.underline= not info.underline
 				self.display:set_element_info(self.cursor_pos, info)
 				return true
-			elseif self.cursor_pos == #self.info_set-1 then
-				for i= 1, #self.ops do
-					local op= self.ops[i]
-					cons_players[self.player_number]:persist_mod(op, self.info_set[i+1].underline)
-				end
-				self.info_set[self.cursor_pos].underline= true
-				self.display:set_element_info(self.cursor_pos, self.info_set[self.cursor_pos])
-				return true
-			elseif self.cursor_pos == #self.info_set then
-				for i= 1, #self.ops do
-					local op= self.ops[i]
-					cons_players[self.player_number]:unpersist_mod(op)
-				end
-				local persist_pos= #self.info_set-1
-				self.info_set[persist_pos].underline= true
-				self.display:set_element_info(persist_pos, self.info_set[persist_pos])
-				return true
-			else
-				return false
 			end
+			if player_using_profile(self.player_number) then
+				if self.cursor_pos == #self.info_set-1 then
+					for i= 1, #self.ops do
+						local op= self.ops[i]
+						cons_players[self.player_number]:persist_mod(op, self.info_set[i+1].underline)
+					end
+					self.info_set[self.cursor_pos].underline= true
+					self.display:set_element_info(self.cursor_pos, self.info_set[self.cursor_pos])
+					return true
+				elseif self.cursor_pos == #self.info_set then
+					for i= 1, #self.ops do
+						local op= self.ops[i]
+						cons_players[self.player_number]:unpersist_mod(op)
+					end
+					local persist_pos= #self.info_set-1
+					self.info_set[persist_pos].underline= false
+					self.display:set_element_info(persist_pos, self.info_set[persist_pos])
+					return true
+				end
+			end
+			return false
 		end
 }}
 
@@ -406,14 +410,45 @@ options_sets.rate_mod= {
 			self.info_set= {up_element()}
 			self.increments= {}
 			self.current_value= rate_coordinator:get_current_rate()
+			self.menu_functions= {noop_false}
+			local function general_inc(pos)
+				self:set_new_val(self.current_value + self.increments[pos])
+				return true
+			end
 			for i, v in ipairs(extra.incs) do
 				self.increments[i]= v
 				local vt= tostring(v)
 				if v > 0 then vt= "+" .. vt end
 				self.info_set[#self.info_set+1]= {text= vt}
+				self.menu_functions[#self.menu_functions+1]= general_inc
 			end
 			self.info_set[#self.info_set+1]= {text= "Reset"}
-			self.info_set[#self.info_set+1]= persist_element()
+			self.menu_functions[#self.menu_functions+1]= function()
+				self:set_new_val(1)
+				return true
+			end
+			if player_using_profile(self.player_number) then
+				self.persist_el_pos= #self.info_set+1
+				self.info_set[self.persist_el_pos]= persist_element()
+				self.menu_functions[#self.menu_functions+1]= function()
+					cons_players[self.player_number]:persist_mod(
+						"MusicRate", self.current_value, "song")
+					self:update_el_text(
+						self.persist_val_pos, persist_value_text(self.current_value))
+					return true
+				end
+				self.info_set[#self.info_set+1]= unpersist_element()
+				self.menu_functions[#self.menu_functions+1]= function()
+					cons_players[self.player_number]:unpersist_mod("MusicRate", "song")
+					self:update_el_text(self.persist_val_pos, persist_value_text(nil))
+					return true
+				end
+				self.persist_val_pos= #self.info_set+1
+				self.info_set[self.persist_val_pos]= persist_value_element(
+					cons_players[self.player_number]:get_persist_mod_value(
+						"MusicRate", "song"))
+				self.menu_functions[#self.menu_functions+1]= noop_true
+			end
 			rate_coordinator:add_to_notify(self)
 		end,
 		destructor= function(self)
@@ -424,23 +459,10 @@ options_sets.rate_mod= {
 			self.display:set_display(self:get_eltext())
 		end,
 		interpret_start= function(self)
-			local incs_pos= self.cursor_pos - 1
-			if self.increments[incs_pos] then
-				self:set_new_val(self.current_value + self.increments[incs_pos])
-				return true
-			elseif self.cursor_pos == #self.info_set-1 then
-				self:set_new_val(1)
-				return true
-			elseif self.cursor_pos == #self.info_set then
-				cons_players[self.player_number]:persist_mod(
-					"MusicRate", self.current_value, "song")
-				self.info_set[self.cursor_pos].underline= true
-				self.display:set_element_info(
-					self.cursor_pos, self.info_set[self.cursor_pos])
-				return true
-			else
-				return false
+			if self.menu_functions[self.cursor_pos] then
+				return self.menu_functions[self.cursor_pos](self.cursor_pos-1)
 			end
+			return false
 		end,
 		set_new_val= function(self, nval)
 			if nval == -0 then nval= 0 end

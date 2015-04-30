@@ -357,6 +357,14 @@ option_set_general_mt= {
 				return nil
 			end
 		end,
+		update_el_text= function(self, pos, text)
+			self.info_set[pos].text= text
+			self.display:set_element_info(pos, self.info_set[pos])
+		end,
+		update_el_underline= function(self, pos, underline)
+			self.info_set[pos].underline= underline
+			self.display:set_element_info(pos, self.info_set[pos])
+		end,
 		scroll_to_pos= function(self, pos)
 			self.cursor_pos= ((pos-1) % #self.info_set) + 1
 			self.display:scroll(self.cursor_pos)
@@ -802,26 +810,26 @@ options_sets.adjustable_float= {
 				table.insert(self.info_set, pi_pos, {text= "*"..self.pi_text})
 				table.insert(self.menu_functions, pi_pos, pi_function)
 			end
-			if extra.can_persist then
-				self.info_set[#self.info_set+1]= persist_element()
+			if extra.can_persist and player_using_profile(self.player_number) then
+				self.persist_el_pos= #self.info_set+1
+				self.info_set[self.persist_el_pos]= persist_element()
 				self.menu_functions[#self.menu_functions+1]= function()
 					local new_val= self:cooked_val(self.current_value)
 					cons_players[self.player_number]:persist_mod(
 						self.persist_name, new_val, extra.persist_type)
-					self.info_set[#self.info_set].text= persist_value_text(new_val)
-					self.display:set_element_info(
-						#self.info_set, self.info_set[#self.info_set])
+					self:update_el_text(
+						self.persist_val_pos, persist_value_text(new_val))
 					return true
 				end
 				self.info_set[#self.info_set+1]= unpersist_element()
 				self.menu_functions[#self.menu_functions+1]= function()
 					cons_players[self.player_number]:unpersist_mod(
 						self.persist_name, extra.persist_type)
-					self.info_set[#self.info_set].text= persist_value_text(nil)
-					self.display:set_element_info(
-						#self.info_set, self.info_set[#self.info_set])
+					self:update_el_text(
+						self.persist_val_pos, persist_value_text(nil))
 					return true
 				end
+				self.persist_val_pos= #self.info_set+1
 				self.info_set[#self.info_set+1]= persist_value_element(
 					cons_players[self.player_number]:get_persist_mod_value(
 						self.persist_name, extra.persist_type))
