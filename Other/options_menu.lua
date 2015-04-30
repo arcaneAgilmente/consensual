@@ -329,7 +329,7 @@ function unpersist_element()
 end
 
 function persist_value_text(value)
-	return get_string_wrapper("OptionNames", "Persist Value:") .. tostring(value)
+	return get_string_wrapper("OptionNames", "persist_value") .. tostring(value)
 end
 function persist_value_element(value)
 	return {text= persist_value_text(value)}
@@ -359,11 +359,15 @@ option_set_general_mt= {
 		end,
 		update_el_text= function(self, pos, text)
 			self.info_set[pos].text= text
-			self.display:set_element_info(pos, self.info_set[pos])
+			if self.display then
+				self.display:set_element_info(pos, self.info_set[pos])
+			end
 		end,
 		update_el_underline= function(self, pos, underline)
 			self.info_set[pos].underline= underline
-			self.display:set_element_info(pos, self.info_set[pos])
+			if self.display then
+				self.display:set_element_info(pos, self.info_set[pos])
+			end
 		end,
 		scroll_to_pos= function(self, pos)
 			self.cursor_pos= ((pos-1) % #self.info_set) + 1
@@ -643,12 +647,11 @@ options_sets.special_functions= {
 				local is_info= self.info_set[self.cursor_pos]
 				if is_info.underline and not self.disallow_unset then
 					ele_info.unset(self.player_number)
-					is_info.underline= false
+					self:update_el_underline(self.cursor_pos, false)
 				else
 					ele_info.set(self.player_number)
-					is_info.underline= true
+					self:update_el_underline(self.cursor_pos, true)
 				end
-				self.display:set_element_info(self.cursor_pos, is_info)
 				return true
 			else
 				return false
@@ -666,8 +669,7 @@ options_sets.mutually_exclusive_special_functions= {
 				for i, info in ipairs(self.info_set) do
 					if i ~= self.cursor_pos then
 						if info.underline then
-							info.underline= false
-							self.display:set_element_info(i, info)
+							self:update_el_underline(i, false)
 						end
 					end
 				end
@@ -698,10 +700,8 @@ options_sets.boolean_option= {
 			if self.cursor_pos == 1 then return false end
 			local curr= self.cursor_pos == 2
 			self.set(self.player_number, curr)
-			self.info_set[2].underline= curr
-			self.info_set[3].underline= not curr
-			self.display:set_element_info(2, self.info_set[2])
-			self.display:set_element_info(3, self.info_set[3])
+			self:update_el_underline(2, curr)
+			self:update_el_underline(3, not curr)
 			return true
 		end
 }}
@@ -799,11 +799,10 @@ options_sets.adjustable_float= {
 				local function pi_function()
 					self.pi_exp= not self.pi_exp
 					if self.pi_exp then
-						self.info_set[6].text= "/"..self.pi_text
+						self:update_el_text(6, "/"..self.pi_text)
 					else
-						self.info_set[6].text= "*"..self.pi_text
+						self:update_el_text(6, "*"..self.pi_text)
 					end
-					self.display:set_element_info(6, self.info_set[6])
 					self:set_new_val(self.current_value)
 					return true
 				end
@@ -872,10 +871,8 @@ options_sets.adjustable_float= {
 			if nscale >= self.min_scale and nscale <= self.max_scale then
 				self.min_scale_used= math.min(nscale, self.min_scale_used)
 				self.scale= nscale
-				self.info_set[2].text= "+" .. self.scale_to_text(self.player_number, 10^nscale)
-				self.info_set[3].text= "-" .. self.scale_to_text(self.player_number, 10^nscale)
-				self.display:set_element_info(2, self.info_set[2])
-				self.display:set_element_info(3, self.info_set[3])
+				self:update_el_text(2, "+" .. self.scale_to_text(self.player_number, 10^nscale))
+				self:update_el_text(3, "-" .. self.scale_to_text(self.player_number, 10^nscale))
 			end
 		end
 }}
@@ -902,7 +899,15 @@ options_sets.enum_option= {
 					text= self:short_string(v), underline= v == cv}
 			end
 			if self.can_persist then
-				self.info_set[#self.info_set+1]= persist_element()
+				self.set_persist_pos= #self.info_set+1
+				self.info_set[self.set_persist_pos]= persist_element()
+				self.unset_persist_pos= #self.info_set+1
+				self.info_set[self.unset_persist_pos]= unpersist_element()
+				self.persist_val_pos= #self.info_set+1
+				self.info_set[self.persist_val_pos]= persist_value_element(
+					ToEnumShortString(
+						cons_players[self.player_number]:get_persist_mod_value(
+							self.persist_name, self.persist_type)))
 			end
 		end,
 		short_string= function(self, val)
@@ -913,30 +918,39 @@ options_sets.enum_option= {
 			end
 		end,
 		interpret_start= function(self)
-			if self.can_persist and self.cursor_pos == #self.info_set then
-				local chosen= 0
-				for i= 1, #self.info_set do
-					if self.info_set[i].underline then
-						chosen= i-1
+			if self.can_persist then
+				if self.cursor_pos == self.set_persist_pos then
+					local chosen= 0
+					for i= 1, #self.info_set do
+						if self.info_set[i].underline then
+							chosen= i-1
+						end
 					end
+					if self.enum_vals[chosen] then
+						cons_players[self.player_number]:persist_mod(
+							self.persist_name, self.enum_vals[chosen], self.persist_type)
+						self:update_el_text(
+							self.persist_val_pos, persist_value_text(
+								ToEnumShortString(self.enum_vals[chosen])))
+					end
+					return true
+				elseif self.cursor_pos == self.unset_persist_pos then
+						cons_players[self.player_number]:unpersist_mod(
+							self.persist_name, self.persist_type)
+						self:update_el_text(
+							self.persist_val_pos, persist_value_text(nil))
+					return true
+				elseif self.cursor_pos == #self.info_set then
+					return true
 				end
-				if self.enum_vals[chosen] then
-					cons_players[self.player_number]:persist_mod(
-						self.persist_name, self.enum_vals[chosen], self.persist_type)
-					self.info_set[self.cursor_pos].underline= true
-					self.display:set_element_info(self.cursor_pos, self.info_set[self.cursor_pos])
-				end
-				return true
 			end
 			if self.cursor_pos > 1 then
 				for i, info in ipairs(self.info_set) do
 					if info.underline then
-						info.underline= false
-						self.display:set_element_info(i, info)
+						self:update_el_underline(i, false)
 					end
 				end
-				self.info_set[self.cursor_pos].underline= true
-				self.display:set_element_info(self.cursor_pos, self.info_set[self.cursor_pos])
+				self:update_el_underline(self.cursor_pos, true)
 				if self.ops_obj then
 					self.set(self.ops_obj, self.enum_vals[self.cursor_pos-1])
 				else
@@ -1014,10 +1028,7 @@ options_sets.extensible_boolean_menu= {
 			elseif self.cursor_pos > 1 then
 				local bi= self.cursor_pos - 1
 				self.bool_table[bi]= not self.bool_table[bi]
-				self.info_set[self.cursor_pos].text=
-					self:val_text(self.bool_table[bi])
-				self.display:set_element_info(
-					self.cursor_pos, self.info_set[self.cursor_pos])
+				self:update_el_text(self.cursor_pos, self:val_text(self.bool_table[bi]))
 			else
 				return false
 			end

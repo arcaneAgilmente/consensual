@@ -205,15 +205,10 @@ options_sets.speed= {
 			else
 				bi= speed_inc_base
 			end
-			self.info_set[2].text= "+" .. (bi * 4)
-			self.info_set[3].text= "+" .. bi
-			self.info_set[4].text= "" .. (bi * -1)
-			self.info_set[5].text= "" .. (bi * -4)
-			if self.display then
-				for i= 2, 5 do
-					self.display:set_element_info(i, self.info_set[i])
-				end
-			end
+			self:update_el_text(2, "+" .. (bi * 4))
+			self:update_el_text(3, "+" .. (bi))
+			self:update_el_text(4, "" .. (bi * -1))
+			self:update_el_text(5, "" .. (bi * -4))
 			self.mode= new_mode
 			self:update_speed_text()
 		end,
@@ -300,8 +295,7 @@ options_sets.assorted_bools= {
 				else
 					mod_player(self.player_number, self.ops[ops_pos], true)
 				end
-				info.underline= not info.underline
-				self.display:set_element_info(self.cursor_pos, info)
+				self:update_el_underline(self.cursor_pos, not info.underline)
 				return true
 			end
 			if player_using_profile(self.player_number) then
@@ -310,8 +304,7 @@ options_sets.assorted_bools= {
 						local op= self.ops[i]
 						cons_players[self.player_number]:persist_mod(op, self.info_set[i+1].underline)
 					end
-					self.info_set[self.cursor_pos].underline= true
-					self.display:set_element_info(self.cursor_pos, self.info_set[self.cursor_pos])
+					self:update_el_underline(self.cursor_pos, true)
 					return true
 				elseif self.cursor_pos == #self.info_set then
 					for i= 1, #self.ops do
@@ -319,8 +312,7 @@ options_sets.assorted_bools= {
 						cons_players[self.player_number]:unpersist_mod(op)
 					end
 					local persist_pos= #self.info_set-1
-					self.info_set[persist_pos].underline= false
-					self.display:set_element_info(persist_pos, self.info_set[persist_pos])
+					self:update_el_underline(persist_pos, false)
 					return true
 				end
 			end
@@ -358,47 +350,12 @@ options_sets.song_ops_bools= {
 				else
 					songops[self.ops[ops_pos]](songops, true)
 				end
-				info.underline= not info.underline
-				self.display:set_element_info(self.cursor_pos, info)
+				self:update_el_underline(self.cursor_pos, not info.underline)
 				return true
 			else
 				return false
 			end
 		end
-}}
-
--- Relies on the engine to enforce the mutual exclusivity.
--- Reuse functions from options_rows.assorted_bools that would be identical.
-options_sets.mutually_exclusive_bools= {
-	__index= {
-		initialize= options_sets.assorted_bools.__index.initialize,
-		set_status= options_sets.assorted_bools.__index.set_status,
-		interpret_start= function(self)
-			local ops_pos= self.cursor_pos - 1
-			local info= self.info_set[self.cursor_pos]
-			if self.ops[ops_pos] then
-				if info.underline then
-					if not self.disallow_unset then
-						info.underline= false
-						mod_player(self.player_number, self.ops[ops_pos], false)
-						self.display:set_element_info(self.cursor_pos, info)
-					end
-				else
-					for i, tinfo in ipairs(self.info_set) do
-						if tinfo ~= info then
-							tinfo.underline= false
-						else
-							tinfo.underline= true
-						end
-						self.display:set_element_info(i, tinfo)
-					end
-					mod_player(self.player_number, self.ops[ops_pos], true)
-				end
-				return true
-			else
-				return false
-			end
-		end,
 }}
 
 options_sets.rate_mod= {
@@ -545,14 +502,10 @@ options_sets.steps_list= {
 				set_preferred_style(
 					self.player_number, stepstype_to_style[steps:GetStepsType()]
 					[GAMESTATE:GetNumPlayersEnabled()].name)
-				local steps_info= self.info_set[self.player_choice+1]
-				steps_info.underline= false
-				self.display:set_element_info(self.player_choice+1, steps_info)
+				self:update_el_underline(self.player_choice+1, false)
 				self.player_choice= spos
 				-- Note the line above updating player_choice.
-				steps_info= self.info_set[self.player_choice+1]
-				steps_info.underline= true
-				self.display:set_element_info(self.player_choice+1, steps_info)
+				self:update_el_underline(self.player_choice+1, true)
 				return true
 			else
 				return false
@@ -591,16 +544,14 @@ options_sets.noteskins= {
 			if self.ops[ops_pos] then
 				for i, tinfo in ipairs(self.info_set) do
 					if i ~= self.cursor_pos and tinfo.underline then
-						tinfo.underline= false
-						self.display:set_element_info(i, tinfo)
+						self:update_el_underline(i, false)
 					end
 				end
 				local prev_note, succeeded= mod_player(self.player_number, "NoteSkin", self.ops[ops_pos])
 				if not succeeded then
 					Trace("Failed to set noteskin '" .. tostring(self.ops[ops_pos]) .. "'.  Leaving noteskin setting at '" .. prev_note .. "'")
 				end
-				info.underline= true
-				self.display:set_element_info(self.cursor_pos, info)
+				self:update_el_underline(self.cursor_pos, true)
 				self:set_status()
 				return true
 			else
@@ -932,11 +883,6 @@ local function song_enum(name, enum, func_name)
 			can_persist= true, persist_name= func_name, persist_type= "song",
 			get= SongOptions[func_name], set= SongOptions[func_name], enum= enum,
 			obj_get= function() return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred") end }}
-end
-
-local function mut_exc_bools(name, bool_names)
-	return {
-		name= name, meta= options_sets.mutually_exclusive_bools, args= {ops= bool_names}}
 end
 
 local args= {}
