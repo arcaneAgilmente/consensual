@@ -1050,27 +1050,28 @@ local unacceptable_options= {
 	}},
 }
 
+local function player_conf_set(conf_name, conf_value)
+	return {
+		name= conf_value, unset= noop_nil, init= function(pn)
+			return cons_players[pn][conf_name] == conf_value
+		end,
+		set= function(pn)
+			cons_players[pn][conf_name]= conf_value
+		end,
+	}
+end
 local combo_threshold_options= {}
 local combo_graph_threshold_options= {}
+local error_threshold_options= {}
 for i, tns in ipairs{
 	"TapNoteScore_Miss", "TapNoteScore_W5", "TapNoteScore_W4",
 	"TapNoteScore_W3", "TapNoteScore_W2", "TapNoteScore_W1"} do
-	combo_threshold_options[#combo_threshold_options+1]= {
-		name= tns, unset= noop_nil, init= function(pn)
-			return tns == cons_players[pn].combo_splash_threshold
-		end,
-		set= function(pn)
-			cons_players[pn].combo_splash_threshold= tns
-		end,
-	}
-	combo_graph_threshold_options[#combo_graph_threshold_options+1]= {
-		name= tns, unset= noop_nil, init= function(pn)
-			return tns == cons_players[pn].combo_graph_threshold
-		end,
-		set= function(pn)
-			cons_players[pn].combo_graph_threshold= tns
-		end,
-	}
+	combo_threshold_options[#combo_threshold_options+1]=
+		player_conf_set("combo_splash_threshold", tns)
+	combo_graph_threshold_options[#combo_graph_threshold_options+1]=
+		player_conf_set("combo_graph_threshold", tns)
+	error_threshold_options[#error_threshold_options+1]=
+		player_conf_set("error_history_threshold", tns)
 end
 
 local function bool_effect_setter(disp_name, demo_name)
@@ -1194,6 +1195,9 @@ local decorations= {
 		args= {eles= combo_threshold_options, disallow_unset= true}},
 	{ name= "Combo Graph Threshold", meta= options_sets.mutually_exclusive_special_functions,
 		args= {eles= combo_graph_threshold_options, disallow_unset= true}},
+	{ name= "Error History Threshold", meta= options_sets.mutually_exclusive_special_functions,
+		args= {eles= error_threshold_options, disallow_unset= true}},
+	player_conf_float("Error History Size", "error_history_size", 4, 0, 1, 2, 0, 512),
 	player_conf_float("Low Score Random Threshold",
 										"low_score_random_threshold", 3, -4, -2, -1, 0, 1),
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,

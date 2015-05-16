@@ -909,5 +909,9 @@ function life_on(self)
 	end
 end
 
+function screen_pixels(pix)
+	return pix * (DISPLAY:GetDisplayHeight() / _screen.h)
+end
+
 music_wheel_width= SCREEN_WIDTH*.3125
 mini_menu_width= math.min(_screen.w*.9, 480*.9)

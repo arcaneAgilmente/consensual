@@ -9,7 +9,6 @@ local tani_params= {
 	sx= el_pos.combo_xoffset or 0, sy= el_pos.combo_yoffset or 30,
 	tx= 8, nx= -8, ta= left, na= right, text_section= "Combo"
 }
-local OffsetQuad
 
 local ShowComboAt = THEME:GetMetric("Combo", "ShowComboAt");
 local Pulse = THEME:GetMetric("Combo", "PulseCommand");
@@ -92,7 +91,11 @@ local tns_texts= {
 }
 
 local tns_windows= {}
-local offset_scaler= 0
+local err_tex_width= 512
+local herr_tex_width= err_tex_width * .5
+local error_width= _screen.w * .4
+local min_offset= 0
+local max_offset= 0
 do
 	local window_scale= PREFSMAN:GetPreference("TimingWindowScale")
 	local windows= {
@@ -103,7 +106,19 @@ do
 		PREFSMAN:GetPreference("TimingWindowSecondsW5") * window_scale,
 		PREFSMAN:GetPreference("TimingWindowSecondsW5") * window_scale*1.25,
 	}
-	offset_scaler= (SCREEN_WIDTH / 4) / windows[5]
+	local tns_to_window= {}
+	for i= 1, 5 do
+		local tns_name= "TapNoteScore_W"..i
+		tns_to_window[tns_name]= windows[i]
+		tns_windows[i]= {windows[i], tns_name}
+	end
+	local error_window_name= cons_players[player].error_history_threshold
+	local error_window= windows[6]
+	if tns_to_window[error_window_name] then
+		error_window= tns_to_window[error_window_name]
+	end
+	min_offset= -error_window
+	max_offset= error_window
 	tns_windows.TapNoteScore_W1= {0, windows[1]}
 	tns_windows.TapNoteScore_W2= {windows[1], windows[2]}
 	tns_windows.TapNoteScore_W3= {windows[2], windows[3]}
@@ -111,6 +126,118 @@ do
 	tns_windows.TapNoteScore_W5= {windows[4], windows[5]}
 	tns_windows.TapNoteScore_Miss= {windows[5], windows[6]}
 end
+
+local function offset_to_judge(offset)
+	local aboff= math.abs(offset)
+	for i= 1, #tns_windows do
+		if aboff <= tns_windows[i][1] then return tns_windows[i][2] end
+	end
+	return "TapNoteScore_Miss"
+end
+
+local judge_colors= fetch_color("judgment")
+local dark_judge_colors= {}
+local bright_judge_colors= {}
+for name, c in pairs(judge_colors) do
+	dark_judge_colors[name]= adjust_luma(c, .5)
+	bright_judge_colors[name]= adjust_luma(c, 2)
+end
+local def_col= fetch_color("text")
+
+local function fjtc(j)
+	return judge_colors[j] or def_col
+end
+local function offset_to_color(offset)
+	return bright_judge_colors[offset_to_judge(offset)] or def_col
+end
+local function offset_to_dark_color(offset)
+	return dark_judge_colors[offset_to_judge(offset)] or def_col
+end
+
+local function scale_off(offset, min, max)
+	return scale(clamp(offset, min_offset, max_offset), min_offset, max_offset,
+							 min, max)
+end
+local function offset_to_x(offset)
+	return scale_off(offset, 0, err_tex_width)
+end
+local function offset_to_w(offset)
+	return scale_off(offset, -herr_tex_width, herr_tex_width)
+end
+
+local error_history_size= cons_players[player].error_history_size
+if error_history_size > 512 then error_history_size= 512 end
+local error_bar_mt= {
+	__index= {
+		create_actors= function(self)
+			self.history= {}
+			self.curr_entry= 1
+			self.err_draw= function(subself)
+				self:draw(subself)
+			end
+			return Def.ActorFrame{
+				InitCommand= function(subself)
+					self.container= subself
+					subself:xy(el_pos.error_bar_xoffset, el_pos.error_bar_yoffset)
+				end,
+				Def.ActorFrameTexture{
+					InitCommand= function(subself)
+						self.aft= subself
+						subself:setsize(err_tex_width, 16)
+							:EnableAlphaBuffer(true)
+							:Create()
+							:SetDrawFunction(self.err_draw)
+							:EnablePreserveTexture(false)
+							:hibernate(math.huge)
+						self.texture= subself:GetTexture()
+					end,
+					Def.Quad{
+						InitCommand= function(subself)
+							self.curr_error= subself
+							subself:visible(false):xy(herr_tex_width, 8)
+								:setsize(0, 8):horizalign(left)
+						end
+					},
+					Def.Quad{
+						InitCommand= function(subself)
+							self.past_error= subself
+							subself:visible(false):xy(herr_tex_width, 8)
+								:setsize(1, 16)
+						end
+					}
+				},
+				Def.Sprite{
+					InitCommand= function(subself)
+						self.sprite= subself
+						subself:SetTexture(self.texture)
+							:visible(false)
+							:setsize(error_width, 16 * el_pos.error_bar_scale)
+					end
+				},
+			}
+		end,
+		draw= function(self, subself)
+			if not self.curr_offset then return end
+			self.sprite:visible(true)
+			self.past_error:visible(true)
+			for i= 1, #self.history do
+				self.past_error:x(offset_to_x(self.history[i]))
+					:diffuse(offset_to_dark_color(self.history[i])):Draw()
+			end
+			self.past_error:visible(false)
+			self.curr_error:SetWidth(offset_to_w(self.curr_offset))
+				:diffuse(offset_to_color(self.curr_offset))
+				:visible(true):Draw():visible(false)
+		end,
+		add_error= function(self, offset)
+			self.history[self.curr_entry]= offset
+			self.curr_entry= self.curr_entry + 1
+			if self.curr_entry > error_history_size then self.curr_entry= 1 end
+			self.curr_offset= offset
+			self.aft:hibernate(0):Draw():hibernate(math.huge)
+		end
+}}
+local errbar= setmetatable({}, error_bar_mt)
 
 local non_mine_tnses= {
 	TapNoteScore_W1= true,
@@ -202,9 +329,9 @@ local function set_combo_stuff(param)
 	tani:set_number(("%i"):format(wombo))
 	if combo_qual then
 		if combo_qual.worst_tns then
-			local color= judge_to_color(combo_qual.worst_tns)
+			local color= fjtc(combo_qual.worst_tns)
 			if toast and toast.remaining > 0 then
-				color= judge_to_color(toast.judge)
+				color= fjtc(toast.judge)
 			end
 			if color then
 				tani.text:diffuse(color)
@@ -226,25 +353,15 @@ local args= {
 		center, {
 			ResetCommand= cmd(xy,0,0;finishtweening;stopeffect;visible,false)}),
 	tani:create_actors("tani", tani_params),
-	Def.Quad{
-		Name= "offset",
-		InitCommand= function(self)
-									 self:xy(el_pos.error_bar_xoffset, el_pos.error_bar_yoffset)
-									 self:SetWidth(0)
-									 self:SetHeight(8 * el_pos.error_bar_scale)
-									 self:visible(false)
-									 self:horizalign(left)
-								 end
-	},
+	errbar:create_actors(),
 	InitCommand= function(self)
-								 Judgment= self:GetChild("Judgment")
-								 OffsetQuad= self:GetChild("offset")
-								 Judgment:visible(false):zoom(el_pos.judgment_scale)
-								 tani:hide()
-								 tani.container:zoom(el_pos.combo_scale)
-								 tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
-								 tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
-							 end,
+		Judgment= self:GetChild("Judgment")
+		Judgment:visible(false):zoom(el_pos.judgment_scale)
+		tani:hide()
+		tani.container:zoom(el_pos.combo_scale)
+		tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
+		tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
+	end,
 	ToastyAchievedMessageCommand=
 		function(self,params)
 			if params.PlayerNumber == player then
@@ -383,17 +500,12 @@ local args= {
 			end
 			if text then
 				if cons_players[player].flags.gameplay.error_bar then
-					OffsetQuad:finishtweening()
-					OffsetQuad:SetWidth(disp_offset * offset_scaler)
-					OffsetQuad:diffuse(judge_to_color(disp_judge))
-					OffsetQuad:visible(true)
-					OffsetQuad:linear(1)
-					OffsetQuad:diffusealpha(0)
+					errbar:add_error(disp_offset)
 				end
 				Judgment:playcommand("Reset")
-				Judgment:settext(get_string_wrapper("JudgementNames", text):upper())
-				Judgment:diffuse(judge_to_color(disp_judge))
-				Judgment:visible(true)
+					:settext(get_string_wrapper("JudgementNames", text):upper())
+					:diffuse(fjtc(disp_judge))
+					:visible(true)
 				JudgeCmds[disp_judge](Judgment)
 			end
 			if fake_judge then

@@ -215,9 +215,8 @@ local stars= {setmetatable({}, star_amv_mt), setmetatable({}, star_amv_mt)}
 local function rescale_stars()
 	local pad= 16
 	local radius= ((SCREEN_WIDTH - display_frames[1].w) / 4) - pad
-	local scale_factor= DISPLAY:GetDisplayHeight() / SCREEN_HEIGHT
 	local circ= radius * math.pi * 2
-	star_points= math.round(circ * scale_factor * 1)
+	star_points= math.round(screen_pixels(circ))
 	if misc_config:get_data().max_star_points > 2 then
 		star_points= math.min(star_points, misc_config:get_data().max_star_points)
 	end
