@@ -412,6 +412,8 @@ local consensual_options= {
 	 args= make_extra_for_conf_val("transition_split_max", 0, 0, 1)},
 	{name= "transition_meta_var_max", meta= options_sets.adjustable_float,
 	 args= make_extra_for_conf_val("transition_meta_var_max", 0, 0, 1)},
+	{name= "transition_time", meta= options_sets.adjustable_float,
+	 args= make_extra_for_conf_val("transition_time", -1, 0, 1)},
 	{name= "transition_type", meta= options_sets.enum_option,
 	 args= trans_type_extra()},
 	{name= "initial_menu_choices", meta= options_sets.special_functions,

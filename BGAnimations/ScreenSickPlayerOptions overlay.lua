@@ -671,24 +671,6 @@ local function extra_for_sigil_detail()
 	}
 end
 
-local function extra_for_sigil_size()
-	return {
-		name= "Sigil Size",
-		min_scale= 0,
-		scale= 1,
-		max_scale= 2,
-		initial_value= function(player_number)
-			return cons_players[player_number].sigil_data.size
-		end,
-		validator= function(value)
-			return value >= 1 and value <= SCREEN_WIDTH/2
-		end,
-		set= function(player_number, value)
-			cons_players[player_number].sigil_data.size= value
-		end,
-	}
-end
-
 local function player_conf_float(
 		disp_name, field_name, level, mins, scal, maxs, minv, maxv)
 	return {
@@ -982,18 +964,30 @@ local floaty_mods= {
 	player_conf_float("Toasty Level", "toasty_level", 4, 0, 0, 0, 1, 16),
 }
 
+local function make_x_y_s_for_set(layout_options, set)
+	for i, info in ipairs(set) do
+		local gepi= "gameplay_element_positions."..info[2]
+		table.insert(layout_options, player_conf_float(info[1].." X",
+			gepi.."_xoffset", 1, 0, 1, 2, nil, nil))
+		table.insert(layout_options, player_conf_float(info[1].." Y",
+			gepi.."_yoffset", 1, 0, 1, 2, nil, nil))
+		table.insert(layout_options, player_conf_float(info[1].." Scale",
+			gepi.."_scale", 1, -2, -1, 0, nil, nil))
+	end
+end
+
 local gameplay_layout= {
+	player_conf_float("Notefield X",
+		"gameplay_element_positions.notefield_xoffset", 1, 0, 1, 2, nil, nil),
 	player_conf_float("Notefield Y",
 		"gameplay_element_positions.notefield_yoffset", 1, 0, 1, 2, nil, nil),
-	player_conf_float("Judgement X",
-		"gameplay_element_positions.judgment_xoffset", 1, 0, 1, 2, nil, nil),
-	player_conf_float("Judgement Y",
-		"gameplay_element_positions.judgment_yoffset", 1, 0, 1, 2, nil, nil),
-	player_conf_float("Combo X",
-		"gameplay_element_positions.combo_xoffset", 1, 0, 1, 2, nil, nil),
-	player_conf_float("Combo Y",
-		"gameplay_element_positions.combo_yoffset", 1, 0, 1, 2, nil, nil),
 }
+
+make_x_y_s_for_set(
+	gameplay_layout, {
+		{"Judgment", "judgment"}, {"Combo", "combo"}, {"Error Bar", "error_bar"},
+		{"Judge List", "judge_list"}, {"BPM", "bpm"}, {"Sigil", "sigil"},
+		{"Score", "score"}, {"Chart Info", "chart_info"}})
 
 local chart_mods= {
 	ass_bools("Turn", {"Mirror", "Backwards", "Left", "Right",
@@ -1204,8 +1198,6 @@ local decorations= {
 										"low_score_random_threshold", 3, -4, -2, -1, 0, 1),
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
-	{ name= "Sigil Size", meta= options_sets.adjustable_float,
-		args= extra_for_sigil_size()},
 	{ name= "Noteskin", meta= options_sets.noteskins},
 }
 

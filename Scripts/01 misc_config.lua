@@ -28,6 +28,10 @@ local default_config= {
 	transition_split_max= 64,
 	transition_meta_var_max= 64,
 	transition_type= "random",
+	transition_time= 2,
+
+	show_subtitle_on_wheel= true,
+	show_artist_on_wheel= true,
 
 	cursor_button_icon_size= 1,
 	menus_have_ud= true,

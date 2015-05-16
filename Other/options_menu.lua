@@ -411,6 +411,11 @@ option_set_general_mt= {
 					else
 						return false
 					end
+				end,
+				Select= function(sef)
+					self.cursor_pos= 1
+					self.display:scroll(self.cursor_pos)
+					return true
 				end
 			}
 			-- This breaks the feature of left being usable as back on the up

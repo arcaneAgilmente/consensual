@@ -1,9 +1,10 @@
 local conf_data= misc_config:get_data()
+local trans_time= conf_data.transition_time
 if conf_data.transition_split_max <= 0 or conf_data.transition_split_min <= 0 then
 	return Def.Quad{
 		StartTransitioningCommand= function(self)
 			self:xy(_screen.cx, _screen.cy):setsize(_screen.w, _screen.h)
-				:diffuse(Alpha(fetch_color("bg"), 0)):linear(1):diffusealpha(1)
+				:diffuse(Alpha(fetch_color("bg"), 0)):linear(trans_time):diffusealpha(1)
 		end
 	}
 end
@@ -44,7 +45,6 @@ local max_texx= dwidth / pot(dwidth)
 local max_texy= dheight / pot(dheight)
 local sptx= max_texx / xq
 local spty= max_texy / yq
-local trans_time= 2
 local tex_load_time= 0
 local vert_set_time= 0
 local tex_pos_time= 0

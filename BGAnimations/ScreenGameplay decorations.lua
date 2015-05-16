@@ -32,11 +32,9 @@ local spb_y= SCREEN_BOTTOM - (spb_height / 2) - 1
 local spb_time_off= spb_height + 4
 local spb_time_y= spb_y - spb_time_off
 
-local judge_spacing= line_spacing * .75
-local judge_y= spb_time_y - (line_spacing * 2) - (judge_spacing * #feedback_judgements)
-local judge_centers= {
-	[PLAYER_1]= { SCREEN_CENTER_X - (SCREEN_CENTER_X / 2), judge_y},
-	[PLAYER_2]= { SCREEN_CENTER_X + (SCREEN_CENTER_X / 2), judge_y}
+local player_dec_centers= {
+	[PLAYER_1]= {_screen.cx * .5, _screen.cy},
+	[PLAYER_2]= {_screen.cx * 1.5, _screen.cy},
 }
 
 local note_drift_minx= _screen.w * .15
@@ -145,10 +143,10 @@ if true_gameplay and (cons_players[PLAYER_1].chuunibyou or
 end
 
 local judge_feedback_interface= {}
-function judge_feedback_interface:create_actors(name, fx, fy, player_number)
+function judge_feedback_interface:create_actors(name, fx, fy, pn)
 	if not name then return nil end
 	self.name= name
-	self.player_number= player_number
+	self.pn= pn
 	if not fx then fx= 0 end
 	if not fy then fy= 0 end
 	self.elements= {}
@@ -163,15 +161,18 @@ function judge_feedback_interface:create_actors(name, fx, fy, player_number)
 			end
 		end
 	}
-	local tx= -10
-	local nx= 10
 	local start_y= 0
+	local scale= cons_players[pn].gameplay_element_positions.judge_list_scale
+	local judge_spacing= scale * line_spacing
+	local tx= -10 * scale
+	local nx= 10 * scale
 	for n= 1, #feedback_judgements do
 		local new_element= {}
 		setmetatable(new_element, text_and_number_interface_mt)
 		args[#args+1]= new_element:create_actors(
 			feedback_judgements[n], {
-				sy= start_y + judge_spacing * n, tx= tx, nx= nx, tz= .75, nz= .75,
+				sy= start_y + judge_spacing * n, tx= tx, nx= nx,
+				tz= scale, nz= scale,
 				tc= judge_to_color(feedback_judgements[n]),
 				nc= judge_to_color(feedback_judgements[n]),
 				text_section= "JudgementNames",
@@ -182,8 +183,8 @@ function judge_feedback_interface:create_actors(name, fx, fy, player_number)
 end
 
 function judge_feedback_interface:update(player_stage_stats)
-	if cons_players[self.player_number].fake_judge then
-		local fake_score= cons_players[self.player_number].fake_score
+	if cons_players[self.pn].fake_judge then
+		local fake_score= cons_players[self.pn].fake_score
 		for n= 1, #self.elements do
 			local ele= self.elements[n]
 			ele:set_number(fake_score.judge_counts[ele.name])
@@ -197,11 +198,6 @@ function judge_feedback_interface:update(player_stage_stats)
 end
 
 local judge_feedback_interface_mt= { __index= judge_feedback_interface }
-
-local sigil_centers= {
-	[PLAYER_1]= { SCREEN_CENTER_X - (SCREEN_CENTER_X / 2), SCREEN_BOTTOM*.375},
-	[PLAYER_2]= { SCREEN_CENTER_X + (SCREEN_CENTER_X / 2), SCREEN_BOTTOM*.375}
-}
 
 dofile(THEME:GetPathO("", "sigil.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
@@ -217,7 +213,7 @@ function sigil_feedback_interface:create_actors(name, fx, fy, player_number)
 	if not fx then fx= 0 end
 	if not fy then fy= 0 end
 	self.sigil= setmetatable({}, sigil_controller_mt)
-	return self.sigil:create_actors(name, fx, fy, pn_to_color(player_number), player_data.detail, player_data.size)
+	return self.sigil:create_actors(name, fx, fy, pn_to_color(player_number), player_data.detail, 150 * cons_players[player_number].gameplay_element_positions.sigil_scale)
 end
 
 function sigil_feedback_interface:update(player_stage_stats)
@@ -308,11 +304,6 @@ end
 
 local score_feedback_interface_mt= { __index= score_feedback_interface }
 
-local dp_feedback_centers= {
-	[PLAYER_1]= { SCREEN_RIGHT * .25, SCREEN_TOP + h_line_spacing },
-	[PLAYER_2]= { SCREEN_RIGHT * .75, SCREEN_TOP + h_line_spacing }
-}
-
 local numerical_score_feedback_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, pn)
@@ -321,12 +312,16 @@ local numerical_score_feedback_mt= {
 			x= x or 0
 			y= y or 0
 			local flags= cons_players[pn].flags.gameplay
+			local scale= cons_players[pn].gameplay_element_positions.score_scale
+			local dp_parts_pad= 10
+			local dp_parts_pad_dub= dp_parts_pad * 2
 			self.fmat= "%.2f%%"
 			local args= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
 					self.container= subself
 					self.pct= subself:GetChild("pct")
+					subself:zoom(scale)
 				end,
 				OnCommand= function(subself)
 					local mdp= STATSMAN:GetCurStageStats():GetPlayerStageStats(self.player_number):GetPossibleDancePoints()
@@ -346,7 +341,7 @@ local numerical_score_feedback_mt= {
 					if self.dual_mode then
 						local pad= 16
 						-- add the width the scored dp will have.
-						local dp_width= (self.max_dp:GetWidth() * 2) + 20
+						local dp_width= (self.max_dp:GetWidth() * 2) + dp_parts_pad_dub
 						-- maximum width for the pct will be -222%
 						self.pct:settext(self.fmat:format(-222))
 						local pct_width= self.pct:GetWidth()
@@ -373,11 +368,11 @@ local numerical_score_feedback_mt= {
 						self.max_dp:strokecolor(fetch_color("gameplay.text_stroke"))
 					end,
 					normal_text(
-						"curr_dp", "0", fetch_color("text"), nil, -10, 0, 1, right),
+						"curr_dp", "0", fetch_color("text"), nil, -dp_parts_pad, 0, 1, right),
 					normal_text(
 						"slash_dp", "/", fetch_color("text"), nil, 0, 0, 1),
 					normal_text(
-						"max_dp", "0", fetch_color("text"), nil, 10, 0, 1, left),
+						"max_dp", "0", fetch_color("text"), nil, dp_parts_pad, 0, 1, left),
 				}
 			end
 			if flags.pct_score then
@@ -386,13 +381,7 @@ local numerical_score_feedback_mt= {
 			end
 			return Def.ActorFrame(args)
 		end,
-		init= function(self, pss)
-			self.inited= true
-		end,
 		update= function(self, pss)
-			if not self.inited then
-				self:init(pss)
-			end
 			local adp= pss:GetActualDancePoints()
 			local mdp= pss:GetPossibleDancePoints()
 			local fake_score
@@ -431,16 +420,12 @@ local numerical_score_feedback_mt= {
 }}
 
 local bpm_feedback_interface= {}
-local bpm_y= spb_time_y
-local bpm_centers= {
-	[PLAYER_1]= { SCREEN_CENTER_X - (SCREEN_CENTER_X / 2), bpm_y},
-	[PLAYER_2]= { SCREEN_CENTER_X + (SCREEN_CENTER_X / 2), bpm_y}
-}
 local bpm_feedback_interface_mt= { __index= bpm_feedback_interface }
-function bpm_feedback_interface:create_actors(name, fx, fy, player_number)
+function bpm_feedback_interface:create_actors(name, fx, fy, pn)
 	self.name= name
 	self.tani= setmetatable({}, text_and_number_interface_mt)
-	self.player_number= player_number
+	self.pn= pn
+	local scale= cons_players[pn].gameplay_element_positions.bpm_scale
 	return Def.ActorFrame{
 		Name= self.name, InitCommand= function(subself)
 			subself:xy(fx, fy)
@@ -449,13 +434,14 @@ function bpm_feedback_interface:create_actors(name, fx, fy, player_number)
 			self.tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
 		end,
 		self.tani:create_actors(
-			"tani", { tx= -4, nx= 4, tt= "BPM: ", text_section= "ScreenGameplay"
+			"tani", { tx= -4, nx= 4, tt= "BPM: ", text_section= "ScreenGameplay",
+								tz= scale, nz= scale
 							})
 	}
 end
 
 function bpm_feedback_interface:update()
-	local bpm= screen_gameplay:GetTrueBPS(self.player_number) * 60
+	local bpm= screen_gameplay:GetTrueBPS(self.pn) * 60
 	self.tani:set_number(("%.0f"):format(bpm))
 end
 
@@ -544,6 +530,35 @@ function song_progress_bar_interface:update()
 	end
 end
 local song_progress_bar= setmetatable({}, song_progress_bar_interface_mt)
+
+local song_rate_mt= {
+	__index= {
+		create_actors= function(self)
+			self.name= "rate"
+			self.tani= setmetatable({}, text_and_number_interface_mt)
+			return Def.ActorFrame{
+				InitCommand= function(subself)
+					subself:xy(_screen.cx, spb_time_y - (line_spacing * 2))
+					self.container= subself
+					self.tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
+					self.tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
+				end,
+				self.tani:create_actors(
+					"tani", { tx= -4, nx= 4, tt= "Rate: " ,
+										text_section= "ScreenGameplay"})
+			}
+		end,
+		update= function(self)
+			local rate= song_opts:MusicRate() * screen_gameplay:GetHasteRate()
+			if math.abs(rate - 1) < .01 then
+				self.container:hibernate(math.huge)
+			else
+				self.container:hibernate(0)
+				self.tani:set_number(("%.2f"):format(rate))
+			end
+		end
+}}
+local song_rate= setmetatable({}, song_rate_mt)
 
 local half_scrw= (SCREEN_WIDTH / 2)
 local half_scrh= (SCREEN_HEIGHT / 2)
@@ -776,6 +791,7 @@ local function Update(self)
 		Trace("SGbg.Update:  curstats is nil.")
 	end
 	song_progress_bar:update()
+	song_rate:update()
 	multiapproach(note_drift_currents, note_drift_goals, note_drift_speeds)
 	for i, pn in pairs(enabled_players) do
 		player= cons_players[pn]
@@ -978,6 +994,9 @@ local function facing_input(event)
 	if event.type == "InputEventType_Release" then return end
 	local pn= event.PlayerNumber
 	local player= cons_players[pn]
+--	if event.DeviceInput.button == "DeviceButton_j" and event.type == "InputEventType_FirstPress" then
+--		screen_gameplay:PauseGame(not screen_gameplay:IsPaused())
+--	end
 	if not player or not player.spatial_turning or not notefields[pn] then
 		return end
 	local button= event.button
@@ -993,11 +1012,6 @@ local function facing_input(event)
 		:set_point(2, {0, 0, ani})
 	end
 end
-
-local author_centers= {
-	[PLAYER_1]= { SCREEN_RIGHT * .25, SCREEN_TOP + (line_spacing*1.5) },
-	[PLAYER_2]= { SCREEN_RIGHT * .75, SCREEN_TOP + (line_spacing*1.5) }
-}
 
 local function chart_info_text(pn)
 	local cur_steps= gamestate_get_curr_steps(pn)
@@ -1020,56 +1034,61 @@ local function make_special_actors_for_players()
 	local args= { Name= "special_actors",
 								OnCommand= cmd(SetUpdateFunction,Update)
               }
-	for k, v in pairs(enabled_players) do
+	local function add_feedback(add_to_feedback, pn, el_pos, name, meat)
+		add_to_feedback[#add_to_feedback+1]= {
+			name= name, meattable= meat, center= {
+				player_dec_centers[pn][1] + el_pos[name .. "_xoffset"],
+				player_dec_centers[pn][2] + el_pos[name .. "_yoffset"]}}
+	end
+	for k, pn in pairs(enabled_players) do
 		local add_to_feedback= {}
-		local over_confident= cons_players[v].confidence and cons_players[v].confidence >= 50
-		local flags= cons_players[v].flags.gameplay
+		local over_confident= cons_players[pn].confidence and cons_players[pn].confidence >= 50
+		local flags= cons_players[pn].flags.gameplay
+		local el_pos= cons_players[pn].gameplay_element_positions
 		if flags.sigil then
-			add_to_feedback[#add_to_feedback+1]= {
-				name= "sigil", meattable= sigil_feedback_interface_mt,
-				center= {sigil_centers[v][1], sigil_centers[v][2]}}
+			add_feedback(add_to_feedback, pn, el_pos, "sigil",
+									 sigil_feedback_interface_mt)
 		end
 		if flags.judge and not over_confident then
-			add_to_feedback[#add_to_feedback+1]= {
-				name= "judge_list", meattable= judge_feedback_interface_mt,
-				center= {judge_centers[v][1], judge_centers[v][2]}}
+			add_feedback(add_to_feedback, pn, el_pos, "judge_list",
+									 judge_feedback_interface_mt)
 		end
 		if flags.score_meter and not over_confident then
 			add_to_feedback[#add_to_feedback+1]= {
 				name= "scoremeter", meattable= score_feedback_interface_mt,
-				center= {score_feedback_centers[v][1], score_feedback_centers[v][2]}}
+				center= {score_feedback_centers[pn][1], score_feedback_centers[pn][2]}}
 		end
 		if (flags.dance_points or flags.pct_score) and not over_confident then
-			add_to_feedback[#add_to_feedback+1]= {
-				name= "scorenumber", meattable= numerical_score_feedback_mt,
-				center= {dp_feedback_centers[v][1], dp_feedback_centers[v][2]}}
+			add_feedback(add_to_feedback, pn, el_pos, "score",
+									 numerical_score_feedback_mt)
 		end
 		if flags.bpm_meter then
-			add_to_feedback[#add_to_feedback+1]= {
-				name= "bpm", meattable= bpm_feedback_interface_mt,
-				center= {bpm_centers[v][1], bpm_centers[v][2]}}
+			add_feedback(add_to_feedback, pn, el_pos, "bpm",
+									 bpm_feedback_interface_mt)
 		end
-		local a= {Name= v}
-		a[#a+1]= LoadActor(THEME:GetPathG("", "special_lifebar.lua"), {pn= v, x= lifex[v]})
+		local a= {Name= pn}
+		a[#a+1]= LoadActor(THEME:GetPathG("", "special_lifebar.lua"), {pn= pn, x= lifex[pn]})
 		for fk, fv in pairs(add_to_feedback) do
 			local new_feedback= {}
 			setmetatable(new_feedback, fv.meattable)
-			a[#a+1]= new_feedback:create_actors(fv.name, fv.center[1], fv.center[2], v)
-			feedback_things[v][#feedback_things[v]+1]= new_feedback
+			a[#a+1]= new_feedback:create_actors(fv.name, fv.center[1], fv.center[2], pn)
+			feedback_things[pn][#feedback_things[pn]+1]= new_feedback
 		end
 		if flags.chart_info then
 			a[#a+1]= normal_text(
-				"author", chart_info_text(v), fetch_color("gameplay.chart_info"),
+				"author", chart_info_text(pn), fetch_color("gameplay.chart_info"),
 				fetch_color("gameplay.text_stroke"),
-				author_centers[v][1], author_centers[v][2], 1, center,
+				player_dec_centers[pn][1] + el_pos.chart_info_xoffset,
+				player_dec_centers[pn][2] + el_pos.chart_info_yoffset,
+				el_pos.chart_info_scale, center,
 				{ OnCommand= function(self)
-						width_limit_text(self, spb_width/2 - 48)
+						width_limit_text(self, spb_width/2 - 48, el_pos.chart_info_scale)
 				end,
-					["CurrentSteps"..ToEnumShortString(v).."ChangedMessageCommand"]=
+					["CurrentSteps"..ToEnumShortString(pn).."ChangedMessageCommand"]=
 						function(self)
 							if GAMESTATE:IsCourseMode() then return end
-							self:settext(chart_info_text(v))
-							width_limit_text(self, spb_width/2 - 48)
+							self:settext(chart_info_text(pn))
+							width_limit_text(self, spb_width/2 - 48, el_pos.chart_info_scale)
 						end
 			})
 		end
@@ -1077,15 +1096,15 @@ local function make_special_actors_for_players()
 		a[#a+1]= Def.BitmapText{
 			Font= THEME:GetPathF("Common", "Normal"), InitCommand= function(self)
 				self:diffuse(Color.White)
-				self:xy(author_centers[v][1], author_centers[v][2]+24)
+				self:xy(author_centers[pn][1], author_centers[pn][2]+24)
 			end,
-			["CurrentSteps"..ToEnumShortString(v).."ChangedMessageCommand"]=
+			["CurrentSteps"..ToEnumShortString(pn).."ChangedMessageCommand"]=
 				function(self)
-					local steps= GAMESTATE:GetCurrentSteps(v)
+					local steps= GAMESTATE:GetCurrentSteps(pn)
 					local song= GAMESTATE:GetCurrentSong()
 					if not steps or not song then self:settext("NPS: N/A") return end
 					local song_len= song:GetLastSecond() - song:GetFirstSecond()
-					local radar= steps:GetRadarValues(v)
+					local radar= steps:GetRadarValues(pn)
 					local notes= radar:GetValue("RadarCategory_TapsAndHolds") +
 						radar:GetValue("RadarCategory_Jumps") +
 						radar:GetValue("RadarCategory_Hands")
@@ -1094,13 +1113,13 @@ local function make_special_actors_for_players()
 		}
 		a[#a+1]= normal_text(
 			"toasties", "", nil, fetch_color("gameplay.text_stroke"),
-				author_centers[v][1], author_centers[v][2]+24, 1, center,
+				author_centers[pn][1], author_centers[pn][2]+24, 1, center,
 				{ OnCommand= cmd(queuecommand, "Update"),
 					ToastyAchievedMessageCommand= function(self, param)
 						self:queuecommand("Update")
 					end,
 					UpdateCommand= function(self)
-						local pro= PROFILEMAN:GetProfile(v)
+						local pro= PROFILEMAN:GetProfile(pn)
 						local toasts= pro:GetNumToasties()
 						local songs= pro:GetNumTotalSongsPlayed()
 						local toast_pct= toasts / songs
@@ -1128,6 +1147,7 @@ local function make_special_actors_for_players()
 			end
 	})
 	args[#args+1]= song_progress_bar:create_actors()
+	args[#args+1]= song_rate:create_actors()
 	return Def.ActorFrame(args)
 end
 
@@ -1377,11 +1397,10 @@ return Def.ActorFrame {
 				:HasteAddAmounts({-.25, 0, .25}, true)
 				:HasteTurningPoints({-1, 0, 1})
 			song_progress_bar:set_from_song()
-			local song_ops= GAMESTATE:GetSongOptionsObject("ModsLevel_Current")
-			if song_ops:MusicRate() < 1 or song_ops:Haste() < 0 then
-				song_ops:SaveScore(false)
+			if song_opts:MusicRate() < 1 or song_opts:Haste() < 0 then
+				song_opts:SaveScore(false)
 			else
-				song_ops:SaveScore(true)
+				song_opts:SaveScore(true)
 			end
 			prev_song_start_timestamp= hms_timestamp()
 			local force_swap= (cons_players[PLAYER_1].side_swap or 0) > 1 or
@@ -1422,6 +1441,7 @@ return Def.ActorFrame {
 				side_actors[pn]=
 					screen_gameplay:GetChild("Player" .. ToEnumShortString(pn))
 				side_actors[pn]:addy(cons_players[pn].gameplay_element_positions.notefield_yoffset)
+				side_actors[pn]:addx(cons_players[pn].gameplay_element_positions.notefield_xoffset)
 				notefields[pn]= side_actors[pn]:GetChild("NoteField")
 				if notefields[pn] then
 					local nx= side_actors[pn]:GetX()
@@ -1439,8 +1459,9 @@ return Def.ActorFrame {
 						local period= 1 / screen_gameplay:GetTrueBPS(pn)
 						if cons_players[pn].man_lets_have_fun then
 							for i, actor in ipairs(notecolumns[pn]) do
-								actor:rainbow():effectperiod(period*i)
-									:effectoffset(math.random()*period)
+								actor:rainbow()
+									:effecttiming(math.random(), math.random(),
+										math.random(), math.random(), math.random())
 							end
 						end
 						if cons_players[pn].spatial_turning then

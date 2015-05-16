@@ -185,6 +185,8 @@ local keyboard_mt= {
 		end,
 }}
 
+local songs_played= 0
+
 local name_display_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, color, player_number)
@@ -213,6 +215,9 @@ local name_display_mt= {
 			args[#args+1]= normal_text(
 				"time", secs_to_str(cons_players[player_number].credit_time or 0),
 				color, nil, time_x, 0, 1)
+			args[#args+1]= normal_text(
+				"songs", songs_played .. " songs played",
+				color, nil, time_x*.5, -24, 1)
 			args[#args+1]= Def.Quad{
 				Name= "cursor", InitCommand= cmd(xy, 0, 12; diffuse, color;
 																				 setsize, 12, 2)}
@@ -276,6 +281,7 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		end
 	end
 end
+songs_played= #combined_play_history
 local machine_profile= PROFILEMAN:GetMachineProfile()
 local arrow_width= 16
 local arrow_height= 32

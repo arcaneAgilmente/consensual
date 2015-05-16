@@ -579,7 +579,7 @@ the Player Options Screen.
 	combo splash is always colored by the worst judgment earned, if it appears.
 * judge  
 	A list of every judgment earned is placed behind the notefield.
-* offset  
+* error_bar  
 	The judgment contains a colored rectangle showing how far early/late a note
 	was hit.  If the rectangle is left of center, the note was hit early.
 * score_confetti  
@@ -593,6 +593,8 @@ the Player Options Screen.
 * sigil  
 	The sigil is a piece of art that tracks your current score out of what is
 	currently possible.
+* still_judge  
+	The judgment will not move or change size with every tap if this is true.
 
 
 ## Heart Rate Entry Screen

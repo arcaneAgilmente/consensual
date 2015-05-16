@@ -1,27 +1,63 @@
 -- Some parts copy pasted from _fallback.
 local player= Var "Player"
 
+local el_pos= cons_players[player].gameplay_element_positions
+
 local Judgment
 local tani= setmetatable({upper= true}, text_and_number_interface_mt)
 local tani_params= {
-	sx= cons_players[player].gameplay_element_positions.combo_xoffset or 0,
-	sy= cons_players[player].gameplay_element_positions.combo_yoffset or 30,
+	sx= el_pos.combo_xoffset or 0, sy= el_pos.combo_yoffset or 30,
 	tx= 8, nx= -8, ta= left, na= right, text_section= "Combo"
 }
 local OffsetQuad
 
-local JudgeCmds = {
-	TapNoteScore_W1 = THEME:GetMetric( "Judgment", "JudgmentW1Command" );
-	TapNoteScore_W2 = THEME:GetMetric( "Judgment", "JudgmentW2Command" );
-	TapNoteScore_W3 = THEME:GetMetric( "Judgment", "JudgmentW3Command" );
-	TapNoteScore_W4 = THEME:GetMetric( "Judgment", "JudgmentW4Command" );
-	TapNoteScore_W5 = THEME:GetMetric( "Judgment", "JudgmentW5Command" );
-	TapNoteScore_Miss = THEME:GetMetric( "Judgment", "JudgmentMissCommand" );
-};
-
 local ShowComboAt = THEME:GetMetric("Combo", "ShowComboAt");
 local Pulse = THEME:GetMetric("Combo", "PulseCommand");
 local PulseLabel = THEME:GetMetric("Combo", "PulseLabelCommand");
+
+local JudgeCmds = {}
+if cons_players[player].flags.gameplay.still_judge then
+	local function judge_general_effect(self)
+		self:diffusealpha(1):sleep(.8):linear(.1):diffusealpha(0)
+	end
+	for i, w in ipairs{"W2", "W3", "W4", "W5", "Miss"} do
+		JudgeCmds["TapNoteScore_"..w]= judge_general_effect
+	end
+	JudgeCmds.TapNoteScore_W1= function(self)
+		self:glowblink():effectperiod(.05):effectcolor1(color("1,1,1,0"))
+			:effectcolor2(color("1,1,1,0.25"))
+		judge_general_effect(self)
+	end
+	Pulse= noop_nil
+	PulseLabel= noop_nil
+else
+	local function judge_general_effect(self, i)
+		local jscale= el_pos.judgment_scale
+		self:diffusealpha(1):zoom((1 + (.1 * (6 - i))) * jscale)
+			:linear(.05):zoom(jscale):sleep(.8)
+			:linear(.1):zoomy(.5 * jscale):zoomx(2 * jscale):diffusealpha(0)
+	end
+	for i, w in ipairs{"W2", "W3", "W4"} do
+		JudgeCmds["TapNoteScore_"..w]= function(self)
+			judge_general_effect(self, i + 1)
+		end
+	end
+	JudgeCmds.TapNoteScore_W1= function(self)
+		self:glowblink():effectperiod(.05):effectcolor1(color("1,1,1,0"))
+			:effectcolor2(color("1,1,1,0.25"))
+		judge_general_effect(self, 1)
+	end
+	JudgeCmds.TapNoteScore_W5= function(self)
+		self:vibrate():effectmagnitude(4, 8, 8)
+		judge_general_effect(self, 5)
+	end
+	JudgeCmds.TapNoteScore_Miss= function(self)
+		local jscale= el_pos.judgment_scale
+		self:diffusealpha(1):zoom(jscale):y(-20 * jscale)
+			:linear(.8):y(20 * jscale):sleep(.8)
+			:linear(.1):zoomy(.5 * jscale):zoomx(2 * jscale):diffusealpha(0)
+	end
+end
 
 local NumberMinZoom = THEME:GetMetric("Combo", "NumberMinZoom");
 local NumberMaxZoom = THEME:GetMetric("Combo", "NumberMaxZoom");
@@ -58,13 +94,14 @@ local tns_texts= {
 local tns_windows= {}
 local offset_scaler= 0
 do
+	local window_scale= PREFSMAN:GetPreference("TimingWindowScale")
 	local windows= {
-		PREFSMAN:GetPreference("TimingWindowSecondsW1"),
-		PREFSMAN:GetPreference("TimingWindowSecondsW2"),
-		PREFSMAN:GetPreference("TimingWindowSecondsW3"),
-		PREFSMAN:GetPreference("TimingWindowSecondsW4"),
-		PREFSMAN:GetPreference("TimingWindowSecondsW5"),
-		PREFSMAN:GetPreference("TimingWindowSecondsW5")*1.25,
+		PREFSMAN:GetPreference("TimingWindowSecondsW1") * window_scale,
+		PREFSMAN:GetPreference("TimingWindowSecondsW2") * window_scale,
+		PREFSMAN:GetPreference("TimingWindowSecondsW3") * window_scale,
+		PREFSMAN:GetPreference("TimingWindowSecondsW4") * window_scale,
+		PREFSMAN:GetPreference("TimingWindowSecondsW5") * window_scale,
+		PREFSMAN:GetPreference("TimingWindowSecondsW5") * window_scale*1.25,
 	}
 	offset_scaler= (SCREEN_WIDTH / 4) / windows[5]
 	tns_windows.TapNoteScore_W1= {0, windows[1]}
@@ -192,9 +229,9 @@ local args= {
 	Def.Quad{
 		Name= "offset",
 		InitCommand= function(self)
-									 self:y(30)
+									 self:xy(el_pos.error_bar_xoffset, el_pos.error_bar_yoffset)
 									 self:SetWidth(0)
-									 self:SetHeight(8)
+									 self:SetHeight(8 * el_pos.error_bar_scale)
 									 self:visible(false)
 									 self:horizalign(left)
 								 end
@@ -202,8 +239,9 @@ local args= {
 	InitCommand= function(self)
 								 Judgment= self:GetChild("Judgment")
 								 OffsetQuad= self:GetChild("offset")
-								 Judgment:visible(false)
+								 Judgment:visible(false):zoom(el_pos.judgment_scale)
 								 tani:hide()
+								 tani.container:zoom(el_pos.combo_scale)
 								 tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
 								 tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
 							 end,
@@ -344,7 +382,7 @@ local args= {
 				end
 			end
 			if text then
-				if cons_players[player].flags.gameplay.offset then
+				if cons_players[player].flags.gameplay.error_bar then
 					OffsetQuad:finishtweening()
 					OffsetQuad:SetWidth(disp_offset * offset_scaler)
 					OffsetQuad:diffuse(judge_to_color(disp_judge))

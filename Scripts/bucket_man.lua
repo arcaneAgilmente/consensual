@@ -788,6 +788,12 @@ end
 local wheel_x= 0
 local wheel_y= SCREEN_TOP + 12
 local items_on_wheel= 19
+local wheel_width_limit= 0
+local art_width_limit= 0
+local function recalc_wheel_width_limit()
+	wheel_width_limit= SCREEN_RIGHT - wheel_x - 16
+	art_width_limit= (wheel_width_limit / 2) - 8
+end
 
 local sick_wheel_item_interface= {}
 local sick_wheel_item_interface_mt= { __index= sick_wheel_item_interface }
@@ -799,29 +805,43 @@ function sick_wheel_item_interface:create_actors(name)
 			self.container= subself
 			self.text= subself:GetChild("text")
 			self.number= subself:GetChild("number")
+			self.subtext= subself:GetChild("subtext")
+			self.arttext= subself:GetChild("arttext")
 		end,
 		normal_text("text", "", fetch_color("text"), nil, 4, 0, 1, left),
 		normal_text("number", "", fetch_color("text"), nil, -4, 0, 1, right),
+--		normal_text("subtext", "", fetch_color("text"), nil, 8, 18, .5, left),
+--		normal_text("arttext", "", fetch_color("text"), nil, 16 + art_width_limit,
+--								18, .5, left),
 	}
 end
 
 function sick_wheel_item_interface:transform(item_index, num_items, is_focus)
 	local move_time= .1
-	local width_limit= SCREEN_RIGHT - wheel_x - 16
+	local start_y= 0
+	local available_height= _screen.h
+	local conf= misc_config:get_data()
+	--[[
+	if conf.show_subtitle_on_wheel or conf.show_artist_on_wheel then
+		available_height= available_height * 1.5
+		start_y= _screen.cy - (available_height * .5)
+	end
+	]]
 	self.container:finishtweening():linear(move_time):x(0)
-		:y((item_index - 1) * (SCREEN_HEIGHT / num_items))
+		:y(start_y + ((item_index - 1) * (available_height / num_items)))
 	if item_index == 1 or item_index == num_items then
 		self.container:diffusealpha(0)
 	else
 		self.container:diffusealpha(1)
 	end
-	width_limit_text(self.text, width_limit)
 end
 
 function sick_wheel_item_interface:set(info)
 	self.info= info
 	if not info then return end
 	self.number:settext("")
+--	self.subtext:settext("")
+--	self.arttext:settext("")
 	if info.bucket_info then
 		if self.info.is_current_group then
 			self.text:diffuse(fetch_color("music_select.music_wheel.current_group"))
@@ -841,6 +861,15 @@ function sick_wheel_item_interface:set(info)
 		else
 			self.text:settext(song_get_main_title(info.song_info))
 			self.text:diffuse(fetch_color("music_select.music_wheel.song"))
+			--[[
+			local conf= misc_config:get_data()
+			if conf.show_subtitle_on_wheel and info.song_info.GetDisplaySubTitle then
+				self.subtext:settext(info.song_info:GetDisplaySubTitle())
+			end
+			if conf.show_artist_on_wheel and info.song_info.GetDisplayArtist then
+				self.arttext:settext(info.song_info:GetDisplayArtist())
+			end
+			]]
 		end
 		if check_censor_list(info.song_info) then
 			self.text:diffuse(fetch_color("music_select.music_wheel.censored_song"))
@@ -853,6 +882,9 @@ function sick_wheel_item_interface:set(info)
 		rec_print_table(info)
 		self.number:settext("")
 	end
+	width_limit_text(self.text, wheel_width_limit)
+--	width_limit_text(self.subtext, art_width_limit)
+--	width_limit_text(self.arttext, art_width_limit)
 end
 
 local recent_limit= 64
@@ -915,6 +947,7 @@ local music_whale= {}
 music_whale_mt= { __index= music_whale }
 function music_whale:create_actors(x)
 	wheel_x= x
+	recalc_wheel_width_limit()
 	self.sick_wheel= setmetatable({}, sick_wheel_mt)
 	self.name= "MusicWheel"
 	self.current_sort_name= "Group"
