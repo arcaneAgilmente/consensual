@@ -92,8 +92,11 @@ local tns_texts= {
 
 local tns_windows= {}
 local err_tex_width= 512
+local err_tex_height= 16
 local herr_tex_width= err_tex_width * .5
+local herr_tex_height= err_tex_height * .5
 local error_width= _screen.w * .4
+local herror_width= error_width * .5
 local min_offset= 0
 local max_offset= 0
 do
@@ -162,79 +165,98 @@ local function offset_to_x(offset)
 	return scale_off(offset, 0, err_tex_width)
 end
 local function offset_to_w(offset)
-	return scale_off(offset, -herr_tex_width, herr_tex_width)
+	return scale_off(offset, -herror_width, herror_width)
 end
 
 local error_history_size= cons_players[player].error_history_size
-if error_history_size > 512 then error_history_size= 512 end
+local history_alpha= 0
+if error_history_size > 0 then
+	history_alpha= .25^(1 / error_history_size)
+end
 local error_bar_mt= {
 	__index= {
 		create_actors= function(self)
-			self.history= {}
-			self.curr_entry= 1
-			self.err_draw= function(subself)
-				self:draw(subself)
-			end
 			return Def.ActorFrame{
 				InitCommand= function(subself)
 					self.container= subself
 					subself:xy(el_pos.error_bar_xoffset, el_pos.error_bar_yoffset)
 				end,
-				Def.ActorFrameTexture{
+				Def.ActorFrame{
 					InitCommand= function(subself)
-						self.aft= subself
-						subself:setsize(err_tex_width, 16)
-							:EnableAlphaBuffer(true)
-							:Create()
-							:SetDrawFunction(self.err_draw)
-							:EnablePreserveTexture(false)
-							:hibernate(math.huge)
-						self.texture= subself:GetTexture()
+						subself:hibernate(math.huge)
 					end,
-					Def.Quad{
+					Def.ActorFrameTexture{
 						InitCommand= function(subself)
-							self.curr_error= subself
-							subself:visible(false):xy(herr_tex_width, 8)
-								:setsize(0, 8):horizalign(left)
-						end
+							self.prev_frame_aft= subself
+							subself:setsize(err_tex_width, err_tex_height)
+								:EnableAlphaBuffer(true):Create()
+								:EnablePreserveTexture(false)
+								:Draw()
+							self.prev_frame_tex= subself:GetTexture()
+							self.prev_frame_sprite:visible(true)
+						end,
+						Def.Sprite{
+							InitCommand= function(subself)
+								self.prev_frame_sprite= subself
+								subself:xy(herr_tex_width, herr_tex_height):visible(false)
+									:setsize(err_tex_width, err_tex_height)
+							end
+						}
 					},
-					Def.Quad{
+					Def.ActorFrameTexture{
 						InitCommand= function(subself)
-							self.past_error= subself
-							subself:visible(false):xy(herr_tex_width, 8)
-								:setsize(1, 16)
-						end
-					}
+							self.aft= subself
+							subself:setsize(err_tex_width, 16)
+								:EnableAlphaBuffer(true):Create()
+								:EnablePreserveTexture(false)
+								:Draw()
+							self.texture= subself:GetTexture()
+							self.prev_frame_sprite:SetTexture(self.texture)
+							self.past_error:visible(true)
+							self.curr_error:visible(true)
+						end,
+						Def.Sprite{
+							InitCommand= function(subself)
+								self.past_error= subself
+								subself:xy(herr_tex_width, herr_tex_height):visible(false)
+									:setsize(err_tex_width, err_tex_height)
+									:diffusealpha(history_alpha)
+									:SetTexture(self.prev_frame_tex)
+							end
+						},
+						Def.Quad{
+							InitCommand= function(subself)
+								self.curr_error= subself
+								subself:xy(herr_tex_width, 8):setsize(1, 16):visible(false)
+							end
+						}
+					},
 				},
 				Def.Sprite{
 					InitCommand= function(subself)
-						self.sprite= subself
+						self.cum_error= subself
 						subself:SetTexture(self.texture)
-							:visible(false)
+							:xy(0, 8 * el_pos.error_bar_scale)
 							:setsize(error_width, 16 * el_pos.error_bar_scale)
+					end
+				},
+				Def.Quad{
+					InitCommand= function(subself)
+						self.recent_error= subself
+						subself
+							:xy(0, 8 * el_pos.error_bar_scale)
+							:setsize(0, 8 * el_pos.error_bar_scale):horizalign(left)
 					end
 				},
 			}
 		end,
-		draw= function(self, subself)
-			if not self.curr_offset then return end
-			self.sprite:visible(true)
-			self.past_error:visible(true)
-			for i= 1, #self.history do
-				self.past_error:x(offset_to_x(self.history[i]))
-					:diffuse(offset_to_dark_color(self.history[i])):Draw()
-			end
-			self.past_error:visible(false)
-			self.curr_error:SetWidth(offset_to_w(self.curr_offset))
-				:diffuse(offset_to_color(self.curr_offset))
-				:visible(true):Draw():visible(false)
-		end,
 		add_error= function(self, offset)
-			self.history[self.curr_entry]= offset
-			self.curr_entry= self.curr_entry + 1
-			if self.curr_entry > error_history_size then self.curr_entry= 1 end
-			self.curr_offset= offset
-			self.aft:hibernate(0):Draw():hibernate(math.huge)
+			self.recent_error:SetWidth(offset_to_w(offset))
+				:diffuse(offset_to_color(offset))
+			self.curr_error:x(offset_to_x(offset))
+				:diffuse(offset_to_dark_color(offset))
+			self.prev_frame_aft:Draw()
+			self.aft:Draw()
 		end
 }}
 local errbar= setmetatable({}, error_bar_mt)
