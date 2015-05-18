@@ -669,3 +669,168 @@ function swapping_amv(name, x, y, w, h, xq, yq, texname, activate_name,
 	end
 	return Def.ActorFrame(args)
 end
+
+local chactor_width= 16
+color_manipulator_mt= {
+	__index= {
+		create_actors= function(self, name, x, y, colors)
+			colors= colors or {}
+			local text_color= colors.text or fetch_color("text")
+			local bg_color= colors.bg or fetch_color("bg")
+			self.name= name
+			self.chactors= {}
+			self.chex= {}
+			local args= {
+				Name= name, InitCommand= function(subself)
+					subself:xy(x, y)
+					self.container= subself
+					self.mode= subself:GetChild("mode")
+					self.done_actor= subself:GetChild("done")
+					self.editing_name= subself:GetChild("editing")
+					for i= 1, 8 do
+						self.chactors[i]= subself:GetChild("ch"..i)
+					end
+				end,
+				Def.Quad{
+					Name= "example", InitCommand= function(subself)
+						self.example= subself
+						subself:setsize(chactor_width*8, 80):vertalign(bottom):xy(8, -16)
+					end
+				},
+				normal_text("done", get_string_wrapper("ColorConfig", "done"),
+										text_color, bg_color, -112, 0, 1),
+				normal_text("mode", "#", text_color, bg_color, -64, 0),
+				normal_text("editing", "", text_color, bg_color, -128, -84),
+			}
+			for i= 1, 4 do
+				args[#args+1]= Def.Quad{
+					Name= "chex"..i, InitCommand= function(subself)
+						self.chex[i]= subself
+						subself:setsize(chactor_width*2, 256)
+							:xy(-64 + (chactor_width*2 * i) - chactor_width/2, 16)
+							:vertalign(top)
+					end
+				}
+			end
+			for i= 1, 8 do
+				args[#args+1]= normal_text(
+					"ch"..i, "", text_color, bg_color, -64 + (chactor_width*i), 0)
+			end
+			return Def.ActorFrame(args)
+		end,
+		initialize= function(self, edit_name, example_color)
+			self.done= false
+			self.edit_channel= "done"
+			self.locked_in_editing= false
+			self.editing_name:settext(edit_name)
+			width_limit_text(self.editing_name, 128)
+			self.example:diffuse(example_color)
+			self.example_color= DeepCopy(example_color)
+			self.internal_values= {}
+			for i= 1, 4 do
+				self.internal_values[i]= math.round(example_color[i] * 255)
+			end
+			for i= 1, 4 do
+				self:set_channel_text(i, self.internal_values[i])
+				self:set_channel_example(i)
+			end
+		end,
+		set_channel_text= function(self, chid, chval)
+			local text= ("%02X"):format(chval)
+			self.chactors[(chid-1)*2+1]:settext(text:sub(1, 1))
+			self.chactors[(chid-1)*2+2]:settext(text:sub(2, 2))
+		end,
+		set_channel_example= function(self, chid)
+			local top_color= DeepCopy(self.example_color)
+			local bottom_color= DeepCopy(self.example_color)
+			top_color[chid]= 1
+			bottom_color[chid]= 0
+			self.chex[chid]:diffusetopedge(top_color)
+				:diffusebottomedge(bottom_color)
+		end,
+		hide= function(self)
+			self.container:visible(false)
+		end,
+		unhide= function(self)
+			self.container:visible(true)
+		end,
+		adjust_channel= function(self, chid, amount)
+			if not chid then return end
+			local new_val= self.internal_values[chid] + amount
+			if new_val < 0 then new_val= 0 end
+			if new_val > 255 then new_val= 255 end
+			self.internal_values[chid]= new_val
+			self.example_color[chid]= self.internal_values[chid] / 255
+			self.example:diffuse(self.example_color)
+			self:set_channel_text(chid, self.internal_values[chid])
+			for i= 1, 4 do
+				self:set_channel_example(i)
+			end
+		end,
+		interpret_code= function(self, code)
+			if self.locked_in_editing then
+				if code == "MenuLeft" then
+					code= "MenuDown"
+				elseif code == "MenuRight" then
+					code= "MenuUp"
+				end
+			end
+			if code == "Start" then
+				if self.edit_channel == "done" then
+					self.done= true
+				elseif tonumber(self.edit_channel) then
+					self.locked_in_editing= not self.locked_in_editing
+				end
+			elseif code == "MenuLeft" then
+				if self.edit_channel == "done" then
+					self.edit_channel= #self.chactors
+				elseif tonumber(self.edit_channel) then
+					if self.edit_channel == 1 then
+						self.edit_channel= "done"
+					else
+						self.edit_channel= self.edit_channel - 1
+					end
+				end
+			elseif code == "MenuRight" then
+				if self.edit_channel == "done" then
+					self.edit_channel= 1
+				elseif tonumber(self.edit_channel) then
+					if self.edit_channel == #self.chactors then
+						self.edit_channel= "done"
+					else
+						self.edit_channel= self.edit_channel + 1
+					end
+				end
+			elseif code == "MenuUp" then
+				if tonumber(self.edit_channel) then
+					local chid= math.ceil(self.edit_channel / 2)
+					if self.edit_channel % 2 == 1 then
+						self:adjust_channel(chid, 16)
+					else
+						self:adjust_channel(chid, 1)
+					end
+				end
+			elseif code == "MenuDown" then
+				if tonumber(self.edit_channel) then
+					local chid= math.ceil(self.edit_channel / 2)
+					if self.edit_channel % 2 == 1 then
+						self:adjust_channel(chid, -16)
+					else
+						self:adjust_channel(chid, -1)
+					end
+				end
+			end
+		end,
+		get_cursor_fit= function(self)
+			local cx= self.container:GetX()
+			local cy= self.container:GetY()
+			local chact
+			if self.edit_channel == "done" then
+				chact= self.done_actor
+			elseif tonumber(self.edit_channel) then
+				chact= self.chactors[self.edit_channel]
+			end
+			local fit= {cx + chact:GetX(), cy + chact:GetY(), chact:GetWidth(), 24}
+			return fit
+		end
+}}

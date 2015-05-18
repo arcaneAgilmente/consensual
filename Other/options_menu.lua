@@ -1176,6 +1176,16 @@ menu_stack_mt= {
 			end
 			self:update_cursor_pos()
 		end,
+		hide_disp= function(self)
+			for i, disp in ipairs(self.displays) do
+				disp:hide()
+			end
+		end,
+		unhide_disp= function(self)
+			for i, disp in ipairs(self.displays) do
+				disp:unhide()
+			end
+		end,
 		interpret_code= function(self, code)
 			local oss= self.options_set_stack
 			local top_set= oss[#oss]
@@ -1184,7 +1194,7 @@ menu_stack_mt= {
 				if new_set_data then
 					if new_set_data.meta == "external_interface" then
 						self:enter_external_mode()
-						new_set_data.extern(new_set_data.args)
+						new_set_data.extern(new_set_data.args, self.player_number)
 					elseif new_set_data.meta == "execute" then
 						new_set_data.execute(self.player_number)
 					else
@@ -1210,6 +1220,9 @@ menu_stack_mt= {
 				yp= yp - self.container:GetY()
 				self.cursor:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
 			end
+		end,
+		refit_cursor= function(self, fit)
+			self.cursor:refit(fit[1], fit[2], fit[3], fit[4])
 		end,
 		can_exit_screen= function(self)
 			local oss= self.options_set_stack

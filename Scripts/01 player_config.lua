@@ -39,6 +39,7 @@ local default_flag_set= {
 		score_splash= {true},
 		sigil= {false, false, false, true},
 		still_judge= {false, false, false, true},
+		surround_life= {false, false, false, true},
 	},
 	interface= {
 		easier_random= {false, false, true},
@@ -93,6 +94,7 @@ sorted_flag_names= {
 	 "score_meter",
 	 "sigil",
 	 "still_judge",
+	 "surround_life",
 	},
 	{type= "interface",
 	 "easier_random",
@@ -251,6 +253,15 @@ local default_config= {
 	low_score_random_threshold= .9,
 	preferred_style= "single",
 	experience_level= 1, -- To ease triggering confetti on gaining a level.
+	life_blank_percent= .8,
+	life_use_width= 1,
+	gameplay_element_colors= {
+		filter= fetch_color("accent.violet", 0),
+		life_full_outer= fetch_color("accent.red"),
+		life_full_inner= fetch_color("accent.red", 0),
+		life_empty_outer= fetch_color("accent.blue"),
+		life_empty_inner= fetch_color("accent.blue", 0),
+	},
 	gameplay_element_positions= {
 		bpm_xoffset= 0,
 		bpm_yoffset= 211,

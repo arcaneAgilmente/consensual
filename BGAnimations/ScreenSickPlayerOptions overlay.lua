@@ -128,6 +128,7 @@ local bpm_disp_mt= {
 		end,
 }}
 
+dofile(THEME:GetPathO("", "art_helpers.lua"))
 dofile(THEME:GetPathO("", "options_menu.lua"))
 
 local speed_inc_base= 25
@@ -870,10 +871,15 @@ end
 local args= {}
 local menus= {}
 local frames= {}
+local color_manips= {}
+local color_manip_x= (sect_width * .5) + 48
+local color_manip_y= 100 + (line_height * 3)
+local menu_y= 0
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	local menu= setmetatable({}, menu_stack_mt)
 	local bpm= setmetatable({}, bpm_disp_mt)
 	local frame= setmetatable({}, frame_helper_mt)
+	local manip= setmetatable({}, color_manipulator_mt)
 	local mx, my= 0, 0
 	if pn == PLAYER_2 then
 		mx= sect_width
@@ -887,19 +893,58 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	args[#args+1]= Def.ActorFrame{
 		Name= "decs" .. pn, InitCommand= function(self)
 			self:xy(mx, my)
+			manip:hide()
 		end,
 		frame:create_actors(
 			"frame", 2, sect_width, sect_height, pcolor, fetch_color("bg"),
 			sect_width/2, sect_height/2),
 		normal_text("name", pname, pcolor, nil, 8, line_height / 2, 1, left),
 		bpm:create_actors("bpm", pn, sect_width/2, line_height*1.5),
+		manip:create_actors("color_manip", color_manip_x, color_manip_y),
 	}
 	local status_size= line_height*2.5
+	menu_y= status_size
 	args[#args+1]= menu:create_actors(
-		"m" .. pn, mx, my+status_size, sect_width, sect_height-status_size, pn)
+		"m" .. pn, mx, menu_y, sect_width, sect_height-status_size, pn)
 	menus[pn]= menu
 	bpm_disps[pn]= bpm
 	frames[pn]= frame
+	color_manips[pn]= manip
+end
+
+local in_color_manip= {}
+local color_manip_targets= {}
+
+local function refit_cursor_to_color_manip(pn)
+	local fit= color_manips[pn]:get_cursor_fit()
+	fit[2]= fit[2] - menu_y
+	menus[pn]:refit_cursor(fit)
+end
+
+local function color_manip_extern(params, pn)
+	in_color_manip[pn]= true
+	local target_color= get_element_by_path(cons_players[pn], params.path)
+	color_manip_targets[pn]= target_color
+	color_manips[pn]:initialize(params.name, target_color)
+	color_manips[pn]:unhide()
+	menus[pn]:hide_disp()
+end
+
+local function color_manip_deextern(pn)
+	in_color_manip[pn]= false
+	for i= 1, 4 do
+		color_manip_targets[pn][i]= color_manips[pn].example_color[i]
+	end
+	color_manips[pn]:hide()
+	menus[pn]:exit_external_mode()
+	menus[pn]:unhide_disp()
+	menus[pn]:update_cursor_pos()
+end
+
+local function color_manip_option(color_name, color_path)
+	return {
+		name= color_name, meta= "external_interface", extern= color_manip_extern,
+		args= {name= color_name, path= color_path}}
 end
 
 local mine_effect_eles= {}
@@ -982,12 +1027,19 @@ local gameplay_layout= {
 	player_conf_float("Notefield Y",
 		"gameplay_element_positions.notefield_yoffset", 1, 0, 1, 2, nil, nil),
 }
-
 make_x_y_s_for_set(
 	gameplay_layout, {
 		{"Judgment", "judgment"}, {"Combo", "combo"}, {"Error Bar", "error_bar"},
 		{"Judge List", "judge_list"}, {"BPM", "bpm"}, {"Sigil", "sigil"},
 		{"Score", "score"}, {"Chart Info", "chart_info"}})
+
+local gameplay_colors= {
+	color_manip_option("Filter", "gameplay_element_colors.filter"),
+	color_manip_option("Life Full Outer", "gameplay_element_colors.life_full_outer"),
+	color_manip_option("Life Full Inner", "gameplay_element_colors.life_full_inner"),
+	color_manip_option("Life Empty Outer", "gameplay_element_colors.life_empty_outer"),
+	color_manip_option("Life Empty Inner", "gameplay_element_colors.life_empty_inner"),
+}
 
 local chart_mods= {
 	ass_bools("Turn", {"Mirror", "Backwards", "Left", "Right",
@@ -1185,6 +1237,7 @@ local playback_options= {
 
 local decorations= {
 	{ name= "Gameplay Layout", meta= options_sets.menu, args= gameplay_layout},
+	{ name= "Gameplay Colors", meta= options_sets.menu, args= gameplay_colors},
 	{ name= "Evaluation Flags", meta= options_sets.special_functions,
 		args= { eles= eval_flag_eles}},
 	{ name= "Gameplay Flags", meta= options_sets.special_functions,
@@ -1200,6 +1253,8 @@ local decorations= {
 	player_conf_float("Error History Size", "error_history_size", 4, 0, 1, 2, 0, 512),
 	player_conf_float("Low Score Random Threshold",
 										"low_score_random_threshold", 3, -4, -2, -1, 0, 1),
+	player_conf_float("Life Blank Area", "life_blank_percent", 3, -2, -1, 0, -1, 2),
+	player_conf_float("Life Use Width", "life_use_width", 3, -2, -1, 0, -1, 2),
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
 	{ name= "Noteskin", meta= options_sets.noteskins},
@@ -1267,7 +1322,14 @@ local function input(event)
 	if event.type == "InputEventType_Release" then return end
 	local pn= event.PlayerNumber
 	local code= event.GameButton
-	if menus[pn] then
+	if in_color_manip[pn] then
+		color_manips[pn]:interpret_code(code)
+		if color_manips[pn].done then
+			color_manip_deextern(pn)
+		else
+			refit_cursor_to_color_manip(pn)
+		end
+	elseif menus[pn] then
 		if not menus[pn]:interpret_code(code) then
 			if code == "Start" then
 				local all_on_exit= true
@@ -1295,6 +1357,9 @@ local function input(event)
 					trans_new_screen("ScreenConsSelectMusic")
 				end
 			end
+		end
+		if in_color_manip[pn] then
+			refit_cursor_to_color_manip(pn)
 		end
 	end
 end
