@@ -443,6 +443,14 @@ local confetti_options= {
 				 unset= function() activate_confetti("perm", false) end}}}},
 }
 
+local special_options= {
+	{name= "tag_by_genre", meta= "execute", execute= function()
+		 tag_all_songs_with_genre_info("ProfileSlot_Machine")
+		 save_tags("ProfileSlot_Machine")
+		 SCREENMAN:SystemMessage(get_string_wrapper("ConsService", "finished_tagging"))
+	end},
+}
+
 local menu_items= {
 	{name= "cons_config", meta= options_sets.menu, args= consensual_options},
 	{name= "reward_config", meta= options_sets.menu, args= reward_options},
@@ -454,6 +462,7 @@ local menu_items= {
 	{name= "life_config", meta= options_sets.menu, args= life_options()},
 	{name= "confetti_config", meta= options_sets.menu, args= confetti_options},
 	{name= "offset_config", meta= options_sets.menu, args= get_offset_service_menu},
+	{name= "special_options", meta= options_sets.menu, args= special_options},
 }
 
 local config_menu= setmetatable({}, menu_stack_mt)

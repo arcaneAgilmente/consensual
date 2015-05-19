@@ -1351,10 +1351,19 @@ set_visible_score_data= function(pn, index)
 	end
 end
 
+local saw_first_press= {}
 local function input(event)
+	input_came_from_keyboard= event.DeviceInput.device == "InputDevice_Key"
 	local pn= event.PlayerNumber
 	local code= event.GameButton
 	local press= event.type
+	if press == "InputEventType_FirstPress" then
+		saw_first_press[event.DeviceInput.button]= true
+	end
+	if not saw_first_press[event.DeviceInput.button] then return end
+	if press == "InputEventType_Release" then
+		saw_first_press[event.DeviceInput.button]= nil
+	end
 	if press == "InputEventType_FirstPress"
 	and event.DeviceInput.button == misc_config:get_data().censor_privilege_key then
 		privileged_props= not privileged_props
@@ -1469,6 +1478,9 @@ return Def.ActorFrame{
 			end
 			self:sleep(5)
 			self:queuecommand("ShowRealScore")
+		end,
+		went_to_text_entryMessageCommand= function(self)
+			saw_first_press= {}
 		end,
 		ShowRealScoreCommand= function(self)
 			for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do

@@ -942,14 +942,23 @@ local function handle_triggered_codes(pn, key_pressed, button, press_type)
 	end
 end
 
+local saw_first_press= {}
 local function input(event)
+	input_came_from_keyboard= event.DeviceInput.device == "InputDevice_Key"
 	local pn= event.PlayerNumber
 	local key_pressed= event.GameButton
 	local press_type= event.type
+	if press_type == "InputEventType_FirstPress" then
+		saw_first_press[event.DeviceInput.button]= true
+	end
+	if not saw_first_press[event.DeviceInput.button] then return end
+	if press_type == "InputEventType_Release" then
+		saw_first_press[event.DeviceInput.button]= nil
+	end
 	if press_type == "InputEventType_FirstPress"
 	and event.DeviceInput.button == "DeviceButton_F9" then
 		PREFSMAN:SetPreference("ShowNativeLanguage", not PREFSMAN:GetPreference("ShowNativeLanguage"))
-		lua.ReportScriptError("ShowNativeLanguage: " .. tostring(PREFSMAN:GetPreference("ShowNativeLanguage")))
+		SCREENMAN:SystemMessage("ShowNativeLanguage: " .. tostring(PREFSMAN:GetPreference("ShowNativeLanguage")))
 	end
 	if press_type == "InputEventType_FirstPress"
 	and event.DeviceInput.button == misc_config:get_data().censor_privilege_key then
@@ -1402,6 +1411,15 @@ return Def.ActorFrame {
 	end,
 	Def.ActorFrame{
 		Name= "If these commands were in the parent actor frame, they would not activate.",
+		went_to_text_entryMessageCommand= function(self)
+			saw_first_press= {}
+			for pn, downs in pairs(keys_down) do
+				keys_down[pn]= {}
+			end
+		end,
+		get_music_wheelMessageCommand= function(self, param)
+			tag_menus[param.pn].music_wheel= music_wheel
+		end,
 		CurrentSongChangedMessageCommand=cmd(playcommand,"SCSet"),
 		CurrentCourseChangedMessageCommand=cmd(playcommand,"SCSet"),
 		PlayerJoinedMessageCommand=cmd(playcommand,"Set"),

@@ -238,71 +238,103 @@ end
 
 local sigil_feedback_interface_mt= { __index= sigil_feedback_interface }
 
-local score_feedback_interface= {}
-local score_feedback_centers= {
+local score_meter_centers= {
 	[PLAYER_1]= { SCREEN_LEFT + 32, SCREEN_BOTTOM },
 	[PLAYER_2]= { SCREEN_RIGHT - 32, SCREEN_BOTTOM }
 }
-function score_feedback_interface:create_actors(name, fx, fy, player_number)
-	if not name then return nil end
-	self.name= name
-	self.player_number= player_number
-	if not fx then fx= 0 end
-	if not fy then fy= 0 end
-	return Def.ActorFrame{
-		Name= name, InitCommand= function(subself)
-			subself:xy(fx, fy)
-			self.container= subself
-			self.meter= subself:GetChild("meter")
+local score_meter_mt= {
+	__index= {
+		create_actors= function(self, name, fx, fy, player_number)
+			if not name then return nil end
+			self.name= name
+			self.player_number= player_number
+			if not fx then fx= 0 end
+			if not fy then fy= 0 end
+			self.parts= {}
+			local frame_args= {
+				Name= name, InitCommand= function(subself)
+					subself:xy(fx, fy)
+					self.container= subself
+				end,
+			}
+			local zooms= {1, -1}
+			for i= 1, 2 do
+				frame_args[#frame_args+1]= Def.Quad{
+					InitCommand= function(subself)
+						self.parts[i]= subself
+						subself:setsize(8, SCREEN_BOTTOM):vertalign(bottom)
+							:horizalign(right):zoomx(zooms[i])
+					end
+				}
+			end
+			local grades= grade_config:get_data()
+			for i, g in ipairs(grades) do
+				frame_args[#frame_args+1]= Def.Quad{
+					InitCommand= function(subself)
+						local y= -_screen.h * self:pct_to_zoom(g)
+						local c= percent_to_color(g)
+						subself:setsize(16, 1):xy(0, y):diffuse(c)
+					end
+				}
+			end
+			return Def.ActorFrame(frame_args)
 		end,
-		Def.Quad{ Name= "meter", InitCommand= function(self)
-								self:setsize(16, SCREEN_BOTTOM):vertalign(bottom)
-							end
-		}
-	}
-end
-
-function score_feedback_interface:update(player_stage_stats)
-	local adp= player_stage_stats:GetActualDancePoints()
-	local mdp= player_stage_stats:GetPossibleDancePoints()
-	local fake_score
-	if cons_players[self.player_number].fake_judge then
-		fake_score= cons_players[self.player_number].fake_score
-		adp= fake_score.dp
-	end
-	local score= adp / mdp
-	local function set_color(c)
-		self.meter:diffuse(c)
-	end
-	if fake_score then
-		for i= #feedback_judgements, 1, -1 do
-			local fj= feedback_judgements[i]
-			if fake_score.judge_counts[fj] > 0 then
-				set_color(judge_to_color(fj))
-				break
+		pct_to_zoom= function(self, p)
+			return math.min(1, p^((p+1)^((p*2.718281828459045))))
+		end,
+		update= function(self, player_stage_stats)
+			local adp= player_stage_stats:GetActualDancePoints()
+			local mdp= player_stage_stats:GetPossibleDancePoints()
+			local fake_score
+			if cons_players[self.player_number].fake_judge then
+				fake_score= cons_players[self.player_number].fake_score
+				adp= fake_score.dp
+			end
+			local score= adp / mdp
+			if fake_score then
+				for i= #feedback_judgements, 1, -1 do
+					local fj= feedback_judgements[i]
+					if fake_score.judge_counts[fj] > 0 then
+						self:set_color(judge_to_color(fj))
+						break
+					end
+				end
+			else
+				for i= #feedback_judgements, 1, -1 do
+					local fj= feedback_judgements[i]
+					if player_stage_stats:GetTapNoteScores(fj) > 0 then
+						self:set_color(judge_to_color(fj))
+						break
+					end
+				end
+			end
+			if score < 0 then
+				score= -score
+				self.container:y(0)
+				self:align_parts(top)
+			else
+				self.container:y(_screen.h)
+				self:align_parts(bottom)
+			end
+			self:zoom_parts(self:pct_to_zoom(score))
+		end,
+		set_color= function(self, c)
+			local calpha= Alpha(c, 0)
+			for i, part in ipairs(self.parts) do
+				part:diffuseleftedge(c):diffuserightedge(calpha)
+			end
+		end,
+		align_parts= function(self, align)
+			for i, part in ipairs(self.parts) do
+				part:vertalign(align)
+			end
+		end,
+		zoom_parts= function(self, z)
+			for i, part in ipairs(self.parts) do
+				part:zoomy(z)
 			end
 		end
-	else
-		for i= #feedback_judgements, 1, -1 do
-			local fj= feedback_judgements[i]
-			if player_stage_stats:GetTapNoteScores(fj) > 0 then
-				set_color(judge_to_color(fj))
-				break
-			end
-		end
-	end
-	if score < 0 then
-		score= -score
-		self.container:y(0)
-		self.meter:vertalign(top)
-	else
-		self.container:y(_screen.h)
-		self.meter:vertalign(bottom)
-	end
-	self.meter:zoomy(math.min(1, score^((score+1)^((score*2.718281828459045)))))
-end
-
-local score_feedback_interface_mt= { __index= score_feedback_interface }
+}}
 
 local numerical_score_feedback_mt= {
 	__index= {
@@ -1055,8 +1087,8 @@ local function make_special_actors_for_players()
 		end
 		if flags.score_meter and not over_confident then
 			add_to_feedback[#add_to_feedback+1]= {
-				name= "scoremeter", meattable= score_feedback_interface_mt,
-				center= {score_feedback_centers[pn][1], score_feedback_centers[pn][2]}}
+				name= "scoremeter", meattable= score_meter_mt,
+				center= {score_meter_centers[pn][1], score_meter_centers[pn][2]}}
 		end
 		if (flags.dance_points or flags.pct_score) and not over_confident then
 			add_feedback(add_to_feedback, pn, el_pos, "score",

@@ -28,6 +28,7 @@ local line_height= get_line_height()
 --   bpm= bool, -- optional
 --   rating= bool, -- optional
 --   author= bool, -- optional
+--   genre= bool, -- optional
 --   nps= bool, --optional
 --   radar_category= string, -- optional
 --   favor= string, -- "machine" or "player", optional
@@ -197,6 +198,10 @@ options_sets.pain_menu= {
 					return true, true, true
 				end,
 				function()
+					set_pain_item_field(self.item_config, "genre", true)
+					return true, true, true
+				end,
+				function()
 					set_pain_item_field(self.item_config, "nps", true)
 					return true, true, true
 				end
@@ -307,7 +312,7 @@ options_sets.pain_menu= {
 				if self.mode == 1 then
 					self.info_set= {
 						back_element(), done_element(), {text= "bpm"}, {text= "meter"},
-						{text= "author"}, {text= "nps"}}
+						{text= "author"}, {text= "genre"}, {text= "nps"}}
 					for i, cat in ipairs(RadarCategory) do
 						self.info_set[#self.info_set+1]= {text= cat}
 					end
@@ -672,7 +677,17 @@ pain_display_mt= {
 			else
 				prof_slot= pn_to_profile_slot(self.player_number)
 			end
-			return get_tags_for_song(prof_slot, gamestate_get_curr_song())
+			local song= gamestate_get_curr_song()
+			if song then
+				return get_tags_for_song(prof_slot, song)
+			else
+				self.music_wheel= nil
+				MESSAGEMAN:Broadcast("get_music_wheel", {pn= self.player_number})
+				if self.music_wheel then
+					return get_tags_for_bucket(
+						prof_slot, self.music_wheel.sick_wheel:get_info_at_focus_pos())
+				end
+			end
 		end,
 		set_tag_item= function(self, item, slot, tag_list)
 			item:set_number("")
@@ -724,6 +739,14 @@ pain_display_mt= {
 				if item_config.is_wide then width= self.wide_el_w end
 				width_limit_text(item.text, width, self.el_z)
 				item:set_number("")
+			elseif item_config.genre then
+				if song.GetGenre then
+					item:set_text(song:GetGenre())
+					local width= self.narrow_el_w
+					if item_config.is_wide then width= self.wide_el_w end
+					width_limit_text(item.text, width, self.el_z)
+					item:set_number("")
+				end
 			elseif item_config.radar_category then
 				item:set_text(item_config.radar_category)
 				local rval= radars:GetValue(item_config.radar_category)
@@ -779,6 +802,9 @@ pain_display_mt= {
 				item:set_number("XX")
 			elseif item_config.author then
 				item:set_text("Author")
+				item:set_number("")
+			elseif item_config.genre then
+				item:set_text("Genre")
 				item:set_number("")
 			elseif item_config.radar_category then
 				item:set_text("Radar")

@@ -15,6 +15,11 @@ function load_usable_tags(prof_slot)
 	else
 		usable_tags[prof_slot]= {}
 	end
+	local tags= usable_tags[prof_slot]
+	for i, t in ipairs(tags) do
+		tags[i]= tostring(t)
+	end
+	table.sort(tags)
 end
 
 function load_tags(prof_slot)
@@ -75,6 +80,7 @@ function save_all_tags()
 	for slot, tags in pairs(song_to_tags) do
 		if tags_changed[slot] then
 			save_tags(slot)
+			tags_changed[slot]= false
 		end
 	end
 end
@@ -135,29 +141,50 @@ function get_tag_value(prof_slot, song, tag)
 	return 0
 end
 
+local function get_tags_for_song_internal(prof_stt, song, return_values, tags)
+	local tag_set= prof_stt[song_get_dir(song)]
+	if tag_set then
+		for tag_name, tag_value in pairs(tag_set) do
+			if tag_value ~= 0 then
+				if return_values then
+					tags[#tags+1]= {name= tag_name, value= tag_value}
+				else
+					insert_into_sorted_table(tags, tag_name)
+				end
+			end
+		end
+	end
+end
+
+local function sort_tags_internal(tags, return_values)
+	if return_values then
+		local function cmp(l, r) return l.name < r.name end
+		table.sort(tags, cmp)
+	else
+		table.sort(tags)
+	end
+end
+
 function get_tags_for_song(prof_slot, song, return_values)
 	if not song then return {} end
 	local prof_stt= song_to_tags[prof_slot]
 	local tags= {}
 	if prof_stt then
-		local tag_set= prof_stt[song_get_dir(song)]
-		if tag_set then
-			for tag_name, tag_value in pairs(tag_set) do
-				if tag_value ~= 0 then
-					if return_values then
-						tags[#tags+1]= {name= tag_name, value= tag_value}
-					else
-						tags[#tags+1]= tag_name
-					end
-				end
-			end
-		end
-		if return_values then
-			local function cmp(l, r) return l.name < r.name end
-			table.sort(tags, cmp)
-		else
-			table.sort(tags)
-		end
+		get_tags_for_song_internal(prof_stt, song, return_values, tags)
+		sort_tags_internal(tags, return_values)
+	end
+	return tags
+end
+
+function get_tags_for_bucket(prof_slot, bucket)
+	local prof_stt= song_to_tags[prof_slot]
+	local tags= {}
+	if not bucket or not bucket.contents or not bucket.contents[1]
+	or bucket.contents[1].contents or not prof_stt then
+		return tags
+	end
+	for i, song in ipairs(bucket.contents) do
+		get_tags_for_song_internal(prof_stt, song, false, tags)
 	end
 	return tags
 end
@@ -192,4 +219,39 @@ function get_songs_with_tag(prof_slot, tag_name, return_values)
 		return songs
 	end
 	return {}
+end
+
+function tag_all_songs_with_genre_info(prof_slot)
+	if not prof_slot then return end
+	load_usable_tags(prof_slot)
+	local tags= usable_tags[prof_slot]
+	for i, song in ipairs(SONGMAN:GetAllSongs()) do
+		local genre= song:GetGenre()
+		if genre ~= "" then
+			insert_into_sorted_table(tags, genre)
+			set_tag_value(prof_slot, song, genre, 1)
+		end
+	end
+	tags_changed[prof_slot]= true
+end
+
+function rename_tag(prof_slot, tag, new_name)
+	if not prof_slot or not tag or not new_name then return end
+	local prof_stt= song_to_tags[prof_slot]
+	local prof_tts= tag_to_songs[prof_slot]
+	if not prof_stt or not prof_tts then return end
+	local songs= prof_tts[tag]
+	if not songs then return end
+	for song_dir, tag_value in pairs(songs) do
+		local song_tags= prof_stt[song_dir]
+		local value= song_tags[tag]
+		song_tags[tag]= nil
+		prof_tts[new_name][song_dir]= value
+		if not song_tags[new_name] then
+			song_tags[new_name]= value
+		end
+	end
+	prof_tts[tag]= nil
+	table_find_remove(usable_tags[prof_slot], tag)
+	tags_changed[prof_slot]= true
 end

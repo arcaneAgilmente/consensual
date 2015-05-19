@@ -257,10 +257,10 @@ local default_config= {
 	life_use_width= 1,
 	gameplay_element_colors= {
 		filter= fetch_color("accent.violet", 0),
-		life_full_outer= fetch_color("accent.red"),
-		life_full_inner= fetch_color("accent.red", 0),
-		life_empty_outer= fetch_color("accent.blue"),
-		life_empty_inner= fetch_color("accent.blue", 0),
+		life_full_outer= fetch_color("accent.blue"),
+		life_full_inner= fetch_color("accent.cyan", 0),
+		life_empty_outer= fetch_color("accent.red"),
+		life_empty_inner= fetch_color("accent.magenta", 0),
 	},
 	gameplay_element_positions= {
 		bpm_xoffset= 0,

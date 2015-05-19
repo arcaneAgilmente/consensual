@@ -892,6 +892,47 @@ function int_to_bool(i)
 	return false
 end
 
+function insert_into_sorted_table(tab, value)
+	local lower= 1
+	local upper= #tab
+	if not tab[lower] then
+		table.insert(tab, lower, value)
+		return
+	end
+	if tab[lower] == value or tab[upper] == value then return end
+	if value < tab[lower] then
+		table.insert(tab, 1, value)
+		return
+	end
+	if tab[upper] < value then
+		table.insert(tab, upper+1, value)
+		return
+	end
+	while upper - lower > 1 do
+		local new_lower= math.ceil((lower + upper) * .5)
+		if tab[new_lower] == value then
+			return
+		elseif tab[new_lower] < value then
+			lower= new_lower
+			last_compare_result= new_compare_result
+		else
+			upper= new_lower
+		end
+	end
+	table.insert(tab, upper, value)
+end
+
+function table_remove_range(tab, first, last)
+	local original_size= #tab
+	local diff= last - first
+	for i= 0, diff-1 do
+		tab[first+i]= tab[last+i]
+	end
+	for i= last, original_size do
+		tab[i]= nil
+	end
+end
+
 function end_credit_now()
 	local next_screen= "ScreenInitialMenu"
 	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do

@@ -29,6 +29,11 @@ function string_in_table(str, tab)
 	return false
 end
 
+function table_find_remove(tab, thing)
+	local index= string_in_table(thing, tab)
+	if index then table.remove(tab, index) end
+end
+
 function force_table_elements_to_match_type(candidate, must_match, depth_remaining, exceptions)
 	for k, v in pairs(candidate) do
 		if not string_in_table(k, exceptions) then

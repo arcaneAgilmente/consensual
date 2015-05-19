@@ -77,12 +77,8 @@ function cons_player:kyzentun_mode()
 	self.options_level= 5
 	self.kyzentun= true
 	local styletype= GAMESTATE:GetCurrentStyle(self.player_number):GetStyleType()
-	local new_speed= {speed= 1000, mode= "m"}
+	local new_speed= {speed= 600, mode= "m"}
 	self.preferred_options:Distant(1.5)
-	if styletype == "StyleType_OnePlayerTwoSides" then
-		self.preferred_options:Distant(1.2)
-		new_speed= {speed= 500, mode= "m"}
-	end
 	if self.speed_info then
 		self.speed_info.speed= new_speed.speed
 		self.speed_info.mode= new_speed.mode

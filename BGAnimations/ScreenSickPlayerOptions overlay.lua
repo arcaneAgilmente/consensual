@@ -1318,7 +1318,17 @@ local function apply_preferred_mods()
 	GAMESTATE:ApplyPreferredSongOptionsToOtherLevels()
 end
 
+local saw_first_press= {}
 local function input(event)
+	input_came_from_keyboard= event.DeviceInput.device == "InputDevice_Key"
+	local press_type= event.type
+	if press_type == "InputEventType_FirstPress" then
+		saw_first_press[event.DeviceInput.button]= true
+	end
+	if not saw_first_press[event.DeviceInput.button] then return end
+	if press_type == "InputEventType_Release" then
+		saw_first_press[event.DeviceInput.button]= nil
+	end
 	if event.type == "InputEventType_Release" then return end
 	local pn= event.PlayerNumber
 	local code= event.GameButton
@@ -1372,6 +1382,9 @@ end
 args[#args+1]= Def.Actor{
 	Name= "code_interpreter", OnCommand= function(self)
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
+	end,
+	went_to_text_entryMessageCommand= function(self)
+		saw_first_press= {}
 	end,
 }
 
