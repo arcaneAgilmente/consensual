@@ -424,7 +424,7 @@ local function attempt_play(pns, presser, choice_name)
 		local join_success= true
 		for i, rpn in ipairs(pns) do
 			if not cons_join_player(rpn) then
-				join_failed= false
+				join_success= false
 				break
 			end
 		end
@@ -648,7 +648,7 @@ local args= {
 		Name= "code_interpreter",
 		OnCommand= function(self)
 			last_input_time= GetTimeSinceStart()
-			SCREENMAN:GetTopScreen():AddInputCallback(input)
+			SCREENMAN:GetTopScreen():AddInputCallback(input):SetAllowLateJoin(true)
 			self:SetUpdateFunction(worker_update)
 		end,
 	},

@@ -47,9 +47,40 @@ style_config= create_setting(
 style_config:load()
 visible_styles= style_config:get_data()
 
+function style_config_sanity_enforcer(config)
+	for np, style_set in pairs(config) do
+		for i, entry in ipairs(style_set) do
+			local def_entry= default_config[np][i]
+			if entry.stepstype ~= def_entry.stepstype or entry.style ~= def_entry.style then
+				entry.style= def_entry.style
+				entry.stepstype= def_entry.stepstype
+				entry.visible= true
+			end
+		end
+	end
+end
+
 function first_compat_style(num_players)
+	-- The best match is a stepstype that is compatible with 1 player and 2
+	-- players.
+	local best_match= {}
 	for stype, stype_info in pairs(stepstype_to_style) do
-		if stype_info[num_players] then return stype_info[num_players].name end
+		if stype_info[num_players] then
+			if stype_info[1] and stype_info[2] then
+				if best_match[2] ~= "both" then
+					best_match= {stype_info, "both"}
+				end
+			elseif best_match[2] ~= "both" and not best_match[1] then
+				if stype_info[1] then
+					best_match= {stype_info, "1_only"}
+				else
+					best_match= {stype_info, "2_only"}
+				end
+			end
+		end
+	end
+	if best_match[1] then
+		return best_match[1][num_players].name
 	end
 	lua.ReportScriptError("No compatible style for " .. num_players .. " players found.")
 	return ""

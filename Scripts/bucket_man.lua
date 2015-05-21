@@ -1100,7 +1100,7 @@ local function add_player_randoms(filters, candies, pn)
 		"Difficulty_Beginner"
 	local curr_steps_type= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
 	local profile= PROFILEMAN:GetProfile(pn)
-	if profile and
+	if profile and false and -- Finding unplayed songs takes too long.
 	(interface_flags.unplayed_random or interface_flags.low_score_random) then
 		local unplayed_candy= {}
 		local low_score_candy= {}

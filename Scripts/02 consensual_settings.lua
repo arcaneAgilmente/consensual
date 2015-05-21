@@ -257,6 +257,7 @@ function cons_player:set_ops_from_profile(profile)
 	self.pain_config= profile_pain_setting:load(prof_slot)
 	self.flags= profile_flag_setting:load(prof_slot)
 	self.style_config= style_config:load(prof_slot)
+	style_config_sanity_enforcer(self.style_config)
 	local config= player_config:load(prof_slot)
 	local migrated= update_old_player_config(prof_slot, config)
 	for k, v in pairs(config) do
@@ -632,15 +633,6 @@ end
 
 function cons_set_current_steps(pn, steps)
 	local num_players= GAMESTATE:GetNumPlayersEnabled()
-	local set_other_player_too= false
-	if num_players == 2 then
-		if GAMESTATE:GetCurrentStyle(pn):GetStyleType() ==
-			"StyleType_TwoPlayersSharedSides"
-			or GAMESTATE:GetCurrentStyle(other_player[pn]):GetStyleType() ==
-		"StyleType_TwoPlayersSharedSides" then
-			set_other_player_too= true
-		end
-	end
 	local curr_st= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
 	local to_st= steps:GetStepsType()
 	if curr_st ~= to_st then
@@ -673,10 +665,6 @@ function cons_set_current_steps(pn, steps)
 		return
 	end
 	gamestate_set_curr_steps(pn, steps)
-	if set_other_player_too then
-		set_current_style(GAMESTATE:GetCurrentStyle(pn), other_player[pn])
-		gamestate_set_curr_steps(other_player[pn], steps)
-	end
 end
 
 function JudgmentTransformCommand( self, params )
