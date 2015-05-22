@@ -53,6 +53,38 @@ function max_nil(a, b)
 	return (gte_nil(a, b) and a) or b
 end
 
+function less_cmp(a, b)
+	return a < b
+end
+
+function grt_cmp(a, b)
+	return a > b
+end
+
+function lesseq_cmp(a, b)
+	return a <= b
+end
+
+function grteq_cmp(a, b)
+	return a >= b
+end
+
+function str_cmp(a, b)
+	return a:lower() < b:lower()
+end
+
+function update_min_table(tab, new_tab, cmp)
+	for min_name, min_value in pairs(tab) do
+		tab[min_name]= cmp(new_tab[min_name], min_value)
+	end
+end
+
+function update_totals_table(tab, new_tab)
+	for tot_name, tot_value in pairs(new_tab) do
+		tab[tot_name]= (tab[tot_name] or 0) + tot_value
+	end
+end
+
 -- Fun fact:  Because this file is in consensual/Scripts, while it is being
 -- loaded, THEME:GetCurrentThemeDirectory returns "Themes/consensual".
 -- So this table exists to allow things that run after script loading is
@@ -469,12 +501,12 @@ function maybe_distort_text(text_actor)
 	end
 end
 
-local last_yield_time= 0
-local yield_gap= .02
+local next_yield_time= 0
+local yield_gap= .05
 function maybe_yield(...)
 	local curr_time= GetTimeSinceStart()
-	if curr_time - last_yield_time > yield_gap then
-		last_yield_time= curr_time
+	if curr_time > next_yield_time then
+		next_yield_time= curr_time + yield_gap
 		coroutine.yield(...)
 	end
 end
@@ -667,7 +699,7 @@ function steps_get_author(steps, song)
 	else
 		author= song:GetScripter()
 	end
-	if author == "" or author:find("Copied From") then
+	if author == "" or author:lower():find("copied from") then
 		author= song:GetGroupName()
 	end
 	return author
@@ -783,7 +815,7 @@ end
 local cached_steps_list= false
 local cached_steps_song= false
 local cached_steps_players= false
-function get_filtered_sorted_steps_list(song)
+function get_filtered_steps_list(song)
 	song= song or gamestate_get_curr_song()
 	local num_players= GAMESTATE:GetNumPlayersEnabled()
 	if song == cached_steps_song and num_players == cached_steps_players then
@@ -791,33 +823,33 @@ function get_filtered_sorted_steps_list(song)
 	end
 	local ret= {}
 	local filter_types= cons_get_steps_types_to_show()
-	if song and #filter_types >= 1 then
+	if song then
 		local all_steps= song_get_all_steps(song)
 		for i, v in ipairs(all_steps) do
-			local st= v:GetStepsType() 
-			for fi, fv in ipairs(filter_types) do
-				if st == fv then
-					ret[#ret+1]= v
-					break
-				end
+			if filter_types[v:GetStepsType()] then
+				ret[#ret+1]= v
 			end
 		end
-		local function compare(ela, elb)
-			if not ela then return true end
-			if not elb then return false end
-			local type_diff= StepsType:Compare(ela:GetStepsType(), elb:GetStepsType())
-			if type_diff == 0 then
-				return Difficulty:Compare(ela:GetDifficulty(), elb:GetDifficulty()) < 0
-			else
-				return type_diff < 0
-			end
-		end
-		table.sort(ret, compare)
 	end
 	cached_steps_players= num_players
 	cached_steps_song= song
 	cached_steps_list= ret
 	return ret
+end
+
+function sort_steps_list(list)
+	local function compare(ela, elb)
+		if not ela then return true end
+		if not elb then return false end
+		local type_diff= StepsType:Compare(ela:GetStepsType(), elb:GetStepsType())
+		if type_diff == 0 then
+			return Difficulty:Compare(ela:GetDifficulty(), elb:GetDifficulty()) < 0
+		else
+			return type_diff < 0
+		end
+	end
+	table.sort(list, compare)
+	return list
 end
 
 convert_code_name_to_display_text= {

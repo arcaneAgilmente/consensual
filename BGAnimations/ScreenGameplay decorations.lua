@@ -1262,6 +1262,7 @@ end
 
 local function tween_not_trans(child, tween)
 	if tween and not trans_names[child:GetName()] then
+		child:finishtweening()
 		rand_tween(child, inversion_toasty_level)
 	end
 end

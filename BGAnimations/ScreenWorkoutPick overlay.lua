@@ -16,7 +16,7 @@ end
 
 local function try_song(song)
 	if not song then return false end
-	local steps_list= get_filtered_sorted_steps_list(song)
+	local steps_list= get_filtered_steps_list(song)
 	local matching_steps= {}
 	for p, pn in ipairs(enabled_players) do
 		matching_steps[pn]= {}

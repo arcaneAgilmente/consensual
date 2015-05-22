@@ -101,8 +101,8 @@ sorted_flag_names= {
 	 "harder_random",
 	 "same_random",
 	 "score_random",
-	 "unplayed_random",
-	 "low_score_random",
+--	 "unplayed_random",
+--	 "low_score_random",
 	 "straight_floats",
 	 "verbose_bpm",
 	}

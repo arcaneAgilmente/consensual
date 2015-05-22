@@ -54,7 +54,7 @@ end
 do
 	local default_params= {
 		sx= 0, sy= 0, tx= 0, ty= 0, tz= 1, tc= fetch_color("text"), tt= "",
-		ta= right, na= left, tf= "Common Normal", nf= "Common Normal",
+		ts= "", ta= right, na= left, tf= "Common Normal", nf= "Common Normal",
 		text_section= "Misc", nx= 0, ny= 0, nz= 1, nc= fetch_color("text"),
 		nt= "0" }
 
@@ -76,6 +76,7 @@ do
 		self.x= params.sx
 		self.y= params.sy
 		self.tx= params.tx
+		self.ts= params.ts
 		self.nx= params.nx
 		self.text_section= params.text_section
 		return Def.ActorFrame{
@@ -114,16 +115,12 @@ function text_and_number_interface:get_string(text)
 		--Trace("Uppering.")
 		t= t:upper()
 	end
-	return t
+	return t .. self.ts
 end
 
 function text_and_number_interface:set_text(text)
 	if self.text then
-		if self.upper then
-			self.text:settext(self:get_string(text):upper())
-		else
-			self.text:settext(self:get_string(text))
-		end
+		self.text:settext(self:get_string(text))
 	end
 end
 

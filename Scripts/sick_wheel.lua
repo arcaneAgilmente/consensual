@@ -32,6 +32,7 @@ function sick_wheel:create_actors(name, num_items, item_metatable, mx, my)
 	self.num_items= num_items
 	assert(item_metatable, "A metatable for items to be put in the wheel must be provided.")
 	check_metatable(item_metatable)
+	-- FIXME:  This probably should have 1 added to make it a 1 based index.
 	self.focus_pos= math.floor(num_items / 2)
 	mx= mx or SCREEN_CENTER_X
 	my= my or SCREEN_TOP
@@ -104,7 +105,7 @@ local function internal_scroll(self, start_pos)
 		end
 	end
 	for i, v in ipairs(self.items) do
-		v:transform(i, #self.items, i == self.focus_pos)
+		v:transform(i, #self.items, i == self.focus_pos, self.focus_pos)
 	end
 end
 

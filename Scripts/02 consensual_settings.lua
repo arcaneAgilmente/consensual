@@ -543,7 +543,7 @@ function song_short_and_uncensored(song)
 		show= false
 	end
 	if show and chart_rating_cap > 0 then
-		local steps_list= get_filtered_sorted_steps_list(song)
+		local steps_list= get_filtered_steps_list(song)
 		local playable_steps= false
 		local i= 1
 		while not playable_steps and i <= #steps_list do
@@ -623,12 +623,16 @@ function get_coin_info()
 	return credits, coins, needed
 end
 
+local steps_types_to_show= {}
 function cons_get_steps_types_to_show()
-	local types= {}
+	return steps_types_to_show
+end
+
+function update_steps_types_to_show()
+	steps_types_to_show= {}
 	for i, data in ipairs(combined_visible_styles()) do
-		types[#types+1]= data.stepstype
+		steps_types_to_show[data.stepstype]= true
 	end
-	return types
 end
 
 function cons_set_current_steps(pn, steps)

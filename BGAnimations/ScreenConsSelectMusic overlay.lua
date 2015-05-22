@@ -1,6 +1,6 @@
 GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(1)
+update_steps_types_to_show()
 
-local music_wheel= setmetatable({}, music_whale_mt)
 local auto_scrolling= nil
 local next_auto_scroll_time= 0
 local time_before_auto_scroll= .15
@@ -9,34 +9,39 @@ local fast_auto_scroll= nil
 local fast_scroll_start_time= 0
 local time_before_fast_scroll= .8
 local time_between_fast_scroll= .02
-local banner_x= SCREEN_LEFT + 132
-local banner_y= SCREEN_TOP + 44
-local banner_w= 256
-local banner_h= 80
 local sort_width= 120
-local sort_text_x= banner_x + (banner_w / 2) + (sort_width/2)
-local wheel_x= sort_text_x + (sort_width/2) + 32
-local title_x= 4
-local title_y= SCREEN_TOP + 108
-local title_width= (wheel_x - 40) - title_x
-local wheel_cursor_y= SCREEN_CENTER_Y - 24 - 1
+local sort_text_x= _screen.cx * .5
 
 local pane_text_zoom= .625
 local pane_text_height= 16 * (pane_text_zoom / 0.5875)
-local pane_text_width= 8 * (pane_text_zoom / 0.5875)
-local pane_w= ((wheel_x - 40) - (SCREEN_LEFT + 4)) / 2
+local pane_w= 200
 local pane_h= pane_text_height * max_pain_rows + 4
 local pane_yoff= -pane_h * .5 + pane_text_height * .5 + 2
 local pane_ttx= 0
 local pad= 4
 
 local pane_y= SCREEN_BOTTOM-(pane_h/2)-pad
-local lpane_x= SCREEN_LEFT+(pane_w/2)+pad
-local rpane_x= SCREEN_LEFT+(pane_w*1.5)+pad*1.5
+local pane_x_off= (pane_w*.5) + pad
+local lpane_x= pane_x_off
+local rpane_x= _screen.w - pane_x_off
+
+local wheel_x= _screen.cx
+local wheel_width= _screen.w - ((pane_w + (pad * 2)) * 2)
+local wheel_move_time= .1
+local banner_w= wheel_width - 4
+local banner_h= 80
+local curr_group_name= ""
+local basic_info_height= 32
+local extra_info_height= 50
+local expanded_info_height= basic_info_height + (extra_info_height * 2)
+
+local title_width= wheel_width - 32
 
 local entering_song= false
 local options_time= 1.5
 local go_to_options= false
+
+local update_player_cursors= noop_nil
 
 local timer_actor= false
 local function get_screen_time()
@@ -200,7 +205,7 @@ function steps_display_interface:create_actors(name)
 end
 
 function steps_display_interface:update_steps_set()
-	local candidates= get_filtered_sorted_steps_list()
+	local candidates= sort_steps_list(get_filtered_steps_list())
 	if candidates and #candidates > 0 then
 		self.sick_wheel:set_info_set(candidates, 1)
 		self.container:diffusealpha(1)
@@ -265,6 +270,320 @@ function steps_display_interface:update_cursors()
 	end
 end
 
+local function cdtitle()
+	if scrambler_mode then
+		swapping_amv(
+			"CDTitle", wheel_width * .5, 0, 48, 48, 8, 8, nil, "_", false, true, true, {
+				OnCommand= play_set,
+				CurrentSongChangedMessageCommand= play_set,
+				SetCommand= function(self)
+					local song= GAMESTATE:GetCurrentSong()
+					if song and song:HasCDTitle()then
+						self:playcommand("ChangeTexture", {song:GetCDTitlePath()})
+						self:visible(true)
+					else
+						self:visible(false)
+					end
+				end,
+		})
+	else
+		return Def.Sprite{
+			Name="CDTitle", InitCommand=cmd(xy,wheel_width * .5, 0),
+			OnCommand= cmd(playcommand, "Set"),
+			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
+			SetCommand= function(self)
+				-- Courses can't have CDTitles, so gamestate_get_curr_song isn't used.
+				local song= GAMESTATE:GetCurrentSong()
+				if song and song:HasCDTitle()then
+					self:LoadBanner(song:GetCDTitlePath())
+					self:visible(true)
+					-- Jousway suggests fucking people with fucking huge cdtitles.
+					scale_to_fit(self, 48, 48)
+				else
+					self:visible(false)
+				end
+			end
+		}
+	end
+end
+
+local function banner(x, y)
+	if scrambler_mode then
+		return swapping_amv(
+			"Banner", x, y, banner_w, banner_h, 16, 5, nil, "_",
+			false, true, true, {
+				CurrentCourseChangedMessageCommand= play_set,
+				CurrentSongChangedMessageCommand= play_set,
+				SetCommand= function(self)
+					local song= GAMESTATE:GetCurrentSong() or GAMESTATE:GetCurrentCourse()
+					if song and song:HasBanner() then
+						self:playcommand("ChangeTexture", {song:GetBannerPath()})
+						self:diffusealpha(1)
+					else
+						self:diffusealpha(0)
+					end
+				end,
+				current_group_changedMessageCommand= function(self, param)
+					local name= param[1]
+					if songman_does_group_exist(name) then
+						local path= songman_get_group_banner_path(name)
+						if path and path ~= "" then
+							self:playcommand("ChangeTexture", {path})
+							self:diffusealpha(1)
+						else
+							self:diffusealpha(0)
+						end
+					else
+						self:diffusealpha(0)
+					end
+				end,
+		})
+	else
+		return Def.Sprite{
+			Name="Banner", InitCommand=cmd(xy, x, y),
+			CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
+			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
+			SetCommand= function(self)
+				local song= gamestate_get_curr_song()
+				if song and song:HasBanner() then
+					self:LoadBanner(song:GetBannerPath())
+					self:diffusealpha(1)
+					scale_to_fit(self, banner_w, banner_h)
+				else
+					self:diffusealpha(0)
+				end
+			end,
+			current_group_changedMessageCommand= function(self, param)
+				local name= param[1]
+				if songman_does_group_exist(name) then
+					local path= songman_get_group_banner_path(name)
+					if path and path ~= "" then
+						self:LoadBanner(path)
+						self:diffusealpha(1)
+						scale_to_fit(self, banner_w, banner_h)
+					else
+						self:diffusealpha(0)
+					end
+				else
+					self:diffusealpha(0)
+				end
+			end
+		}
+	end
+end
+
+local focus_element_info_mt= {
+	__index= {
+		create_actors= function(self, x, y)
+			self.middle_height= basic_info_height
+			self.left_x= wheel_width * -.15
+			self.right_x= wheel_width * .25
+			local args= {
+				InitCommand= function(subself)
+					self.container= subself
+					self.banner= subself:GetChild("Banner")
+					self.cdtitle= subself:GetChild("CDTitle")
+					self.title= subself:GetChild("title")
+					self.subtitle= subself:GetChild("subtitle")
+					self.length= subself:GetChild("length")
+					self.genre= subself:GetChild("genre")
+					self.artist= subself:GetChild("artist")
+					subself:xy(x, y)
+				end,
+				Def.Quad{
+					InitCommand= function(subself)
+						self.bg= subself
+						subself:diffusealpha(0):setsize(wheel_width - 4, expanded_info_height*2+20)
+					end
+				},
+				cdtitle(),
+				normal_text("title", "", fetch_color("text"), nil, 0, -12, 1),
+				normal_text("subtitle", "", fetch_color("text"), nil, 0, 6, .5),
+				normal_text("length", "", fetch_color("text"), nil, -wheel_width*.5 + 32, 18, .5, left),
+				normal_text("genre", "", fetch_color("text"), nil, 0, 18, .5),
+				normal_text("artist", "", fetch_color("text"), nil, wheel_width*.5-32, 18, .5, right),
+			}
+			local above_args= {
+				InitCommand= function(subself)
+					self.above_info= subself
+					subself:xy(0, -self.middle_height):zoomy(0)
+				end,
+				banner(0, banner_h * -.5),
+			}
+			local below_args= {
+				InitCommand= function(subself)
+					self.below_info= subself
+					self.steps_by= subself:GetChild("steps_by")
+					self.auth_list= subself:GetChild("auth_list")
+					self.auth_list:vertspacing(-8):vertalign(top)
+					subself:xy(0, self.middle_height):zoomy(0)
+					self.steps_by:settext(
+						get_string_wrapper("SelectMusicExtraInfo", "steps_by"))
+				end,
+				normal_text("steps_by", "", fetch_color("text"), nil, self.right_x, -12, .5),
+				normal_text("auth_list", "", fetch_color("text"), nil, self.right_x, 0, .5),
+			}
+			self.song_count= setmetatable({}, text_and_number_interface_mt)
+			below_args[#below_args+1]= self.song_count:create_actors(
+				"song_count", {sx= self.left_x, sy= -24, tx= -4, tz= .5, nx= 4,
+											 nz= .5, ts= ":", tt= "song_count",
+											 text_section= "SelectMusicExtraInfo"})
+			self.expanded= false
+			self.diff_range= setmetatable({}, text_and_number_interface_mt)
+			self.nps_range= setmetatable({}, text_and_number_interface_mt)
+			self.difficulty_symbols= {}
+			self.difficulty_counts= {}
+			local diff_tani_args= {
+				sx= self.left_x, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
+				text_section= "DifficultyNames"
+			}
+			for i, diff in ipairs(Difficulty) do
+				args[#args+1]= Def.Sprite{
+					InitCommand= function(subself)
+						self.difficulty_symbols[diff]= subself
+						subself:visible(false)
+					end
+				}
+				local new_tani= setmetatable({}, text_and_number_interface_mt)
+				diff_tani_args.tt= diff
+				self.difficulty_counts[diff]= new_tani
+				diff_tani_args.sy= 12 * i
+				below_args[#below_args+1]= new_tani:create_actors(
+					"tani_" .. diff, diff_tani_args)
+			end
+			below_args[#below_args+1]= self.diff_range:create_actors(
+				"diff_range", {sx= self.left_x, sy= 0, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
+											 tt= "difficulty_range", text_section= "SelectMusicExtraInfo"})
+			below_args[#below_args+1]= self.nps_range:create_actors(
+				"nps_range", {sx= self.left_x, sy= -12, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
+											 tt= "nps_range", text_section= "SelectMusicExtraInfo"})
+			args[#args+1]= Def.ActorFrame(above_args)
+			args[#args+1]= Def.ActorFrame(below_args)
+			return Def.ActorFrame(args)
+		end,
+		hide_song_bucket_info= function(self)
+			self.song_count:hide()
+			for i, diff in ipairs(Difficulty) do
+				self.difficulty_counts[diff]:hide()
+			end
+			self.diff_range:hide()
+			self.nps_range:hide()
+			self.steps_by:visible(false)
+			self.auth_list:visible(false)
+		end,
+		hide_song_info= function(self)
+			self.length:visible(false)
+			self.genre:visible(false)
+			self.artist:visible(false)
+		end,
+		update= function(self, item)
+			self:hide_song_bucket_info()
+			self:hide_song_info()
+			self.subtitle:visible(false)
+			if item.bucket_info then
+				if item.is_current_group then
+					self.bg:diffuse(wheel_colors.current_group)
+				else
+					self.bg:diffuse(wheel_colors.group)
+				end
+				self.title:settext(curr_group_name)
+				self.subtitle:visible(false)
+				if item.bucket_info.song_count then
+					self.song_count:unhide()
+					self.song_count:set_number(item.bucket_info.song_count or 0)
+					for i, diff in ipairs(Difficulty) do
+						local count= item.bucket_info.difficulties[diff]
+						if count then
+							self.difficulty_counts[diff]:set_number(("%03d"):format(count))
+							self.difficulty_counts[diff]:unhide()
+						else
+							self.difficulty_counts[diff]:set_number(("%03d"):format(0))
+							self.difficulty_counts[diff]:hide()
+						end
+					end
+					local mins= item.bucket_info.mins
+					local maxs= item.bucket_info.maxs
+					self.diff_range:unhide()
+					self.diff_range:set_number(mins.meter .. " - " .. maxs.meter)
+					local function npsfm(nps)
+						return ("%.2f"):format(nps)
+					end
+					self.nps_range:unhide()
+					self.nps_range:set_number(npsfm(mins.nps).." - "..npsfm(maxs.nps))
+					local auth_text= ""
+					local auth_count= 0
+					foreach_ordered(
+						item.bucket_info.step_artists,
+						function(key, value)
+							if auth_count > 4 then return end
+							auth_count= auth_count + 1
+							if auth_text ~= "" then auth_text= auth_text .. "\n" end
+							auth_text= auth_text .. key
+						end
+					)
+					if auth_count > 4 then
+						auth_text= auth_text .. "\n" ..
+							get_string_wrapper("SelectMusicExtraInfo", "and_more")
+					end
+					self.steps_by:visible(true)
+					self.auth_list:settext(auth_text):visible(true)
+				end
+			elseif item.sort_info then
+				self.title:settext(item.sort_info.name)
+				self.bg:diffuse(wheel_colors.sort)
+			else
+				if item.random_info then
+					self.bg:diffuse(wheel_colors.random)
+				elseif item.is_prev then
+					self.bg:diffuse(wheel_colors.prev_song)
+				else
+					self.bg:diffuse(wheel_colors.song)
+				end
+				local song= gamestate_get_curr_song()
+				if song then
+					self.title:settext(song_get_main_title(song)):visible(true)
+					self.length:settext(
+						get_string_wrapper("SelectMusicExtraInfo", "song_len") .. ": " ..
+							secs_to_str(song_get_length(song))):visible(true)
+					local genre= song:GetGenre()
+					if genre ~= "" then
+						self.genre:settext(
+							get_string_wrapper("SelectMusicExtraInfo", "song_genre") ..
+								": " .. genre):visible(true)
+					end
+					local artist= song:GetDisplayArtist()
+					if artist ~= "" then
+						self.artist:settext(
+							get_string_wrapper("SelectMusicExtraInfo", "song_artist") ..
+								": " .. artist):visible(true)
+					end
+				else
+					self.title:visible(false)
+				end
+				if song.GetDisplaySubTitle then
+					self.subtitle:settext(song:GetDisplaySubTitle()):visible(true)
+				end
+			end
+			width_limit_text(self.title, title_width)
+			width_limit_text(self.subtitle, title_width, .5)
+		end,
+		collapse= function(self)
+			local info_move= extra_info_height*.5
+			self.expanded= false
+			self.above_info:linear(wheel_move_time):zoomy(0):addy(-info_move)
+			self.below_info:linear(wheel_move_time):zoomy(0):addy(-info_move)
+			self.bg:linear(wheel_move_time):zoomy(.3)
+		end,
+		expand= function(self)
+			local info_move= extra_info_height*.5
+			self.expanded= true
+			self.above_info:linear(wheel_move_time):zoomy(1):addy(info_move)
+			self.below_info:linear(wheel_move_time):zoomy(1):addy(info_move)
+			self.bg:linear(wheel_move_time):zoomy(1)
+		end
+}}
+local focus_element_info= setmetatable({}, focus_element_info_mt)
+
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "pain_display.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
@@ -278,6 +597,20 @@ local pain_displays= {
 dofile(THEME:GetPathO("", "song_props_menu.lua"))
 dofile(THEME:GetPathO("", "tags_menu.lua"))
 dofile(THEME:GetPathO("", "auto_hider.lua"))
+dofile(THEME:GetPathO("", "music_wheel.lua"))
+local music_wheel= setmetatable({}, music_whale_mt)
+
+local function expand_center_for_more()
+	music_wheel:set_center_expansion(expanded_info_height)
+	focus_element_info:expand()
+	update_player_cursors()
+end
+
+local function collapse_center_for_less()
+	music_wheel:set_center_expansion(basic_info_height)
+	focus_element_info:collapse()
+	update_player_cursors()
+end
 
 set_option_set_metatables()
 
@@ -400,7 +733,7 @@ local function correct_for_overscroll()
 	end
 end
 
-local function update_player_cursors()
+update_player_cursors= function()
 	local num_enabled= 0
 	for i, pn in ipairs{PLAYER_1, PLAYER_2} do
 		if GAMESTATE:IsPlayerEnabled(pn) then
@@ -414,11 +747,12 @@ local function update_player_cursors()
 				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
 			end
 			if in_special_menu[pn] == 1 then
-				player_cursors[pn].align= .5
-				cursed_item= music_wheel.sick_wheel:get_actor_item_at_focus_pos().text
-				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(cursed_item)
-				local xp= wheel_x + 2
-				player_cursors[pn]:refit(xp, wheel_cursor_y, xmx - xmn + 4, ymx - ymn + 4)
+				player_cursors[pn].align= 0
+				local height= basic_info_height * 2
+				if focus_element_info.expanded then
+					height= expanded_info_height * 2
+				end
+				player_cursors[pn]:refit(wheel_x, _screen.cy, wheel_width, height+20)
 			elseif in_special_menu[pn] == 2 then
 				fit_cursor_to_menu(song_props_menus[pn])
 			elseif in_special_menu[pn] == 3 then
@@ -556,7 +890,7 @@ local function set_closest_steps_to_preferred(pn)
 		"Difficulty_Beginner"
 	local pref_style= get_preferred_style(pn)
 	local curr_steps_type= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
-	local candidates= get_filtered_sorted_steps_list()
+	local candidates= sort_steps_list(get_filtered_steps_list())
 	if candidates and #candidates > 0 then
 		local steps_set= false
 		local closest
@@ -608,7 +942,7 @@ end
 local function adjust_difficulty(player, dir, sound)
 	local steps= gamestate_get_curr_steps(player)
 	if steps then
-		local steps_list= get_filtered_sorted_steps_list()
+		local steps_list= sort_steps_list(get_filtered_steps_list())
 		for i, v in ipairs(steps_list) do
 			if v == steps then
 				local picked_steps= steps_list[i+dir]
@@ -955,6 +1289,13 @@ local function input(event)
 	if press_type == "InputEventType_Release" then
 		saw_first_press[event.DeviceInput.button]= nil
 	end
+	if event.DeviceInput.button == "DeviceButton_s" then
+		if press_type == "InputEventType_FirstPress" then
+			expand_center_for_more()
+		elseif press_type == "InputEventType_Release" then
+			collapse_center_for_less()
+		end
+	end
 	if press_type == "InputEventType_FirstPress"
 	and event.DeviceInput.button == "DeviceButton_F9" then
 		PREFSMAN:SetPreference("ShowNativeLanguage", not PREFSMAN:GetPreference("ShowNativeLanguage"))
@@ -1079,6 +1420,7 @@ local function input(event)
 				function()
 					local function close_attempt()
 						if enough_sourses_of_visible_styles() then
+							update_steps_types_to_show()
 							style_config:set_dirty(pn_to_profile_slot(pn))
 							activate_status(music_wheel:resort_for_new_style())
 							common_menu_change(1)
@@ -1255,108 +1597,6 @@ local function maybe_help()
 	end
 end
 
-local function cdtitle()
-	if scrambler_mode then
-		swapping_amv(
-			"CDTitle", 346, 146, 48, 48, 8, 8, nil, "_", false, true, true, {
-				OnCommand= play_set,
-				CurrentSongChangedMessageCommand= play_set,
-				SetCommand= function(self)
-					local song= GAMESTATE:GetCurrentSong()
-					if song and song:HasCDTitle()then
-						self:playcommand("ChangeTexture", {song:GetCDTitlePath()})
-						self:visible(true)
-					else
-						self:visible(false)
-					end
-				end,
-		})
-	else
-		return Def.Sprite{
-			Name="CDTitle", InitCommand=cmd(x,346;y,146),
-			OnCommand= cmd(playcommand, "Set"),
-			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
-			SetCommand= function(self)
-				-- Courses can't have CDTitles, so gamestate_get_curr_song isn't used.
-				local song= GAMESTATE:GetCurrentSong()
-				if song and song:HasCDTitle()then
-					self:LoadBanner(song:GetCDTitlePath())
-					self:visible(true)
-					-- Jousway suggests fucking people with fucking huge cdtitles.
-					scale_to_fit(self, 48, 48)
-				else
-					self:visible(false)
-				end
-			end
-		}
-	end
-end
-
-local function banner()
-	if scrambler_mode then
-		return swapping_amv(
-			"Banner", banner_x, banner_y, banner_w, banner_h, 16, 5, nil, "_",
-			false, true, true, {
-				CurrentCourseChangedMessageCommand= play_set,
-				CurrentSongChangedMessageCommand= play_set,
-				SetCommand= function(self)
-					local song= GAMESTATE:GetCurrentSong() or GAMESTATE:GetCurrentCourse()
-					if song and song:HasBanner() then
-						self:playcommand("ChangeTexture", {song:GetBannerPath()})
-						self:visible(true)
-					else
-						self:visible(false)
-					end
-				end,
-				current_group_changedMessageCommand= function(self, param)
-					local name= param[1]
-					if songman_does_group_exist(name) then
-						local path= songman_get_group_banner_path(name)
-						if path and path ~= "" then
-							self:playcommand("ChangeTexture", {path})
-							self:visible(true)
-						else
-							self:visible(false)
-						end
-					else
-						self:visible(false)
-					end
-				end,
-		})
-	else
-		return Def.Sprite{
-			Name="Banner", InitCommand=cmd(xy, banner_x, banner_y),
-			CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
-			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
-			SetCommand= function(self)
-				local song= gamestate_get_curr_song()
-				if song and song:HasBanner() then
-					self:LoadBanner(song:GetBannerPath())
-					self:visible(true)
-					scale_to_fit(self, banner_w, banner_h)
-				else
-					self:visible(false)
-				end
-			end,
-			current_group_changedMessageCommand= function(self, param)
-				local name= param[1]
-				if songman_does_group_exist(name) then
-					local path= songman_get_group_banner_path(name)
-					if path and path ~= "" then
-						self:LoadBanner(path)
-						self:visible(true)
-						scale_to_fit(self, banner_w, banner_h)
-					else
-						self:visible(false)
-					end
-				else
-					self:visible(false)
-				end
-			end
-		}
-	end
-end
-
 return Def.ActorFrame {
 	InitCommand= function(self)
 		self:SetUpdateFunction(Update)
@@ -1372,6 +1612,7 @@ return Def.ActorFrame {
 			update_pain(pn)
 		end
 		music_wheel:find_actors(self:GetChild(music_wheel.name))
+		collapse_center_for_less()
 		ensure_enough_stages()
 		april_spin(self)
 	end,
@@ -1420,15 +1661,19 @@ return Def.ActorFrame {
 		get_music_wheelMessageCommand= function(self, param)
 			tag_menus[param.pn].music_wheel= music_wheel
 		end,
+		PlayerJoinedMessageCommand= function(self)
+			update_steps_types_to_show()
+			self:playcommand("Set")
+		end,
 		CurrentSongChangedMessageCommand=cmd(playcommand,"SCSet"),
 		CurrentCourseChangedMessageCommand=cmd(playcommand,"SCSet"),
-		PlayerJoinedMessageCommand=cmd(playcommand,"Set"),
 		PlayerUnJoinedMessageCommand=cmd(playcommand,"Set"),
 		CurrentStepsP1ChangedMessageCommand=cmd(playcommand,"Set"),
 		CurrentStepsP2ChangedMessageCommand=cmd(playcommand,"Set"),
 		CurrentTrailP1ChangedMessageCommand=cmd(playcommand,"Set"),
 		CurrentTrailP2ChangedMessageCommand=cmd(playcommand,"Set"),
 		SCSetCommand= function(self)
+			focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
 			steps_display:update_steps_set()
 			self:playcommand("Set")
 			update_prev_song_bpm()
@@ -1438,6 +1683,10 @@ return Def.ActorFrame {
 			update_pain(PLAYER_2)
 			steps_display:update_cursors()
 			update_player_cursors()
+		end,
+		current_group_changedMessageCommand= function(self, param)
+			curr_group_name= param[1] or ""
+			focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
 		end,
 	},
 	steps_display:create_actors("StepsDisplay"),
@@ -1451,49 +1700,8 @@ return Def.ActorFrame {
 	special_menu_displays[PLAYER_2]:create_actors(
 		"P2_menu", rpane_x, pane_y + pane_yoff, pane_h, pane_w - 16,
 		pane_text_height, pane_text_zoom, true, true),
-	cdtitle(), banner(),
-	normal_text("SongName", "", fetch_color("music_select.song_name"), nil,
-							title_x, title_y, 1, left,
-							{ CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
-								CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
-								SetCommand=
-									function(self)
-										local song= gamestate_get_curr_song()
-										if song then
-											--spew_song_specials(song)
-											self:settext(song_get_main_title(song)):visible(true)
-											width_limit_text(self, title_width)
-										else
-											self:visible(false)
-										end
-									end,
-								current_group_changedMessageCommand=
-									function(self, param)
-										local name= param[1]
-										if name then
-											self:settext(name):visible(true)
-											width_limit_text(self, title_width)
-										else
-											self:visible(false)
-										end
-									end }),
-	normal_text("length", "", fetch_color("music_select.song_length"), nil,
-							SCREEN_LEFT + 4, title_y + 24, 1, left,
-							{ CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
-								CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
-								SetCommand=
-									function(self)
-										local song= gamestate_get_curr_song()
-										if song then
-											local lenstr= secs_to_str(song_get_length(song))
-											self:settext("song length: " .. lenstr):visible(true)
-										else
-											self:visible(false)
-										end
-									end
-							}),
 	normal_text("remain", "", fetch_color("music_select.remaining_time"), nil,
-							SCREEN_LEFT + 4, title_y + 48, 1, left, {
+							SCREEN_LEFT + 4, 0 + 48, 1, left, {
 								OnCommand=
 									function(self)
 										if GAMESTATE:IsCourseMode() then
@@ -1504,7 +1712,8 @@ return Def.ActorFrame {
 										self:settext(remstr .. " remaining")
 									end
 							}),
-	music_wheel:create_actors(wheel_x),
+	music_wheel:create_actors(wheel_x, wheel_width, wheel_move_time),
+	focus_element_info:create_actors(_screen.cx, _screen.cy),
 	Def.Actor{
 		Name= "code_interpreter",
 		InitCommand= function(self)

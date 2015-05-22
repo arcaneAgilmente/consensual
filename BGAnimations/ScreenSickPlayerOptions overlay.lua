@@ -458,7 +458,7 @@ options_sets.steps_list= {
 		initialize= function(self, player_number)
 			self.cursor_pos= 1
 			self.player_number= player_number
-			self.steps_list= get_filtered_sorted_steps_list()
+			self.steps_list= sort_steps_list(get_filtered_steps_list())
 			if not self.steps_list or #self.steps_list < 1 then
 				Trace("Could not get steps_list.")
 				return

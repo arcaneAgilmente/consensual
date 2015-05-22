@@ -386,6 +386,7 @@ local function finalize_and_exit(pns)
 	if workout_mode then
 		trans_new_screen("ScreenWorkoutConfig")
 	else
+		update_steps_types_to_show()
 		bucket_man:initialize()
 		worker= make_song_sort_worker()
 		trans_new_screen("ScreenConsSelectMusic")
