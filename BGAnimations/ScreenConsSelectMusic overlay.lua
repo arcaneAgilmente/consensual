@@ -9,8 +9,8 @@ local fast_auto_scroll= nil
 local fast_scroll_start_time= 0
 local time_before_fast_scroll= .8
 local time_between_fast_scroll= .02
-local sort_width= 120
-local sort_text_x= _screen.cx * .5
+
+local sort_width= _screen.w*.25
 
 local pane_text_zoom= .625
 local pane_text_height= 16 * (pane_text_zoom / 0.5875)
@@ -81,34 +81,19 @@ local function ensure_enough_stages()
 	end
 end
 
+local sort_prop= false
+
 local function change_sort_text(new_text)
 	local overlay= SCREENMAN:GetTopScreen():GetChild("Overlay")
-	local stext= overlay:GetChild("sort_text")
+	local stext= overlay:GetChild("header"):GetChild("sort_text")
 	new_text= new_text or stext:GetText()
-	local stext2= overlay:GetChild("sort_text2")
-	local text_words= split_string_to_words(new_text)
-	local first_line= ""
-	local second_line= ""
-	for i, word in ipairs(text_words) do
-		if i == 1 then
-			first_line= word
-		elseif i == 2 then
-			first_line= first_line .. " " .. word
-		elseif i == 3 then
-			second_line= word
-		else
-			second_line= second_line .. " " .. word
-		end
-	end
-	stext:settext(first_line)
+	stext:settext(new_text)
 	width_limit_text(stext, sort_width)
-	stext2:settext(second_line)
-	width_limit_text(stext2, sort_width)
-	overlay:GetChild("sort_prop"):playcommand("Set")
+	sort_prop:playcommand("Set")
 end
 
 local function update_sort_prop()
-	SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("sort_prop"):playcommand("Set")
+	sort_prop:playcommand("Set")
 end
 
 local steps_display_interface= {}
@@ -1685,6 +1670,7 @@ return Def.ActorFrame {
 			update_player_cursors()
 		end,
 		current_group_changedMessageCommand= function(self, param)
+			update_sort_prop()
 			curr_group_name= param[1] or ""
 			focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
 		end,
@@ -1700,18 +1686,6 @@ return Def.ActorFrame {
 	special_menu_displays[PLAYER_2]:create_actors(
 		"P2_menu", rpane_x, pane_y + pane_yoff, pane_h, pane_w - 16,
 		pane_text_height, pane_text_zoom, true, true),
-	normal_text("remain", "", fetch_color("music_select.remaining_time"), nil,
-							SCREEN_LEFT + 4, 0 + 48, 1, left, {
-								OnCommand=
-									function(self)
-										if GAMESTATE:IsCourseMode() then
-											self:visible(false)
-											return
-										end
-										local remstr= secs_to_str(get_time_remaining())
-										self:settext(remstr .. " remaining")
-									end
-							}),
 	music_wheel:create_actors(wheel_x, wheel_width, wheel_move_time),
 	focus_element_info:create_actors(_screen.cx, _screen.cy),
 	Def.Actor{
@@ -1730,49 +1704,44 @@ return Def.ActorFrame {
 		end,
 	},
 	normal_text("code_text", "", Alpha(fetch_color("text"), 0), nil, 0, 0, .75),
-	normal_text("sort", "Sort",
-							fetch_color("music_select.music_wheel.sort_head"), nil,
-							sort_text_x, SCREEN_TOP + 12),
-	normal_text("sort_text", "NO SORT",
-							fetch_color("music_select.music_wheel.sort_type"),
-							nil, sort_text_x, SCREEN_TOP + 36),
-	normal_text("sort_text2", "",
-							fetch_color("music_select.music_wheel.sort_type"), nil,
-							sort_text_x, SCREEN_TOP + 60),
-	normal_text("sort_prop", "",
-							fetch_color("music_select.music_wheel.sort_value"), nil,
-							sort_text_x, SCREEN_TOP + 84, 1, center, {
-								CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
-								CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
-								SetCommand= function(self)
-									local item= music_wheel.sick_wheel:get_info_at_focus_pos()
-									local name= ""
-									if item.bucket_info then
-										name= item.bucket_info.name.value
-									elseif item.random_info then
+	Def.ActorFrame{
+		Name= "header",
+		Def.Quad{
+			InitCommand= function(self)
+				self:xy(_screen.cx, 16):setsize(_screen.w, 32)
+					:diffuse(fetch_color("bg"))
+			end
+		},
+		normal_text("sort_text", "NO SORT",
+								fetch_color("music_select.music_wheel.sort_type"),
+								nil, 8, 16, 1, left),
+		normal_text("sort_prop", "",
+								fetch_color("music_select.music_wheel.sort_value"), nil,
+								_screen.cx, 16, 1, center, {
+									InitCommand= function(self)
+										sort_prop= self
+									end,
+									SetCommand= function(self, param)
 										if music_wheel.curr_bucket.name then
-											name= music_wheel.curr_bucket.name.value
+											self:settext(bucket_disp_name(music_wheel.curr_bucket))
+										else
+											self:settext("")
 										end
-									elseif item.song_info then
-										-- TODO?  If support is ever added for building a custom
-										-- list of sort_factors, this needs to change, probably.
-										-- The last entry in the name set is the title, because
-										-- that is forced.
-										if item.item then
-											local ns= item.item.name_set
-											name= ns[#ns-1].names[1]
-										elseif music_wheel.curr_bucket.name then
-											name= music_wheel.curr_bucket.name.value
+										width_clip_limit_text(self, wheel_width)
+									end,
+		}),
+		normal_text("remain", "", fetch_color("music_select.remaining_time"), nil,
+								_screen.w - 8, 16, 1, right, {
+									OnCommand= function(self)
+										if GAMESTATE:IsCourseMode() then
+											self:visible(false)
+											return
 										end
-									elseif item.sort_info then
-										if music_wheel.curr_bucket.name then
-											name= music_wheel.curr_bucket.name.value
-										end
+										local remstr= secs_to_str(get_time_remaining())
+										self:settext(remstr)
 									end
-									self:settext(name):visible(true)
-									width_clip_limit_text(self, sort_width)
-								end
-	}),
+		}),
+	},
 	player_cursors[PLAYER_1]:create_actors(
 		"P1_cursor", 0, 0, 1, pn_to_color(PLAYER_1),
 		fetch_color("player.hilight"), player_cursor_button_list, .5),

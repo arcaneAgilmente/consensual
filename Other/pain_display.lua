@@ -4,6 +4,17 @@ end
 
 local line_height= get_line_height()
 
+local timing_segments= {
+	{"Stops", "GetStops"},
+	{"Delays", "GetDelays"},
+	{"BPM Changes", "GetBPMs"},
+	{"Warps", "GetWarps"},
+	{"Tickcounts", "GetTickcounts"},
+	{"Speed Changes", "GetSpeeds"},
+	{"Scroll Changes", "GetScrolls"},
+	{"Combo Multipliers", "GetCombos"},
+}
+
 -- pain menu structure: (back and done are in each level, but omitted here)
 -- done
 -- make wide/make narrow
@@ -12,6 +23,8 @@ local line_height= get_line_height()
 --   bpm
 --   meter
 --   (generated entries from RadarCategory)
+-- timing info
+--   (generated entries from timing_segments)
 -- favor
 --   machine/player
 -- score
@@ -62,10 +75,8 @@ local function clear_unused_half_tail(config_half)
 end
 
 local function set_pain_item_field(item_config, field_name, value)
-	if not item_config[field_name] then
-		clear_pain_item_config(item_config)
-		item_config[field_name]= value
-	end
+	clear_pain_item_config(item_config)
+	item_config[field_name]= value
 end
 
 local function porm_flag_text(flag)
@@ -228,16 +239,18 @@ options_sets.pain_menu= {
 						end
 						self.mode= self.cursor_pos - 3
 						self.depth= 2
-						if self.cursor_pos == 5 then
-							set_pain_item_field(self.item_config, "favor", "machine")
+						if self.cursor_pos == 4 then
+							set_pain_item_field(self.item_config, "chart_info", true)
+						elseif self.cursor_pos == 5 then
+							set_pain_item_field(self.item_config, "timing_info", timing_segments[1])
 						elseif self.cursor_pos == 6 then
+							set_pain_item_field(self.item_config, "favor", "machine")
+						elseif self.cursor_pos == 7 then
 							set_pain_item_field(self.item_config, "score", {slot= 1})
 							self.number_val= self.item_config.score.slot
-						elseif self.cursor_pos == 7 then
+						elseif self.cursor_pos == 8 then
 							set_pain_item_field(self.item_config, "tag", {slot= 1})
 							self.number_val= self.item_config.tag.slot
-						else
-							set_pain_item_field(self.item_config, "chart_info", true)
 						end
 						self:change_mode()
 						return true, true, false
@@ -246,6 +259,13 @@ options_sets.pain_menu= {
 					function() -- chart info
 						if chart_pos_map[self.cursor_pos-2] then
 							return chart_pos_map[self.cursor_pos-2]()
+						end
+					end,
+					function() -- timing info
+						local seg_info= timing_segments[self.cursor_pos-2]
+						if seg_info then
+							set_pain_item_field(self.item_config, "timing_info", seg_info)
+							return true, true, true
 						end
 					end,
 					function() -- favor
@@ -302,8 +322,8 @@ options_sets.pain_menu= {
 			if self.depth == 1 then
 				self.info_set= {
 					done_element(), {text= "make wide"}, {text= "clear"},
-					{text= "chart info"}, {text= "favor"}, {text= "score"},
-					{text= "tag"}}
+					{text= "chart info"}, {text= "timing info"}, {text= "favor"},
+					{text= "score"}, {text= "tag"}}
 				if self.item_config and self.item_config.is_wide then
 					self.info_set[2].text= "make narrow"
 				end
@@ -318,6 +338,11 @@ options_sets.pain_menu= {
 					end
 				elseif self.mode == 2 then
 					self.info_set= {back_element(), done_element()}
+					for i, seg in ipairs(timing_segments) do
+						self.info_set[#self.info_set+1]= {text= seg[1]}
+					end
+				elseif self.mode == 3 then
+					self.info_set= {back_element(), done_element()}
 					self.info_set[3]= {text= "machine"}
 					self.info_set[4]= {text= "player"}
 					if self.item_config.favor == "machine" then
@@ -325,12 +350,12 @@ options_sets.pain_menu= {
 					else
 						self.info_set[4].underline= true
 					end
-				elseif self.mode == 3 then
+				elseif self.mode == 4 then
 					self.info_set= {back_element(), done_element()}
 					self.info_set[3]= {
 						text= porm_flag_text(self.item_config.score.machine)}
 					self.info_set[4]= {text= tostring(self.item_config.score.slot)}
-				elseif self.mode == 4 then
+				elseif self.mode == 5 then
 					self.info_set= {back_element(), done_element()}
 					self.info_set[3]= {
 						text= porm_flag_text(self.item_config.tag.machine)}
@@ -349,9 +374,9 @@ options_sets.pain_menu= {
 			end
 		end,
 		update_flag= function(self)
-			if self.mode == 3 then
+			if self.mode == 4 then
 				self.info_set[3].text= porm_flag_text(self.item_config.score.machine)
-			elseif self.mode == 4 then
+			elseif self.mode == 5 then
 				self.info_set[3].text= porm_flag_text(self.item_config.tag.machine)
 			end
 			self.display:set_element_info(3, self.info_set[3])
@@ -813,6 +838,9 @@ pain_display_mt= {
 			elseif item_config.nps then
 				item:set_text("NPS")
 				item:set_number("X.XX")
+			elseif item_config.timing_info then
+				item:set_text(item_config.timing_info[1] or "err")
+				item:set_number("XX")
 			else
 				item:set_text("")
 				item:set_number("")
@@ -878,6 +906,7 @@ pain_display_mt= {
 			self:show_frame(show_rows)
 			local song= gamestate_get_curr_song()
 			local steps= gamestate_get_curr_steps(self.player_number)
+			local timing_data= steps and steps.GetTimingData and steps:GetTimingData()
 			local radars= steps and steps:GetRadarValues(self.player_number)
 			local mhs_list= self:get_hs_list(true)
 			local phs_list= self:get_hs_list(false)
@@ -903,6 +932,16 @@ pain_display_mt= {
 						elseif item_config.favor then
 							self:set_favor_item(
 								item, item_config.favor, item_config.is_wide)
+						elseif item_config.timing_info then
+							if timing_data and item_config.timing_info[1] then
+								local func_name= item_config.timing_info[2]
+								item:set_text(item_config.timing_info[1])
+								item:set_number(
+									("%02d"):format(#timing_data[func_name](timing_data)))
+							else
+								item:set_text("")
+								item:set_number("")
+							end
 						else
 							self:set_chart_info_item(item, item_config, radars)
 						end
