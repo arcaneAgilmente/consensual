@@ -110,6 +110,7 @@ end
 
 local inversion_level= 1
 
+dofile(THEME:GetPathO("", "art_helpers.lua"))
 big_circle_size= 512
 hbig_circle_size= big_circle_size * .5
 
