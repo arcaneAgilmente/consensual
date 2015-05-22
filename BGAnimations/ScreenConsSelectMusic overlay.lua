@@ -363,10 +363,11 @@ local focus_element_info_mt= {
 			self.middle_height= basic_info_height
 			self.left_x= wheel_width * -.15
 			self.right_x= wheel_width * .25
+			self.jacket_width= 64
+			self.jacket_x= wheel_width * -.5 + (self.jacket_width * .5)
 			local args= {
 				InitCommand= function(subself)
 					self.container= subself
-					self.banner= subself:GetChild("Banner")
 					self.cdtitle= subself:GetChild("CDTitle")
 					self.title= subself:GetChild("title")
 					self.subtitle= subself:GetChild("subtitle")
@@ -379,6 +380,12 @@ local focus_element_info_mt= {
 					InitCommand= function(subself)
 						self.bg= subself
 						subself:diffusealpha(0):setsize(wheel_width - 4, expanded_info_height*2+20)
+					end
+				},
+				Def.Sprite{
+					InitCommand= function(subself)
+						self.jacket= subself
+						subself:xy(self.jacket_x, 0)
 					end
 				},
 				cdtitle(),
@@ -461,11 +468,23 @@ local focus_element_info_mt= {
 			self.genre:visible(false)
 			self.artist:visible(false)
 		end,
+		set_jacket_to_image= function(self, path)
+			if path and path ~= "" then
+				self.jacket:LoadBanner(path)
+				self.jacket:visible(true)
+				scale_to_fit(self.jacket, self.jacket_width, self.jacket_width)
+			end
+		end,
 		update= function(self, item)
 			self:hide_song_bucket_info()
 			self:hide_song_info()
 			self.subtitle:visible(false)
+			self.jacket:visible(false)
 			if item.bucket_info then
+				if songman_does_group_exist(curr_group_name) then
+					self:set_jacket_to_image(
+						songman_get_group_banner_path(curr_group_name))
+				end
 				if item.is_current_group then
 					self.bg:diffuse(wheel_colors.current_group)
 				else
@@ -526,6 +545,11 @@ local focus_element_info_mt= {
 				end
 				local song= gamestate_get_curr_song()
 				if song then
+					if song:HasJacket() then
+						self:set_jacket_to_image(song:GetJacketPath())
+					elseif song:HasBanner() then
+						self:set_jacket_to_image(song:GetBannerPath())
+					end
 					self.title:settext(song_get_main_title(song)):visible(true)
 					self.length:settext(
 						get_string_wrapper("SelectMusicExtraInfo", "song_len") .. ": " ..
