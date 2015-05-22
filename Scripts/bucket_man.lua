@@ -720,7 +720,7 @@ local function filter_work()
 	bucket_man:filter_songs()
 end
 
-local function finalize_bucket(bucket, depth_above)
+function finalize_bucket(bucket, depth_above, no_yield)
 	local song_count= 0
 	local depth_below= 0
 	local mins= {meter= 10000, nps= 10000}
@@ -733,7 +733,7 @@ local function finalize_bucket(bucket, depth_above)
 	local handle_item= noop_nil
 	if bucket.contents[1].contents then
 		handle_item= function(item)
-			finalize_bucket(item, depth_above + 1)
+			finalize_bucket(item, depth_above + 1, no_yield)
 			song_count= song_count + item.song_count
 			depth_below= math.max(item.depth_below, depth_below)
 			update_min_table(mins, item.mins, math.min)
@@ -779,13 +779,16 @@ local function finalize_bucket(bucket, depth_above)
 	end
 	bucket.song_count= song_count
 	bucket.depth_below= depth_below + 1
+	bucket.depth_above= depth_above
 	bucket.mins= mins
 	bucket.maxs= maxs
 	bucket.difficulties= difficulties
 	bucket.meters= meters
 	bucket.step_artists= step_artists
 	bucket.step_artist_count= step_artist_count
-	maybe_yield("Finalizing", fracstr(depth_above, bucket.depth_below))
+	if not no_yield then
+		maybe_yield("Finalizing", fracstr(depth_above, bucket.depth_below))
+	end
 end
 
 local function sort_work()

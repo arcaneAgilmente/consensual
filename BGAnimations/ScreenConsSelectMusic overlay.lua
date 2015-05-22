@@ -431,13 +431,16 @@ local focus_element_info_mt= {
 			}
 			for i, diff in ipairs(Difficulty) do
 				args[#args+1]= Def.Sprite{
-					InitCommand= function(subself)
+					Texture= "big_circle", InitCommand= function(subself)
 						self.difficulty_symbols[diff]= subself
-						subself:visible(false)
+						subself:visible(false):zoom(8/big_circle_size)
+							:diffuse(diff_to_color(diff))
+							:xy(wheel_width * .5 - 16, -32 + (i * 10))
 					end
 				}
 				local new_tani= setmetatable({}, text_and_number_interface_mt)
 				diff_tani_args.tt= diff
+				diff_tani_args.tc= diff_to_color(diff)
 				self.difficulty_counts[diff]= new_tani
 				diff_tani_args.sy= 12 * i
 				below_args[#below_args+1]= new_tani:create_actors(
@@ -456,7 +459,9 @@ local focus_element_info_mt= {
 		hide_song_bucket_info= function(self)
 			self.song_count:hide()
 			for i, diff in ipairs(Difficulty) do
+				self.difficulty_counts[diff]:set_number("")
 				self.difficulty_counts[diff]:hide()
+				self.difficulty_symbols[diff]:visible(false)
 			end
 			self.diff_range:hide()
 			self.nps_range:hide()
@@ -493,16 +498,18 @@ local focus_element_info_mt= {
 				self.title:settext(curr_group_name)
 				self.subtitle:visible(false)
 				if item.bucket_info.song_count then
+					local song_count= item.bucket_info.song_count or 0
 					self.song_count:unhide()
-					self.song_count:set_number(item.bucket_info.song_count or 0)
+					self.song_count:set_number(song_count)
 					for i, diff in ipairs(Difficulty) do
 						local count= item.bucket_info.difficulties[diff]
 						if count then
 							self.difficulty_counts[diff]:set_number(("%03d"):format(count))
 							self.difficulty_counts[diff]:unhide()
+							self.difficulty_symbols[diff]:visible(true)
+								:diffusealpha(count / song_count)
 						else
 							self.difficulty_counts[diff]:set_number(("%03d"):format(0))
-							self.difficulty_counts[diff]:hide()
 						end
 					end
 					local mins= item.bucket_info.mins
@@ -547,8 +554,8 @@ local focus_element_info_mt= {
 				if song then
 					if song:HasJacket() then
 						self:set_jacket_to_image(song:GetJacketPath())
-					elseif song:HasBanner() then
-						self:set_jacket_to_image(song:GetBannerPath())
+					elseif song:HasBackground() then
+						self:set_jacket_to_image(song:GetBackgroundPath())
 					end
 					self.title:settext(song_get_main_title(song)):visible(true)
 					self.length:settext(
@@ -565,6 +572,18 @@ local focus_element_info_mt= {
 						self.artist:settext(
 							get_string_wrapper("SelectMusicExtraInfo", "song_artist") ..
 								": " .. artist):visible(true)
+					end
+					local steps_list= get_filtered_steps_list()
+					for i, steps in ipairs(steps_list) do
+						local diff= steps:GetDifficulty()
+						self.difficulty_symbols[diff]:visible(true):diffusealpha(1)
+						local num_text= self.difficulty_counts[diff].number:GetText()
+						if num_text ~= "" then num_text= num_text .. ", " end
+						num_text= num_text .. get_string_wrapper(
+							"DifficultyNames", steps:GetStepsType()) .. "-" ..
+							steps:GetMeter()
+						self.difficulty_counts[diff]:set_number(num_text)
+						self.difficulty_counts[diff]:unhide()
 					end
 				else
 					self.title:visible(false)

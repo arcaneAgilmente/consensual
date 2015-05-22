@@ -110,6 +110,9 @@ end
 
 local inversion_level= 1
 
+big_circle_size= 512
+hbig_circle_size= big_circle_size * .5
+
 return Def.ActorFrame{
 	Def.ActorFrame{
 		Name= "confetti_container", InitCommand= function(self)
@@ -137,5 +140,31 @@ return Def.ActorFrame{
 				self:zoomy(1):y(0):zoomx(1):x(0)
 			end
 		end
-	}
+	},
+	Def.ActorFrame{
+		Name= "rendered_things", InitCommand= function(self)
+			self:hibernate(math.huge)
+		end,
+		Def.ActorFrameTexture{
+			InitCommand= function(self)
+				self:setsize(big_circle_size, big_circle_size)
+					:SetTextureName("big_circle")
+					:EnableAlphaBuffer(true):Create()
+					:EnablePreserveTexture(false):Draw()
+			end,
+			circle_amv("circle", hbig_circle_size-1, hbig_circle_size-1,
+								 hbig_circle_size, big_circle_size, {1, 1, 1, 1}),
+		},
+		Def.ActorFrameTexture{
+			InitCommand= function(self)
+				self:setsize(big_circle_size, big_circle_size)
+					:SetTextureName("big_spotlight")
+					:EnableAlphaBuffer(true):Create()
+					:EnablePreserveTexture(false):Draw()
+			end,
+			circle_amv("circle", hbig_circle_size-1, hbig_circle_size-1,
+								 hbig_circle_size, big_circle_size,
+								 {1, 1, 1, 1}, {1, 1, 1, 0}, "BlendMode_CopySrc"),
+		}
+	},
 }

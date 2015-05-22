@@ -38,19 +38,22 @@ function arrow_amv(name, x, y, width, height, detail, color)
 	}
 end
 
-function circle_amv(name, x, y, r, chords, color)
+function circle_amv(name, x, y, r, chords, color, out_color, blend)
 	x= x or 0
 	y= y or 0
 	r= r or 4
 	chords= chords or 6
+	out_color= out_color or color
 	return Def.ActorMultiVertex{
 		Name= name, InitCommand= function(self)
 			local verts= calc_circle_verts(r, chords, 0, 0)
 			table.insert(verts, 1, {{0, 0, 0}, color})
 			for i, v in ipairs(verts) do
-				v[2]= color
+				v[2]= out_color
 			end
+			verts[1][2]= color
 			self:xy(x, y):SetDrawState{Mode="DrawMode_Fan"}:SetVertices(verts)
+			if blend then self:blend(blend) end
 	end}
 end
 
