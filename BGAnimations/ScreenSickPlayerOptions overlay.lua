@@ -500,9 +500,7 @@ options_sets.steps_list= {
 				cons_set_current_steps(self.player_number, steps)
 				GAMESTATE:SetPreferredDifficulty(
 					self.player_number, steps:GetDifficulty())
-				set_preferred_style(
-					self.player_number, stepstype_to_style[steps:GetStepsType()]
-					[GAMESTATE:GetNumPlayersEnabled()].name)
+				set_preferred_steps_type(self.player_number, steps:GetStepsType())
 				self:update_el_underline(self.player_choice+1, false)
 				self.player_choice= spos
 				-- Note the line above updating player_choice.

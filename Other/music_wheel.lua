@@ -88,55 +88,6 @@ local wheel_item_mt= {
 		end,
 }}
 
-local recent_limit= 64
-local function add_song_to_recent_internal(song, recent)
-	local song_name= song_get_dir(song)
-	local shifted= recent[1]
-	recent[1]= {el= song}
-	if not shifted then return end
-	if song_get_dir(shifted.el) == song_name then return end
-	for i= 2, #recent+1 do
-		if recent[i] and song_get_dir(recent[i].el) == song_name then
-			recent[i]= shifted
-			return
-		else
-			shifted, recent[i]= recent[i], shifted
-		end
-	end
-	if recent[recent_limit+1] then recent[recent_limit+1]= nil end
-end
-
-local function add_song_to_recent(song, recent, bucket)
-	add_song_to_recent_internal(song, recent)
-	finalize_bucket(bucket.bucket_info, 0, true)
-end
-
-local function make_bucket_from_recent(recent, name)
-	local i= 1
-	while i <= #recent do
-		if check_censor_list(recent[i]) then
-			table.remove(recent, i)
-		else
-			i= i + 1
-		end
-	end
-	local bucket= {
-		is_special= true, is_recent= true,
-		bucket_info= {
-			name= {
-				value= name, disp_name= get_string_wrapper("MusicWheel", name),
-				source= {
-					name, "make from recent",
-					get_names= generic_get_wrapper("GetDisplayMainTitle")}},
-			contents= recent}}
-	return bucket
-end
-
-local random_recent= {}
-local played_recent= {}
-local random_recent_bucket= make_bucket_from_recent(random_recent, "Recent from Random")
-local played_recent_bucket= make_bucket_from_recent(played_recent, "Recently played")
-
 local function make_random_decision(random_el)
 	local candidates= random_el.candidate_set
 	local choice= 1
@@ -146,7 +97,7 @@ local function make_random_decision(random_el)
 	-- This is a check to make sure the thing being picked is a song or course.
 	if candidates[choice].GetDisplayFullTitle then
 		random_el.chosen= candidates[choice]
-		add_song_to_recent(random_el.chosen, random_recent, random_recent_bucket)
+		add_song_to_recent_random(random_el.chosen)
 	else
 		random_el.chosen= nil
 	end
@@ -307,7 +258,8 @@ local music_whale= {
 					a:GetSongDir() == b:GetSongDir()
 			end
 			local search_path= {}
-			if self.cursor_item then
+			if self.cursor_item and self.cursor_item.name_set then
+				rec_print_table(self.cursor_item)
 				search_path= {
 					bucket_search_for_item(self.sorted_songs, self.cursor_item, dir_compare)}
 				if search_path[1] == -1 then
@@ -398,18 +350,10 @@ local music_whale= {
 						disp_name= get_string_wrapper("MusicWheel", "PrevSong"),
 						is_prev= true, song_info= prev_picked_song}
 				end
-				if #random_recent > 0 then
-					self.random_recent_pos= #bucket+1
-					bucket[#bucket+1]= random_recent_bucket
-				else
-					self.random_recent_pos= nil
-				end
-				if #played_recent > 0 then
-					self.played_recent_pos= #bucket+1
-					bucket[#bucket+1]= played_recent_bucket
-				else
-					self.played_recent_pos= nil
-				end
+				self.random_recent_pos= #bucket+1
+				bucket[#bucket+1]= random_recent_bucket
+				self.played_recent_pos= #bucket+1
+				bucket[#bucket+1]= played_recent_bucket
 				self:add_randoms(bucket)
 			end
 			bucket[#bucket+1]= last_el
@@ -616,7 +560,7 @@ local music_whale= {
 		elseif (curr_element.song_info or curr_element.random_info) and
 		gamestate_get_curr_song() then
 			local cur_song= gamestate_get_curr_song()
-			add_song_to_recent(cur_song, played_recent, played_recent_bucket)
+			add_song_to_recent_played(cur_song)
 			local alt_cursor_songs= {}
 			if not curr_element.random_info then
 				local function gather_adjacent_songs(s)

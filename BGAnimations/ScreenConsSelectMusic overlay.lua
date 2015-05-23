@@ -40,9 +40,12 @@ local title_width= wheel_width - 32
 local entering_song= false
 local options_time= 1.5
 local go_to_options= false
+local picking_steps= false
+local was_picking_steps= false
 
 local update_player_cursors= noop_nil
 
+local options_message= false
 local timer_actor= false
 local function get_screen_time()
 	if timer_actor then
@@ -94,165 +97,6 @@ end
 
 local function update_sort_prop()
 	sort_prop:playcommand("Set")
-end
-
-local steps_display_interface= {}
-local steps_display_interface_mt= { __index= steps_display_interface }
-
-local std_item_w= 56
-local std_item_h= 32
-local std_items_mt= {
-	__index= {
-		create_actors= function(self, name)
-			self.name= name
-			self.tani= setmetatable({}, text_and_number_interface_mt)
-			return Def.ActorFrame{
-				Name= name, InitCommand= function(subself)
-					self.container= subself
-					self.bg= subself:GetChild("bg")
-					self.tani.number:strokecolor(
-						fetch_color("music_select.steps_selector.number_stroke"))
-					self.tani.text:strokecolor(
-						fetch_color("music_select.steps_selector.name_stroke"))
-				end,
-				Def.Quad{
-					Name= "bg", InitCommand= cmd(setsize, std_item_w, std_item_h)
-				},
-				self.tani:create_actors(
-					"text", {
-						tx= -24, tz= 1, ta= left, text_section= "",
-						tc= fetch_color("music_select.steps_selector.name_color"),
-						nx= 24, nz= 1, na= right,
-						nc= fetch_color("music_select.steps_selector.name_color")}),
-			}
-		end,
-		transform= function(self, item_index, num_items, is_focus)
-			local changing_edge=
-				((self.prev_index == 1 and item_index == num_items) or
-						(self.prev_index == num_items and item_index == 1))
-			if changing_edge then
-				self.bg:diffusealpha(0)
-				self.tani:hide()
-			end
-			local nx= (item_index - 1) * (std_item_w + 6)
-			self.container:stoptweening():linear(.1):x(nx)
-			self.tani:unhide()
-			self.bg:diffusealpha(1)
-			self.prev_index= item_index
-		end,
-		set= function(self, info)
-			self.info= info
-			if info then
-				self.tani:set_text(
-					get_string_wrapper("DifficultyNames", self.info:GetStepsType()))
-				self.tani:set_number(info:GetMeter())
-				width_limit_text(self.tani.text, 18)
-				width_limit_text(self.tani.number, 30)
-				self.tani:unhide()
-				self.bg:diffuse(diff_to_color(info:GetDifficulty())):diffusealpha(1)
-				self.container:visible(true)
-			else
-				self.container:visible(false)
-			end
-		end
-}}
-
-local steps_display_elements= 6
-local sd_button_list= {}
-function steps_display_interface:create_actors(name)
-	self.name= name
-	local args= {
-		Name= name,
-		InitCommand= function(subself)
-			self.container= subself
-			subself:xy(4+(std_item_w/2), 195)
-			for k, v in pairs(self.cursors) do
-				v:refit(nil, nil, std_item_w+4, std_item_h+4)
-				if not GAMESTATE:IsPlayerEnabled(k) then
-					v:hide()
-				end
-			end
-		end
-	}
-	self.sick_wheel= setmetatable({disable_wrapping= true}, sick_wheel_mt)
-	args[#args+1]= self.sick_wheel:create_actors("wheel", steps_display_elements, std_items_mt, 0, 0)
-	local cursors= {}
-	for i, v in ipairs(all_player_indices) do
-		local new_curs= {}
-		setmetatable(new_curs, cursor_mt)
-		args[#args+1]= new_curs:create_actors(
-			v .. "curs", 0, 0, 2, pn_to_color(v), fetch_color("player.hilight"),
-			sd_button_list)
-		cursors[v]= new_curs
-	end
-	self.cursors= cursors
-	return Def.ActorFrame(args)
-end
-
-function steps_display_interface:update_steps_set()
-	local candidates= sort_steps_list(get_filtered_steps_list())
-	if candidates and #candidates > 0 then
-		self.sick_wheel:set_info_set(candidates, 1)
-		self.container:diffusealpha(1)
-	else
-		self.sick_wheel:set_info_set(candidates, 1)
-		self.container:diffusealpha(0)
-	end
-end
-
-function steps_display_interface:update_cursors()
-	local candidates= self.sick_wheel.info_set
-	if candidates and #candidates > 0 then
-		local player_steps= {}
-		local enabled_players= GAMESTATE:GetEnabledPlayers()
-		for i, v in ipairs(enabled_players) do
-			player_steps[v]= gamestate_get_curr_steps(v)
-		end
-		local cursor_poses= {}
-		for i, s in ipairs(candidates) do
-			for pi, pv in ipairs(enabled_players) do
-				if s == player_steps[pv] then
-					cursor_poses[pv]= i-1
-				end
-			end
-		end
-		local tot= 0
-		local cnt= 0
-		for k, p in pairs(cursor_poses) do
-			tot= tot + p
-			cnt= cnt + 1
-		end
-		self.sick_wheel:scroll_to_pos((tot / cnt)+1)
-		for k, cursor in pairs(self.cursors) do
-			if cursor_poses[k] then
-				local item= self.sick_wheel:find_item_by_info(player_steps[k])[1]
-				if item then
-					local cx= item.container:GetDestX()
-					local cy= item.container:GetDestY()
-					cursor:refit(cx, cy, nil, nil)
-					cursor:unhide()
-				else
-					cursor:hide()
-				end
-			else
-				cursor:hide()
-			end
-		end
-		if #enabled_players > 1 then
-			if cursor_poses[PLAYER_1] and cursor_poses[PLAYER_2] then
-				if cursor_poses[PLAYER_1] == cursor_poses[PLAYER_2] then
-					self.cursors[PLAYER_1]:left_half()
-					self.cursors[PLAYER_2]:right_half()
-				else
-					self.cursors[PLAYER_1]:un_half()
-					self.cursors[PLAYER_2]:un_half()
-				end
-			end
-		else
-			self.cursors[PLAYER_1]:un_half()
-			self.cursors[PLAYER_2]:un_half()
-		end
-	end
 end
 
 local function cdtitle()
@@ -612,11 +456,202 @@ local focus_element_info_mt= {
 }}
 local focus_element_info= setmetatable({}, focus_element_info_mt)
 
+local steps_menu_item_offset= 0
+local steps_menu_item_mt= {
+	__index= {
+		create_actors= function(self, name)
+			self.name= name
+			return Def.ActorFrame{
+				Name= name, InitCommand= function(subself)
+					self.container= subself
+					self.text= subself:GetChild("text")
+				end,
+				Def.Sprite{
+					Texture= "big_circle", InitCommand= function(subself)
+						self.spr= subself
+						subself:zoom(16/big_circle_size)
+					end
+				},
+				normal_text(
+					"text", "", fetch_color("music_select.steps_selector.number_color"),
+					fetch_color("music_select.steps_selector.number_stroke"), 0, 0, .5),
+			}
+		end,
+		transform= function(self, item_index, num_items, is_focus, focus_pos)
+			local angle_per= math.pi * 2 / num_items
+			local angle= angle_per * (item_index - steps_menu_item_offset)
+			local radius= 40
+			self.container:finishtweening():linear(wheel_move_time)
+				:xy(math.cos(angle) * radius, math.sin(angle) * radius)
+			if item_index == steps_menu_item_offset then
+				self.container:zoom(1.5)
+			else
+				self.container:zoom(1)
+			end
+		end,
+		set= function(self, info)
+			self.info= info
+			if not info then
+				self.container:visible(false)
+				return
+			end
+			self.container:visible(true)
+			if info[1] == "pick_song" then
+				self.spr:diffuse(fetch_color("music_select.steps_selector.pick_song"))
+			elseif not info.diff then
+				self.spr:diffuse(fetch_color("music_select.steps_selector.pick_steps_type"))
+			else
+				self.spr:diffuse(diff_to_color(info.diff))
+				self.text:settext(info[1])
+			end
+		end
+}}
+
+local steps_menu_mt= {
+	__index= {
+		create_actors= function(self, x, y, pn)
+			self.pn= pn
+			self.sick_wheel= setmetatable({disable_wrapping= true}, sick_wheel_mt)
+			return Def.ActorFrame{
+				InitCommand= function(subself)
+					self.container= subself
+					self.text= subself:GetChild("text")
+					self.text:vertspacing(-8)
+					subself:xy(x, y):visible(false)
+				end,
+				self.sick_wheel:create_actors("wheel", 12, steps_menu_item_mt, 0, 0),
+				Def.Sprite{
+					Texture= "big_circle", InitCommand= function(subself)
+						self.spr= subself
+						subself:zoom(56/big_circle_size)
+					end
+				},
+				normal_text(
+					"text", "", fetch_color("music_select.steps_selector.number_color"),
+					fetch_color("music_select.steps_selector.number_stroke"), 0, 0, .5),
+			}
+		end,
+		activate= function(self)
+			self.container:visible(true)
+			self.needs_deactivate= false
+			self.steps_list= sort_steps_list(get_filtered_steps_list())
+			self.steps_type_list= {}
+			self.steps_by_type= {}
+			for i, steps in ipairs(self.steps_list) do
+				local steps_type= steps:GetStepsType()
+				insert_into_sorted_table(self.steps_type_list, steps_type)
+				if not self.steps_by_type[steps_type] then
+					self.steps_by_type[steps_type]= {steps}
+				else
+					table.insert(self.steps_by_type[steps_type], steps)
+				end
+			end
+			local pref_steps_type= get_preferred_steps_type(self.pn)
+			if pref_steps_type == "" or #self.steps_type_list == 1
+			or not self.steps_by_type[pref_steps_type] then
+				self.chosen_steps_type= self.steps_type_list[1]
+			else
+				self.chosen_steps_type= pref_steps_type
+			end
+			self:change_to_pick_steps()
+		end,
+		deactivate= function(self)
+			self.container:visible(false)
+		end,
+		change_to_pick_steps= function(self)
+			self.curr_choice= 1
+			self.choices= {}
+			self.chosen_steps= nil
+			if #self.steps_type_list > 1 then
+				self.choices[1]= {"pick_steps_type"}
+			else
+				self.choices[1]= {"pick_song"}
+			end
+			local player_steps= gamestate_get_curr_steps(self.pn)
+			for i, steps in ipairs(self.steps_by_type[self.chosen_steps_type]) do
+				local met= steps:GetMeter()
+				local diff= steps:GetDifficulty()
+				self.choices[#self.choices+1]= {
+					tostring(met), diff= diff, met= met, steps= steps}
+				if steps == player_steps then
+					self.curr_choice= #self.choices
+				end
+			end
+			self.sick_wheel:set_info_set(self.choices, 1)
+			self:update_selection()
+		end,
+		change_to_pick_steps_type= function(self)
+			self.curr_choice= 1
+			self.choices= {}
+			self.choices[1]= {"pick_song"}
+			for i, steps_type in ipairs(self.steps_type_list) do
+				self.choices[#self.choices+1]= {steps_type, steps_type= steps_type}
+			end
+			self.sick_wheel:set_info_set(self.choices, 1)
+			self:update_selection()
+		end,
+		update_selection= function(self)
+			local choice= self.choices[self.curr_choice]
+			steps_menu_item_offset= self.curr_choice
+			self.sick_wheel:scroll_by_amount(0)
+			if choice[1] == "pick_song" then
+				self.spr:diffuse(fetch_color("music_select.steps_selector.pick_song"))
+				self.text:settext(get_string_wrapper("StepsDisplayList", choice[1]))
+			elseif not choice.diff then
+				self.spr:diffuse(fetch_color("music_select.steps_selector.pick_steps_type"))
+				self.text:settext(get_string_wrapper("StepsDisplayList", choice[1]))
+			else
+				self.spr:diffuse(diff_to_color(choice.diff))
+				self.text:settext(
+					get_string_wrapper("StepsDisplayList", choice.diff) .. "\n" ..
+						choice.met)
+				cons_set_current_steps(self.pn, choice.steps)
+			end
+		end,
+		interpret_code= function(self, code)
+			local funs= {
+				MenuLeft= function(self)
+					self.curr_choice= self.curr_choice - 1
+					if self.curr_choice < 1 then self.curr_choice= #self.choices end
+					self:update_selection()
+					return true
+				end,
+				MenuRight= function(self)
+					self.curr_choice= self.curr_choice + 1
+					if self.curr_choice > #self.choices then self.curr_choice= 1 end
+					self:update_selection()
+					return true
+				end,
+				Start= function(self)
+					local choice= self.choices[self.curr_choice]
+					if choice[1] == "pick_steps_type" then
+						self:change_to_pick_steps_type()
+					elseif choice[1] == "pick_song" then
+						self.needs_deactivate= true
+					else
+						if choice.steps_type then
+							self.chosen_steps_type= choice.steps_type
+							self:change_to_pick_steps()
+						elseif choice.steps then
+							self.chosen_steps= choice.steps
+						end
+					end
+					self:update_selection()
+					return true
+				end
+			}
+			if funs[code] then return funs[code](self) end
+		end
+}}
+local steps_menus= {
+	[PLAYER_1]= setmetatable({}, steps_menu_mt),
+	[PLAYER_2]= setmetatable({}, steps_menu_mt),
+}
+
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "pain_display.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 
-local steps_display= setmetatable({}, steps_display_interface_mt)
 local pain_displays= {
 	[PLAYER_1]= setmetatable({}, pain_display_mt),
 	[PLAYER_2]= setmetatable({}, pain_display_mt),
@@ -916,7 +951,7 @@ local input_functions= {
 local function set_closest_steps_to_preferred(pn)
 	local preferred_diff= GAMESTATE:GetPreferredDifficulty(pn) or
 		"Difficulty_Beginner"
-	local pref_style= get_preferred_style(pn)
+	local pref_steps_type= get_preferred_steps_type(pn)
 	local curr_steps_type= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
 	local candidates= sort_steps_list(get_filtered_steps_list())
 	if candidates and #candidates > 0 then
@@ -927,34 +962,22 @@ local function set_closest_steps_to_preferred(pn)
 				closest= {
 					steps= steps, diff_diff=
 						math.abs(Difficulty:Compare(preferred_diff, steps:GetDifficulty())),
-					style= stepstype_to_style[steps:GetStepsType()]
-						[GAMESTATE:GetNumPlayersEnabled()].name}
+					steps_type= steps:GetStepsType()}
 			else
 				local this_difference= math.abs(
 					Difficulty:Compare(preferred_diff, steps:GetDifficulty()))
-				local this_style= false
-				local sts_entry= stepstype_to_style[steps:GetStepsType()]
-				if sts_entry then
-					sts_entry= sts_entry[GAMESTATE:GetNumPlayersEnabled()]
-					if sts_entry then
-						this_style= sts_entry.name
+				local this_steps_type= steps:GetStepsType()
+				if closest.steps_type == pref_steps_type then
+					if this_steps_type == pref_steps_type and
+					this_difference < closest.diff_diff then
+						closest= {steps= steps, diff_diff= this_difference,
+											steps_type= this_steps_type}
 					end
-				end
-				if this_style then
-					if closest.style == pref_style then
-						if this_style == pref_style and
-						this_difference < closest.diff_diff then
-							closest= {
-								steps= steps, diff_diff= this_difference, style= this_style}
-						end
-					else
-						if this_style == pref_style then
-							closest= {
-								steps= steps, diff_diff= this_difference, style= this_style}
-						elseif this_difference < closest.diff_diff then
-							closest= {
-								steps= steps, diff_diff= this_difference, style= this_style}
-						end
+				else
+					if this_steps_type == pref_steps_type
+					or this_difference < closest.diff_diff then
+						closest= {steps= steps, diff_diff= this_difference,
+											steps_type= this_steps_type}
 					end
 				end
 			end
@@ -977,7 +1000,7 @@ local function adjust_difficulty(player, dir, sound)
 				if picked_steps then
 					cons_set_current_steps(player, picked_steps)
 					GAMESTATE:SetPreferredDifficulty(player, picked_steps:GetDifficulty())
-					set_preferred_style(player, stepstype_to_style[picked_steps:GetStepsType()][GAMESTATE:GetNumPlayersEnabled()].name)
+					set_preferred_steps_type(player, picked_steps:GetStepsType())
 					SOUND:PlayOnce(THEME:GetPathS("_switch", sound))
 				else
 					SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
@@ -1128,14 +1151,6 @@ local codes= {
 }
 for i, code in ipairs(codes) do
 	code.curr_pos= {[PLAYER_1]= 1, [PLAYER_2]= 1}
-	local in_game= string_in_table(global_cur_game, code.games)
-	if in_game then
-		if code.name == "diff_up" then
-			sd_button_list[#sd_button_list+1]= {"left", code[1]}
-		elseif code.name == "diff_down" then
-			sd_button_list[#sd_button_list+1]= {"right", code[1]}
-		end
-	end
 end
 
 local function update_keys_down(pn, key_pressed, press_type)
@@ -1228,6 +1243,7 @@ local code_functions= {
 			change_sort_text(music_wheel.current_sort_name)
 		end,
 		play_song= function(pn)
+			if was_picking_steps then was_picking_steps= false return end
 			local needs_work, after_func= music_wheel:interact_with_element(pn)
 			if needs_work then
 				activate_status(needs_work, after_func)
@@ -1264,8 +1280,6 @@ local code_functions= {
 			lua.Flush()
 			GAMESTATE:ApplyGameCommand("style,single")
 			Trace("Master player after unjoin: " .. GAMESTATE:GetMasterPlayerNumber())
-			steps_display:update_steps_set()
-			steps_display:update_cursors()
 		end
 }
 
@@ -1347,6 +1361,44 @@ local function input(event)
 				SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 				entering_song= 0
 				go_to_options= true
+			end
+		elseif picking_steps then
+			if press_type ~= "InputEventType_Release" then
+				steps_menus[pn]:interpret_code(key_pressed)
+				if steps_menus[pn].needs_deactivate then
+					for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+						steps_menus[dpn]:deactivate()
+					end
+					picking_steps= false
+					was_picking_steps= true
+				elseif steps_menus[pn].chosen_steps then
+					local all_chosen= true
+					for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+						if not steps_menus[dpn].chosen_steps then all_chosen= false end
+					end
+					if all_chosen then
+						local function do_entry()
+							SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
+							options_message:accelerate(0.25):diffusealpha(1)
+							entering_song= get_screen_time() + options_time
+							prev_picked_song= gamestate_get_curr_song()
+							save_all_favorites()
+							save_all_tags()
+							save_censored_list()
+						end
+						if not GAMESTATE.CanSafelyEnterGameplay then
+							do_entry()
+							return
+						end
+						local can, reason= GAMESTATE:CanSafelyEnterGameplay()
+						if can then
+							do_entry()
+						else
+							SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
+							lua.ReportScriptError("Cannot safely enter gameplay: " .. tostring(reason))
+						end
+					end
+				end
 			end
 		else
 			local function common_menu_change(next_menu)
@@ -1555,8 +1607,6 @@ local help_args= {
 	exp_text("song_exp", 8, 60, to_play, "music_select.music_wheel.song"),
 	Def.ActorFrame{
 		Name= "diffex", InitCommand= cmd(xy, 156, 195),
-		-- TODO?  duplicate the actual entry in the steps_display that is being
-		-- covered.
 		Def.Quad{
 			InitCommand= function(self)
 				self:diffuse(fetch_color("accent.yellow"))
@@ -1650,26 +1700,10 @@ return Def.ActorFrame {
 		change_sort_text(music_wheel.current_sort_name)
 	end,
 	play_songCommand= function(self)
-		local function do_entry()
-			SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-			self:GetChild("options message"):accelerate(0.25):diffusealpha(1)
-			entering_song= get_screen_time() + options_time
-			prev_picked_song= gamestate_get_curr_song()
-			save_all_favorites()
-			save_all_tags()
-			save_censored_list()
+		for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+			steps_menus[dpn]:activate()
 		end
-		if not GAMESTATE.CanSafelyEnterGameplay then
-			do_entry()
-			return
-		end
-		local can, reason= GAMESTATE:CanSafelyEnterGameplay()
-		if can then
-			do_entry()
-		else
-			SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
-			lua.ReportScriptError("Cannot safely enter gameplay: " .. tostring(reason))
-		end
+		picking_steps= true
 	end,
 	real_play_songCommand= function(self)
 		if go_to_options then
@@ -1702,14 +1736,12 @@ return Def.ActorFrame {
 		CurrentTrailP2ChangedMessageCommand=cmd(playcommand,"Set"),
 		SCSetCommand= function(self)
 			focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
-			steps_display:update_steps_set()
 			self:playcommand("Set")
 			update_prev_song_bpm()
 		end,
 		SetCommand= function(self)
 			update_pain(PLAYER_1)
 			update_pain(PLAYER_2)
-			steps_display:update_cursors()
 			update_player_cursors()
 		end,
 		current_group_changedMessageCommand= function(self, param)
@@ -1718,7 +1750,6 @@ return Def.ActorFrame {
 			focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
 		end,
 	},
-	steps_display:create_actors("StepsDisplay"),
 	pain_displays[PLAYER_1]:create_actors(
 		"P1_pain", lpane_x, pane_y + pane_yoff - pane_text_height, PLAYER_1, pane_w, pane_text_zoom),
 	pain_displays[PLAYER_2]:create_actors(
@@ -1731,6 +1762,8 @@ return Def.ActorFrame {
 		pane_text_height, pane_text_zoom, true, true),
 	music_wheel:create_actors(wheel_x, wheel_width, wheel_move_time),
 	focus_element_info:create_actors(_screen.cx, _screen.cy),
+	steps_menus[PLAYER_1]:create_actors(pane_w / 2, _screen.cy*.5, PLAYER_1),
+	steps_menus[PLAYER_2]:create_actors(_screen.w - pane_w / 2, _screen.cy*.5, PLAYER_2),
 	Def.Actor{
 		Name= "code_interpreter",
 		InitCommand= function(self)
@@ -1812,6 +1845,7 @@ return Def.ActorFrame {
 		InitCommand= function(self)
 									 self:xy(SCREEN_CENTER_X, SCREEN_CENTER_Y)
 									 self:diffusealpha(0)
+									 options_message= self
 								 end,
 		OnCommand= function(self)
 								 local xmn, xmx, ymn, ymx= rec_calc_actor_extent(self)

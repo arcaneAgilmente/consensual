@@ -106,6 +106,8 @@ local default_config= {
 				{"sort_value", "text_other"},
 		 }},
 		 {"steps_selector", {
+				{"pick_steps_type", color("#3f3f3f")},
+				{"pick_song", "accent.magenta"},
 				{"number_stroke", "stroke"},
 				{"name_stroke", "stroke"},
 				{"number_color", "text"},

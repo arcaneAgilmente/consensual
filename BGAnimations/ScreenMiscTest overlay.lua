@@ -84,7 +84,7 @@ local args= {
 		Texture= "big_spotlight", InitCommand= function(self)
 			self:xy(_screen.cx, _screen.cy):diffuse(color("#3f3f3f"))
 				:blend("BlendMode_Add"):visible(true)
-				:zoomx(_screen.w / 512):zoomy(_screen.h / 512)
+				:zoomx(_screen.w * 2 / 512):zoomy(_screen.h * 2 / 512)
 		end
 	},
 }

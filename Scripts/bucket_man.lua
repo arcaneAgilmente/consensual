@@ -858,3 +858,59 @@ function finish_song_sort_worker()
 		song_sort_worker= false
 	end
 end
+
+local recent_limit= 64
+local function add_song_to_recent_internal(song, recent)
+	local song_name= song_get_dir(song)
+	local shifted= recent[1]
+	recent[1]= {el= song}
+	if not shifted then return end
+	if song_get_dir(shifted.el) == song_name then return end
+	for i= 2, #recent+1 do
+		if recent[i] and song_get_dir(recent[i].el) == song_name then
+			recent[i]= shifted
+			return
+		else
+			shifted, recent[i]= recent[i], shifted
+		end
+	end
+	if recent[recent_limit+1] then recent[recent_limit+1]= nil end
+end
+
+local function make_bucket_from_recent(recent, name)
+	local i= 1
+	while i <= #recent do
+		if check_censor_list(recent[i]) then
+			table.remove(recent, i)
+		else
+			i= i + 1
+		end
+	end
+	local bucket= {
+		is_special= true, is_recent= true,
+		bucket_info= {
+			name= {
+				value= name, disp_name= get_string_wrapper("MusicWheel", name),
+				source= {
+					name, "make from recent",
+					get_names= generic_get_wrapper("GetDisplayMainTitle")}},
+			contents= recent}}
+	return bucket
+end
+
+local random_recent= {}
+local played_recent= {}
+random_recent_bucket= make_bucket_from_recent(random_recent, "Recent from Random")
+played_recent_bucket= make_bucket_from_recent(played_recent, "Recently played")
+
+local function add_song_to_recent(song, recent, bucket)
+	add_song_to_recent_internal(song, recent)
+	finalize_bucket(bucket.bucket_info, 0, true)
+end
+
+function add_song_to_recent_random(song)
+	add_song_to_recent(song, random_recent, random_recent_bucket)
+end
+function add_song_to_recent_played(song)
+	add_song_to_recent(song, played_recent, played_recent_bucket)
+end

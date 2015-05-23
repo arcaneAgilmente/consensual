@@ -251,7 +251,7 @@ local default_config= {
 	combo_splash_threshold= "TapNoteScore_W3",
 	combo_graph_threshold= "TapNoteScore_W3",
 	low_score_random_threshold= .9,
-	preferred_style= "single",
+	preferred_steps_type= "",
 	experience_level= 1, -- To ease triggering confetti on gaining a level.
 	life_blank_percent= .8,
 	life_use_width= 1,
@@ -326,11 +326,11 @@ function update_old_player_config(prof_slot, config)
 	end
 end
 
-function get_preferred_style(pn)
-	return player_config:get_data(pn_to_profile_slot(pn)).preferred_style
+function get_preferred_steps_type(pn)
+	return player_config:get_data(pn_to_profile_slot(pn)).preferred_steps_type
 end
 
-function set_preferred_style(pn, value)
+function set_preferred_steps_type(pn, value)
 	player_config:set_dirty(pn_to_profile_slot(pn))
-	player_config:get_data(pn_to_profile_slot(pn)).preferred_style= value
+	player_config:get_data(pn_to_profile_slot(pn)).preferred_steps_type= value
 end
