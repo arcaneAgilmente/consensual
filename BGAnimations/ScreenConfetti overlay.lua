@@ -113,6 +113,7 @@ local inversion_level= 1
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 big_circle_size= 512
 hbig_circle_size= big_circle_size * .5
+hollow_circle_inner_zoom= .8
 
 return Def.ActorFrame{
 	Def.ActorFrame{
@@ -166,6 +167,26 @@ return Def.ActorFrame{
 			circle_amv("circle", hbig_circle_size-1, hbig_circle_size-1,
 								 hbig_circle_size, big_circle_size,
 								 {1, 1, 1, 1}, {1, 1, 1, 0}, "BlendMode_CopySrc"),
-		}
+		},
+		Def.ActorFrameTexture{
+			InitCommand= function(self)
+				self:setsize(big_circle_size, big_circle_size)
+					:SetTextureName("hollow_circle")
+					:EnableAlphaBuffer(true):Create()
+					:EnablePreserveTexture(false):Draw()
+			end,
+			Def.Sprite{
+				Texture= "big_circle", InitCommand= function(subself)
+					subself:xy(hbig_circle_size, hbig_circle_size)
+				end
+			},
+			Def.Sprite{
+				Texture= "big_circle", InitCommand= function(subself)
+					subself:xy(hbig_circle_size, hbig_circle_size)
+						:zoom(hollow_circle_inner_zoom)
+						:blend("BlendMode_Subtract")
+				end
+			},
+		},
 	},
 }
