@@ -1,4 +1,4 @@
-function calc_circle_verts(radius, chords, start_angle, end_angle)
+function calc_circle_verts(radius, chords, start_angle, end_angle, color)
 	if start_angle == end_angle then
 		end_angle= start_angle + (math.pi*2)
 	end
@@ -6,9 +6,27 @@ function calc_circle_verts(radius, chords, start_angle, end_angle)
 	local verts= {}
 	for c= 0, chords do
 		local angle= start_angle + (chord_angle * c)
-		verts[c+1]= {{radius * math.cos(angle), radius * math.sin(angle), 0}}
+		verts[c+1]= {{radius * math.cos(angle), radius * math.sin(angle), 0}, color}
 	end
 	return verts
+end
+
+function color_verts_with_color_set(verts, color_set)
+	local verts_per_color= math.round(#verts / #color_set)
+	local color_ranges= {}
+	for c= 1, #color_set do
+		local b= ((c-1)*verts_per_color)+1
+		color_ranges[c]= {
+			b= b, e= b+verts_per_color-1, bcol= color_set[c], ecol= color_set[c+1]}
+	end
+	color_ranges[#color_ranges].ecol= color_set[1]
+	for c, range in ipairs(color_ranges) do
+		for v= range.b, range.e do
+			if not verts[v] then break end
+			verts[v][2]= lerp_color(
+				(v-range.b) / verts_per_color, range.bcol, range.ecol)
+		end
+	end
 end
 
 function arrow_amv(name, x, y, width, height, detail, color)
@@ -46,7 +64,7 @@ function circle_amv(name, x, y, r, chords, color, out_color, blend)
 	out_color= out_color or color
 	return Def.ActorMultiVertex{
 		Name= name, InitCommand= function(self)
-			local verts= calc_circle_verts(r, chords, 0, 0)
+			local verts= calc_circle_verts(r, chords, 0, 0, out_color)
 			table.insert(verts, 1, {{0, 0, 0}, color})
 			for i, v in ipairs(verts) do
 				v[2]= out_color

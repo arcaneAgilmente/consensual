@@ -401,6 +401,8 @@ pain_display_mt= {
 					self.cursor:refit(nil, nil, 0, 12)
 					self.cursor:hide()
 					self:hide()
+					self:stroke_items(self.left_items)
+					self:stroke_items(self.right_items)
 				end,
 			}
 			self.original_y= y
@@ -430,16 +432,16 @@ pain_display_mt= {
 			self.frame_main= setmetatable({}, frame_helper_mt)
 			shadow_args[#shadow_args+1]= self.frame_main:create_actors(
 				"frame", 2, el_w, frame_height, pn_to_color(player_number),
-				fetch_color("bg"), 0, 0)
+				fetch_color("bg", 0), 0, 0)
 			self.shadows= {}
 			for i= 1, self.disp_row_limit do
-				local scolor= fetch_color("bg_shadow")
-				if i % 2 == 1 then scolor= fetch_color("bg") end
+				local scolor= fetch_color("bg_shadow", .5)
+				if i % 2 == 1 then scolor= fetch_color("bg", .5) end
 				shadow_args[#shadow_args+1]= Def.Quad{
 					Name= "q"..i, InitCommand= function(subself)
 						self.shadows[#self.shadows+1]= subself
 						subself:visible(false):xy(0, (i-1)*self.text_height)
-							:setsize(el_w - 4, self.text_height):diffuse(scolor)
+							:setsize(el_w - 2, self.text_height+1):diffuse(scolor)
 					end
 				}
 			end
@@ -475,6 +477,13 @@ pain_display_mt= {
 			el_args[#el_args+1]= self.menu:create_actors("menu", player_number)
 			args[#args+1]= Def.ActorFrame(el_args)
 			return Def.ActorFrame(args)
+		end,
+		stroke_items= function(self, set)
+			local stroke= fetch_color("stroke")
+			for i, item in ipairs(set) do
+				item.text:strokecolor(stroke)
+				item.number:strokecolor(stroke)
+			end
 		end,
 		fetch_config= function(self)
 			if self.player_number then

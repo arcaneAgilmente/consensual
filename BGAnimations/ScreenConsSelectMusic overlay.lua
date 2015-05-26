@@ -218,6 +218,11 @@ local focus_element_info_mt= {
 					self.length= subself:GetChild("length")
 					self.genre= subself:GetChild("genre")
 					self.artist= subself:GetChild("artist")
+					local stroke= fetch_color("stroke")
+					for i, difft in pairs(self.difficulty_counts) do
+						difft.text:strokecolor(stroke)
+						difft.number:strokecolor(stroke)
+					end
 					subself:xy(x, y)
 				end,
 				Def.Quad{
@@ -233,11 +238,11 @@ local focus_element_info_mt= {
 					end
 				},
 				cdtitle(),
-				normal_text("title", "", fetch_color("text"), nil, 0, -12, 1),
-				normal_text("subtitle", "", fetch_color("text"), nil, 0, 6, .5),
-				normal_text("length", "", fetch_color("text"), nil, -wheel_width*.5 + 32, 18, .5, left),
-				normal_text("genre", "", fetch_color("text"), nil, 0, 18, .5),
-				normal_text("artist", "", fetch_color("text"), nil, wheel_width*.5-32, 18, .5, right),
+				normal_text("title", "", fetch_color("text"), fetch_color("stroke"), 0, -12, 1),
+				normal_text("subtitle", "", fetch_color("text"), fetch_color("stroke"), 0, 6, .5),
+				normal_text("length", "", fetch_color("text"), fetch_color("stroke"), -wheel_width*.5 + 32, 18, .5, left),
+				normal_text("genre", "", fetch_color("text"), fetch_color("stroke"), 0, 18, .5),
+				normal_text("artist", "", fetch_color("text"), fetch_color("stroke"), wheel_width*.5-32, 18, .5, right),
 			}
 			local above_args= {
 				InitCommand= function(subself)
@@ -256,8 +261,8 @@ local focus_element_info_mt= {
 					self.steps_by:settext(
 						get_string_wrapper("SelectMusicExtraInfo", "steps_by"))
 				end,
-				normal_text("steps_by", "", fetch_color("text"), nil, self.right_x, -12, .5),
-				normal_text("auth_list", "", fetch_color("text"), nil, self.right_x, 0, .5),
+				normal_text("steps_by", "", fetch_color("text"), fetch_color("stroke"), self.right_x, -12, .5),
+				normal_text("auth_list", "", fetch_color("text"), fetch_color("stroke"), self.right_x, 0, .5),
 			}
 			self.song_count= setmetatable({}, text_and_number_interface_mt)
 			below_args[#below_args+1]= self.song_count:create_actors(
@@ -438,6 +443,7 @@ local focus_element_info_mt= {
 			end
 			width_limit_text(self.title, title_width)
 			width_limit_text(self.subtitle, title_width, .5)
+			self.bg:diffusealpha(.5)
 		end,
 		collapse= function(self)
 			local info_move= extra_info_height*.5
@@ -1632,7 +1638,7 @@ return Def.ActorFrame {
 		Def.Quad{
 			InitCommand= function(self)
 				self:xy(_screen.cx, 16):setsize(_screen.w, 32)
-					:diffuse(fetch_color("bg"))
+					:diffuse({0, 0, 0, 1})
 			end
 		},
 		normal_text("sort_text", "NO SORT",

@@ -31,10 +31,10 @@ local wheel_item_mt= {
 				Def.Quad{
 					InitCommand= function(subself)
 						self.bg= subself
-						subself:diffuse({0, 0, 0, 0}):setsize(item_width, item_height)
+						subself:diffuse({0, 0, 0, .125}):setsize(item_width, item_height)
 					end
 				},
-				normal_text("text", "", fetch_color("text"), nil, 0, 0, item_text_zoom, center),
+				normal_text("text", "", fetch_color("text"), fetch_color("stroke"), 0, 0, item_text_zoom, center),
 			}
 		end,
 		transform= function(self, item_index, num_items, is_focus, focus_pos)
@@ -85,6 +85,7 @@ local wheel_item_mt= {
 				rec_print_table(info)
 			end
 			width_limit_text(self.text, item_text_width, item_text_zoom)
+			self.bg:diffusealpha(.5)
 		end,
 }}
 

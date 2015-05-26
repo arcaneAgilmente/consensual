@@ -5,6 +5,9 @@ unchangeable_color= {
 	hilight= color("#fdf6e3"),
 }
 
+local black= color("#000000")
+local white= color("#ffffff")
+
 local default_config= {
 	-- Color Scheme:  Solarized (http://ethanschoonover.com/solarized)
 	{"bg", color("#002b36")},
@@ -84,6 +87,19 @@ local default_config= {
 		 {"bg", "bg", .75},
 		 {"text", "text"},
 		 {"stroke", "stroke"},
+	}},
+
+	{"common_background", {
+		 {"center_color", "accent.green"},
+		 {"inner_colors", {
+				{"1", "accent.red"},
+				{"2", "accent.magenta"},
+				{"3", "accent.blue"},
+				{"4", "accent.violet"},
+		 }},
+		 {"outer_colors", {
+				{"1", black},
+		 }},
 	}},
 
 	{"music_select", {
@@ -226,7 +242,7 @@ local default_config= {
 color_config= create_setting("color config", "color_config.lua", default_config, 0)
 color_config:load()
 
-local default_color= color("#000000")
+local default_color= black
 
 local function convert_name(name)
 	return (name ~= "nan" and tonumber(name)) or name
