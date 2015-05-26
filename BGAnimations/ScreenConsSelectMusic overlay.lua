@@ -32,7 +32,7 @@ local banner_w= wheel_width - 4
 local banner_h= 80
 local curr_group_name= ""
 local basic_info_height= 32
-local extra_info_height= 50
+local extra_info_height= 40
 local expanded_info_height= basic_info_height + (extra_info_height * 2)
 
 local title_width= wheel_width - 32
@@ -479,14 +479,40 @@ dofile(THEME:GetPathO("", "music_wheel.lua"))
 local music_wheel= setmetatable({}, music_whale_mt)
 
 local function expand_center_for_more()
+	if picking_steps then return end
 	music_wheel:set_center_expansion(expanded_info_height)
 	focus_element_info:expand()
 	update_player_cursors()
 end
 
 local function collapse_center_for_less()
+	if picking_steps then return end
 	music_wheel:set_center_expansion(basic_info_height)
 	focus_element_info:collapse()
+	update_player_cursors()
+end
+
+local function switch_to_picking_steps()
+	music_wheel.container:linear(wheel_move_time):diffusealpha(0)
+	focus_element_info:expand()
+	focus_element_info.container:linear(wheel_move_time)
+		:y(_screen.h - expanded_info_height-13)
+	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		steps_menus[dpn]:activate()
+	end
+	picking_steps= true
+	update_player_cursors()
+end
+
+local function switch_to_not_picking_steps()
+	music_wheel.container:linear(wheel_move_time):diffusealpha(1)
+	focus_element_info:collapse()
+	focus_element_info.container:linear(wheel_move_time):y(_screen.cy)
+	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		steps_menus[dpn]:deactivate()
+	end
+	picking_steps= false
+	was_picking_steps= true
 	update_player_cursors()
 end
 
@@ -614,7 +640,7 @@ end
 update_player_cursors= function()
 	local num_enabled= 0
 	for i, pn in ipairs{PLAYER_1, PLAYER_2} do
-		if GAMESTATE:IsPlayerEnabled(pn) then
+		if GAMESTATE:IsPlayerEnabled(pn) and not picking_steps then
 			num_enabled= num_enabled + 1
 			local cursed_item= false
 			local function fit_cursor_to_menu(menu)
@@ -1133,6 +1159,10 @@ local function handle_triggered_codes(pn, key_pressed, button, press_type)
 	end
 end
 
+local function interpret_config_key(key)
+	
+end
+
 local saw_first_press= {}
 local function input(event)
 	input_came_from_keyboard= event.DeviceInput.device == "InputDevice_Key"
@@ -1169,6 +1199,15 @@ local function input(event)
 			end
 		end
 	end
+	if press_type ~= "InputEventType_Release" then
+		if picking_steps then
+			for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+				steps_menus[pn]:interpret_key(event.DeviceInput.button)
+			end
+		else
+			interpret_config_key(event.DeviceInput.button)
+		end
+	end
 	if not pn then return end
 	if GAMESTATE:IsSideJoined(pn) then
 		if entering_song then
@@ -1181,11 +1220,7 @@ local function input(event)
 			if press_type ~= "InputEventType_Release" then
 				steps_menus[pn]:interpret_code(key_pressed)
 				if steps_menus[pn].needs_deactivate then
-					for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-						steps_menus[dpn]:deactivate()
-					end
-					picking_steps= false
-					was_picking_steps= true
+					switch_to_not_picking_steps()
 				elseif steps_menus[pn].chosen_steps then
 					local all_chosen= true
 					for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
@@ -1515,10 +1550,7 @@ return Def.ActorFrame {
 		change_sort_text(music_wheel.current_sort_name)
 	end,
 	play_songCommand= function(self)
-		for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-			steps_menus[dpn]:activate()
-		end
-		picking_steps= true
+		switch_to_picking_steps()
 	end,
 	real_play_songCommand= function(self)
 		if go_to_options then

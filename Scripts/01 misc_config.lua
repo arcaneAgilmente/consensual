@@ -30,8 +30,7 @@ local default_config= {
 	transition_type= "random",
 	transition_time= 2,
 
-	show_subtitle_on_wheel= true,
-	show_artist_on_wheel= true,
+	default_wheel_sort= "Group",
 
 	cursor_button_icon_size= 1,
 	menus_have_ud= true,

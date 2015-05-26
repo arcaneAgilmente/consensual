@@ -1,9 +1,12 @@
-local center_text_zoom= .5
-local item_text_zoom= .5
-local center_radius= 28
-local item_radius= 8
-local item_pad= 8
-local item_focus_zoom= 1.5
+local config_data= steps_menu_config:get_data()
+local center_text_zoom= config_data.center_text_zoom
+local item_text_zoom= config_data.item_text_zoom
+local center_radius= config_data.center_radius
+local item_radius= config_data.item_radius
+local item_pad= config_data.item_pad
+local item_focus_zoom= config_data.item_focus_zoom
+local xoff= config_data.xoff
+local yoff= config_data.yoff
 local item_move_time= .1
 local text_color= fetch_color("music_select.steps_selector.number_color")
 local text_stroke= fetch_color("music_select.steps_selector.number_stroke")
@@ -14,10 +17,84 @@ local pick_steps_type_tex= get_string_wrapper("StepsDisplayList", "pick_steps_ty
 local pick_song_short= get_string_wrapper("StepsDisplayList", "pick_song_short")
 local pick_steps_type_short= get_string_wrapper("StepsDisplayList", "pick_steps_type_short")
 
-local item_circle_radius= center_radius + item_radius + item_pad
-local items= (item_circle_radius * math.pi*2) / ((item_radius*2) + item_pad)
-local cursor_radius= item_radius * item_focus_zoom / hollow_circle_inner_zoom
-local center_text_width= center_radius*.75
+local item_circle_radius= 0
+local items= 0
+local cursor_radius= 0
+local center_text_width= 0
+local pn_side_signs= {[PLAYER_1]= 1, [PLAYER_2]= -1}
+
+local function recalc_dependent_sizes()
+	item_circle_radius= center_radius + item_radius + item_pad
+	items= (item_circle_radius * math.pi*2) / ((item_radius*2) + item_pad)
+	cursor_radius= item_radius * item_focus_zoom / hollow_circle_inner_zoom
+	center_text_width= center_radius*.75
+end
+recalc_dependent_sizes()
+
+local enable_configuring= false
+
+local config_functions= {
+	DeviceButton_a= function()
+		center_text_zoom= center_text_zoom - .1
+	end,
+	DeviceButton_s= function()
+		center_text_zoom= center_text_zoom + .1
+	end,
+	DeviceButton_z= function()
+		item_text_zoom= item_text_zoom - .1
+	end,
+	DeviceButton_x= function()
+		item_text_zoom= item_text_zoom + .1
+	end,
+	DeviceButton_d= function()
+		center_radius= center_radius - 1
+	end,
+	DeviceButton_f= function()
+		center_radius= center_radius + 1
+	end,
+	DeviceButton_c= function()
+		item_radius= item_radius - 1
+	end,
+	DeviceButton_v= function()
+		item_radius= item_radius + 1
+	end,
+	DeviceButton_g= function()
+		item_pad= item_pad - 1
+	end,
+	DeviceButton_h= function()
+		item_pad= item_pad + 1
+	end,
+	DeviceButton_b= function()
+		item_focus_zoom= item_focus_zoom - .1
+	end,
+	DeviceButton_n= function()
+		item_focus_zoom= item_focus_zoom + .1
+	end,
+	DeviceButton_j= function()
+		xoff= xoff - 1
+	end,
+	DeviceButton_k= function()
+		xoff= xoff + 1
+	end,
+	DeviceButton_m= function()
+		yoff= yoff - 1
+	end,
+	DeviceButton_comma= function()
+		yoff= yoff + 1
+	end,
+	DeviceButton_1= function()
+		config_data.center_text_zoom= center_text_zoom
+		config_data.item_text_zoom= item_text_zoom
+		config_data.center_radius= center_radius
+		config_data.item_radius= item_radius
+		config_data.item_pad= item_pad
+		config_data.item_focus_zoom= item_focus_zoom
+		config_data.xoff= xoff
+		config_data.yoff= yoff
+		steps_menu_config:set_dirty()
+		steps_menu_config:save()
+	end
+}
 
 local item_mt= {
 	__index= {
@@ -38,8 +115,12 @@ local item_mt= {
 					"text", "", text_color, text_stroke, 0, 0, item_text_zoom),
 			}
 		end,
+		reload_config= function(self)
+			self.spr:zoom(item_radius*2/big_circle_size)
+			self.text:zoom(item_text_zoom)
+		end,
 		transform= function(self, item_index, num_items, is_focus, focus_pos)
-			local angle_per= math.pi * 2 / num_items
+			local angle_per= math.pi * 2 / items
 			local angle= angle_per * (item_index - focus_pos) - (math.pi * .5)
 			local radius= item_circle_radius
 			self.container:finishtweening():linear(item_move_time)
@@ -73,14 +154,18 @@ local item_mt= {
 local icon_scale= misc_config:get_data().cursor_button_icon_size
 local icon_xoffset= cursor_radius + 2 + (8 * icon_scale)
 local icon_yoffset= cursor_radius * 0
-local function button_icon(path, side_sign)
+local function button_icon(path, side_sign, name)
 	if not path or path == "" then return Def.Actor{} end
 	return Def.Sprite{
-		Texture= path, InitCommand= function(self)
+		Name= name, Texture= path, InitCommand= function(self)
 			scale_to_fit(self, 16 * icon_scale, 16 * icon_scale)
 			self:xy(side_sign * icon_xoffset, -item_circle_radius - icon_yoffset)
 				:vertalign(bottom)
 				:diffuseshift():effectcolor1({1, 1, 1, 1}):effectcolor2({1, 1, 1, 0})
+		end,
+		reload_configCommand= function(self)
+			scale_to_fit(self, 16 * icon_scale, 16 * icon_scale)
+			self:xy(side_sign * icon_xoffset, -item_circle_radius - icon_yoffset)
 		end
 	}
 end
@@ -90,19 +175,23 @@ steps_menu_mt= {
 		create_actors= function(self, x, y, pn)
 			self.pn= pn
 			self.sick_wheel= setmetatable({disable_repeating= true}, sick_wheel_mt)
+			self.orig_x= x
+			self.orig_y= y
 			local buttons= {{[2]= "MenuLeft"}, {[2]= "MenuRight"}}
 			reverse_button_list(buttons)
-			local left_path=
-				THEME:GetPathG("", "button_icons/"..buttons[1][2]..".png", true)
-			local right_path=
-				THEME:GetPathG("", "button_icons/"..buttons[2][2]..".png", true)
+			local left_path= THEME:GetPathG(
+				"", "button_icons/"..buttons[1][2]..".png", true)
+			local right_path= THEME:GetPathG(
+				"", "button_icons/"..buttons[2][2]..".png", true)
 			return Def.ActorFrame{
 				InitCommand= function(subself)
 					self.container= subself
 					self.text= subself:GetChild("text")
 					self.text:vertspacing(-8)
 						:wrapwidthpixels(center_text_width/center_text_zoom)
-					subself:xy(x, y):visible(false)
+					subself:xy(x+(xoff*pn_side_signs[pn]), y+yoff):visible(false)
+					self.bl= subself:GetChild("bl")
+					self.sa= subself:GetChild("sa")
 				end,
 				self.sick_wheel:create_actors("wheel", items, item_mt, 0, 0),
 				Def.Sprite{
@@ -121,9 +210,24 @@ steps_menu_mt= {
 				},
 				normal_text(
 					"text", "", text_color, text_stroke, 0, 0, center_text_zoom),
-				button_icon(left_path, -1),
-				button_icon(right_path, 1),
+				button_icon(left_path, -1, "bl"),
+				button_icon(right_path, 1, "sa"),
 			}
+		end,
+		reload_config= function(self)
+			recalc_dependent_sizes()
+			self.container:xy(self.orig_x+(xoff*pn_side_signs[self.pn]), self.orig_y+yoff)
+			self.text:wrapwidthpixels(center_text_width/center_text_zoom)
+				:zoom(center_text_zoom)
+			self.spr:zoom(center_radius*2/big_circle_size)
+			self.cursor:zoom(cursor_radius*2/big_circle_size)
+				:xy(0, -item_circle_radius)
+			self.bl:playcommand("reload_config")
+			self.sa:playcommand("reload_config")
+			for i, item in ipairs(self.sick_wheel.items) do
+				item:reload_config()
+			end
+			self.sick_wheel:scroll_to_pos(self.curr_choice)
 		end,
 		activate= function(self)
 			self.container:visible(true)
@@ -233,6 +337,7 @@ steps_menu_mt= {
 					else
 						if choice.steps_type then
 							self.chosen_steps_type= choice.steps_type
+							set_preferred_steps_type(self.pn, choice.steps_type)
 							self:change_to_pick_steps()
 						elseif choice.steps then
 							self.chosen_steps= choice.steps
@@ -243,5 +348,15 @@ steps_menu_mt= {
 				end
 			}
 			if funs[code] then return funs[code](self) end
-		end
+		end,
+		interpret_key= function(self, key)
+			if key == "DeviceButton_2" then
+				enable_configuring= not enable_configuring
+			end
+			if not enable_configuring then return end
+			if config_functions[key] then
+				config_functions[key]()
+				self:reload_config()
+			end
+		end,
 }}

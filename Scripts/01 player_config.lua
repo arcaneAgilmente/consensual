@@ -252,6 +252,7 @@ local default_config= {
 	combo_graph_threshold= "TapNoteScore_W3",
 	low_score_random_threshold= .9,
 	preferred_steps_type= "",
+	preferred_sort= "",
 	experience_level= 1, -- To ease triggering confetti on gaining a level.
 	life_blank_percent= .8,
 	life_use_width= 1,

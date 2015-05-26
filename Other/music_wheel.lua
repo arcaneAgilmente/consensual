@@ -216,9 +216,11 @@ local music_whale= {
 			self.current_sort_name= music_whale_state.cur_sort_info.name
 		end
 		local args= {
-			Name= self.name,
-			self.sick_wheel:create_actors(
-				"wheel", items_on_wheel, wheel_item_mt, wheel_x, wheel_y),
+			Name= self.name, InitCommand= function(subself)
+				self.container= subself
+				subself:xy(wheel_x, wheel_y)
+			end,
+			self.sick_wheel:create_actors("wheel", items_on_wheel, wheel_item_mt, 0, 0),
 		}
 		self.sick_wheel.focus_pos= self.sick_wheel.focus_pos + 1
 		self.focus_pos= self.sick_wheel.focus_pos

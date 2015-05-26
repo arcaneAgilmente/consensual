@@ -380,6 +380,21 @@ local im_options= {
 	imop("im_have_exit", "exit_choice"),
 }
 
+local function sorting_options()
+	local ret= {
+		status= config_data.default_wheel_sort,
+		special_handler= function(menu, data)
+			config_data.default_wheel_sort= data.name
+			menu.display:set_display(data.name)
+			return {ret_data= {true}}
+		end,
+	}
+	for i, item in ipairs(bucket_man:get_sort_names_for_menu()) do
+		ret[#ret+1]= {name= item}
+	end
+	return ret
+end
+
 local consensual_options= {
 	{name= "set_config_key", meta= options_sets.settable_thing,
 	 args= key_get_set("config_menu_key")},
@@ -418,6 +433,8 @@ local consensual_options= {
 	 args= trans_type_extra()},
 	{name= "initial_menu_choices", meta= options_sets.special_functions,
 	 args= {eles= im_options}},
+	{name= "default_wheel_sort", meta= options_sets.menu,
+	 args= sorting_options()},
 }
 
 local confetti_options= {

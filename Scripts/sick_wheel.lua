@@ -62,7 +62,7 @@ function sick_wheel:maybe_wrap_index(ipos, n, info)
 end
 
 local function calc_start(self, info, pos)
-	if self.disable_repeating and #self.info_set < #self.items then
+	if self.disable_repeating and #info < #self.items then
 		return pos
 	end
 	pos= math.floor(pos) - self.focus_pos

@@ -1162,7 +1162,22 @@ local special_effects= {
 		bool_effect_setter("Let's Have Fun!", "man_lets_have_fun"),
 }}
 
+local function sorting_options()
+	local ret= {}
+	for i, item in ipairs(bucket_man:get_sort_names_for_menu()) do
+		ret[#ret+1]= {
+			name= item, init= function(pn)
+				return cons_players[pn].preferred_sort == item
+			end, set= function(pn) cons_players[pn].preferred_sort= item end,
+			unset= function(pn) cons_players[pn].preferred_sort= nil end,
+		}
+	end
+	return {eles= ret}
+end
+
 local special= {
+	{ name= "Preferred Sort", args= sorting_options(),
+		meta= options_sets.mutually_exclusive_special_functions, level= 4},
 	{ name= "Spline Demos", meta= options_sets.special_functions, level= 4,
 		args= {
 			eles= {

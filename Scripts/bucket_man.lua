@@ -618,6 +618,27 @@ local bucket_man_interface= {}
 local bucket_man_interface_mt= { __index= bucket_man_interface }
 local prev_was_course= false
 
+local function find_named_factor(name_list, list)
+	for i, item in ipairs(list) do
+		if type(item.name) == "string"
+		and string_in_table(item.name, name_list) then return i end
+		if item.contents then
+			local sub_ret= find_named_factor(name_list, item.contents)
+			if sub_ret then return sub_ret end
+		end
+	end
+end
+
+local function add_sort_names_to_list(list, contents)
+	for i, item in ipairs(contents) do
+		if type(item.name) == "string" then
+			list[#list+1]= item.name
+		elseif item.contents then
+			add_sort_names_to_list(list, item.contents)
+		end
+	end
+end
+
 function bucket_man_interface:initialize()
 	init_songs_of_each_style()
 	machine_profile= PROFILEMAN:GetMachineProfile()
@@ -641,7 +662,14 @@ function bucket_man_interface:initialize()
 	rival_bucket= make_rival_bucket()
 	self.filter_functions= {song_short_and_uncensored}
 	self:style_filter_songs()
-	self.cur_sort_info= get_sort_info()[1]
+	local sort_info= get_sort_info()
+	local default_sort= {misc_config:get_data().default_wheel_sort}
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		local psort= cons_players[pn].preferred_sort
+		if psort ~= "" then default_sort[#default_sort+1]= psort end
+	end
+	local sort_index= find_named_factor(default_sort, sort_info) or 1
+	self.cur_sort_info= sort_info[sort_index]
 end
 
 function bucket_man_interface:add_filter_function(func)
@@ -708,6 +736,12 @@ end
 
 function bucket_man_interface:get_sort_info()
 	return get_sort_info()
+end
+
+function bucket_man_interface:get_sort_names_for_menu()
+	local ret= {}
+	add_sort_names_to_list(ret, get_sort_info())
+	return ret
 end
 
 if bucket_man then
