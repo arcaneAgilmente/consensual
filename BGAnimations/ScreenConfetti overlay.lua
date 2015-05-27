@@ -155,7 +155,8 @@ return Def.ActorFrame{
 					:EnablePreserveTexture(false):Draw()
 			end,
 			circle_amv("circle", hbig_circle_size-1, hbig_circle_size-1,
-								 hbig_circle_size, big_circle_size, {1, 1, 1, 1}),
+								 hbig_circle_size, big_circle_size,
+								 {1, 1, 1, 1}),
 		},
 		Def.ActorFrameTexture{
 			InitCommand= function(self)

@@ -2,31 +2,44 @@ local black= {0, 0, 0, 1}
 
 local bg_tex_size= 256
 local hbg_tex_size= bg_tex_size / 2
+local bubble_count= 64
 
 local bubble= false
 local bg_sprite= false
+local rerender_list= {}
+function update_common_bg_colors()
+	for i, actor in ipairs(rerender_list) do
+		actor:playcommand("render")
+	end
+end
+
 local bubble_currs= {}
 local bubble_goals= {}
 local bubble_speeds= {}
+local epsilon= {2^-8, 2^-8, 2^-16, 2^-4, 2^-4, 2^-4}
+local function pos_speed() return scale(math.random(), 0, 1, 1, 2) end
+local function col_speed() return scale(math.random(), 0, 1, 2^-5, 2^-4) end
 local speed_funcs= {
-	function() return math.random()*.015625 end,
-	function() return math.random()*.015625 end,
-	function() return math.random()*(2^-15) end,
-	function() return math.random()*.0078125 end,
+	pos_speed, pos_speed,
+	function() return scale(math.random(), 0, 1, 2^-9, 2^-8) end,
+	col_speed, col_speed, col_speed,
 }
+local function col_goal() return scale(math.random(), 0, 1, .5, .875) end
 local goal_funcs= {
 	function() return math.random()*_screen.w end,
 	function() return math.random()*_screen.h end,
-	function() return (((1-math.random())^8) * 128) / big_circle_size end,
---	function() return math.random(4, 128) / big_circle_size end,
-	function() return math.random()*.125 end,
+	function() return scale(((1-math.random())^8), 0, 1, 4, 128) / big_circle_size end,
+	col_goal, col_goal, col_goal,
 }
-local epsilon= 2^-16
-local function bubbles_update()
-	multiapproach(bubble_currs, bubble_goals, bubble_speeds)
+local real_speeds= {}
+local function bubbles_update(self, delta)
+	for i= 1, #bubble_speeds do
+		real_speeds[i]= bubble_speeds[i] * delta;
+	end
+	multiapproach(bubble_currs, bubble_goals, real_speeds)
 	for i= 1, #bubble_currs do
-		if math.abs(bubble_goals[i] - bubble_currs[i]) < epsilon then
-			local funi= math.floor(((i-1)%4)+1)
+		local funi= math.floor(((i-1)%#goal_funcs)+1)
+		if math.abs(bubble_goals[i] - bubble_currs[i]) < epsilon[funi] then
 			bubble_goals[i]= goal_funcs[funi]()
 			bubble_speeds[i]= speed_funcs[funi]()
 		end
@@ -34,14 +47,15 @@ local function bubbles_update()
 end
 local function bubbles_draw()
 	bg_sprite:Draw()
-	for i= 1, #bubble_currs, 4 do
+	for i= 1, #bubble_currs, #goal_funcs do
 		bubble:xy(bubble_currs[i], bubble_currs[i+1])
-			:zoom(bubble_currs[i+2])--:diffusealpha(bubble_currs[i+3])
+			:zoom(bubble_currs[i+2])
+			:diffuse({bubble_currs[i+3], bubble_currs[i+4], bubble_currs[i+5], 1})
 			:Draw()
 	end
 end
-for i= 1, 64*4, 4 do
-	for j= 0, 3 do
+for i= 1, bubble_count*#goal_funcs, #goal_funcs do
+	for j= 0, 5 do
 		bubble_currs[i+j]= goal_funcs[j+1]()
 		bubble_goals[i+j]= goal_funcs[j+1]()
 		bubble_speeds[i+j]= speed_funcs[j+1]()
@@ -51,19 +65,27 @@ end
 local args= {
 	Def.ActorFrame{
 		InitCommand= function(self)
-			self
-				:SetUpdateFunction(bubbles_update):SetDrawFunction(bubbles_draw)
+			common_bg= self
+			self:SetUpdateFunction(bubbles_update):SetDrawFunction(bubbles_draw)
 		end,
 		Def.ActorFrameTexture{
 			InitCommand= function(self)
+				rerender_list[#rerender_list+1]= self
 				self:setsize(bg_tex_size, bg_tex_size)
 					:SetTextureName("colored_bg")
 					:EnableAlphaBuffer(true):Create()
 					:EnablePreserveTexture(false):Draw()
 					:hibernate(math.huge)
 			end,
+			renderCommand= function(self)
+				self:hibernate(0):Draw():hibernate(math.huge)
+			end,
 			Def.Quad{
 				InitCommand= function(self)
+					rerender_list[#rerender_list+1]= self
+					self:playcommand("render")
+				end,
+				renderCommand= function(self)
 					local outer_colors= fetch_color("common_background.outer_colors")
 					self:setsize(bg_tex_size, bg_tex_size):diffuse(outer_colors[1])
 						:xy(hbg_tex_size, hbg_tex_size)
@@ -71,6 +93,12 @@ local args= {
 			},
 			Def.ActorMultiVertex{
 				InitCommand= function(self)
+					rerender_list[#rerender_list+1]= self
+					self:SetDrawState{Mode= "DrawMode_Triangles"}
+						:xy(hbg_tex_size, hbg_tex_size)
+						:playcommand("render")
+				end,
+				renderCommand= function(self)
 					local center_color= fetch_color("common_background.center_color")
 					local inner_colors= fetch_color("common_background.inner_colors")
 					local outer_colors= fetch_color("common_background.outer_colors")
@@ -107,8 +135,6 @@ local args= {
 							:SetVertex(triseti + 8, inner_circle[circle_vert_count])
 							:SetVertex(triseti + 9, outer_circle[1])
 					end
-					self:SetDrawState{Mode= "DrawMode_Triangles"}
-						:xy(hbg_tex_size, hbg_tex_size)
 				end
 			},
 			Def.Sprite{
@@ -122,13 +148,17 @@ local args= {
 		Def.Sprite{
 			Texture= "colored_bg", InitCommand= function(self)
 				bg_sprite= self
-				self:xy(_screen.cx, _screen.cy):diffuse(color("#7f7f7f"))
+				rerender_list[#rerender_list+1]= self
+				self:xy(_screen.cx, _screen.cy):playcommand("render")
+			end,
+			renderCommand= function(self)
+				self:diffuse(color("#7f7f7f"))
 					:zoomx(_screen.w * 1.25 / bg_tex_size)
 					:zoomy(_screen.h * 1.25 / bg_tex_size)
 			end
 		},
 		Def.Sprite{
-		Texture= "big_circle", InitCommand= function(self)
+		Texture= "big_spotlight", InitCommand= function(self)
 			bubble= self
 			self:blend("BlendMode_WeightedMultiply")
 		end
@@ -137,16 +167,3 @@ local args= {
 }
 
 return Def.ActorFrame(args)
---[[
-local common_bg= false
-function update_common_bg_colors()
-	common_bg:diffuse(fetch_color("bg"))
-end
-
-return Def.Quad{
-	InitCommand= function(self)
-		common_bg= self
-		self:FullScreen():diffuse(fetch_color("bg"))
-	end
-}
-]]
