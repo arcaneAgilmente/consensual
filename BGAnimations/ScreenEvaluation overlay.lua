@@ -1444,12 +1444,46 @@ local function maybe_help()
 	end
 end
 
+local function evbg()
+	local bg_color= fetch_color("evaluation.bg")
+	local args= {}
+	if scrambler_mode then
+		args[#args+1]= swapping_amv(
+			"swapper", _screen.cx, _screen.cy, _screen.w, _screen.h, 16, 10, nil,
+			"_", false, true, true, {
+				SubInitCommand= function(self)
+					local song= gamestate_get_curr_song()
+					if song and song:HasBackground() then
+						self:playcommand("ChangeTexture", {song:GetBackgroundPath()})
+					else
+						self:visible(false)
+					end
+					self:diffusealpha(bg_color[4])
+				end,
+		})
+	else
+		args[#args+1]= Def.Sprite{
+			Name= "background", InitCommand= function(self)
+				local song= gamestate_get_curr_song()
+				if song and song:HasBackground() then
+					self:LoadFromCurrentSongBackground()
+				else
+					self:visible(false)
+				end
+				self:scale_or_crop_background():diffusealpha(bg_color[4])
+			end
+		}
+	end
+	return Def.ActorFrame(args)
+end
+
 return Def.ActorFrame{
 	Name= "SEd",
 	InitCommand= function(self)
 		find_actors(self)
 		april_spin(self)
 	end,
+	evbg(),
 	banner_info:create_actors(),
 	make_player_specific_actors(),
 	reward_indicator:create_actors("reward", SCREEN_CENTER_X, SCREEN_TOP+150),

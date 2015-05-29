@@ -1,14 +1,18 @@
 local conf_data= misc_config:get_data()
 local trans_time= conf_data.transition_time
 if conf_data.transition_split_max <= 0 or conf_data.transition_split_min <= 0 then
-	return Def.Quad{
+	return Def.Actor{
 		StartTransitioningCommand= function(self)
-			self:xy(_screen.cx, _screen.cy):setsize(_screen.w, _screen.h)
-				:diffuse(Alpha(fetch_color("bg"), 0)):linear(trans_time):diffusealpha(1)
+			SCREENMAN:GetTopScreen():GetChild("Overlay")
+				:linear(trans_time):diffusealpha(0)
+			self:sleep(trans_time)
 		end
 	}
 end
 
+local function fade_out(self)
+	self:sleep(trans_time/2):linear(trans_time/2):diffusealpha(0)
+end
 local function pot(i)
 	return 2^(math.ceil(math.log(i) / math.log(2)))
 end
@@ -58,27 +62,35 @@ end
 if scrambler_mode then scramble_chosen= true end
 if not ActorMultiVertex.SetStateProperties then scramble_chosen= false end
 
+local overlay_render= Def.ActorFrameTexture{
+	InitCommand= function(self)
+		self:visible(false)
+	end,
+	StartTransitioningCommand= function(self)
+		self:setsize(DISPLAY:GetDisplayWidth(), DISPLAY:GetDisplayHeight())
+			:SetTextureName("trans_overlay")
+			:EnableAlphaBuffer(true):Create()
+			:EnablePreserveTexture(false)
+	end,
+	Def.ActorProxy{
+		StartTransitioningCommand= function(self)
+			local overlay= SCREENMAN:GetTopScreen():GetChild("Overlay")
+			overlay:visible(false)
+			self:SetTarget(overlay):zoom(DISPLAY:GetDisplayHeight() / _screen.h)
+				:blend("BlendMode_WeightedMultiply")
+			self:GetParent():visible(true):Draw():visible(false)
+		end
+	},
+}
+
 if scramble_chosen then
-	local trans_start_time= 0
 	xq= math.max(xq, 2)
 	yq= math.max(yq, 2)
 	return Def.ActorFrame{
-		Def.Actor{
-			StartTransitioningCommand= function(self)
-				trans_start_time= GetTimeSinceStart()
-			end,
-		},
-		swapping_amv("swapper", 0, 0, _screen.w, _screen.h, xq, yq, "__screen__",
-								 "StartTransitioning", true, false),
-		Def.Quad{
-			Name= "transcover", StartTransitioningCommand= function(self)
-				local trans_end_time= GetTimeSinceStart()
-				self:diffuse(Alpha(fetch_color("bg"), 0)):xy(_screen.cx, _screen.cy)
-					:setsize(_screen.w, _screen.h)
-					:sleep(trans_end_time - trans_start_time)
-					:sleep(trans_time/2):linear(trans_time/2):diffusealpha(1)
-			end
-		}
+		StartTransitioningCommand= fade_out,
+		overlay_render,
+		swapping_amv("swapper", 0, 0, _screen.w, _screen.h, xq, yq,
+								 "trans_overlay", "StartTransitioning", false, false),
 	}
 end
 
@@ -120,22 +132,17 @@ local texcalc= {
 }
 
 return Def.ActorFrame{
+	StartTransitioningCommand= fade_out,
+	overlay_render,
 	Def.ActorMultiVertex{
 		Name= "transplitter", StartTransitioningCommand= function(self)
-			local beg= GetTimeSinceStart()
-			self:LoadTexture("__screen__")
-			self:GetTexture():Reload()
-			local after_tex= GetTimeSinceStart()
-			tex_load_time= after_tex - beg
+			self:LoadTexture("trans_overlay")
 			local after_verts= GetTimeSinceStart()
 			vert_set_time= after_verts - after_tex
 			tex_pos_time= GetTimeSinceStart() - after_verts
 			self:SetDrawState{Mode="DrawMode_Quads"}:playcommand("new_verts", {1})
-				:sleep(tex_load_time+vert_set_time+(tex_pos_time*2))
+				:sleep(vert_set_time+(tex_pos_time*2))
 				:linear(trans_time):playcommand("new_verts", {2})
---			lua.ReportScriptError(
---				"Transition times: " .. tex_load_time .. ", " .. vert_set_time ..
---					", " .. tex_pos_time)
 		end,
 		showCommand= function(self)
 			self:visible(true)
@@ -161,12 +168,4 @@ return Def.ActorFrame{
 			self:SetVertices(verts)
 		end
 	},
-	Def.Quad{
-		Name= "transcover", StartTransitioningCommand= function(self)
-			self:diffuse(Alpha(fetch_color("bg"), 0)):xy(_screen.cx, _screen.cy)
-				:setsize(_screen.w, _screen.h)
-				:sleep(tex_load_time+vert_set_time+(tex_pos_time*2))
-				:sleep(trans_time/2):linear(trans_time/2):diffusealpha(1)
-		end
-	}
 }
