@@ -77,7 +77,7 @@ local overlay_render= Def.ActorFrameTexture{
 			local overlay= SCREENMAN:GetTopScreen():GetChild("Overlay")
 			overlay:visible(false)
 			self:SetTarget(overlay):zoom(DISPLAY:GetDisplayHeight() / _screen.h)
-				:blend("BlendMode_WeightedMultiply")
+				:blend("BlendMode_CopySrc")
 			self:GetParent():visible(true):Draw():visible(false)
 		end
 	},

@@ -16,7 +16,7 @@ end
 local bubble_currs= {}
 local bubble_goals= {}
 local bubble_speeds= {}
-local epsilon= {2^-8, 2^-8, 2^-16, 2^-4, 2^-4, 2^-4}
+local epsilon= {2^-8, 2^-8, 2^-10, 2^-4, 2^-4, 2^-4}
 local function pos_speed() return scale(math.random(), 0, 1, 1, 2) end
 local function col_speed() return scale(math.random(), 0, 1, 2^-5, 2^-4) end
 local speed_funcs= {

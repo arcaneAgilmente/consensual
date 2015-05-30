@@ -31,8 +31,8 @@ local heart_entry_mt= {
 			}
 			args[#args+1]= normal_text(
 				"rate_label", get_string_wrapper("ScreenHeartEntry", "Heart Rate"),
-				nil, nil, 0, -72)
-			args[#args+1]= normal_text("rate", "0", pn_to_color(pn), nil, 0, -48)
+				nil, fetch_color("stroke"), 0, -72)
+			args[#args+1]= normal_text("rate", "0", pn_to_color(pn), fetch_color("stroke"), 0, -48)
 			self.value= 0
 			self.numpad_poses= {
 				-- Do not modify without updating interpret_code.
@@ -49,7 +49,7 @@ local heart_entry_mt= {
 			end
 			for i, num in ipairs(self.numpad_nums) do
 				args[#args+1]= normal_text(
-					"num" .. i, num, nil, nil, self.numpad_poses[i][1],
+					"num" .. i, num, nil, fetch_color("stroke"), self.numpad_poses[i][1],
 					self.numpad_poses[i][2])
 			end
 			self.cursor= setmetatable({}, cursor_mt)
@@ -171,15 +171,15 @@ local args= {
 		OnCommand= function(self)
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
 		end,
-		normal_text("timer_text", "00", nil, nil, SCREEN_CENTER_X, SCREEN_CENTER_Y)
+		normal_text("timer_text", "00", nil, fetch_color("stroke"), SCREEN_CENTER_X, SCREEN_CENTER_Y)
 	},
 	normal_text("explanation",
 							get_string_wrapper("ScreenHeartEntry", "Enter Heart Rate"),
-							nil, nil, SCREEN_CENTER_X, SCREEN_CENTER_Y - 120),
+							nil, fetch_color("stroke"), SCREEN_CENTER_X, SCREEN_CENTER_Y - 120),
 	normal_text("song_len_label",
 							get_string_wrapper("ScreenHeartEntry", "Song Length"),
-							nil, nil, SCREEN_CENTER_X, SCREEN_CENTER_Y - 72),
-	normal_text("song_len", secs_to_str(get_last_song_time()), nil, nil,
+							nil, fetch_color("stroke"), SCREEN_CENTER_X, SCREEN_CENTER_Y - 72),
+	normal_text("song_len", secs_to_str(get_last_song_time()), nil, fetch_color("stroke"),
 							SCREEN_CENTER_X, SCREEN_CENTER_Y - 48),
 }
 

@@ -19,6 +19,7 @@ local pane_h= pane_text_height * max_pain_rows + 4
 local pane_yoff= -pane_h * .5 + pane_text_height * .5 + 2
 local pane_ttx= 0
 local pad= 4
+local hpad= 2
 
 local pane_y= SCREEN_BOTTOM-(pane_h/2)-pad
 local pane_x_off= (pane_w*.5) + pad
@@ -31,11 +32,9 @@ local wheel_move_time= .1
 local banner_w= wheel_width - 4
 local banner_h= 80
 local curr_group_name= ""
-local basic_info_height= 32
+local basic_info_height= 48
 local extra_info_height= 40
 local expanded_info_height= basic_info_height + (extra_info_height * 2)
-
-local title_width= wheel_width - 32
 
 local entering_song= false
 local options_time= 1.5
@@ -99,10 +98,11 @@ local function update_sort_prop()
 	sort_prop:playcommand("Set")
 end
 
+local cdtitle_size= (extra_info_height*2) - (pad * 2)
 local function cdtitle()
 	if scrambler_mode then
 		swapping_amv(
-			"CDTitle", wheel_width * .5, 0, 48, 48, 8, 8, nil, "_", false, true, true, {
+			"CDTitle", 0, 0, cdtitle_size, cdtitle_size, 8, 8, nil, "_", false, true, true, {
 				OnCommand= play_set,
 				CurrentSongChangedMessageCommand= play_set,
 				SetCommand= function(self)
@@ -117,8 +117,7 @@ local function cdtitle()
 		})
 	else
 		return Def.Sprite{
-			Name="CDTitle", InitCommand=cmd(xy,wheel_width * .5, 0),
-			OnCommand= cmd(playcommand, "Set"),
+			Name="CDTitle", OnCommand= cmd(playcommand, "Set"),
 			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
 			SetCommand= function(self)
 				-- Courses can't have CDTitles, so gamestate_get_curr_song isn't used.
@@ -127,7 +126,7 @@ local function cdtitle()
 					self:LoadBanner(song:GetCDTitlePath())
 					self:visible(true)
 					-- Jousway suggests fucking people with fucking huge cdtitles.
-					scale_to_fit(self, 48, 48)
+					scale_to_fit(self, cdtitle_size, cdtitle_size)
 				else
 					self:visible(false)
 				end
@@ -204,15 +203,27 @@ end
 local focus_element_info_mt= {
 	__index= {
 		create_actors= function(self, x, y)
+			self.expanded= false
 			self.middle_height= basic_info_height
 			self.left_x= wheel_width * -.15
 			self.right_x= wheel_width * .25
 			self.jacket_width= 64
-			self.jacket_x= wheel_width * -.5 + (self.jacket_width * .5)
+			local hwheelw= wheel_width * .5
+			local hjackw= self.jacket_width * .5
+			local jacket_x= -hwheelw + hjackw + hpad
+			local symbol_size= 16
+			local symbol_x= hwheelw - 16
+			local symbol_y= -basic_info_height + (symbol_size * .5)
+			local len_x= jacket_x + hjackw + pad
+			local genre_x= symbol_x - (symbol_size * .5) - pad
+			self.title_width= symbol_x - jacket_x - hjackw - (symbol_size*.5) - pad
+			local title_x= jacket_x + hjackw + pad + (self.title_width * .5)
+			local cdtitle_x= hwheelw - cdtitle_size*.5 - pad
+			local cdtitle_y= 0
+			local auth_start= -extra_info_height+hpad
 			local args= {
 				InitCommand= function(subself)
 					self.container= subself
-					self.cdtitle= subself:GetChild("CDTitle")
 					self.title= subself:GetChild("title")
 					self.subtitle= subself:GetChild("subtitle")
 					self.length= subself:GetChild("length")
@@ -223,53 +234,65 @@ local focus_element_info_mt= {
 						difft.text:strokecolor(stroke)
 						difft.number:strokecolor(stroke)
 					end
+					for i, part in ipairs{self.song_count, self.diff_range, self.nps_range} do
+						part.text:strokecolor(stroke)
+						part.number:strokecolor(stroke)
+					end
 					subself:xy(x, y)
 				end,
 				Def.Quad{
 					InitCommand= function(subself)
 						self.bg= subself
-						subself:diffusealpha(0):setsize(wheel_width - 4, expanded_info_height*2+20)
+						subself:diffusealpha(0):setsize(wheel_width-hpad, expanded_info_height*2)
 					end
 				},
 				Def.Sprite{
 					InitCommand= function(subself)
 						self.jacket= subself
-						subself:xy(self.jacket_x, 0)
+						subself:xy(jacket_x, 0)
 					end
 				},
-				cdtitle(),
-				normal_text("title", "", fetch_color("text"), fetch_color("stroke"), 0, -12, 1),
-				normal_text("subtitle", "", fetch_color("text"), fetch_color("stroke"), 0, 6, .5),
-				normal_text("length", "", fetch_color("text"), fetch_color("stroke"), -wheel_width*.5 + 32, 18, .5, left),
-				normal_text("genre", "", fetch_color("text"), fetch_color("stroke"), 0, 18, .5),
-				normal_text("artist", "", fetch_color("text"), fetch_color("stroke"), wheel_width*.5-32, 18, .5, right),
+				normal_text("title", "", fetch_color("text"), fetch_color("stroke"), title_x, -12, 1),
+				normal_text("subtitle", "", fetch_color("text"), fetch_color("stroke"), title_x, 6, .5),
+				normal_text("length", "", fetch_color("text"), fetch_color("stroke"), len_x, 18, .5, left),
+				normal_text("genre", "", fetch_color("text"), fetch_color("stroke"), genre_x, 18, .5, right),
+				normal_text("artist", "", fetch_color("text"), fetch_color("stroke"), title_x, 30, .5, center),
 			}
 			local above_args= {
 				InitCommand= function(subself)
 					self.above_info= subself
 					subself:xy(0, -self.middle_height):zoomy(0)
 				end,
-				banner(0, banner_h * -.5),
+				banner(0, 0),
 			}
 			local below_args= {
 				InitCommand= function(subself)
 					self.below_info= subself
+					self.cdtitle= subself:GetChild("CDTitle")
+					self.cdtitle:xy(cdtitle_x, cdtitle_y)
 					self.steps_by= subself:GetChild("steps_by")
-					self.auth_list= subself:GetChild("auth_list")
-					self.auth_list:vertspacing(-8):vertalign(top)
 					subself:xy(0, self.middle_height):zoomy(0)
 					self.steps_by:settext(
 						get_string_wrapper("SelectMusicExtraInfo", "steps_by"))
 				end,
-				normal_text("steps_by", "", fetch_color("text"), fetch_color("stroke"), self.right_x, -12, .5),
-				normal_text("auth_list", "", fetch_color("text"), fetch_color("stroke"), self.right_x, 0, .5),
+				cdtitle(),
+				normal_text("steps_by", "", fetch_color("text"), fetch_color("stroke"), self.right_x, auth_start, .5),
 			}
 			self.song_count= setmetatable({}, text_and_number_interface_mt)
-			below_args[#below_args+1]= self.song_count:create_actors(
-				"song_count", {sx= self.left_x, sy= -24, tx= -4, tz= .5, nx= 4,
+			args[#args+1]= self.song_count:create_actors(
+				"song_count", {sx= title_x, sy= 12, tx= -4, tz= .5, nx= 4,
 											 nz= .5, ts= ":", tt= "song_count",
 											 text_section= "SelectMusicExtraInfo"})
-			self.expanded= false
+			self.auth_entries= {}
+			self.auth_limit= 5
+			self.auth_width= ((hwheelw - self.right_x) * 2) - pad
+			for i= 1, self.auth_limit do
+				below_args[#below_args+1]= normal_text(
+					"auth"..i, "", fetch_color("text"), fetch_color("stroke"),
+					self.right_x, auth_start + (i*12), .5, center, {
+						InitCommand= function(subself) self.auth_entries[i]= subself end
+				})
+			end
 			self.diff_range= setmetatable({}, text_and_number_interface_mt)
 			self.nps_range= setmetatable({}, text_and_number_interface_mt)
 			self.difficulty_symbols= {}
@@ -282,24 +305,24 @@ local focus_element_info_mt= {
 				args[#args+1]= Def.Sprite{
 					Texture= "big_circle", InitCommand= function(subself)
 						self.difficulty_symbols[diff]= subself
-						subself:visible(false):zoom(8/big_circle_size)
+						subself:visible(false):zoom(symbol_size/big_circle_size)
 							:diffuse(diff_to_color(diff))
-							:xy(wheel_width * .5 - 16, -32 + (i * 10))
+							:xy(symbol_x, symbol_y + ((i-1) * symbol_size))
 					end
 				}
 				local new_tani= setmetatable({}, text_and_number_interface_mt)
 				diff_tani_args.tt= diff
 				diff_tani_args.tc= diff_to_color(diff)
 				self.difficulty_counts[diff]= new_tani
-				diff_tani_args.sy= 12 * i
+				diff_tani_args.sy= 12 * i - extra_info_height
 				below_args[#below_args+1]= new_tani:create_actors(
 					"tani_" .. diff, diff_tani_args)
 			end
-			below_args[#below_args+1]= self.diff_range:create_actors(
-				"diff_range", {sx= self.left_x, sy= 0, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
+			args[#args+1]= self.diff_range:create_actors(
+				"diff_range", {sx= title_x, sy= 24, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
 											 tt= "difficulty_range", text_section= "SelectMusicExtraInfo"})
-			below_args[#below_args+1]= self.nps_range:create_actors(
-				"nps_range", {sx= self.left_x, sy= -12, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
+			args[#args+1]= self.nps_range:create_actors(
+				"nps_range", {sx= title_x, sy= 36, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
 											 tt= "nps_range", text_section= "SelectMusicExtraInfo"})
 			args[#args+1]= Def.ActorFrame(above_args)
 			args[#args+1]= Def.ActorFrame(below_args)
@@ -315,7 +338,9 @@ local focus_element_info_mt= {
 			self.diff_range:hide()
 			self.nps_range:hide()
 			self.steps_by:visible(false)
-			self.auth_list:visible(false)
+			for i= 1, #self.auth_entries do
+				self.auth_entries[i]:visible(false)
+			end
 		end,
 		hide_song_info= function(self)
 			self.length:visible(false)
@@ -370,23 +395,25 @@ local focus_element_info_mt= {
 					end
 					self.nps_range:unhide()
 					self.nps_range:set_number(npsfm(mins.nps).." - "..npsfm(maxs.nps))
-					local auth_text= ""
 					local auth_count= 0
 					foreach_ordered(
 						item.bucket_info.step_artists,
 						function(key, value)
-							if auth_count > 4 then return end
+							if auth_count > self.auth_limit then return end
 							auth_count= auth_count + 1
-							if auth_text ~= "" then auth_text= auth_text .. "\n" end
-							auth_text= auth_text .. key
+							local entry= self.auth_entries[auth_count]
+							if not entry then return end
+							entry:settext(key):visible(true)
+							width_clip_limit_text(entry, self.auth_width, .5)
 						end
 					)
-					if auth_count > 4 then
-						auth_text= auth_text .. "\n" ..
-							get_string_wrapper("SelectMusicExtraInfo", "and_more")
+					if auth_count > self.auth_limit then
+						local entry= self.auth_entries[#self.auth_entries]
+						entry:settext(
+							get_string_wrapper("SelectMusicExtraInfo", "and_more"))
+						width_clip_limit_text(entry, self.auth_width, .5)
 					end
 					self.steps_by:visible(true)
-					self.auth_list:settext(auth_text):visible(true)
 				end
 			elseif item.sort_info then
 				self.title:settext(item.sort_info.name)
@@ -441,22 +468,26 @@ local focus_element_info_mt= {
 					self.subtitle:settext(song:GetDisplaySubTitle()):visible(true)
 				end
 			end
-			width_limit_text(self.title, title_width)
-			width_limit_text(self.subtitle, title_width, .5)
+			width_limit_text(self.title, self.title_width)
+			width_limit_text(self.subtitle, self.title_width, .5)
+			width_limit_text(self.artist, self.title_width, .5)
+			local len_len= self.length:GetWidth()
+			width_limit_text(self.genre, self.title_width - len_len - pad*2, .5)
 			self.bg:diffusealpha(.5)
 		end,
 		collapse= function(self)
-			local info_move= extra_info_height*.5
+			local newy= self.middle_height
 			self.expanded= false
-			self.above_info:linear(wheel_move_time):zoomy(0):addy(-info_move)
-			self.below_info:linear(wheel_move_time):zoomy(0):addy(-info_move)
-			self.bg:linear(wheel_move_time):zoomy(.3)
+			self.above_info:linear(wheel_move_time):zoomy(0):y(-newy)
+			self.below_info:linear(wheel_move_time):zoomy(0):y(newy)
+			self.bg:linear(wheel_move_time)
+				:zoomy((basic_info_height*2)/(expanded_info_height*2))
 		end,
 		expand= function(self)
-			local info_move= extra_info_height*.5
+			local newy= self.middle_height + extra_info_height
 			self.expanded= true
-			self.above_info:linear(wheel_move_time):zoomy(1):addy(info_move)
-			self.below_info:linear(wheel_move_time):zoomy(1):addy(info_move)
+			self.above_info:linear(wheel_move_time):zoomy(1):y(-newy+hpad)
+			self.below_info:linear(wheel_move_time):zoomy(1):y(newy-hpad)
 			self.bg:linear(wheel_move_time):zoomy(1)
 		end
 }}
@@ -662,7 +693,7 @@ update_player_cursors= function()
 				if focus_element_info.expanded then
 					height= expanded_info_height * 2
 				end
-				player_cursors[pn]:refit(wheel_x, _screen.cy, wheel_width, height+20)
+				player_cursors[pn]:refit(wheel_x, _screen.cy, wheel_width, height)
 			elseif in_special_menu[pn] == 2 then
 				fit_cursor_to_menu(song_props_menus[pn])
 			elseif in_special_menu[pn] == 3 then

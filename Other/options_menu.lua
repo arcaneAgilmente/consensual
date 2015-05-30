@@ -28,6 +28,8 @@ local option_item_mt= {
 			self.width= SCREEN_WIDTH
 			self.prev_index= 1
 			self.translation_section= "OptionNames"
+			self.icon_height= line_height / 2
+			self.icon_width= self.icon_height
 			return Def.ActorFrame{
 				Name= name,
 				InitCommand= function(subself)
@@ -36,6 +38,7 @@ local option_item_mt= {
 				end,
 				Def.Quad{
 					Name= "underline", InitCommand= function(q) self.underline= q end},
+				Def.Sprite{Name= "icon", InitCommand= function(i) self.icon= i end},
 				normal_text("text", "", nil, fetch_color("stroke"), nil, nil, self.zoom),
 			}
 		end,
@@ -45,12 +48,20 @@ local option_item_mt= {
 			self.height= height
 			self.text:zoom(zoom)
 			self.underline:SetHeight(height/2):vertalign(top)
+			self.icon_height= height / 2
+			self.icon_width= self.icon_height
+			scale_to_fit(self.icon, self.icon_width, self.icon_height)
+			self.icon:x(-width/2)
 		end,
 		set_underline_color= function(self, color)
 			self.underline:diffuse(color)
 		end,
 		set_text_colors= function(self, main, stroke)
 			self.text:diffuse(main):strokecolor(stroke)
+		end,
+		set_icon= function(self, texname)
+			self.icon:Load(texname)
+			scale_to_fit(self.icon, self.icon_width, self.icon_height)
 		end,
 		transform= function(self, item_index, num_items, is_focus)
 			local changing_edge= math.abs(item_index-self.prev_index)>num_items/2

@@ -1,3 +1,5 @@
+local pad= 4
+local hpad= 2
 local wheel_x= 0
 local wheel_y= SCREEN_TOP + 12
 local wheel_move_time= .1
@@ -8,8 +10,8 @@ local wheel_width_limit= 0
 wheel_colors= {}
 local item_width= 0
 local item_text_width= 0
-local item_height= (_screen.h / items_on_wheel) - 4
-local item_text_height= item_height - 4
+local item_height= (_screen.h / items_on_wheel) - pad
+local item_text_height= item_height - pad
 local item_text_zoom= item_text_height / 24
 local center_expansion= 0
 
@@ -31,7 +33,8 @@ local wheel_item_mt= {
 				Def.Quad{
 					InitCommand= function(subself)
 						self.bg= subself
-						subself:diffuse({0, 0, 0, .125}):setsize(item_width, item_height)
+						subself:diffuse({0, 0, 0, .125})
+							:setsize(wheel_width_limit-hpad, item_height)
 					end
 				},
 				normal_text("text", "", fetch_color("text"), fetch_color("stroke"), 0, 0, item_text_zoom, center),
@@ -41,9 +44,9 @@ local wheel_item_mt= {
 			local dist_from_focus= item_index - focus_pos
 			local start_y= _screen.cy - (per_item * .4)
 			if dist_from_focus < 0 then
-				start_y= start_y - center_expansion
+				start_y= start_y - center_expansion + (per_item * .5) - pad
 			else
-				start_y= start_y + center_expansion
+				start_y= start_y + center_expansion - (per_item * .5) + pad
 			end
 			self.container:finishtweening():linear(wheel_move_time):x(0)
 				:y(start_y + (dist_from_focus * per_item))
