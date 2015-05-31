@@ -1,13 +1,43 @@
+local config_data= false
 local black= {0, 0, 0, 1}
 
-local bg_tex_size= 256
-local hbg_tex_size= bg_tex_size / 2
-local bubble_count= 64
+local bg_tex_size
+local hbg_tex_size
+local bubble_amount
+local pos_min_speed
+local pos_max_speed
+local min_size
+local max_size
+local size_min_speed
+local size_max_speed
+local min_color
+local max_color
+local color_min_speed
+local color_max_speed
+
+local function reload_config()
+	config_data= bubble_config:get_data()
+	bg_tex_size= config_data.bg_tex_size
+	hbg_tex_size= bg_tex_size / 2
+	bubble_amount= config_data.amount
+	pos_min_speed= config_data.pos_min_speed
+	pos_max_speed= config_data.pos_max_speed
+	min_size= config_data.min_size
+	max_size= config_data.max_size
+	size_min_speed= config_data.size_min_speed
+	size_max_speed= config_data.size_max_speed
+	min_color= config_data.min_color
+	max_color= config_data.max_color
+	color_min_speed= config_data.color_min_speed
+	color_max_speed= config_data.color_max_speed
+end
+reload_config()
 
 local bubble= false
 local bg_sprite= false
 local rerender_list= {}
 function update_common_bg_colors()
+	reload_config()
 	for i, actor in ipairs(rerender_list) do
 		actor:playcommand("render")
 	end
@@ -16,19 +46,19 @@ end
 local bubble_currs= {}
 local bubble_goals= {}
 local bubble_speeds= {}
-local epsilon= {2^-8, 2^-8, 2^-10, 2^-4, 2^-4, 2^-4}
-local function pos_speed() return scale(math.random(), 0, 1, 1, 2) end
-local function col_speed() return scale(math.random(), 0, 1, 2^-5, 2^-4) end
+local epsilon= {2^-8, 2^-8, 2^-10, 2^-6, 2^-6, 2^-6}
+local function pos_speed() return scale(math.random(), 0, 1, pos_min_speed, pos_max_speed) end
+local function col_speed() return scale(math.random(), 0, 1, color_min_speed, color_max_speed) end
 local speed_funcs= {
 	pos_speed, pos_speed,
-	function() return scale(math.random(), 0, 1, 2^-9, 2^-8) end,
+	function() return scale(math.random(), 0, 1, size_min_speed, size_max_speed) end,
 	col_speed, col_speed, col_speed,
 }
-local function col_goal() return scale(math.random(), 0, 1, .5, .875) end
+local function col_goal() return scale(math.random(), 0, 1, min_color, max_color) end
 local goal_funcs= {
 	function() return math.random()*_screen.w end,
 	function() return math.random()*_screen.h end,
-	function() return scale(((1-math.random())^8), 0, 1, 4, 128) / big_circle_size end,
+	function() return scale(((1-math.random())^8), 0, 1, min_size, max_size) / big_circle_size end,
 	col_goal, col_goal, col_goal,
 }
 local real_speeds= {}
@@ -54,13 +84,20 @@ local function bubbles_draw()
 			:Draw()
 	end
 end
-for i= 1, bubble_count*#goal_funcs, #goal_funcs do
-	for j= 0, 5 do
-		bubble_currs[i+j]= goal_funcs[j+1]()
-		bubble_goals[i+j]= goal_funcs[j+1]()
-		bubble_speeds[i+j]= speed_funcs[j+1]()
+function reset_bubble_amount()
+	real_speeds= {}
+	bubble_currs= {}
+	bubble_goals= {}
+	bubble_speeds= {}
+	for i= 1, bubble_amount*#goal_funcs, #goal_funcs do
+		for j= 0, 5 do
+			bubble_currs[i+j]= goal_funcs[j+1]()
+			bubble_goals[i+j]= goal_funcs[j+1]()
+			bubble_speeds[i+j]= speed_funcs[j+1]()
+		end
 	end
 end
+reset_bubble_amount()
 
 local args= {
 	Def.ActorFrame{
@@ -153,8 +190,12 @@ local args= {
 			end,
 			renderCommand= function(self)
 				self:diffuse(color("#7f7f7f"))
-					:zoomx(_screen.w * 1.25 / bg_tex_size)
-					:zoomy(_screen.h * 1.25 / bg_tex_size)
+				if config_data.square_bg then
+					self:zoom(_screen.w * config_data.bg_zoomx / bg_tex_size)
+				else
+					self:zoomx(_screen.w * config_data.bg_zoomx / bg_tex_size)
+						:zoomy(_screen.h * config_data.bg_zoomy / bg_tex_size)
+				end
 			end
 		},
 		Def.Sprite{

@@ -413,12 +413,6 @@ return Def.ActorFrame{
 		update_help()
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
 	end,
-	Def.Quad{
-		InitCommand= function(self)
-			self:FullScreen()
-			self:diffuse(colors.bg)
-		end
-	},
 	manip:create_actors("manip", SCREEN_RIGHT-76, 100, colors),
 	main_display:create_actors(
 		"main_disp", _screen.w * .25 + 8, 16, 18, _screen.w * .5-16, 24, 1,

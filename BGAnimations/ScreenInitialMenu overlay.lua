@@ -239,7 +239,7 @@ local function create_actors()
 		args[#args+1]= frame:create_actors(
 			i .. "_frame", 1, 0, 0,
 			fetch_color("initial_menu.frame"),
-			Alpha(fetch_color("initial_menu.menu_bg"), .5),
+			fetch_color("initial_menu.menu_bg", .5),
 			SCREEN_CENTER_X, SCREEN_CENTER_Y)
 	end
 	local used_by_stats= line_height * 3

@@ -42,6 +42,34 @@ local function confetti_val(name, min, max, min_scale, scale, max_scale)
 	}
 end
 
+local bubble_data= bubble_config:get_data()
+local function bubble_val(name, min, max, min_scale, scale, max_scale)
+	return {
+		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
+		validator= function(v) return v >= min and v <= max end,
+		initial_value= function() return bubble_data[name] end,
+		set= function(pn, v)
+			bubble_data[name]= v
+			bubble_config:set_dirty()
+			update_common_bg_colors()
+		end
+	}
+end
+
+local function bubble_amount(name, min, max, min_scale, scale, max_scale)
+	return {
+		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
+		validator= function(v) return v >= min and v <= max end,
+		initial_value= function() return bubble_data[name] end,
+		set= function(pn, v)
+			bubble_data[name]= v
+			bubble_config:set_dirty()
+			update_common_bg_colors()
+			reset_bubble_amount()
+		end
+	}
+end
+
 local function make_extra_for_conf_val(name, min_scale, scale, max_scale)
 	return {
 		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
@@ -460,6 +488,45 @@ local confetti_options= {
 				 unset= function() activate_confetti("perm", false) end}}}},
 }
 
+local bubble_options= {
+	{name= "bubble_bg_tex_size", meta= options_sets.adjustable_float,
+	 args= bubble_val("bg_tex_size", 2, 2048, 0, 2, 3)},
+	{name= "bubble_bg_zoomx", meta= options_sets.adjustable_float,
+	 args= bubble_val("bg_zoomx", 0, 4, -2, -1, 0)},
+	{name= "bubble_bg_zoomy", meta= options_sets.adjustable_float,
+	 args= bubble_val("bg_zoomy", 0, 4, -2, -1, 0)},
+	{name= "bubble_square_bg", meta= options_sets.special_functions,
+	 args= {
+		 eles= {
+			 { name= "On", init= function() return bubble_data.square_bg end,
+				 set= function() bubble_data.square_bg= true
+					 bubble_config:set_dirty() update_common_bg_colors() end,
+				 unset= function() bubble_data.square_bg= false
+					 bubble_config:set_dirty() update_common_bg_colors() end}}}},
+	{name= "bubble_amount", meta= options_sets.adjustable_float,
+	 args= bubble_amount("amount", 0, 128, 0, 1, 2)},
+	{name= "bubble_pos_min_speed", meta= options_sets.adjustable_float,
+	 args= bubble_val("pos_min_speed", 0, 512, -1, 0, 2)},
+	{name= "bubble_pos_max_speed", meta= options_sets.adjustable_float,
+	 args= bubble_val("pos_max_speed", 0, 512, -1, 0, 2)},
+	{name= "bubble_min_size", meta= options_sets.adjustable_float,
+	 args= bubble_val("min_size", 0, 512, 0, 1, 2)},
+	{name= "bubble_max_size", meta= options_sets.adjustable_float,
+	 args= bubble_val("max_size", 0, 512, 0, 1, 2)},
+	{name= "bubble_size_min_speed", meta= options_sets.adjustable_float,
+	 args= bubble_val("size_min_speed", 0, 1, -8, -2, -1)},
+	{name= "bubble_size_max_speed", meta= options_sets.adjustable_float,
+	 args= bubble_val("size_max_speed", 0, 1, -8, -2, -1)},
+	{name= "bubble_min_color", meta= options_sets.adjustable_float,
+	 args= bubble_val("min_color", 0, 1, -8, -2, -1)},
+	{name= "bubble_max_color", meta= options_sets.adjustable_float,
+	 args= bubble_val("max_color", 0, 1, -8, -2, -1)},
+	{name= "bubble_color_min_speed", meta= options_sets.adjustable_float,
+	 args= bubble_val("color_min_speed", 0, 1, -8, -2, -1)},
+	{name= "bubble_color_max_speed", meta= options_sets.adjustable_float,
+	 args= bubble_val("color_max_speed", 0, 1, -8, -2, -1)},
+}
+
 local special_options= {
 	{name= "tag_by_genre", meta= "execute", execute= function()
 		 tag_all_songs_with_genre_info("ProfileSlot_Machine")
@@ -478,6 +545,7 @@ local menu_items= {
 	{name= "scoring_config", meta= options_sets.menu, args= scoring_options()},
 	{name= "life_config", meta= options_sets.menu, args= life_options()},
 	{name= "confetti_config", meta= options_sets.menu, args= confetti_options},
+	{name= "bubble_config", meta= options_sets.menu, args= bubble_options},
 	{name= "offset_config", meta= options_sets.menu, args= get_offset_service_menu},
 	{name= "special_options", meta= options_sets.menu, args= special_options},
 }
@@ -522,6 +590,7 @@ local function input(event)
 						life_config:check_dirty()
 					misc_config:save()
 					confetti_config:save()
+					bubble_config:save()
 					update_confetti_count()
 					machine_flag_setting:save()
 					machine_pain_setting:save()

@@ -894,7 +894,7 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 			manip:hide()
 		end,
 		frame:create_actors(
-			"frame", 2, sect_width, sect_height, pcolor, fetch_color("bg"),
+			"frame", 2, sect_width, sect_height, pcolor, fetch_color("bg", .5),
 			sect_width/2, sect_height/2),
 		normal_text("name", pname, pcolor, nil, 8, line_height / 2, 1, left),
 		bpm:create_actors("bpm", pn, sect_width/2, line_height*1.5),

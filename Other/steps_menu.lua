@@ -310,7 +310,9 @@ steps_menu_mt= {
 				else
 					diff_text= get_string_wrapper("StepsDisplayList", choice.diff)
 				end
-				self.text:settext(diff_text .. "\n" .. choice.met)
+				self.text:settext(
+					get_string_wrapper("StepsTypeNames", self.chosen_steps_type)
+						.. "\n" .. diff_text .. "\n" .. choice.met)
 				cons_set_current_steps(self.pn, choice.steps)
 			end
 		end,

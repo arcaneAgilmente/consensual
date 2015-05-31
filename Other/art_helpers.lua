@@ -713,6 +713,18 @@ color_manipulator_mt= {
 					end
 				end,
 				Def.Quad{
+					Name= "exbg", InitCommand= function(subself)
+						subself:setsize(chactor_width*8, 80):vertalign(bottom):xy(8, -16)
+							:diffuse{0, 0, 0, 1}
+					end
+				},
+				Def.Quad{
+					Name= "chbg", InitCommand= function(subself)
+						subself:setsize(chactor_width*8, 256):vertalign(top):xy(8, 16)
+							:diffuse{0, 0, 0, 1}
+					end
+				},
+				Def.Quad{
 					Name= "example", InitCommand= function(subself)
 						self.example= subself
 						subself:setsize(chactor_width*8, 80):vertalign(bottom):xy(8, -16)
