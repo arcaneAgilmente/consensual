@@ -1,6 +1,7 @@
 local conf_data= misc_config:get_data()
 local trans_time= conf_data.transition_time
-if conf_data.transition_split_max <= 0 or conf_data.transition_split_min <= 0 then
+if conf_data.transition_split_max <= 0 or conf_data.transition_split_min <= 0
+or not ActorMultiVertex.SetStateProperties then
 	return Def.Actor{
 		StartTransitioningCommand= function(self)
 			SCREENMAN:GetTopScreen():GetChild("Overlay")
@@ -60,7 +61,6 @@ elseif conf_data.transition_type == "random" then
 	scramble_chosen= (math.random(2) == 1)
 end
 if scrambler_mode then scramble_chosen= true end
-if not ActorMultiVertex.SetStateProperties then scramble_chosen= false end
 
 local overlay_render= Def.ActorFrameTexture{
 	InitCommand= function(self)
@@ -137,11 +137,7 @@ return Def.ActorFrame{
 	Def.ActorMultiVertex{
 		Name= "transplitter", StartTransitioningCommand= function(self)
 			self:LoadTexture("trans_overlay")
-			local after_verts= GetTimeSinceStart()
-			vert_set_time= after_verts - after_tex
-			tex_pos_time= GetTimeSinceStart() - after_verts
 			self:SetDrawState{Mode="DrawMode_Quads"}:playcommand("new_verts", {1})
-				:sleep(vert_set_time+(tex_pos_time*2))
 				:linear(trans_time):playcommand("new_verts", {2})
 		end,
 		showCommand= function(self)
