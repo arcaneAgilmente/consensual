@@ -5,6 +5,7 @@ local banner_container= false
 local banner_image= false
 local eval_stroke= fetch_color("evaluation.stroke")
 local graph_colors= fetch_color("evaluation.graphs")
+local set_visible_score_data
 
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 dofile(THEME:GetPathO("", "eval_parts.lua"))
@@ -938,6 +939,11 @@ local function update_bestiality()
 	end
 end
 
+local function update_player_bestiality(pn)
+	update_bestiality()
+	set_visible_score_data(pn, score_data_viewing_indices[pn])
+end
+
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "song_props_menu.lua"))
 dofile(THEME:GetPathO("", "tags_menu.lua"))
@@ -946,7 +952,17 @@ set_option_set_metatables()
 
 local flag_eles= {}
 for i, fname in ipairs(sorted_eval_flag_names) do
-	flag_eles[i]= generic_flag_control_element("eval", fname)
+	local genel= generic_flag_control_element("eval", fname)
+	flag_eles[i]= {
+		name= genel.name, init= genel.init, set= function(pn)
+			genel.set(pn)
+			update_player_bestiality(pn)
+		end,
+		unset= function(pn)
+			genel.unset(pn)
+			update_player_bestiality(pn)
+		end
+	}
 end
 local flag_ex= {name= "Flags", eles= flag_eles}
 
@@ -1023,8 +1039,6 @@ local function update_player_cursor(pn)
 		player_cursors[pn]:hide()
 	end
 end
-
-local set_visible_score_data
 
 local function size_frame_to_report(frame, report_container, is_profile)
 	local pad= 16
@@ -1173,12 +1187,6 @@ local function filter_input_for_menus(pn, code, press)
 			handled, close= special_menus[spid][pn]:interpret_code(code)
 			if handled then
 				update_player_cursor(pn)
-				if spid == 3 then
-					update_bestiality()
-					if showing_profile_on_other_side then
-						set_visible_score_data(pn, score_data_viewing_indices[pn])
-					end
-				end
 				if close then
 					if type(close) == "boolean" or close.name == "exit_menu" then
 						set_special_menu(pn, 0)

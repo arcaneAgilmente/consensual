@@ -207,17 +207,21 @@ local focus_element_info_mt= {
 			self.middle_height= basic_info_height
 			self.left_x= wheel_width * -.15
 			self.right_x= wheel_width * .25
-			self.jacket_width= 64
+			self.jacket_width= (basic_info_height*2) - (pad*2)
 			local hwheelw= wheel_width * .5
 			local hjackw= self.jacket_width * .5
 			local jacket_x= -hwheelw + hjackw + hpad
 			local symbol_size= 16
-			local symbol_x= hwheelw - 16
-			local symbol_y= -basic_info_height + (symbol_size * .5)
+			local hsymw= symbol_size * .5
+			local symbol_x= hwheelw - hsymw - hpad
+			local symbol_y= -basic_info_height + hsymw
 			local len_x= jacket_x + hjackw + pad
-			local genre_x= symbol_x - (symbol_size * .5) - pad
-			self.title_width= symbol_x - jacket_x - hjackw - (symbol_size*.5) - pad
+			local genre_x= symbol_x - hsymw - pad
+			self.title_width= symbol_x - jacket_x - hjackw - hsymw - (pad*2)
 			local title_x= jacket_x + hjackw + pad + (self.title_width * .5)
+			self.title_y= -22
+			self.split_title_top_y= self.title_y - 12
+			self.split_title_bot_y= self.title_y + 12
 			local cdtitle_x= hwheelw - cdtitle_size*.5 - pad
 			local cdtitle_y= 0
 			local auth_start= -extra_info_height+hpad
@@ -225,6 +229,7 @@ local focus_element_info_mt= {
 				InitCommand= function(subself)
 					self.container= subself
 					self.title= subself:GetChild("title")
+					self.sec_title= subself:GetChild("sec_title")
 					self.subtitle= subself:GetChild("subtitle")
 					self.length= subself:GetChild("length")
 					self.genre= subself:GetChild("genre")
@@ -252,11 +257,12 @@ local focus_element_info_mt= {
 						subself:xy(jacket_x, 0)
 					end
 				},
-				normal_text("title", "", fetch_color("text"), fetch_color("stroke"), title_x, -12, 1),
-				normal_text("subtitle", "", fetch_color("text"), fetch_color("stroke"), title_x, 6, .5),
-				normal_text("length", "", fetch_color("text"), fetch_color("stroke"), len_x, 18, .5, left),
-				normal_text("genre", "", fetch_color("text"), fetch_color("stroke"), genre_x, 18, .5, right),
-				normal_text("artist", "", fetch_color("text"), fetch_color("stroke"), title_x, 30, .5, center),
+				normal_text("title", "", fetch_color("text"), fetch_color("stroke"), title_x, self.title_y, 1),
+				normal_text("sec_title", "", fetch_color("text"), fetch_color("stroke"), title_x, self.title_y, 1),
+				normal_text("subtitle", "", fetch_color("text"), fetch_color("stroke"), title_x, 12, .5),
+				normal_text("length", "", fetch_color("text"), fetch_color("stroke"), len_x, 24, .5, left),
+				normal_text("genre", "", fetch_color("text"), fetch_color("stroke"), genre_x, 24, .5, right),
+				normal_text("artist", "", fetch_color("text"), fetch_color("stroke"), title_x, 36, .5, center),
 			}
 			local above_args= {
 				InitCommand= function(subself)
@@ -354,6 +360,35 @@ local focus_element_info_mt= {
 				scale_to_fit(self.jacket, self.jacket_width, self.jacket_width)
 			end
 		end,
+		set_title_text= function(self, text)
+			self.title:zoomx(1)
+			self.title:settext(text)
+			local total_width= self.title:GetWidth()
+			if total_width > self.title_width then
+				local split_point= math.floor(#text / 2)
+				local space_before_split= text:sub(1, split_point):reverse():find(" ")
+				local space_after_split= text:sub(split_point):find(" ")
+				if space_before_split then
+					if not space_after_split
+					or space_before_split < space_after_split then
+						split_point= split_point - space_before_split
+					else
+						split_point= split_point + space_after_split - 1
+					end
+				elseif space_after_split then
+					split_point= split_point + space_after_split - 1
+				end
+				local first_part= text:sub(1, split_point)
+				local second_part= text:sub(split_point + 1)
+				self.title:settext(first_part):y(self.split_title_top_y)
+				self.sec_title:settext(second_part)
+					:y(self.split_title_bot_y):visible(true)
+				width_limit_text(self.sec_title, self.title_width)
+			else
+				self.title:y(self.title_y)
+				self.sec_title:visible(false)
+			end
+		end,
 		update= function(self, item)
 			self:hide_song_bucket_info()
 			self:hide_song_info()
@@ -369,7 +404,7 @@ local focus_element_info_mt= {
 				else
 					self.bg:diffuse(wheel_colors.group)
 				end
-				self.title:settext(curr_group_name)
+				self:set_title_text(curr_group_name)
 				self.subtitle:visible(false)
 				if item.bucket_info.song_count then
 					local song_count= item.bucket_info.song_count or 0
@@ -416,7 +451,7 @@ local focus_element_info_mt= {
 					self.steps_by:visible(true)
 				end
 			elseif item.sort_info then
-				self.title:settext(item.sort_info.name)
+				self:set_title_text(item.sort_info.name)
 				self.bg:diffuse(wheel_colors.sort)
 			else
 				if item.random_info then
@@ -433,7 +468,7 @@ local focus_element_info_mt= {
 					elseif song:HasBackground() then
 						self:set_jacket_to_image(song:GetBackgroundPath())
 					end
-					self.title:settext(song_get_main_title(song)):visible(true)
+					self:set_title_text(song_get_main_title(song))
 					self.length:settext(
 						get_string_wrapper("SelectMusicExtraInfo", "song_len") .. ": " ..
 							secs_to_str(song_get_length(song))):visible(true)
