@@ -1,10 +1,21 @@
+# This is the reskin branch
+You can use this branch, and it should be just as stable as the master branch,
+but you should really give some feedback if you're using this branch.
+
 # Consensual
 
 A theme for stepmania.
 
 Minimalist in graphics, maximalist in functionality.
 
-This theme requires Stepmania 5.0.5 or any newer 5.0.x version.
+## Minimum StepMania version: 5.0.8
+NPS calculation uses the Notes radar category that was added in 5.0.8.  
+The screen filter is in the notefield board, which puts it above the judgment
+in 5.0.7 and under the judgment in 5.0.8 because the TapJudgmentsUnderField
+metric is true.  This is why the render order of the notefield board was
+changed in 5.0.8.  
+Transitions and the colored background might have problems in 5.0.6.
+(untested)
 
 ## Short feature list:
 * Deeper music wheel sorting.
@@ -39,6 +50,7 @@ This theme requires Stepmania 5.0.5 or any newer 5.0.x version.
 	moral support.
 * dbk2 occasionally finds problems and tests stuff for me when he has time
 	away from his thesis.  Also big on the moral support.
+* Caitlyn designed the reskin and will hopefully pick colors.
 * hellrazor funded the kickbox game mode.  Now if only he would try it
 	out... ;)
 * Midiman polished the SM5 default theme so that I didn't have to.
