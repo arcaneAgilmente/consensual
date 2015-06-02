@@ -260,20 +260,28 @@ local music_whale= {
 				return a == b
 			end
 			local function dir_compare(a, b)
+				if a.el then a= a.el else return false end
+				if b.el then b= b.el else return false end
 				return a and b and a.GetSongDir and b.GetSongDir and
 					a:GetSongDir() == b:GetSongDir()
 			end
 			local search_path= {}
 			if self.cursor_item and self.cursor_item.name_set then
-				rec_print_table(self.cursor_item)
+--				Trace("using cursor_item")
+--				rec_print_table(self.cursor_item)
 				search_path= {
 					bucket_search_for_item(self.sorted_songs, self.cursor_item, dir_compare)}
 				if search_path[1] == -1 then
-					--					Trace("Failed to find cursor item, searching for song:  " .. table.concat(search_path, ", "))
+--					Trace("Failed to find cursor item, searching for song:  " .. table.concat(search_path, ", "))
 					search_path= {bucket_search(self.sorted_songs, self.cursor_song,
 																			final_compare, true)}
 				end
 			else
+--				if self.cursor_item then
+--					Trace("cursor_item has some stuff:")
+--					rec_print_table(self.cursor_item)
+--				end
+--				Trace("using cursor_song")
 				search_path= {bucket_search(self.sorted_songs, self.cursor_song,
 																		final_compare, true)}
 			end
@@ -583,6 +591,8 @@ local music_whale= {
 				cursor_item= curr_element.item,
 				alt_cursor_songs= alt_cursor_songs,
 			}
+--			Trace("saved cursor_item:")
+--			rec_print_table(music_whale_state.cursor_item)
 			if curr_element.random_info or curr_element.is_prev then
 				music_whale_state.on_random= curr_element.name
 				music_whale_state.depth_to_random= #self.disp_stack

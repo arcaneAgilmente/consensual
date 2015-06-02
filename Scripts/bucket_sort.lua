@@ -801,7 +801,8 @@ function bucket_search_for_item(set, match_item, final_compare)
 			end
 		else
 --			Trace("match(" .. match_last_name .. ", " ..
---							get_last_name(item.name_set) .. ")")
+--							get_last_name(item.name_set) .. ") final_compare: " ..
+--							tostring(final_compare(match_item, item)))
 			if match_last_name == get_last_name(item.name_set)
 			and final_compare(match_item, item) then
 				return i
