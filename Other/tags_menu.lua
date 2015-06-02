@@ -23,17 +23,18 @@ options_sets.tags_menu= {
 		reset_info= function(self)
 			self.cursor_pos= 1
 			self.real_info_set= {}
+			self.op_functions= {}
 			if self.have_up_el then
 				self.real_info_set[1]= up_element()
+				self.op_functions[1]= function() return false end
 			else
 				self.real_info_set[#self.real_info_set+1]= {text="Exit Tags menu"}
-				self.op_functions= {function() return true, true end}
+				self.op_functions[1]= function() return true, true end
 			end
 			if input_came_from_keyboard then
 				self.real_info_set[#self.real_info_set+1]= {text= "Reload tags file"}
 				self.op_functions[#self.op_functions+1]= function()
 					load_usable_tags(self.prof_slot)
-					lua.ReportScriptError(#usable_tags[self.prof_slot] .. " tags in list.")
 					self:reset_info()
 					self:update()
 					return true
@@ -120,7 +121,7 @@ options_sets.tags_menu= {
 					local number_set= 0
 					local set_to= 1
 					for i, song in ipairs(apply_group) do
-						if get_tag_value(self.prof_slot, song, tag_name) then
+						if get_tag_value(self.prof_slot, song, tag_name) ~= 0 then
 							number_set= number_set + 1
 						end
 					end

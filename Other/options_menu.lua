@@ -920,10 +920,14 @@ options_sets.enum_option= {
 				self.unset_persist_pos= #self.info_set+1
 				self.info_set[self.unset_persist_pos]= unpersist_element()
 				self.persist_val_pos= #self.info_set+1
-				self.info_set[self.persist_val_pos]= persist_value_element(
-					ToEnumShortString(
-						cons_players[self.player_number]:get_persist_mod_value(
-							self.persist_name, self.persist_type)))
+				local persist_value= cons_players[self.player_number]:
+					get_persist_mod_value(self.persist_name, self.persist_type)
+				if persist_value then
+					self.info_set[self.persist_val_pos]= persist_value_element(
+						ToEnumShortString(persist_value))
+				else
+					self.info_set[self.persist_val_pos]= persist_value_element(nil)
+				end
 			end
 		end,
 		short_string= function(self, val)
