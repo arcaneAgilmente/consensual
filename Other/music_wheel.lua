@@ -1,21 +1,44 @@
 local pad= 4
 local hpad= 2
 local wheel_x= 0
-local wheel_y= SCREEN_TOP + 12
+local wheel_y= 0
 local wheel_move_time= .1
-local items_on_wheel= 18
+local items_on_wheel= 24
+local items_on_screen= items_on_wheel - 2
 local available_height= _screen.h
-local per_item= (available_height / (items_on_wheel - 2))
+local per_item= available_height / items_on_screen
 local wheel_width_limit= 0
 wheel_colors= {}
 local item_width= 0
 local item_text_width= 0
-local item_height= (_screen.h / items_on_wheel) - pad
-local item_text_height= item_height - pad
-local item_text_zoom= item_text_height / 24
+local item_height= 0
+local item_text_height= 0
+local item_text_zoom= 0
 local center_expansion= 0
+local dual_mode= false
+
+local function recalc_heights()
+	item_height= per_item - pad
+	item_text_height= item_height - pad
+	item_text_zoom= item_text_height / 24
+end
+recalc_heights()
+
+-- Some calculations to figure out the height in real pixels, to see if the
+-- items are too short to be useful.  If they are, switch to dual mode.
+do
+	local fake_pix_to_real_ratio= DISPLAY:GetDisplayHeight() /_screen.h
+	if item_text_height * fake_pix_to_real_ratio < 12 then
+		dual_mode= true
+		per_item= per_item * 2
+	end
+end
+recalc_heights()
 
 local function recalc_width_limit()
+	if dual_mode then
+		wheel_width_limit= wheel_width_limit * .5
+	end
 	item_width= wheel_width_limit - 4
 	item_text_width= item_width - 4
 end
@@ -42,14 +65,36 @@ local wheel_item_mt= {
 		end,
 		transform= function(self, item_index, num_items, is_focus, focus_pos)
 			local dist_from_focus= item_index - focus_pos
-			local start_y= _screen.cy - (per_item * .4)
+			local start_y= _screen.cy
 			if dist_from_focus < 0 then
 				start_y= start_y - center_expansion + (per_item * .5) - pad
 			else
 				start_y= start_y + center_expansion - (per_item * .5) + pad
 			end
-			self.container:finishtweening():linear(wheel_move_time):x(0)
-				:y(start_y + (dist_from_focus * per_item))
+			local x= 0
+			local y= 0
+			if dual_mode then
+				local items_to_edge= 0
+				if dist_from_focus < 0 then
+					items_to_edge= math.floor((start_y - 32) / per_item)
+					if -dist_from_focus > items_to_edge then
+						dist_from_focus= dist_from_focus + items_to_edge
+						x= wheel_width_limit * -.5
+					else
+						x= wheel_width_limit * .5
+					end
+				else
+					items_to_edge= math.floor((_screen.h - start_y) / per_item)
+					if dist_from_focus > items_to_edge then
+						dist_from_focus= dist_from_focus - items_to_edge
+						x= wheel_width_limit * -.5
+					else
+						x= wheel_width_limit * .5
+					end
+				end
+			end
+			y= start_y + (dist_from_focus * per_item)
+			self.container:finishtweening():linear(wheel_move_time):xy(x, y)
 			if item_index == 1 or item_index == num_items or is_focus then
 				self.container:diffusealpha(0)
 			else
@@ -285,6 +330,7 @@ local music_whale= {
 				search_path= {bucket_search(self.sorted_songs, self.cursor_song,
 																		final_compare, true)}
 			end
+--			Trace("resulting path: " .. table.concat(search_path, ", "))
 			if music_whale_state and music_whale_state.on_random then
 				while #search_path > music_whale_state.depth_to_random+1 do
 					search_path[#search_path]= nil
@@ -416,7 +462,7 @@ local music_whale= {
 	end,
 	follow_search_path= function(self, path, path_index, set)
 		local sindex= path[path_index]
-		--Trace("follow_search_path: " .. path_index .. " out of " .. #path)
+--		Trace("follow_search_path: " .. path_index .. " out of " .. #path)
 		if sindex then
 			self:set_display_bucket(set, sindex)
 			local sbuck= set[sindex] or (set.contents and set.contents[sindex])
@@ -613,6 +659,7 @@ local music_whale= {
 			self.current_sort_name= "Sort Menu"
 			self.cursor_song= gamestate_get_curr_song()
 			self.cursor_item= nil
+			self.in_recent= false
 			self:push_onto_disp_stack()
 			self:set_display_bucket(bucket_man:get_sort_info(), 1)
 		end
