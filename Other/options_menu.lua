@@ -51,7 +51,7 @@ local option_item_mt= {
 			self.icon_height= height / 2
 			self.icon_width= self.icon_height
 			scale_to_fit(self.icon, self.icon_width, self.icon_height)
-			self.icon:x(-width/2)
+			self.icon:x(0)
 		end,
 		set_underline_color= function(self, color)
 			self.underline:diffuse(color)

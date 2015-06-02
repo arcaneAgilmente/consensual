@@ -1527,24 +1527,6 @@ local help_args= {
 	exp_text("group_exp", 8, 12, to_open, "music_select.music_wheel.group"),
 	exp_text("current_group_exp", 8, 36, to_close, "music_select.music_wheel.current_group"),
 	exp_text("song_exp", 8, 60, to_play, "music_select.music_wheel.song"),
-	Def.ActorFrame{
-		Name= "diffex", InitCommand= cmd(xy, 156, 195),
-		Def.Quad{
-			InitCommand= function(self)
-				self:diffuse(fetch_color("accent.yellow"))
-					:setsize(std_item_w, std_item_h)
-			end
-		},
-		normal_text(
-			"style", "S", fetch_color("help.text"), fetch_color("help.stroke"),
-				-24, 0, 1, left),
-		normal_text(
-			"number", "5", fetch_color("help.text"), fetch_color("help.stroke"),
-				24, 0, 1, right),
-		normal_text(
-			"diff", get_string_wrapper("SelectMusic", "difficulty"),
-			fetch_color("help.text"), fetch_color("help.stroke"), -32,0,.75, right),
-	},
 	normal_text(
 		"dismiss", get_string_wrapper("SelectMusic", "dismiss_help"),
 		fetch_color("help.text"), fetch_color("help.stroke"), _screen.cx,
