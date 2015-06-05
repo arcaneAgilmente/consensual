@@ -242,15 +242,15 @@ option_display_mt= {
 			}
 			local next_y= 0
 			if not no_heading then
-				args[#args+1]= normal_text("heading", "", nil, fetch_color("stroke"))
-				next_y= next_y + line_height
+				args[#args+1]= normal_text("heading", "", nil, fetch_color("stroke"), 0, 0, self.el_zoom)
+				next_y= next_y + self.el_height
 			end
 			if not no_display then
-				args[#args+1]= normal_text("display", "", nil, fetch_color("stroke"), 0, line_height)
-				next_y= next_y + line_height
+				args[#args+1]= normal_text("display", "", nil, fetch_color("stroke"), 0, next_y, self.el_zoom)
+				next_y= next_y + self.el_height
 			end
 			if (not no_heading) or (not no_display) then
-				next_y= next_y + line_height * .5
+				next_y= next_y + self.el_height * .5
 			end
 			self.sick_wheel= setmetatable({disable_wrapping= true}, sick_wheel_mt)
 			if value_style then
@@ -1067,7 +1067,7 @@ function set_option_set_metatables()
 end
 
 -- This exists to hand to menus that pass out of view but still exist.
-local fake_display= {}
+local fake_display= {is_fake= true}
 for k, v in pairs(option_display_mt.__index) do
 	fake_display[k]= function() end
 end
@@ -1075,51 +1075,82 @@ end
 menu_stack_mt= {
 	__index= {
 		create_actors= function(
-				self, name, x, y, width, height, player_number)
+				self, name, x, y, width, height, player_number, num_displays,
+				el_height, zoom)
+			num_displays= num_displays or 2
 			self.name= name
 			self.player_number= player_number
 			self.options_set_stack= {}
+			self.zoom= zoom or 1
+			self.el_height= el_height or line_height
 			local pcolor= pn_to_color(player_number)
 			local args= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
 					self.container= subself
-					self.cursor:refit(nil, nil, 20, line_height)
+					self.cursor:refit(nil, nil, 20, self.el_height)
 					for i, disp in ipairs(self.displays) do
 						disp:set_underline_color(pcolor)
 					end
 				end
 			}
-			self.displays= {
-				setmetatable({}, option_display_mt),
-				setmetatable({}, option_display_mt)}
+			self.displays= {}
+			for i= 1, num_displays do
+				self.displays[#self.displays+1]= setmetatable({}, option_display_mt)
+			end
 			local sep= width / #self.displays
-			local off= sep / 2
+			if #self.displays == 1 then sep= 0 end
+			local off= sep / num_displays
 			self.cursor= setmetatable({}, cursor_mt)
-			local disp_el_width_limit= width / 2 - 8
+			local disp_el_width_limit= (width / #self.displays) - 8
 			for i, disp in ipairs(self.displays) do
 				args[#args+1]= disp:create_actors(
 					"disp" .. i, off+sep * (i-1), 0,
-					height, disp_el_width_limit, line_height, 1)
+					height, disp_el_width_limit, self.el_height, self.zoom)
 			end
 			args[#args+1]= self.cursor:create_actors(
 				"cursor", sep, 0, 1, pcolor, fetch_color("player.hilight"),
 				button_list_for_menu_cursor())
 			return Def.ActorFrame(args)
 		end,
+		assign_displays= function(self, start)
+			local oss= self.options_set_stack
+			for i= #oss, 1, -1 do
+				oss[i]:set_display(self.displays[start] or fake_display)
+				start= start - 1
+			end
+		end,
+		push_display_stack= function(self)
+			local use_display= math.min(#self.displays, #self.options_set_stack+1)
+			self:assign_displays(use_display - 1)
+			self:hide_unused_displays(use_display)
+			return use_display
+		end,
+		pop_display_stack= function(self)
+			local oss= self.options_set_stack
+			local use_display= math.min(#self.displays, #oss)
+			self:assign_displays(use_display)
+			for i= #oss, 1, -1 do
+				local curr_set= oss[i]
+				if not curr_set.display.is_fake then
+					if curr_set.recall_init_on_pop then
+						curr_set:recall_init()
+					end
+					curr_set:recheck_levels()
+				end
+			end
+			self:hide_unused_displays(use_display)
+			return use_display
+		end,
+		hide_unused_displays= function(self, last_used_display)
+			for i= last_used_display+1, #self.displays do
+				self.displays[i]:hide()
+			end
+		end,
 		push_options_set_stack= function(
 				self, new_set_meta, new_set_initializer_args, base_exit)
 			local oss= self.options_set_stack
-			local top_set= oss[#oss]
-			local almost_top_set= oss[#oss-1]
-			local next_display= 1
-			if almost_top_set then
-				almost_top_set:set_display(fake_display)
-			end
-			if top_set then
-				top_set:set_display(self.displays[1])
-				next_display= 2
-			end
+			local use_display= self:push_display_stack()
 			local nos= setmetatable({}, new_set_meta)
 			oss[#oss+1]= nos
 			nos:set_player_info(self.player_number)
@@ -1128,66 +1159,29 @@ menu_stack_mt= {
 			else
 				nos:initialize(self.player_number, new_set_initializer_args)
 			end
-			nos:set_display(self.displays[next_display])
-			next_display= next_display + 1
-			if self.displays[next_display] then
-				self.displays[next_display]:hide()
-			end
+			nos:set_display(self.displays[use_display])
 		end,
 		pop_options_set_stack= function(self)
 			local oss= self.options_set_stack
-			if #oss > 1 then
+			if #oss > 0 then
 				local former_top= oss[#oss]
 				if former_top.destructor then former_top:destructor() end
 				oss[#oss]= nil
-				local top_set= oss[#oss]
-				local almost_top_set= oss[#oss-1]
-				local next_display= 1
-				if almost_top_set then
-					almost_top_set:set_display(self.displays[1])
-					almost_top_set:recheck_levels()
-					next_display= 2
-				end
-				top_set:set_display(self.displays[next_display])
-				if top_set.recall_init_on_pop then
-					top_set:recall_init()
-				end
-				top_set:recheck_levels()
-				next_display= next_display + 1
-				if self.displays[next_display] then
-					self.displays[next_display]:hide()
-				end
+				self:pop_display_stack()
+			end
+		end,
+		clear_options_set_stack= function(self)
+			while #self.options_set_stack > 0 do
+				self:pop_options_set_stack()
 			end
 		end,
 		enter_external_mode= function(self)
-			local oss= self.options_set_stack
-			local top_set= oss[#oss]
-			local almost_top_set= oss[#oss-1]
-			local next_display= 1
-			if almost_top_set then
-				almost_top_set:set_display(fake_display)
-			end
-			if top_set then
-				top_set:set_display(self.displays[1])
-				next_display= 2
-			end
-			self.displays[next_display]:hide()
+			self:hide_unused_displays(self:push_display_stack() - 1)
 		end,
 		exit_external_mode= function(self)
 			local oss= self.options_set_stack
 			if #oss > 0 then
-				local top_set= oss[#oss]
-				local almost_top_set= oss[#oss-1]
-				local next_display= 1
-				if almost_top_set then
-					almost_top_set:set_display(self.displays[1])
-					next_display= 2
-				end
-				top_set:set_display(self.displays[next_display])
-				next_display= next_display + 1
-				if self.displays[next_display] then
-					self.displays[next_display]:hide()
-				end
+				self:pop_display_stack()
 			end
 			self:update_cursor_pos()
 		end,
@@ -1201,6 +1195,13 @@ menu_stack_mt= {
 				disp:unhide()
 			end
 		end,
+		hide= function(self)
+			self:hide_disp()
+			self.cursor:hide()
+		end,
+		unhide= function(self)
+			self.cursor:unhide()
+		end,
 		interpret_code= function(self, code)
 			local oss= self.options_set_stack
 			local top_set= oss[#oss]
@@ -1213,7 +1214,11 @@ menu_stack_mt= {
 					elseif new_set_data.meta == "execute" then
 						new_set_data.execute(self.player_number)
 					else
-						self:push_options_set_stack(new_set_data.meta, new_set_data.args)
+						local nargs= new_set_data.args
+						if new_set_data.exec_args and type(nargs) == "function" then
+							nargs= nargs(self.player_number)
+						end
+						self:push_options_set_stack(new_set_data.meta, nargs)
 					end
 				end
 			else
@@ -1226,8 +1231,9 @@ menu_stack_mt= {
 			return handled
 		end,
 		update_cursor_pos= function(self)
-			local item= self.options_set_stack[#self.options_set_stack]:
-				get_cursor_element()
+			local tos= self.options_set_stack[#self.options_set_stack]
+			if not tos then return end
+			local item= tos:get_cursor_element()
 			if item then
 				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(item.container)
 				local xp, yp= rec_calc_actor_pos(item.container)

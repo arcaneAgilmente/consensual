@@ -935,7 +935,6 @@ local function color_manip_deextern(pn)
 	end
 	color_manips[pn]:hide()
 	menus[pn]:exit_external_mode()
-	menus[pn]:unhide_disp()
 	menus[pn]:update_cursor_pos()
 end
 

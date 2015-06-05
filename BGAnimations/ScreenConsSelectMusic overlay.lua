@@ -18,6 +18,9 @@ local pane_w= 200
 local pane_h= pane_text_height * max_pain_rows + 4
 local pane_yoff= -pane_h * .5 + pane_text_height * .5 + 2
 local pane_ttx= 0
+local menu_text_zoom= pane_text_zoom
+local pane_menu_h= pane_h
+local pane_menu_w= pane_w - 8
 local pad= 4
 local hpad= 2
 
@@ -41,6 +44,7 @@ local options_time= 1.5
 local go_to_options= false
 local picking_steps= false
 local was_picking_steps= false
+local double_tap_time= .5
 
 local update_player_cursors= noop_nil
 
@@ -513,91 +517,90 @@ local focus_element_info_mt= {
 		collapse= function(self)
 			local newy= self.middle_height
 			self.expanded= false
-			self.above_info:linear(wheel_move_time):zoomy(0):y(-newy)
-			self.below_info:linear(wheel_move_time):zoomy(0):y(newy)
-			self.bg:linear(wheel_move_time)
+			self.above_info:stoptweening():linear(wheel_move_time):zoomy(0):y(-newy)
+			self.below_info:stoptweening():linear(wheel_move_time):zoomy(0):y(newy)
+			self.bg:stoptweening():linear(wheel_move_time)
 				:zoomy((basic_info_height*2)/(expanded_info_height*2))
 		end,
 		expand= function(self)
 			local newy= self.middle_height + extra_info_height
 			self.expanded= true
-			self.above_info:linear(wheel_move_time):zoomy(1):y(-newy+hpad)
-			self.below_info:linear(wheel_move_time):zoomy(1):y(newy-hpad)
-			self.bg:linear(wheel_move_time):zoomy(1)
+			self.above_info:stoptweening():linear(wheel_move_time):zoomy(1):y(-newy+hpad)
+			self.below_info:stoptweening():linear(wheel_move_time):zoomy(1):y(newy-hpad)
+			self.bg:stoptweening():linear(wheel_move_time):zoomy(1)
 		end
 }}
 local focus_element_info= setmetatable({}, focus_element_info_mt)
 
 dofile(THEME:GetPathO("", "steps_menu.lua"))
-
-local steps_menus= {
-	[PLAYER_1]= setmetatable({}, steps_menu_mt),
-	[PLAYER_2]= setmetatable({}, steps_menu_mt),
-}
-
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "pain_display.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
-
-local pain_displays= {
-	[PLAYER_1]= setmetatable({}, pain_display_mt),
-	[PLAYER_2]= setmetatable({}, pain_display_mt),
-}
-
 dofile(THEME:GetPathO("", "song_props_menu.lua"))
 dofile(THEME:GetPathO("", "tags_menu.lua"))
-dofile(THEME:GetPathO("", "auto_hider.lua"))
-dofile(THEME:GetPathO("", "music_wheel.lua"))
-local music_wheel= setmetatable({}, music_whale_mt)
+dofile(THEME:GetPathO("", "favor_menu.lua"))
 
-local function expand_center_for_more()
-	if picking_steps then return end
-	music_wheel:set_center_expansion(expanded_info_height)
-	focus_element_info:expand()
-	update_player_cursors()
+local special_menus= {}
+local steps_menus= {}
+local pain_displays= {}
+local song_props_menus= {}
+local tag_menus= {}
+local player_cursors= {}
+for i, pn in ipairs(all_player_indices) do
+	special_menus[pn]= setmetatable({}, menu_stack_mt)
+	steps_menus[pn]= setmetatable({}, steps_menu_mt)
+	pain_displays[pn]= setmetatable({}, pain_display_mt)
+	song_props_menus[pn]= setmetatable({}, options_sets.menu)
+	tag_menus[pn]= setmetatable({}, options_sets.tags_menu)
+	player_cursors[pn]= setmetatable({}, cursor_mt)
 end
 
-local function collapse_center_for_less()
-	if picking_steps then return end
-	music_wheel:set_center_expansion(basic_info_height)
-	focus_element_info:collapse()
-	update_player_cursors()
+local base_options= {}
+local function close_menu(pn)
+	special_menus[pn]:clear_options_set_stack()
+	special_menus[pn]:hide()
 end
 
-local function switch_to_picking_steps()
-	music_wheel.container:linear(wheel_move_time):diffusealpha(0)
-	focus_element_info:expand()
-	focus_element_info.container:linear(wheel_move_time)
-		:y(_screen.h - expanded_info_height-13)
-	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-		steps_menus[dpn]:activate()
+local function open_menu(pn)
+	special_menus[pn]:unhide()
+	special_menus[pn]:push_options_set_stack(
+		options_sets.menu, base_options, "Pick Song")
+	special_menus[pn]:update_cursor_pos()
+end
+
+local in_special_menu= {[PLAYER_1]= "wheel", [PLAYER_2]= "wheel"}
+local select_press_times= {}
+local ignore_next_open_special= {}
+
+local function update_pain(pn)
+	if GAMESTATE:IsPlayerEnabled(pn) then
+		if in_special_menu[pn] == "wheel" or in_special_menu[pn] == "pain" then
+			pain_displays[pn]:update_all_items()
+			pain_displays[pn]:unhide()
+		elseif in_special_menu[pn] == "menu" then
+		end
+	else
+		pain_displays[pn]:hide()
 	end
-	picking_steps= true
-	update_player_cursors()
 end
 
-local function switch_to_not_picking_steps()
-	music_wheel.container:linear(wheel_move_time):diffusealpha(1)
-	focus_element_info:collapse()
-	focus_element_info.container:linear(wheel_move_time):y(_screen.cy)
-	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-		steps_menus[dpn]:deactivate()
+local function set_special_menu(pn, value)
+	in_special_menu[pn]= value
+	if in_special_menu[pn] == "wheel" or in_special_menu[pn] == "pain" then
+		close_menu(pn)
+		pain_displays[pn]:unhide()
+		pain_displays[pn]:update_all_items()
+		if in_special_menu[pn] == "pain" then
+			player_cursors[pn]:hide()
+		else
+			player_cursors[pn]:unhide()
+			update_player_cursors()
+		end
+	else
+		pain_displays[pn]:hide()
+		pain_displays[pn]:show_frame()
+		open_menu(pn)
 	end
-	picking_steps= false
-	was_picking_steps= true
-	update_player_cursors()
-end
-
-set_option_set_metatables()
-
-local special_menu_displays= {
-	[PLAYER_1]= setmetatable({}, option_display_mt),
-	[PLAYER_2]= setmetatable({}, option_display_mt),
-}
-
-local privileged_props= false
-local function privileged(pn)
-	return privileged_props
 end
 
 local function convert_xml_exists()
@@ -605,21 +608,10 @@ local function convert_xml_exists()
 	return false
 end
 
-local song_props= {
-	{name= "exit_menu"},
-	{name= "prof_favor_inc", req_func= player_using_profile},
-	{name= "prof_favor_dec", req_func= player_using_profile},
-	{name= "mach_favor_inc", level= 3},
-	{name= "mach_favor_dec", level= 3},
-	{name= "censor", req_func= privileged},
-	{name= "uncensor", req_func= privileged},
-	{name= "toggle_censoring", req_func= privileged},
-	{name= "edit_tags", level= 3},
-	{name= "edit_pain", level= 4},
-	{name= "edit_styles", level= 2},
-	{name= "convert_xml", req_func= convert_xml_exists},
-	{name= "end_credit", level= 4},
-}
+local privileged_props= false
+local function privileged(pn)
+	return privileged_props
+end
 
 local function censor_item(item, depth)
 	add_to_censor_list(item.el)
@@ -629,14 +621,82 @@ local function uncensor_item(item, depth)
 	remove_from_censor_list(item.el)
 end
 
-local song_props_menus= {
-	[PLAYER_1]= setmetatable({}, options_sets.menu),
-	[PLAYER_2]= setmetatable({}, options_sets.menu),
+local misc_options= {
+	{name= "edit_pain", meta= "execute", level= 2, execute= function(pn)
+		 pain_displays[pn]:enter_edit_mode()
+		 set_special_menu(pn, "pain")
+	end},
+	{name= "convert_xml", req_func= convert_xml_exists, meta= "execute",
+	 level= 4, execute= function()
+		 if not convert_xml_bgs then return end
+		 local cong= GAMESTATE:GetCurrentSong()
+		 if cong then
+			 convert_xml_bgs(cong:GetSongDir())
+		 else
+			 local function convert_item(item, depth)
+				 convert_xml_bgs(item.el:GetSongDir())
+			 end
+			 local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
+			 if bucket.bucket_info and not bucket.is_special then
+				 bucket_traverse(bucket.bucket_info.contents, nil, convert_item)
+			 end
+		 end
+		 close_menu(pn)
+	end},
+	{name= "censor", req_func= privileged, meta= "execute",
+	 execute= function(pn)
+		 if gamestate_get_curr_song() then
+			 add_to_censor_list(gamestate_get_curr_song())
+			 activate_status(music_wheel:resort_for_new_style())
+		 else
+			 local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
+			 if bucket.bucket_info and not bucket.is_special then
+				 bucket_traverse(bucket.bucket_info.contents, nil, censor_item)
+				 activate_status(music_wheel:resort_for_new_style())
+			 end
+		 end
+		 close_menu(pn)
+	end},
+	{name= "uncensor", req_func= privileged, meta= "execute",
+	 execute= function(pn)
+		 if gamestate_get_curr_song() then
+			 remove_from_censor_list(gamestate_get_curr_song())
+			 activate_status(music_wheel:resort_for_new_style())
+		 else
+			 local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
+			 if bucket.bucket_info and not bucket.is_special then
+				 bucket_traverse(bucket.bucket_info.contents, nil, uncensor_item)
+				 activate_status(music_wheel:resort_for_new_style())
+			 end
+		 end
+		 close_menu(pn)
+	end},
+	{name= "toggle_censoring", req_func= privileged, meta= "execute",
+	 execute= function(pn)
+		 toggle_censoring()
+		 activate_status(music_wheel:resort_for_new_style())
+		 close_menu(pn)
+	end},
+	{name= "edit_chart", level= 5, meta= "execute", execute= function(pn)
+		 local song= GAMESTATE:GetCurrentSong()
+		 local steps= GAMESTATE:GetCurrentSteps(pn)
+		 if song and steps then
+			 GAMESTATE:SetStepsForEditMode(song, steps)
+			 trans_new_screen("ScreenEdit")
+		 end
+	end},
+	{name= "end_credit", meta= "execute", level= 4, execute= function(pn)
+		 stop_music()
+		 SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
+		 if not GAMESTATE:IsEventMode() then
+			 end_credit_now()
+		 else
+			 trans_new_screen("ScreenInitialMenu")
+		 end
+	end},
 }
 
-local tag_menus= {
-	[PLAYER_1]= setmetatable({}, options_sets.tags_menu),
-	[PLAYER_2]= setmetatable({}, options_sets.tags_menu),
+local base_mods= {
 }
 
 local function make_visible_style_data(pn)
@@ -652,36 +712,99 @@ local function make_visible_style_data(pn)
 	return {eles= eles}
 end
 
-local visible_styles_menus= {
-	[PLAYER_1]= setmetatable({}, options_sets.special_functions),
-	[PLAYER_2]= setmetatable({}, options_sets.special_functions),
+local function close_visible_styles(pn)
+	if enough_sourses_of_visible_styles() then
+		update_steps_types_to_show()
+		style_config:set_dirty(pn_to_profile_slot(pn))
+		activate_status(music_wheel:resort_for_new_style())
+		common_menu_change(1)
+		return
+	else
+		SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
+	end
+end
+
+base_options= {
+	{name= "scsm_misc", meta= options_sets.menu, level= 1, args= misc_options},
+	{name= "scsm_favor", meta= options_sets.favor_menu, level= 1, args= {}},
+	{name= "scsm_tags", meta= options_sets.tags_menu, level= 1, args= true},
+--	{name= "scsm_stepstypes", meta= options_sets.special_functions, level= 1,
+--	args= make_visible_style_data, exec_args= true},
+	{name= "scsm_mods", meta= options_sets.menu, level= 1, args= base_mods},
+}
+
+dofile(THEME:GetPathO("", "auto_hider.lua"))
+dofile(THEME:GetPathO("", "music_wheel.lua"))
+local music_wheel= setmetatable({}, music_whale_mt)
+
+local function expand_center_for_more()
+	if picking_steps then return end
+	if focus_element_info.expanded then return end
+	music_wheel:set_center_expansion(expanded_info_height)
+	focus_element_info:expand()
+	update_player_cursors()
+end
+
+local function collapse_center_for_less()
+	if picking_steps then return end
+	if not focus_element_info.expanded then return end
+	music_wheel:set_center_expansion(basic_info_height)
+	focus_element_info:collapse()
+	update_player_cursors()
+end
+
+local function toggle_expansion()
+	if focus_element_info.expanded then
+		collapse_center_for_less()
+	else
+		expand_center_for_more()
+	end
+end
+
+local function switch_to_picking_steps()
+	music_wheel.container:linear(wheel_move_time):diffusealpha(0)
+	expand_center_for_more()
+	focus_element_info.container:linear(wheel_move_time)
+		:y(_screen.h - expanded_info_height-13)
+	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		steps_menus[dpn]:activate()
+	end
+	picking_steps= true
+	update_player_cursors()
+end
+
+local function switch_to_not_picking_steps()
+	music_wheel.container:linear(wheel_move_time):diffusealpha(1)
+	focus_element_info.container:linear(wheel_move_time):y(_screen.cy)
+	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		steps_menus[dpn]:deactivate()
+	end
+	picking_steps= false
+	was_picking_steps= true
+	update_player_cursors()
+end
+
+set_option_set_metatables()
+
+local song_props= {
+	{name= "exit_menu"},
+	{name= "prof_favor_inc", req_func= player_using_profile},
+	{name= "prof_favor_dec", req_func= player_using_profile},
+	{name= "mach_favor_inc", level= 3},
+	{name= "mach_favor_dec", level= 3},
+	{name= "censor", req_func= privileged},
+	{name= "uncensor", req_func= privileged},
+	{name= "toggle_censoring", req_func= privileged},
+	{name= "edit_tags", level= 3},
+	{name= "edit_pain", level= 4},
+	{name= "edit_styles", level= 2},
+	{name= "convert_xml", req_func= convert_xml_exists},
+	{name= "edit_chart", level= 5},
+	{name= "end_credit", level= 4},
 }
 
 local player_cursor_button_list= {{"top", "MenuLeft"}, {"bottom", "MenuRight"}}
 reverse_button_list(player_cursor_button_list)
-local player_cursors= {
-	[PLAYER_1]= setmetatable({}, cursor_mt),
-	[PLAYER_2]= setmetatable({}, cursor_mt)
-}
-
-local in_special_menu= {[PLAYER_1]= 1, [PLAYER_2]= 1}
-
-local function update_pain(pn)
-	if GAMESTATE:IsPlayerEnabled(pn) then
-		if in_special_menu[pn] == 1 or in_special_menu[pn] == 5 then
-			pain_displays[pn]:update_all_items()
-			pain_displays[pn]:unhide()
-		elseif in_special_menu[pn] == 2 then
-			song_props_menus[pn]:update()
-		elseif in_special_menu[pn] == 3 then
-			tag_menus[pn]:update()
-		elseif in_special_menu[pn] == 4 then
-			visible_styles_menus[pn]:update()
-		end
-	else
-		pain_displays[pn]:hide()
-	end
-end
 
 local function start_auto_scrolling(dir)
 	local time_before_scroll= GetTimeSinceStart()
@@ -722,29 +845,23 @@ update_player_cursors= function()
 				local xp, yp= rec_calc_actor_pos(cursed_item.container)
 				player_cursors[pn]:refit(xp, yp, xmx - xmn + 2, ymx - ymn + 0)
 			end
-			if in_special_menu[pn] == 1 then
+			if in_special_menu[pn] == "wheel" then
+				player_cursors[pn]:unhide()
 				player_cursors[pn].align= 0
 				local height= basic_info_height * 2
 				if focus_element_info.expanded then
 					height= expanded_info_height * 2
 				end
 				player_cursors[pn]:refit(wheel_x, _screen.cy, wheel_width, height)
-			elseif in_special_menu[pn] == 2 then
-				fit_cursor_to_menu(song_props_menus[pn])
-			elseif in_special_menu[pn] == 3 then
-				fit_cursor_to_menu(tag_menus[pn])
-			elseif in_special_menu[pn] == 4 then
-				fit_cursor_to_menu(visible_styles_menus[pn])
-			end
-			if in_special_menu[pn] ~= 5 then
-				player_cursors[pn]:unhide()
+			else
+				player_cursors[pn]:hide()
 			end
 		else
 			player_cursors[pn]:hide()
 		end
 	end
-	if num_enabled == 2 and in_special_menu[PLAYER_1] == 1
-	and in_special_menu[PLAYER_2] == 1 then
+	if num_enabled == 2 and in_special_menu[PLAYER_1] == "wheel"
+	and in_special_menu[PLAYER_2] == "wheel" then
 		player_cursors[PLAYER_1]:left_half()
 		player_cursors[PLAYER_2]:right_half()
 	else
@@ -920,36 +1037,6 @@ local function adjust_difficulty(player, dir, sound)
 				end
 				break
 			end
-		end
-	end
-end
-
-local function set_special_menu(pn, value)
-	in_special_menu[pn]= value
-	if in_special_menu[pn] == 1 or in_special_menu[pn] == 5 then
-		pain_displays[pn]:unhide()
-		pain_displays[pn]:update_all_items()
-		special_menu_displays[pn]:hide()
-		if in_special_menu[pn] == 5 then
-			player_cursors[pn]:hide()
-		else
-			player_cursors[pn]:unhide()
-			update_player_cursors()
-		end
-	else
-		pain_displays[pn]:hide()
-		pain_displays[pn]:show_frame()
-		special_menu_displays[pn]:unhide()
-		if in_special_menu[pn] == 2 then
-			song_props_menus[pn]:reset_info()
-			song_props_menus[pn]:update()
-		elseif in_special_menu[pn] == 3 then
-			tag_menus[pn]:reset_info()
-			tag_menus[pn]:update()
-		else
-			visible_styles_menus[pn]:initialize(pn, make_visible_style_data(pn), true)
-			visible_styles_menus[pn]:reset_info()
-			visible_styles_menus[pn]:update()
 		end
 	end
 end
@@ -1173,9 +1260,13 @@ local code_functions= {
 			adjust_difficulty(pn, 1, "down")
 		end,
 		open_special= function(pn)
+			if ignore_next_open_special[pn] then
+				ignore_next_open_special[pn]= false
+				return
+			end
 			if ops_level(pn) >= 2 or privileged(pn) then
 				stop_auto_scrolling()
-				set_special_menu(pn, 2)
+				set_special_menu(pn, "menu")
 			end
 		end,
 		close_group= function(pn)
@@ -1263,13 +1354,6 @@ local function input(event)
 	if press_type == "InputEventType_FirstPress"
 	and event.DeviceInput.button == misc_config:get_data().censor_privilege_key then
 		privileged_props= not privileged_props
-		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
-			local was_hidden= special_menu_displays[pn].hidden
-			song_props_menus[pn]:recheck_levels(true)
-			if was_hidden then
-				special_menu_displays[pn]:hide()
-			end
-		end
 	end
 	if press_type ~= "InputEventType_Release" then
 		if picking_steps then
@@ -1327,6 +1411,20 @@ local function input(event)
 				pressed_since_menu_change[pn]= {}
 				set_special_menu(pn, next_menu)
 			end
+			local closed_menu= false
+			if key_pressed == "Select"
+			and press_type == "InputEventType_FirstPress" then
+				if select_press_times[pn]
+					and get_screen_time() < select_press_times[pn] + double_tap_time
+				and special_menus[pn]:can_exit_screen() then
+					toggle_expansion()
+					common_menu_change("wheel")
+					closed_menu= true
+					ignore_next_open_special[pn]= true
+				else
+					select_press_times[pn]= get_screen_time()
+				end
+			end
 			local function common_select_handler(next_menu, attempt, level)
 				if key_pressed == "Select" then
 					if press_type == "InputEventType_Release"
@@ -1345,108 +1443,28 @@ local function input(event)
 				end
 			end
 			local menu_func= {
-				function()
+				wheel= function()
 					handle_triggered_codes(pn, event.button, key_pressed, press_type)
 				end,
-				function()
-					if common_select_handler(3, nil, 3) then return end
+				menu= function()
 					if press_type == "InputEventType_Release" then return end
-					local handled, extra= song_props_menus[pn]:interpret_code(key_pressed)
-					if handled and extra then
-						if extra.name == "exit_menu" then
-							common_menu_change(1)
-						elseif extra.name == "edit_tags" then
-							common_menu_change(3)
-						elseif extra.name == "edit_styles" then
-							common_menu_change(4)
-						elseif extra.name == "edit_pain" then
-							pain_displays[pn]:enter_edit_mode()
-							common_menu_change(5)
-						elseif extra.name == "censor" then
-							if gamestate_get_curr_song() then
-								add_to_censor_list(gamestate_get_curr_song())
-								activate_status(music_wheel:resort_for_new_style())
-							else
-								local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
-								if bucket.bucket_info and not bucket.is_special then
-									bucket_traverse(bucket.bucket_info.contents, nil, censor_item)
-									activate_status(music_wheel:resort_for_new_style())
-								end
-							end
-							common_menu_change(1)
-						elseif extra.name == "uncensor" then
-							if gamestate_get_curr_song() then
-								remove_from_censor_list(gamestate_get_curr_song())
-								activate_status(music_wheel:resort_for_new_style())
-							else
-								local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
-								if bucket.bucket_info and not bucket.is_special then
-									bucket_traverse(bucket.bucket_info.contents, nil, uncensor_item)
-									activate_status(music_wheel:resort_for_new_style())
-								end
-							end
-							common_menu_change(1)
-						elseif extra.name == "toggle_censoring" then
-							toggle_censoring()
-							activate_status(music_wheel:resort_for_new_style())
-							common_menu_change(1)
-						elseif extra.name == "convert_xml" then
-							if not convert_xml_bgs then return end
-							local cong= GAMESTATE:GetCurrentSong()
-							if cong then
-								convert_xml_bgs(cong:GetSongDir())
-							else
-								local function convert_item(item, depth)
-									convert_xml_bgs(item.el:GetSongDir())
-								end
-								local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
-								if bucket.bucket_info and not bucket.is_special then
-									bucket_traverse(bucket.bucket_info.contents, nil, convert_item)
-								end
-							end
-							common_menu_change(1)
-						elseif interpret_common_song_props_code(pn, extra.name) then
-							common_menu_change(1)
-						end
-						update_sort_prop()
-					end
-				end,
-				function()
-					if common_select_handler(1) then return end
-					if press_type == "InputEventType_Release" then return end
-					local handled, close= tag_menus[pn]:interpret_code(key_pressed)
-					if close then
-						common_menu_change(1)
-					end
-				end,
-				function()
-					local function close_attempt()
-						if enough_sourses_of_visible_styles() then
-							update_steps_types_to_show()
-							style_config:set_dirty(pn_to_profile_slot(pn))
-							activate_status(music_wheel:resort_for_new_style())
-							common_menu_change(1)
-							return
-						else
-							SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
+					if not special_menus[pn]:interpret_code(key_pressed) then
+						if key_pressed == "Start" then
+							common_menu_change("wheel")
 						end
 					end
-					if common_select_handler(1, close_attempt) then return end
-					if press_type == "InputEventType_Release" then return end
-					local handled, close=
-						visible_styles_menus[pn]:interpret_code(key_pressed)
-					if close then close_attempt() end
 				end,
-				function()
+				pain= function()
 					if press_type == "InputEventType_Release" then return end
 					local handled, close=pain_displays[pn]:interpret_code(key_pressed)
 					if close then
-						common_menu_change(1)
+						common_menu_change("wheel")
 					end
 				end
 			}
 			update_keys_down(pn, key_pressed, press_type)
-			if not status_active and pressed_since_menu_change[pn][key_pressed] then
+			if not status_active and pressed_since_menu_change[pn][key_pressed]
+			and not closed_menu then
 				menu_func[in_special_menu[pn]]()
 			end
 			if down_count[pn] == 0 then codes_since_release[pn]= false end
@@ -1583,18 +1601,11 @@ return Def.ActorFrame {
 	InitCommand= function(self)
 		self:SetUpdateFunction(Update)
 		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
-			song_props_menus[pn]:initialize(pn, song_props, true)
-			song_props_menus[pn]:set_display(special_menu_displays[pn])
-			tag_menus[pn]:initialize(pn)
-			tag_menus[pn]:set_display(special_menu_displays[pn])
-			visible_styles_menus[pn]:initialize(pn, make_visible_style_data(pn), true)
-			visible_styles_menus[pn]:set_display(special_menu_displays[pn])
-			special_menu_displays[pn]:set_underline_color(pn_to_color(pn))
-			special_menu_displays[pn]:hide()
+			special_menus[pn]:hide()
 			update_pain(pn)
 		end
 		music_wheel:find_actors(self:GetChild(music_wheel.name))
-		collapse_center_for_less()
+		expand_center_for_more()
 		ensure_enough_stages()
 		april_spin(self)
 	end,
@@ -1655,12 +1666,10 @@ return Def.ActorFrame {
 		"P1_pain", lpane_x, pane_y + pane_yoff - pane_text_height, PLAYER_1, pane_w, pane_text_zoom),
 	pain_displays[PLAYER_2]:create_actors(
 		"P2_pain", rpane_x, pane_y + pane_yoff - pane_text_height, PLAYER_2, pane_w, pane_text_zoom),
-	special_menu_displays[PLAYER_1]:create_actors(
-		"P1_menu", lpane_x, pane_y + pane_yoff, pane_h, pane_w - 16,
-		pane_text_height, pane_text_zoom, true, true),
-	special_menu_displays[PLAYER_2]:create_actors(
-		"P2_menu", rpane_x, pane_y + pane_yoff, pane_h, pane_w - 16,
-		pane_text_height, pane_text_zoom, true, true),
+	special_menus[PLAYER_1]:create_actors(
+		"P1_menu", lpane_x, pane_y + pane_yoff, pane_menu_w, pane_menu_h, PLAYER_1, 1, pane_text_height, menu_text_zoom),
+	special_menus[PLAYER_2]:create_actors(
+		"P2_menu", rpane_x, pane_y + pane_yoff, pane_menu_w, pane_menu_h, PLAYER_2, 1, pane_text_height, menu_text_zoom),
 	music_wheel:create_actors(wheel_x, wheel_width, wheel_move_time),
 	focus_element_info:create_actors(_screen.cx, _screen.cy),
 	steps_menus[PLAYER_1]:create_actors(pane_w / 2, _screen.cy*.5, PLAYER_1),
