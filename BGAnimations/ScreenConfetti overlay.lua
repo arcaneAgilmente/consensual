@@ -186,9 +186,9 @@ return Def.ActorFrame{
 					subself:xy(hbig_circle_size, hbig_circle_size)
 						:zoom(hollow_circle_inner_zoom)
 					if PREFSMAN:GetPreference("VideoRenderers"):sub(1, 6) == "opengl" then
-						self:blend("BlendMode_Subtract")
+						subself:blend("BlendMode_Subtract")
 					else
-						self:blend("BlendMode_AlphaKnockOut")
+						subself:blend("BlendMode_AlphaKnockOut")
 					end
 				end
 			},
