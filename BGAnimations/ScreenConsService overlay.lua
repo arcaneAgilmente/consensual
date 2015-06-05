@@ -108,6 +108,20 @@ local function sub_bool_conf(sub_name, name, on, off)
 	}
 end
 
+local function floating_center_pref_val(valname)
+	return {
+		name= valname, meta= options_sets.adjustable_float, args= {
+			name= valname, min_scale= -3, scale= 0, max_scale= 3,
+			initial_value= function()
+				return PREFSMAN:GetPreference(valname)
+			end,
+			set= function(pn, value)
+				PREFSMAN:SetPreference(valname, value)
+				update_centering()
+			end
+	}}
+end
+
 local reward_options= {
 	{name= "default_credit_time", meta= options_sets.adjustable_float,
 	 args= time_conf("default_credit_time", 0, 1, 2)},
@@ -533,6 +547,10 @@ local special_options= {
 		 save_tags("ProfileSlot_Machine")
 		 SCREENMAN:SystemMessage(get_string_wrapper("ConsService", "finished_tagging"))
 	end},
+	floating_center_pref_val("CenterImageAddHeight"),
+	floating_center_pref_val("CenterImageAddWidth"),
+	floating_center_pref_val("CenterImageTranslateX"),
+	floating_center_pref_val("CenterImageTranslateY"),
 }
 
 local menu_items= {
@@ -609,6 +627,16 @@ local function input(event)
 	return false
 end
 
+local function quaid(x, y, w, h, c, ha, va)
+	return Def.Quad{
+		InitCommand= function(self)
+			self:xy(x, y):setsize(w, h):diffuse(c):horizalign(ha):vertalign(va)
+		end
+	}
+end
+local red= fetch_color("accent.red")
+local blue= fetch_color("accent.blue")
+
 return Def.ActorFrame{
 	InitCommand= function(self)
 		config_menu:push_options_set_stack(options_sets.menu, menu_items, "Exit Menu")
@@ -618,7 +646,13 @@ return Def.ActorFrame{
 	OnCommand= function(self)
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
 	end,
-	config_menu:create_actors("menu", 0, 16, _screen.w, _screen.h, nil),
+	Def.ActorFrame{
+		quaid(0, 0, _screen.w, 1, red, left, top),
+		quaid(0, _screen.h, _screen.w, 1, red, left, bottom),
+		quaid(0, 0, 1, _screen.h, blue, left, top),
+		quaid(_screen.w, 0, 1, _screen.h, blue, right, top),
+	},
+	config_menu:create_actors("menu", 0, 10, _screen.w, _screen.h, nil, 3, 12, .5),
 	pain_display:create_actors("pain", _screen.w*.75, 80, nil, 184, .625),
 	helper:create_actors("helper", config_data.service_help_time, "ConsService", ""),
 	Def.ActorFrame{
