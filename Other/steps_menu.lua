@@ -256,6 +256,16 @@ steps_menu_mt= {
 		deactivate= function(self)
 			self.container:visible(false)
 		end,
+		hide_cursor= function(self)
+			for i, part in ipairs{self.cursor, self.bl, self.sa} do
+				part:visible(false)
+			end
+		end,
+		unhide_cursor= function(self)
+			for i, part in ipairs{self.cursor, self.bl, self.sa} do
+				part:visible(true)
+			end
+		end,
 		change_to_pick_steps= function(self)
 			self.curr_choice= 1
 			self.choices= {}

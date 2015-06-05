@@ -584,9 +584,17 @@ local function update_pain(pn)
 end
 
 local function set_special_menu(pn, value)
+	if value == "menu" and ignore_next_open_special[pn] then
+		ignore_next_open_special[pn]= false
+		return
+	end
 	in_special_menu[pn]= value
-	if in_special_menu[pn] == "wheel" or in_special_menu[pn] == "pain" then
+	if in_special_menu[pn] == "wheel" or in_special_menu[pn] == "pain"
+	or in_special_menu[pn] == "steps" then
 		close_menu(pn)
+		if picking_steps and in_special_menu[pn] == "steps" then
+			steps_menus[pn]:unhide_cursor()
+		end
 		pain_displays[pn]:unhide()
 		pain_displays[pn]:update_all_items()
 		if in_special_menu[pn] == "pain" then
@@ -596,6 +604,9 @@ local function set_special_menu(pn, value)
 			update_player_cursors()
 		end
 	else
+		if picking_steps then
+			steps_menus[pn]:hide_cursor()
+		end
 		pain_displays[pn]:hide()
 		pain_displays[pn]:show_frame()
 		open_menu(pn)
@@ -768,6 +779,9 @@ local function switch_to_picking_steps()
 		:y(_screen.h - expanded_info_height-32-pad)
 	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		steps_menus[dpn]:activate()
+		if in_special_menu[dpn] == "wheel" then
+			set_special_menu(dpn, "steps")
+		end
 	end
 	picking_steps= true
 	update_player_cursors()
@@ -778,6 +792,9 @@ local function switch_to_not_picking_steps()
 	focus_element_info.container:linear(wheel_move_time):y(_screen.cy)
 	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		steps_menus[dpn]:deactivate()
+		if in_special_menu[dpn] == "steps" then
+			set_special_menu(dpn, "wheel")
+		end
 	end
 	picking_steps= false
 	was_picking_steps= true
@@ -835,7 +852,7 @@ end
 update_player_cursors= function()
 	local num_enabled= 0
 	for i, pn in ipairs{PLAYER_1, PLAYER_2} do
-		if GAMESTATE:IsPlayerEnabled(pn) and not picking_steps then
+		if GAMESTATE:IsPlayerEnabled(pn) then
 			num_enabled= num_enabled + 1
 			local cursed_item= false
 			local function fit_cursor_to_menu(menu)
@@ -1260,10 +1277,6 @@ local code_functions= {
 			adjust_difficulty(pn, 1, "down")
 		end,
 		open_special= function(pn)
-			if ignore_next_open_special[pn] then
-				ignore_next_open_special[pn]= false
-				return
-			end
 			if ops_level(pn) >= 2 or privileged(pn) then
 				stop_auto_scrolling()
 				set_special_menu(pn, "menu")
@@ -1372,74 +1385,27 @@ local function input(event)
 				entering_song= 0
 				go_to_options= true
 			end
-		elseif picking_steps then
-			if press_type ~= "InputEventType_Release" then
-				steps_menus[pn]:interpret_code(key_pressed)
-				if steps_menus[pn].needs_deactivate then
-					switch_to_not_picking_steps()
-				elseif steps_menus[pn].chosen_steps then
-					local all_chosen= true
-					for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-						if not steps_menus[dpn].chosen_steps then all_chosen= false end
-					end
-					if all_chosen then
-						local function do_entry()
-							SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-							options_message:accelerate(0.25):diffusealpha(1)
-							entering_song= get_screen_time() + options_time
-							prev_picked_song= gamestate_get_curr_song()
-							save_all_favorites()
-							save_all_tags()
-							save_censored_list()
-						end
-						if not GAMESTATE.CanSafelyEnterGameplay then
-							do_entry()
-							return
-						end
-						local can, reason= GAMESTATE:CanSafelyEnterGameplay()
-						if can then
-							do_entry()
-						else
-							SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
-							lua.ReportScriptError("Cannot safely enter gameplay: " .. tostring(reason))
-						end
-					end
-				end
-			end
 		else
 			local function common_menu_change(next_menu)
 				pressed_since_menu_change[pn]= {}
+				if picking_steps and next_menu == "wheel" then
+					next_menu= "steps"
+				end
 				set_special_menu(pn, next_menu)
 			end
 			local closed_menu= false
 			if key_pressed == "Select"
-			and press_type == "InputEventType_FirstPress" then
+				and press_type == "InputEventType_FirstPress" then
 				if select_press_times[pn]
 					and get_screen_time() < select_press_times[pn] + double_tap_time
-				and special_menus[pn]:can_exit_screen() then
+					and special_menus[pn]:can_exit_screen()
+				and in_special_menu[pn] == "menu" then
 					toggle_expansion()
 					common_menu_change("wheel")
 					closed_menu= true
 					ignore_next_open_special[pn]= true
 				else
 					select_press_times[pn]= get_screen_time()
-				end
-			end
-			local function common_select_handler(next_menu, attempt, level)
-				if key_pressed == "Select" then
-					if press_type == "InputEventType_Release"
-					and pressed_since_menu_change[pn].Select then
-						if attempt then
-							attempt()
-						else
-							if level and level > ops_level(pn) then
-								next_menu= 1
-							end
-							common_menu_change(next_menu)
-						end
-						pressed_since_menu_change[pn].Select= false
-						return true
-					end
 				end
 			end
 			local menu_func= {
@@ -1460,7 +1426,49 @@ local function input(event)
 					if close then
 						common_menu_change("wheel")
 					end
-				end
+				end,
+				steps= function()
+					if press_type == "InputEventType_Release" then
+						if key_pressed == "Select" then
+							common_menu_change("menu")
+						end
+						return
+					end
+					steps_menus[pn]:interpret_code(key_pressed)
+					if steps_menus[pn].needs_deactivate then
+						switch_to_not_picking_steps()
+					elseif steps_menus[pn].chosen_steps then
+						local all_chosen= true
+						for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+							if not steps_menus[dpn].chosen_steps
+							or in_special_menu[dpn] ~= "steps" then
+								all_chosen= false
+							end
+						end
+						if all_chosen then
+							local function do_entry()
+								SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
+								options_message:accelerate(0.25):diffusealpha(1)
+								entering_song= get_screen_time() + options_time
+								prev_picked_song= gamestate_get_curr_song()
+								save_all_favorites()
+								save_all_tags()
+								save_censored_list()
+							end
+							if not GAMESTATE.CanSafelyEnterGameplay then
+								do_entry()
+								return
+							end
+							local can, reason= GAMESTATE:CanSafelyEnterGameplay()
+							if can then
+								do_entry()
+							else
+								SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
+								lua.ReportScriptError("Cannot safely enter gameplay: " .. tostring(reason))
+							end
+						end
+					end
+				end,
 			}
 			update_keys_down(pn, key_pressed, press_type)
 			if not status_active and pressed_since_menu_change[pn][key_pressed]
