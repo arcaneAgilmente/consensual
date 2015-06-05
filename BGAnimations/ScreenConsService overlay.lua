@@ -1,6 +1,7 @@
 local config_data= misc_config:get_data()
 misc_config:set_dirty()
 
+dofile(THEME:GetPathO("", "art_helpers.lua"))
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "pain_display.lua"))
 options_sets.settable_thing= {
@@ -636,6 +637,16 @@ local function quaid(x, y, w, h, c, ha, va)
 end
 local red= fetch_color("accent.red")
 local blue= fetch_color("accent.blue")
+local menu_disps= 2
+local display_height= DISPLAY:GetDisplayHeight()
+if display_height >= 720 then
+	menu_disps= 3
+end
+if display_height >= 1080 then
+	menu_disps= 4
+end
+local menu_zoom= 2 / menu_disps
+local menu_elh= 24 * menu_zoom
 
 return Def.ActorFrame{
 	InitCommand= function(self)
@@ -652,7 +663,7 @@ return Def.ActorFrame{
 		quaid(0, 0, 1, _screen.h, blue, left, top),
 		quaid(_screen.w, 0, 1, _screen.h, blue, right, top),
 	},
-	config_menu:create_actors("menu", 0, 10, _screen.w, _screen.h, nil, 3, 12, .5),
+	config_menu:create_actors("menu", 0, 10, _screen.w, _screen.h, nil, menu_disps, menu_elh, menu_zoom),
 	pain_display:create_actors("pain", _screen.w*.75, 80, nil, 184, .625),
 	helper:create_actors("helper", config_data.service_help_time, "ConsService", ""),
 	Def.ActorFrame{

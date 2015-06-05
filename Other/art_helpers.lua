@@ -1,3 +1,12 @@
+function quaid(x, y, w, h, c, ha, va)
+	return Def.Quad{
+		InitCommand= function(self)
+			self:xy(x, y):setsize(w, h):diffuse(c)
+				:horizalign(ha or center):vertalign(va or middle)
+		end
+	}
+end
+
 function calc_circle_verts(radius, chords, start_angle, end_angle, color)
 	if start_angle == end_angle then
 		end_angle= start_angle + (math.pi*2)

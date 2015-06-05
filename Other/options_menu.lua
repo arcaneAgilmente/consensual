@@ -227,8 +227,7 @@ option_display_mt= {
 			self.no_display= no_display
 			self.translation_section= "OptionNames"
 			local args= {
-				Name= name,
-				InitCommand= function(subself)
+				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
 					self.container= subself
 					if not self.no_heading then
@@ -238,7 +237,7 @@ option_display_mt= {
 						self.display= subself:GetChild("display")
 					end
 					self:regeo_items()
-				end
+				end,
 			}
 			local next_y= 0
 			if not no_heading then
@@ -1100,7 +1099,7 @@ menu_stack_mt= {
 			end
 			local sep= width / #self.displays
 			if #self.displays == 1 then sep= 0 end
-			local off= sep / num_displays
+			local off= sep / 2
 			self.cursor= setmetatable({}, cursor_mt)
 			local disp_el_width_limit= (width / #self.displays) - 8
 			for i, disp in ipairs(self.displays) do
