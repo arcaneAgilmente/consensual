@@ -185,7 +185,11 @@ return Def.ActorFrame{
 				Texture= "big_circle", InitCommand= function(subself)
 					subself:xy(hbig_circle_size, hbig_circle_size)
 						:zoom(hollow_circle_inner_zoom)
-						:blend("BlendMode_Subtract")
+					if PREFSMAN:GetPreference("VideoRenderers"):sub(1, 6) == "opengl" then
+						self:blend("BlendMode_Subtract")
+					else
+						self:blend("BlendMode_AlphaKnockOut")
+					end
 				end
 			},
 		},
