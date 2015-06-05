@@ -33,7 +33,7 @@ local default_flag_set= {
 		error_bar= {false, false, false, true},
 		judge= {false, false, true},
 		pct_score= {true},
-		reverse_tilts_judge= {true},
+		reverse_tilts_judge= {false},
 		score_confetti= {true},
 		score_meter= {true},
 		score_splash= {true},
@@ -243,7 +243,7 @@ local default_config= {
 	mine_effect= sorted_mine_effect_names[1],
 	-- TODO:  Make a system similar to the flags levels for options_level,
 	-- rating_cap, combo_splash_threshold, and combo_graph_threshold.
-	options_level= 1,
+	options_level= 4,
 	rating_cap= -1,
 	toasty_level= 1,
 	error_history_size= 32,

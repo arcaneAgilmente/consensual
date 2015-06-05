@@ -16,7 +16,7 @@ local pane_text_zoom= .625
 local pane_text_height= 16 * (pane_text_zoom / 0.5875)
 local pane_w= 200
 local pane_h= pane_text_height * max_pain_rows + 4
-local pane_yoff= -pane_h * .5 + pane_text_height * .5 + 2
+local pane_yoff= -32 -pane_h * .5 + pane_text_height * .5 + 2
 local pane_ttx= 0
 local menu_text_zoom= pane_text_zoom
 local pane_menu_h= pane_h
@@ -207,7 +207,6 @@ end
 local focus_element_info_mt= {
 	__index= {
 		create_actors= function(self, x, y)
-			self.expanded= false
 			self.middle_height= basic_info_height
 			self.left_x= wheel_width * -.15
 			self.right_x= wheel_width * .25
@@ -747,13 +746,14 @@ end
 
 local function collapse_center_for_less()
 	if picking_steps then return end
-	if not focus_element_info.expanded then return end
+	if focus_element_info.expanded == false then return end
 	music_wheel:set_center_expansion(basic_info_height)
 	focus_element_info:collapse()
 	update_player_cursors()
 end
 
 local function toggle_expansion()
+	scsm_center_expanded= not scsm_center_expanded
 	if focus_element_info.expanded then
 		collapse_center_for_less()
 	else
@@ -765,7 +765,7 @@ local function switch_to_picking_steps()
 	music_wheel.container:linear(wheel_move_time):diffusealpha(0)
 	expand_center_for_more()
 	focus_element_info.container:linear(wheel_move_time)
-		:y(_screen.h - expanded_info_height-13)
+		:y(_screen.h - expanded_info_height-32-pad)
 	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		steps_menus[dpn]:activate()
 	end
@@ -1605,7 +1605,11 @@ return Def.ActorFrame {
 			update_pain(pn)
 		end
 		music_wheel:find_actors(self:GetChild(music_wheel.name))
-		expand_center_for_more()
+		if scsm_center_expanded then
+			expand_center_for_more()
+		else
+			collapse_center_for_less()
+		end
 		ensure_enough_stages()
 		april_spin(self)
 	end,
@@ -1727,6 +1731,18 @@ return Def.ActorFrame {
 										self:settext(remstr)
 									end
 		}),
+	},
+	Def.ActorFrame{
+		Name= "footer", InitCommand= function(self)
+			self:xy(_screen.cx, _screen.h - 16)
+		end,
+		Def.Quad{
+			InitCommand= function(self)
+				self:xy(0, 0):setsize(_screen.w, 32)
+					:diffuse({0, 0, 0, 1})
+			end
+		},
+		normal_text("help_prompt", get_string_wrapper("SelectMusic", "open_special_prompt"), fetch_color("text"), fetch_color("stroke"), 0, 0, .5),
 	},
 	player_cursors[PLAYER_1]:create_actors(
 		"P1_cursor", 0, 0, 1, pn_to_color(PLAYER_1),

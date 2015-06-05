@@ -14,6 +14,7 @@ activate_confetti("credit", false)
 workout_mode= nil
 in_edit_mode= false
 true_gameplay= false
+scsm_center_expanded= true
 
 local line_height= get_line_height()
 

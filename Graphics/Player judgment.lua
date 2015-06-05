@@ -368,6 +368,15 @@ local function set_combo_stuff(param)
 	PulseLabel(tani.text, param)
 end
 
+local function disp_offset_from_judge(judge)
+	local width= tns_windows[judge][2] - tns_windows[judge][1]
+	local offset= tns_windows[judge][1] + (width * MersenneTwister.Random())
+	if MersenneTwister.Random() > .5 then
+		offset= offset * -1
+	end
+	return offset
+end
+
 local args= {
 	Name= "Judgement",
 	normal_text(
@@ -471,11 +480,7 @@ local args= {
 			local disp_offset= param.TapNoteOffset
 			if fake_judge then
 				disp_judge= fake_judge()
-				local width= tns_windows[disp_judge][2] - tns_windows[disp_judge][1]
-				disp_offset= tns_windows[disp_judge][1] + (width * MersenneTwister.Random())
-				if MersenneTwister.Random() > .5 then
-					disp_offset= disp_offset * -1
-				end
+				disp_offset= disp_offset_from_judge(disp_judge)
 				fake_score.judge_counts[disp_judge]=
 					fake_score.judge_counts[disp_judge] + 1
 				fake_score.dp= fake_score.dp + tns_values[disp_judge]
@@ -503,6 +508,7 @@ local args= {
 			end
 			if cons_players[player].toasty then
 				disp_judge= cons_players[player].toasty.judge
+				disp_offset= disp_offset_from_judge(disp_judge)
 			end
 			local text= tns_texts[disp_judge]
 			local combo_qual= cons_players[player].combo_quality
