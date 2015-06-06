@@ -1176,8 +1176,14 @@ menu_stack_mt= {
 		end,
 		enter_external_mode= function(self)
 			self:hide_unused_displays(self:push_display_stack() - 1)
+			self.external_thing= external_thing
 		end,
 		exit_external_mode= function(self)
+			if self.deextern then
+				self:deextern(self.player_number)
+				self.deextern= nil
+			end
+			self.external_thing= nil
 			local oss= self.options_set_stack
 			if #oss > 0 then
 				self:pop_display_stack()
@@ -1202,6 +1208,13 @@ menu_stack_mt= {
 			self.cursor:unhide()
 		end,
 		interpret_code= function(self, code)
+			if self.external_thing then
+				local handled, close= self.external_thing:interpret_code(code)
+				if close then
+					self:exit_external_mode()
+				end
+				return handled
+			end
 			local oss= self.options_set_stack
 			local top_set= oss[#oss]
 			local handled, new_set_data= top_set:interpret_code(code)
@@ -1209,7 +1222,8 @@ menu_stack_mt= {
 				if new_set_data then
 					if new_set_data.meta == "external_interface" then
 						self:enter_external_mode()
-						new_set_data.extern(new_set_data.args, self.player_number)
+						new_set_data.extern(self, new_set_data.args, self.player_number)
+						self.deextern= new_set_data.deextern
 					elseif new_set_data.meta == "execute" then
 						new_set_data.execute(self.player_number)
 					else

@@ -862,6 +862,7 @@ color_manipulator_mt= {
 					end
 				end
 			end
+			return true, self.done
 		end,
 		get_cursor_fit= function(self)
 			local cx= self.container:GetX()
