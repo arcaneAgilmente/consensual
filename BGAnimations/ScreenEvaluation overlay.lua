@@ -859,9 +859,15 @@ local judge_key_mt= {
 				fetch_color("evaluation.judge_key.frame"),
 				fetch_color("evaluation.judge_key.bg"),
 				0, 0)
+			local tws= PREFSMAN:GetPreference("TimingWindowScale") * 1000
 			for i, v in ipairs(feedback_judgements) do
+				local pref_name= "TimingWindowSeconds" .. ToEnumShortString(v)
+				local window= ""
+				if PREFSMAN:PreferenceExists(pref_name) then
+					window= (" (%.1fms)"):format(PREFSMAN:GetPreference(pref_name) * tws)
+				end
 				self.name_data[#self.name_data+1]= {
-					number= get_string_wrapper("ShortJudgmentNames", v),
+					number= get_string_wrapper("ShortJudgmentNames", v) .. window,
 					color= judge_to_color(v), zoom= .5*report_scale}
 			end
 			for i, v in ipairs(holdnote_names) do
@@ -1535,4 +1541,5 @@ return Def.ActorFrame{
 		end,
 	},
 	maybe_help(),
+	normal_text("tws", "TWS: " .. tostring(PREFSMAN:GetPreference("TimingWindowScale")), fetch_color("text"), fetch_color("stroke"), _screen.cx, 126),
 }

@@ -573,7 +573,8 @@ local ignore_next_open_special= {}
 
 local function update_pain(pn)
 	if GAMESTATE:IsPlayerEnabled(pn) then
-		if in_special_menu[pn] == "wheel" or in_special_menu[pn] == "pain" then
+		if in_special_menu[pn] == "wheel" or in_special_menu[pn] == "pain"
+		or in_special_menu[pn] == "steps" then
 			pain_displays[pn]:update_all_items()
 			pain_displays[pn]:unhide()
 		elseif in_special_menu[pn] == "menu" then
