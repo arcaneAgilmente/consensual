@@ -326,12 +326,3 @@ function update_old_player_config(prof_slot, config)
 		return true
 	end
 end
-
-function get_preferred_steps_type(pn)
-	return player_config:get_data(pn_to_profile_slot(pn)).preferred_steps_type
-end
-
-function set_preferred_steps_type(pn, value)
-	player_config:set_dirty(pn_to_profile_slot(pn))
-	player_config:get_data(pn_to_profile_slot(pn)).preferred_steps_type= value
-end

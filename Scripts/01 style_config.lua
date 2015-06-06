@@ -22,7 +22,7 @@ local function add_style_to_lists(style)
 	if stype:find("TwoSides") then for_sides= 2 end
 	if stype:find("SharedSides") then for_sides= 2 end
 	stepstype_to_style[stepstype][for_players]= {
-		name= stame, stype= stype, for_players= for_players, for_sides= for_sides}
+		name= stame, stype= stype, steps_type= stepstype, for_players= for_players, for_sides= for_sides}
 	if stype == "StyleType_OnePlayerOneSide" then
 		table.insert(
 			default_config[1], {style= stame, stepstype= stepstype, visible= true})
@@ -60,7 +60,7 @@ function style_config_sanity_enforcer(config)
 	end
 end
 
-function first_compat_style(num_players)
+function first_compat_style_info(num_players)
 	-- The best match is a stepstype that is compatible with 1 player and 2
 	-- players.
 	local best_match= {}
@@ -80,7 +80,15 @@ function first_compat_style(num_players)
 		end
 	end
 	if best_match[1] then
-		return best_match[1][num_players].name
+		return best_match[1]
+	end
+	return nil
+end
+
+function first_compat_style(num_players)
+	local best_match= first_compat_style_info(num_players)
+	if best_match then
+		return best_match[num_players].name
 	end
 	lua.ReportScriptError("No compatible style for " .. num_players .. " players found.")
 	return ""

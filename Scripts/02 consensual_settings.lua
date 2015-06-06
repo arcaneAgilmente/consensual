@@ -263,6 +263,12 @@ function cons_player:set_ops_from_profile(profile)
 	for k, v in pairs(config) do
 		self[k]= v
 	end
+	if self.preferred_steps_type == "" then
+		local style_info= first_compat_style_info(1)
+		if style_info then
+			self.preferred_steps_type= style_info[1].steps_type
+		end
+	end
 	local ops= self.preferred_options
 	if migrated then
 		self:persist_mod("Tilt", ops:Tilt())
@@ -343,6 +349,14 @@ else
 		cons_players[v]= {}
 		setmetatable(cons_players[v], cons_player_mt)
 	end
+end
+
+function get_preferred_steps_type(pn)
+	return cons_players[pn].preferred_steps_type
+end
+
+function set_preferred_steps_type(pn, value)
+	cons_players[pn].preferred_steps_type= value
 end
 
 function options_allowed()
