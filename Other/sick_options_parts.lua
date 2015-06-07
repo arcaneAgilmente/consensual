@@ -759,6 +759,20 @@ local function extra_for_bg_bright()
 	}
 end
 
+local function float_pref_val(valname, level, min_scale, scale, max_scale)
+	return {
+		name= valname, meta= options_sets.adjustable_float, level= level,
+		args= {
+			name= valname, min_scale= min_scale, scale= scale, max_scale= max_scale,
+			initial_value= function()
+				return PREFSMAN:GetPreference(valname)
+			end,
+			set= function(pn, value)
+				PREFSMAN:SetPreference(valname, value)
+			end,
+	}}
+end
+
 local function extra_for_agen_arg(arg)
 	return {
 		name= "Autogen Arg " .. arg,
@@ -903,7 +917,7 @@ local hidden_mods= {
 }
 
 local perspective_mods= {
-	"Incoming", "Space", "Hallway", "Distant", "Skew", "Tilt"
+	"Incoming", "Space", "Hallway", "Distant", "Skew", "Tilt", "Reverse",
 }
 
 local sickness_mods= {
@@ -919,7 +933,7 @@ local spin_mods= {
 }
 
 local target_mods= {
-	"Reverse", "Alternate", "Centered", "Cross", "Flip", "Invert", "Split",
+	"Alternate", "Centered", "Cross", "Flip", "Invert", "Split",
 	"Xmode", "Blind", "Dark",
 }
 
@@ -943,7 +957,6 @@ local floaty_mods= {
 		args= make_menu_of_float_set(target_mods) },
 	{ name= "Visibility", meta= options_sets.menu,
 		args= make_menu_of_float_set(visibility_mods) },
-	player_cons_mod("Side Swap", "side_swap", 5, -2, 0, 0, nil, nil, "cons"),
 	player_cons_mod("Chuunibyou", "chuunibyou", 4, -2, 0, 4, nil, nil, "cons"),
 	player_cons_mod("Confidence Shaker", "confidence", 4, 0, 0, 2, 0, 100, "cons"),
 	player_cons_mod("Column Angle", "column_angle", 4, 0, 0, 2, nil, nil, "cons"),
@@ -1128,8 +1141,6 @@ local special= {
 				bool_effect_setter("Rotation", "rot_splines_demo"),
 				bool_effect_setter("Zoom", "zoom_splines_demo"),
 	}}},
-	{ name= "Tokubetsu Effects", meta= options_sets.special_functions, level= 5,
-		args= ultra_special_effects},
 	{ name= "Effects", meta= options_sets.special_functions, level= 4,
 		args= special_effects},
 	{ name= "Go To Select Music" ,meta= "execute", level= 4,
@@ -1170,6 +1181,21 @@ local special= {
 	-- TODO?  Add support for these?
 	--"StaticBackground", "RandomBGOnly", "SaveReplay" }),
 }
+
+local experimental_options= {
+	float_pref_val("GlobalOffsetSeconds", 5, -6, -2, 0),
+	float_pref_val("RegenComboAfterMiss", 5, 0, 0, 0),
+	{ name= "Tokubetsu Effects", meta= options_sets.special_functions, level= 5,
+		args= ultra_special_effects},
+	player_cons_mod("Side Swap", "side_swap", 5, -2, 0, 0, nil, nil, "cons"),
+}
+for i, window_name in ipairs{
+	"Scale", "Add", "Hopo", "Jump", "Scale", "SecondsAttack", "SecondsHold",
+	"SecondsMine", "SecondsRoll", "SecondsW1", "SecondsW2", "SecondsW3",
+	"SecondsW4", "SecondsW5", "Strum"} do
+	experimental_options[#experimental_options+1]= float_pref_val(
+		"TimingWindow" .. window_name, 5, -6, -3, 0)
+end
 
 local eval_flag_eles= {}
 for i, fname in ipairs(sorted_eval_flag_names) do
@@ -1239,6 +1265,7 @@ local life_options= {
 }
 
 local base_options= {
+	{ name= "Experimental", meta= options_sets.menu, args= experimental_options, level= 5},
 	{ name= "Speed", meta= options_sets.speed, level= 1},
 	{ name= "Perspective", meta= options_sets.menu,
 		args= make_menu_of_float_set(perspective_mods), level= 1},

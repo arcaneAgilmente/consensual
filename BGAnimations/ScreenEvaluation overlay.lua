@@ -1541,5 +1541,5 @@ return Def.ActorFrame{
 		end,
 	},
 	maybe_help(),
-	normal_text("tws", "TWS: " .. tostring(PREFSMAN:GetPreference("TimingWindowScale")), fetch_color("text"), fetch_color("stroke"), _screen.cx, 126),
+	normal_text("tws", "TWS: " .. ("%.3f"):format(PREFSMAN:GetPreference("TimingWindowScale")), fetch_color("text"), fetch_color("stroke"), _screen.cx, 126),
 }
