@@ -703,8 +703,10 @@ end
 local chactor_width= 16
 color_manipulator_mt= {
 	__index= {
-		create_actors= function(self, name, x, y, colors)
+		create_actors= function(self, name, x, y, colors, zoom)
 			colors= colors or {}
+			zoom= zoom or 1
+			self.zoom= zoom
 			local text_color= colors.text or fetch_color("text")
 			local bg_color= colors.bg or fetch_color("bg")
 			self.name= name
@@ -712,7 +714,7 @@ color_manipulator_mt= {
 			self.chex= {}
 			local args= {
 				Name= name, InitCommand= function(subself)
-					subself:xy(x, y)
+					subself:xy(x, y):zoom(zoom)
 					self.container= subself
 					self.mode= subself:GetChild("mode")
 					self.done_actor= subself:GetChild("done")
@@ -873,7 +875,9 @@ color_manipulator_mt= {
 			elseif tonumber(self.edit_channel) then
 				chact= self.chactors[self.edit_channel]
 			end
-			local fit= {cx + chact:GetX(), cy + chact:GetY(), chact:GetWidth(), 24}
+			local fit= {
+				cx + chact:GetX() * self.zoom, cy + chact:GetY() * self.zoom,
+				chact:GetWidth() * self.zoom, 24 * self.zoom}
 			return fit
 		end
 }}

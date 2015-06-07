@@ -10,81 +10,6 @@ dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "sick_options_parts.lua"))
 
 local bpm_disps= {}
-local bpm_disp_mt= {
-	__index= {
-		create_actors= function(self, name, player_number, x, y)
-			self.name= name
-			self.player_number= player_number
-			rate_coordinator:add_to_notify(self)
-			local args= {
-				Name=name, InitCommand= function(subself)
-					self.container= subself
-					self.text= subself:GetChild("bpm")
-					self.text:maxwidth(sect_width-16)
-					subself:xy(x, y)
-					self:bpm_text()
-				end,
-				normal_text("bpm", "", fetch_color("text"), fetch_color("stroke"))
-			}
-			return Def.ActorFrame(args)
-		end,
-		bpm_text= function(self)
-			-- TODO:  Find a way to call bpm_text when verbose_bpm changes.
-			local steps= gamestate_get_curr_steps(self.player_number)
-			if steps then
-				local bpms= steps_get_bpms(steps, gamestate_get_curr_song())
-				local curr_rate= rate_coordinator:get_current_rate()
-				bpms[1]= bpms[1] * curr_rate
-				bpms[2]= bpms[2] * curr_rate
-				local parts= {{"BPM: ", fetch_color("text")}}
-				local function add_bpms_to_parts(parts, a, b, color_func)
-					parts[#parts+1]= {format_bpm(a), color_func(a)}
-					parts[#parts+1]= {" to ", fetch_color("text")}
-					parts[#parts+1]= {format_bpm(b), color_func(b)}
-				end
-				if cons_players[self.player_number].flags.interface.verbose_bpm then
-					local mode= cons_players[self.player_number].speed_info.mode
-					local speed= cons_players[self.player_number].speed_info.speed
-					if mode == "x" then
-						local xmod= {" * "..format_xmod(speed).." = ",fetch_color("text")}
-						if bpms[1] == bpms[2] then
-							local rbpm= bpms[1]
-							parts[#parts+1]= {format_bpm(rbpm), color_for_bpm(rbpm)}
-							parts[#parts+1]= xmod
-							parts[#parts+1]= {format_bpm(rbpm * speed), color_for_read_speed(rbpm*speed)}
-						else
-							add_bpms_to_parts(parts, bpms[1], bpms[2], color_for_bpm)
-							parts[#parts+1]= xmod
-							add_bpms_to_parts(
-								parts, bpms[1] * speed, bpms[2] * speed, color_for_read_speed)
-						end
-					else
-						if bpms[1] == bpms[2] then
-							parts[#parts+1]= {format_bpm(bpms[1]), color_for_bpm(bpms[1])}
-						else
-							add_bpms_to_parts(parts, bpms[1], bpms[2], color_for_bpm)
-						end
-						parts[#parts+1]= {" (" .. mode, fetch_color("text")}
-						parts[#parts+1]= {format_bpm(speed), color_for_read_speed(speed)}
-						parts[#parts+1]= {")", fetch_color("text")}
-					end
-				else
-					if bpms[1] == bpms[2] then
-						parts[#parts+1]= {format_bpm(bpms[1]), color_for_bpm(bpms[1])}
-					else
-						add_bpms_to_parts(parts, bpms[1], bpms[2], color_for_bpm)
-					end
-				end
-				set_text_from_parts(self.text, parts)
-			end
-		end,
-		notify_of_rate_change= function(self)
-			if self.container then
-				self:bpm_text()
-			end
-		end,
-}}
-
 local args= {}
 local menus= {}
 local frames= {}
@@ -117,7 +42,7 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 			"frame", 2, sect_width, sect_height, pcolor, fetch_color("bg", .5),
 			sect_width/2, sect_height/2),
 		normal_text("name", pname, pcolor, nil, 8, line_height / 2, 1, left),
-		bpm:create_actors("bpm", pn, sect_width/2, line_height*1.5),
+		bpm:create_actors("bpm", pn, sect_width/2, line_height*1.5, sect_width),
 		manip:create_actors("color_manip", color_manip_x, color_manip_y),
 	}
 	local status_size= line_height*2.5

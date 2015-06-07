@@ -11,20 +11,22 @@ local time_before_fast_scroll= .8
 local time_between_fast_scroll= .02
 
 local sort_width= _screen.w*.25
+local pad= 4
+local hpad= 2
 
 local pane_text_zoom= .625
 local pane_text_height= 16 * (pane_text_zoom / 0.5875)
 local pane_w= 200
 local pane_h= pane_text_height * max_pain_rows + 4
+local pane_y= SCREEN_BOTTOM-(pane_h/2)-pad
 local pane_yoff= -32 -pane_h * .5 + pane_text_height * .5 + 2
 local pane_ttx= 0
 local menu_text_zoom= pane_text_zoom
 local pane_menu_h= pane_h
 local pane_menu_w= pane_w - 8
-local pad= 4
-local hpad= 2
+local pane_menu_y= pane_y + pane_yoff
+local pane_manip_y= pane_y + pane_yoff + 40
 
-local pane_y= SCREEN_BOTTOM-(pane_h/2)-pad
 local pane_x_off= (pane_w*.5) + pad
 local lpane_x= pane_x_off
 local rpane_x= _screen.w - pane_x_off
@@ -538,7 +540,12 @@ dofile(THEME:GetPathO("", "art_helpers.lua"))
 dofile(THEME:GetPathO("", "song_props_menu.lua"))
 dofile(THEME:GetPathO("", "tags_menu.lua"))
 dofile(THEME:GetPathO("", "favor_menu.lua"))
+dofile(THEME:GetPathO("", "sick_options_parts.lua"))
 
+local rate_coordinator= setmetatable({}, rate_coordinator_interface_mt)
+rate_coordinator:initialize()
+local color_manips= {}
+local bpm_disps= {}
 local special_menus= {}
 local steps_menus= {}
 local pain_displays= {}
@@ -546,6 +553,8 @@ local song_props_menus= {}
 local tag_menus= {}
 local player_cursors= {}
 for i, pn in ipairs(all_player_indices) do
+	color_manips[pn]= setmetatable({}, color_manipulator_mt)
+	bpm_disps[pn]= setmetatable({}, bpm_disp_mt)
 	special_menus[pn]= setmetatable({}, menu_stack_mt)
 	steps_menus[pn]= setmetatable({}, steps_menu_mt)
 	pain_displays[pn]= setmetatable({}, pain_display_mt)
@@ -707,8 +716,7 @@ local misc_options= {
 	end},
 }
 
-local base_mods= {
-}
+local base_mods= get_sick_options(rate_coordinator, color_manips, bpm_disps)
 
 local function make_visible_style_data(pn)
 	local num_players= GAMESTATE:GetNumPlayersEnabled()
@@ -801,8 +809,6 @@ local function switch_to_not_picking_steps()
 	was_picking_steps= true
 	update_player_cursors()
 end
-
-set_option_set_metatables()
 
 local song_props= {
 	{name= "exit_menu"},
@@ -1420,6 +1426,11 @@ local function input(event)
 							common_menu_change("wheel")
 						end
 					end
+					if special_menus[pn].external_thing then
+						local fit= color_manips[pn]:get_cursor_fit()
+						fit[2]= fit[2] - pane_menu_y
+						special_menus[pn]:refit_cursor(fit)
+					end
 				end,
 				pain= function()
 					if press_type == "InputEventType_Release" then return end
@@ -1606,11 +1617,28 @@ local function maybe_help()
 	end
 end
 
+local function player_actors(pn, x, y)
+	return Def.ActorFrame{
+		Name= pn .. "_stuff", InitCommand= function(self) self:xy(x, y) end,
+		pain_displays[pn]:create_actors(
+			"pain", 0, pane_y + pane_yoff - pane_text_height, pn, pane_w,
+			pane_text_zoom),
+		steps_menus[pn]:create_actors(0, _screen.cy*.5, pn),
+		bpm_disps[pn]:create_actors("bpm", pn, 0, pane_y + pane_yoff - 36, pane_w),
+		color_manips[pn]:create_actors("color_manip", 0, pane_manip_y, nil, .5),
+		special_menus[pn]:create_actors(
+			"menu", 0, pane_menu_y, pane_menu_w, pane_menu_h, pn, 1,
+			pane_text_height, menu_text_zoom),
+	}
+end
+
 return Def.ActorFrame {
 	InitCommand= function(self)
 		self:SetUpdateFunction(Update)
 		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
 			special_menus[pn]:hide()
+			color_manips[pn]:hide()
+			bpm_disps[pn]:hide()
 			update_pain(pn)
 		end
 		music_wheel:find_actors(self:GetChild(music_wheel.name))
@@ -1675,18 +1703,10 @@ return Def.ActorFrame {
 			focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
 		end,
 	},
-	pain_displays[PLAYER_1]:create_actors(
-		"P1_pain", lpane_x, pane_y + pane_yoff - pane_text_height, PLAYER_1, pane_w, pane_text_zoom),
-	pain_displays[PLAYER_2]:create_actors(
-		"P2_pain", rpane_x, pane_y + pane_yoff - pane_text_height, PLAYER_2, pane_w, pane_text_zoom),
-	special_menus[PLAYER_1]:create_actors(
-		"P1_menu", lpane_x, pane_y + pane_yoff, pane_menu_w, pane_menu_h, PLAYER_1, 1, pane_text_height, menu_text_zoom),
-	special_menus[PLAYER_2]:create_actors(
-		"P2_menu", rpane_x, pane_y + pane_yoff, pane_menu_w, pane_menu_h, PLAYER_2, 1, pane_text_height, menu_text_zoom),
+	player_actors(PLAYER_1, lpane_x, 0),
+	player_actors(PLAYER_2, rpane_x, 0),
 	music_wheel:create_actors(wheel_x, wheel_width, wheel_move_time),
 	focus_element_info:create_actors(_screen.cx, _screen.cy),
-	steps_menus[PLAYER_1]:create_actors(pane_w / 2, _screen.cy*.5, PLAYER_1),
-	steps_menus[PLAYER_2]:create_actors(_screen.w - pane_w / 2, _screen.cy*.5, PLAYER_2),
 	Def.Actor{
 		Name= "code_interpreter",
 		InitCommand= function(self)

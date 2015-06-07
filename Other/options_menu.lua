@@ -1250,8 +1250,9 @@ menu_stack_mt= {
 			if item then
 				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(item.container)
 				local xp, yp= rec_calc_actor_pos(item.container)
-				xp= xp - self.container:GetX()
-				yp= yp - self.container:GetY()
+				local xs, ys= rec_calc_actor_pos(self.container)
+				xp= xp - xs
+				yp= yp - ys
 				self.cursor:refit(xp, yp, xmx - xmn + 4, ymx - ymn + 4)
 			end
 		end,

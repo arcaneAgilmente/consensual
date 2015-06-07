@@ -12,7 +12,7 @@ function normal_text(name, text, color, stroke, tx, ty, z, align, commands)
 	commands.Text= text
 	commands.InitCommand= function(self)
 		self:xy(tx,ty):zoom(z):diffuse(color):horizalign(align)
-		if stroke then self:strokecolor(stroke) end
+		if stroke and stroke[4] > 0 then self:strokecolor(stroke) end
 		maybe_distort_text(self)
 		if passed_init then passed_init(self) end
 	end
