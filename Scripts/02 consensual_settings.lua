@@ -370,9 +370,11 @@ function generic_gsu_flag(flag_field, flag_name)
 	end,
 	function(player_number)
 		cons_players[player_number].flags[flag_field][flag_name]= true
+		MESSAGEMAN:Broadcast("player_flags_changed", {pn= player_number})
 	end,
 	function(player_number)
 		cons_players[player_number].flags[flag_field][flag_name]= false
+		MESSAGEMAN:Broadcast("player_flags_changed", {pn= player_number})
 	end
 end
 

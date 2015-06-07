@@ -789,6 +789,7 @@ function rate_coordinator_interface:remove_from_notify(sub)
 end
 
 function rate_coordinator_interface:notify(new_rate, play_new_sample)
+	MESSAGEMAN:Broadcast("rate_changed")
 	if tonumber(new_rate) then
 		self.current_rate= new_rate
 		for v in ivalues(self.notify_list) do

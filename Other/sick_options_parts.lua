@@ -1,17 +1,20 @@
-function get_sick_options(rate_coordinator, color_manips, bpm_disps)
-
 bpm_disp_mt= {
 	__index= {
 		create_actors= function(self, name, player_number, x, y, width)
 			self.name= name
 			self.player_number= player_number
-			rate_coordinator:add_to_notify(self)
 			local args= {
 				Name=name, InitCommand= function(subself)
 					self.container= subself
 					self.text= subself:GetChild("bpm")
 					self.text:maxwidth(width-16)
 					subself:xy(x, y)
+					self:bpm_text()
+				end,
+				rate_changedMessageCommand= function(subself)
+					self:bpm_text()
+				end,
+				player_flags_changedMessageCommand= function(subself)
 					self:bpm_text()
 				end,
 				normal_text("bpm", "", fetch_color("text"), fetch_color("stroke"))
@@ -29,7 +32,7 @@ bpm_disp_mt= {
 			local steps= gamestate_get_curr_steps(self.player_number)
 			if steps then
 				local bpms= steps_get_bpms(steps, gamestate_get_curr_song())
-				local curr_rate= rate_coordinator:get_current_rate()
+				local curr_rate= get_rate_from_songopts()
 				bpms[1]= bpms[1] * curr_rate
 				bpms[2]= bpms[2] * curr_rate
 				local parts= {{"BPM: ", fetch_color("text")}}
@@ -74,12 +77,9 @@ bpm_disp_mt= {
 				set_text_from_parts(self.text, parts)
 			end
 		end,
-		notify_of_rate_change= function(self)
-			if self.container then
-				self:bpm_text()
-			end
-		end,
 }}
+
+function get_sick_options(rate_coordinator, color_manips, bpm_disps)
 
 -- SPEED RATE COORDINATION
 -- Each speed option row and each rate mod option line registers with this
@@ -104,7 +104,7 @@ bpm_disp_mt= {
 if GAMESTATE:GetCoinMode() ~= "CoinMode_Home" then
 	local remain= get_time_remaining()
 	local song_len= get_current_song_length()
-	local rate= rate_coordinator:get_current_rate()
+	local rate= get_rate_from_songopts()
 	if song_len / rate > remain then
 		local new_rate= song_len / remain
 		new_rate= force_to_range(0.5, new_rate, 2.0)
@@ -364,7 +364,7 @@ options_sets.rate_mod= {
 			self.name= extra.name
 			self.info_set= {up_element()}
 			self.increments= {}
-			self.current_value= rate_coordinator:get_current_rate()
+			self.current_value= get_rate_from_songopts()
 			self.menu_functions= {noop_false}
 			local function general_inc(pos)
 				self:set_new_val(self.current_value + self.increments[pos])

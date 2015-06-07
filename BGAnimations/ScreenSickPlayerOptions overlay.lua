@@ -18,6 +18,7 @@ local color_manips= {}
 local color_manip_x= (sect_width * .5) + 48
 local color_manip_y= 100 + (line_height * 3)
 local menu_y= 0
+local base_options= get_sick_options(rate_coordinator, color_manips, bpm_disps)
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	local menu= setmetatable({}, menu_stack_mt)
 	local bpm= setmetatable({}, bpm_disp_mt)
@@ -54,8 +55,6 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	frames[pn]= frame
 	color_manips[pn]= manip
 end
-
-local base_options= get_sick_options(rate_coordinator, color_manips, bpm_disps)
 
 local function refit_cursor_to_color_manip(pn)
 	local fit= color_manips[pn]:get_cursor_fit()

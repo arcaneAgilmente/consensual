@@ -107,7 +107,7 @@ end
 local cdtitle_size= (extra_info_height*2) - (pad * 2)
 local function cdtitle()
 	if scrambler_mode then
-		swapping_amv(
+		return swapping_amv(
 			"CDTitle", 0, 0, cdtitle_size, cdtitle_size, 8, 8, nil, "_", false, true, true, {
 				OnCommand= play_set,
 				CurrentSongChangedMessageCommand= play_set,
@@ -552,6 +552,8 @@ local pain_displays= {}
 local song_props_menus= {}
 local tag_menus= {}
 local player_cursors= {}
+local base_mods= get_sick_options(rate_coordinator, color_manips, bpm_disps)
+
 for i, pn in ipairs(all_player_indices) do
 	color_manips[pn]= setmetatable({}, color_manipulator_mt)
 	bpm_disps[pn]= setmetatable({}, bpm_disp_mt)
@@ -715,8 +717,6 @@ local misc_options= {
 		 end
 	end},
 }
-
-local base_mods= get_sick_options(rate_coordinator, color_manips, bpm_disps)
 
 local function make_visible_style_data(pn)
 	local num_players= GAMESTATE:GetNumPlayersEnabled()
