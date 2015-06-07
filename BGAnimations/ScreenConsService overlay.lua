@@ -179,7 +179,7 @@ end
 
 local pain_display= setmetatable({}, pain_display_mt)
 local in_pain= false
-local function pain_extern(params)
+local function pain_extern(menu, params)
 	in_pain= true
 	pain_display:set_config(params.config)
 	pain_display:enter_edit_mode()
