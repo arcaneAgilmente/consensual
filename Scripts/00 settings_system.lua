@@ -67,7 +67,7 @@ local function slot_to_prof_dir(slot, reason)
 	return prof_dir
 end
 
-local function load_conf_file(fname)
+function load_conf_file(fname)
 	local file= RageFileUtil.CreateRageFile()
 	local ret= {}
 	if file:Open(fname, 1) then

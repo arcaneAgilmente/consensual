@@ -1,6 +1,13 @@
 GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(1)
 update_steps_types_to_show()
 
+local press_ignore_reporter= false
+local function show_ignore_message(message)
+	press_ignore_reporter:settext(message):finishtweening()
+		:linear(.2):diffusealpha(1):sleep(5):linear(.5):diffusealpha(0)
+	Trace(message)
+end
+
 local auto_scrolling= nil
 local next_auto_scroll_time= 0
 local time_before_auto_scroll= .15
@@ -1384,7 +1391,16 @@ local function input(event)
 	if press_type == "InputEventType_FirstPress" then
 		saw_first_press[event.DeviceInput.button]= true
 	end
-	if not saw_first_press[event.DeviceInput.button] then return end
+	if not saw_first_press[event.DeviceInput.button] then
+		local ignore_message= "Did not see first press for " ..
+			event.DeviceInput.button .. ", ignoring " .. event.type
+		show_ignore_message(ignore_message)
+		Trace("Event info:")
+		rec_print_table(event)
+		Trace("saw_first_press info:")
+		rec_print_table(saw_first_press)
+		return
+	end
 	if press_type == "InputEventType_Release" then
 		saw_first_press[event.DeviceInput.button]= nil
 	end
@@ -1413,7 +1429,10 @@ local function input(event)
 			interpret_config_key(event.DeviceInput.button)
 		end
 	end
-	if not pn then return end
+	if not pn then
+		show_ignore_message("Input does not have a pn, ignoring.")
+		return
+	end
 	if GAMESTATE:IsSideJoined(pn) then
 		if entering_song then
 			if key_pressed == "Start" and press_type == "InputEventType_FirstPress" then
@@ -1515,6 +1534,13 @@ local function input(event)
 			if not status_active and pressed_since_menu_change[pn][key_pressed]
 			and not closed_menu then
 				menu_func[in_special_menu[pn]]()
+			else
+				local ignore_message= "Status window is active, or button not pressed since menu change, or closed menu this frame.  Ignoring " .. key_pressed .. " " .. press_type
+				show_ignore_message(ignore_message)
+				Trace("status_active: " .. tostring(status_active))
+				Trace("closed_menu: " .. tostring(closed_menu))
+				Trace("pressed_since_menu_change: ")
+				rec_print_table(pressed_since_menu_change[pn])
 			end
 			if down_count[pn] == 0 then codes_since_release[pn]= false end
 		end
@@ -1546,6 +1572,8 @@ local function input(event)
 					set_closest_steps_to_preferred(pn)
 				end
 			end
+		else
+			show_ignore_message("Ignoring " .. key_pressed .. " from " .. pn .. " because they are not joined.")
 		end
 	end
 	update_player_cursors()
@@ -1816,5 +1844,6 @@ return Def.ActorFrame {
 		normal_text("omm","Press &Start; for options.",fetch_color("prompt.text"),
 								nil, 0, 0, 2),
 	},
+	normal_text("press_ignore", "", fetch_color("text"), fetch_color("stroke"), _screen.cx, 16, .5, center, {InitCommand= function(self) press_ignore_reporter= self end}),
 	maybe_help(),
 }
