@@ -1716,7 +1716,6 @@ return Def.ActorFrame {
 			self:effectperiod(2^16)
 			timer_actor= self
 		end,
-		end,
 	},
 	normal_text("code_text", "", Alpha(fetch_color("text"), 0), nil, 0, 0, .75),
 	Def.ActorFrame{
