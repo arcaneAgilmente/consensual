@@ -1219,7 +1219,9 @@ local function update_keys_down(pn, key_pressed, press_type)
 	else
 		keys_down[pn][key_pressed]= down_map[press_type]
 	end
+	Trace("Updated down status of " .. key_pressed .. " to " .. tostring(keys_down[pn][key_pressed]))
 	if press_type == "InputEventType_FirstPress" then
+		Trace("pressed_since_menu_change set to true")
 		pressed_since_menu_change[pn][key_pressed]= true
 	end
 	down_count[pn]= 0
@@ -1388,7 +1390,9 @@ local function input(event)
 	local pn= event.PlayerNumber
 	local key_pressed= event.GameButton
 	local press_type= event.type
+	Trace("Input: " .. tostring(pn) .. ", " .. key_pressed .. ", " .. event.DeviceInput.button .. ", " .. event.type)
 	if press_type == "InputEventType_FirstPress" then
+		Trace("Added to saw_first_press")
 		saw_first_press[event.DeviceInput.button]= true
 	end
 	if not saw_first_press[event.DeviceInput.button] then
@@ -1402,6 +1406,7 @@ local function input(event)
 		return
 	end
 	if press_type == "InputEventType_Release" then
+		Trace("Removed from saw_first_press")
 		saw_first_press[event.DeviceInput.button]= nil
 	end
 	if event.DeviceInput.button == "DeviceButton_s" then
@@ -1435,7 +1440,9 @@ local function input(event)
 	end
 	if GAMESTATE:IsSideJoined(pn) then
 		if entering_song then
+			show_ignore_message("Currently entering song, ignoring non-Start input")
 			if key_pressed == "Start" and press_type == "InputEventType_FirstPress" then
+				Trace("Going to options")
 				SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 				entering_song= 0
 				go_to_options= true
