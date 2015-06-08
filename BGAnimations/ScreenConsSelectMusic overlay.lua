@@ -880,6 +880,18 @@ local song_props= {
 local player_cursor_button_list= {{"top", "MenuLeft"}, {"bottom", "MenuRight"}}
 reverse_button_list(player_cursor_button_list)
 
+local function update_all_info()
+	local enabled_players= GAMESTATE:GetEnabledPlayers()
+	for i, v in ipairs(enabled_players) do
+		set_closest_steps_to_preferred(v)
+	end
+	focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
+	update_prev_song_bpm()
+	update_pain(PLAYER_1)
+	update_pain(PLAYER_2)
+	update_player_cursors()
+end
+
 local function start_auto_scrolling(dir)
 	local time_before_scroll= GetTimeSinceStart()
 	music_wheel:scroll_amount(dir)
@@ -894,15 +906,7 @@ local function stop_auto_scrolling()
 	play_sample_music()
 	auto_scrolling= nil
 	fast_auto_scroll= nil
-	local enabled_players= GAMESTATE:GetEnabledPlayers()
-	for i, v in ipairs(enabled_players) do
-		set_closest_steps_to_preferred(v)
-	end
-	focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
-	update_prev_song_bpm()
-	update_pain(PLAYER_1)
-	update_pain(PLAYER_2)
-	update_player_cursors()
+	update_all_info()
 end
 
 local function correct_for_overscroll()
@@ -1676,6 +1680,7 @@ return Def.ActorFrame {
 		local top_screen= SCREENMAN:GetTopScreen()
 		top_screen:SetAllowLateJoin(true):AddInputCallback(input)
 		change_sort_text(music_wheel.current_sort_name)
+		update_all_info()
 	end,
 	play_songCommand= function(self)
 		switch_to_picking_steps()
