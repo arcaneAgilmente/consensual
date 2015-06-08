@@ -493,10 +493,13 @@ pain_display_mt= {
 		set_config= function(self, config)
 			self.config= config
 		end,
+		hide_elements= function(self)
+			self.element_container:visible(false)
+		end,
 		hide= function(self)
 			self.container:visible(false)
 			self.shadow_container:visible(false)
-			self.element_container:visible(false)
+			self:hide_elements()
 			self.frame_main.outer:hide()
 		end,
 		unhide= function(self)

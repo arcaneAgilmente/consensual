@@ -89,6 +89,48 @@ local function ensure_enough_stages()
 	end
 end
 
+local function set_closest_steps_to_preferred(pn)
+	local preferred_diff= GAMESTATE:GetPreferredDifficulty(pn) or
+		"Difficulty_Beginner"
+	local pref_steps_type= get_preferred_steps_type(pn)
+	local curr_steps_type= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
+	local candidates= sort_steps_list(get_filtered_steps_list())
+	if candidates and #candidates > 0 then
+		local steps_set= false
+		local closest
+		for i, steps in ipairs(candidates) do
+			if not closest then
+				closest= {
+					steps= steps, diff_diff=
+						math.abs(Difficulty:Compare(preferred_diff, steps:GetDifficulty())),
+					steps_type= steps:GetStepsType()}
+			else
+				local this_difference= math.abs(
+					Difficulty:Compare(preferred_diff, steps:GetDifficulty()))
+				local this_steps_type= steps:GetStepsType()
+				if closest.steps_type == pref_steps_type then
+					if this_steps_type == pref_steps_type and
+					this_difference < closest.diff_diff then
+						closest= {steps= steps, diff_diff= this_difference,
+											steps_type= this_steps_type}
+					end
+				else
+					if this_steps_type == pref_steps_type
+					or this_difference < closest.diff_diff then
+						closest= {steps= steps, diff_diff= this_difference,
+											steps_type= this_steps_type}
+					end
+				end
+			end
+		end
+		if closest then
+			cons_set_current_steps(pn, closest.steps)
+		else
+			cons_set_current_steps(pn, candidates[1])
+		end
+	end
+end
+
 local sort_prop= false
 
 local function change_sort_text(new_text)
@@ -394,23 +436,68 @@ local focus_element_info_mt= {
 				self.sec_title:visible(false)
 			end
 		end,
-		update= function(self, item)
+		update_title= function(self, item)
 			self:hide_song_bucket_info()
 			self:hide_song_info()
 			self.subtitle:visible(false)
 			self.jacket:visible(false)
 			if item.bucket_info then
-				if songman_does_group_exist(curr_group_name) then
-					self:set_jacket_to_image(
-						songman_get_group_banner_path(curr_group_name))
-				end
+				self:set_title_text(curr_group_name)
 				if item.is_current_group then
 					self.bg:diffuse(wheel_colors.current_group)
 				else
 					self.bg:diffuse(wheel_colors.group)
 				end
-				self:set_title_text(curr_group_name)
-				self.subtitle:visible(false)
+			elseif item.sort_info then
+				self:set_title_text(item.sort_info.name)
+				self.bg:diffuse(wheel_colors.sort)
+			else
+				if item.random_info then
+					self.bg:diffuse(wheel_colors.random)
+				elseif item.is_prev then
+					self.bg:diffuse(wheel_colors.prev_song)
+				else
+					self.bg:diffuse(wheel_colors.song)
+				end
+				local song= gamestate_get_curr_song()
+				if song then
+					self:set_title_text(song_get_main_title(song))
+					self.length:settext(
+						get_string_wrapper("SelectMusicExtraInfo", "song_len") .. ": " ..
+							secs_to_str(song_get_length(song))):visible(true)
+					local genre= song:GetGenre()
+					if genre ~= "" then
+						self.genre:settext(
+							get_string_wrapper("SelectMusicExtraInfo", "song_genre") ..
+								": " .. genre):visible(true)
+					end
+					local artist= song:GetDisplayArtist()
+					if artist ~= "" then
+						self.artist:settext(
+							get_string_wrapper("SelectMusicExtraInfo", "song_artist") ..
+								": " .. artist):visible(true)
+					end
+					if song.GetDisplaySubTitle then
+						self.subtitle:settext(song:GetDisplaySubTitle()):visible(true)
+					end
+				else
+					self.title:visible(false)
+				end
+			end
+			width_limit_text(self.title, self.title_width)
+			width_limit_text(self.subtitle, self.title_width, .5)
+			width_limit_text(self.artist, self.title_width, .5)
+			local len_len= self.length:GetWidth()
+			width_limit_text(self.genre, self.title_width - len_len - pad*2, .5)
+			self.bg:diffusealpha(.5)
+		end,
+		update= function(self, item)
+			self:update_title(item)
+			if item.bucket_info then
+				if songman_does_group_exist(curr_group_name) then
+					self:set_jacket_to_image(
+						songman_get_group_banner_path(curr_group_name))
+				end
 				if item.bucket_info.song_count then
 					local song_count= item.bucket_info.song_count or 0
 					self.song_count:unhide()
@@ -455,39 +542,13 @@ local focus_element_info_mt= {
 					end
 					self.steps_by:visible(true)
 				end
-			elseif item.sort_info then
-				self:set_title_text(item.sort_info.name)
-				self.bg:diffuse(wheel_colors.sort)
 			else
-				if item.random_info then
-					self.bg:diffuse(wheel_colors.random)
-				elseif item.is_prev then
-					self.bg:diffuse(wheel_colors.prev_song)
-				else
-					self.bg:diffuse(wheel_colors.song)
-				end
 				local song= gamestate_get_curr_song()
 				if song then
 					if song:HasJacket() then
 						self:set_jacket_to_image(song:GetJacketPath())
 					elseif song:HasBackground() then
 						self:set_jacket_to_image(song:GetBackgroundPath())
-					end
-					self:set_title_text(song_get_main_title(song))
-					self.length:settext(
-						get_string_wrapper("SelectMusicExtraInfo", "song_len") .. ": " ..
-							secs_to_str(song_get_length(song))):visible(true)
-					local genre= song:GetGenre()
-					if genre ~= "" then
-						self.genre:settext(
-							get_string_wrapper("SelectMusicExtraInfo", "song_genre") ..
-								": " .. genre):visible(true)
-					end
-					local artist= song:GetDisplayArtist()
-					if artist ~= "" then
-						self.artist:settext(
-							get_string_wrapper("SelectMusicExtraInfo", "song_artist") ..
-								": " .. artist):visible(true)
 					end
 					local steps_list= get_filtered_steps_list()
 					for i, steps in ipairs(steps_list) do
@@ -501,19 +562,8 @@ local focus_element_info_mt= {
 						self.difficulty_counts[diff]:set_number(num_text)
 						self.difficulty_counts[diff]:unhide()
 					end
-				else
-					self.title:visible(false)
-				end
-				if song.GetDisplaySubTitle then
-					self.subtitle:settext(song:GetDisplaySubTitle()):visible(true)
 				end
 			end
-			width_limit_text(self.title, self.title_width)
-			width_limit_text(self.subtitle, self.title_width, .5)
-			width_limit_text(self.artist, self.title_width, .5)
-			local len_len= self.length:GetWidth()
-			width_limit_text(self.genre, self.title_width - len_len - pad*2, .5)
-			self.bg:diffusealpha(.5)
 		end,
 		collapse= function(self)
 			local newy= self.middle_height
@@ -844,6 +894,15 @@ local function stop_auto_scrolling()
 	play_sample_music()
 	auto_scrolling= nil
 	fast_auto_scroll= nil
+	local enabled_players= GAMESTATE:GetEnabledPlayers()
+	for i, v in ipairs(enabled_players) do
+		set_closest_steps_to_preferred(v)
+	end
+	focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
+	update_prev_song_bpm()
+	update_pain(PLAYER_1)
+	update_pain(PLAYER_2)
+	update_player_cursors()
 end
 
 local function correct_for_overscroll()
@@ -962,6 +1021,10 @@ local function Update(self)
 						fast_auto_scroll= true
 					end
 				end
+				update_sort_prop()
+				focus_element_info:update_title(music_wheel.sick_wheel:get_info_at_focus_pos())
+				pain_displays[PLAYER_1]:hide_elements()
+				pain_displays[PLAYER_2]:hide_elements()
 			end
 		end
 	end
@@ -1002,48 +1065,6 @@ local input_functions= {
 	}
 }
 
-local function set_closest_steps_to_preferred(pn)
-	local preferred_diff= GAMESTATE:GetPreferredDifficulty(pn) or
-		"Difficulty_Beginner"
-	local pref_steps_type= get_preferred_steps_type(pn)
-	local curr_steps_type= GAMESTATE:GetCurrentStyle(pn):GetStepsType()
-	local candidates= sort_steps_list(get_filtered_steps_list())
-	if candidates and #candidates > 0 then
-		local steps_set= false
-		local closest
-		for i, steps in ipairs(candidates) do
-			if not closest then
-				closest= {
-					steps= steps, diff_diff=
-						math.abs(Difficulty:Compare(preferred_diff, steps:GetDifficulty())),
-					steps_type= steps:GetStepsType()}
-			else
-				local this_difference= math.abs(
-					Difficulty:Compare(preferred_diff, steps:GetDifficulty()))
-				local this_steps_type= steps:GetStepsType()
-				if closest.steps_type == pref_steps_type then
-					if this_steps_type == pref_steps_type and
-					this_difference < closest.diff_diff then
-						closest= {steps= steps, diff_diff= this_difference,
-											steps_type= this_steps_type}
-					end
-				else
-					if this_steps_type == pref_steps_type
-					or this_difference < closest.diff_diff then
-						closest= {steps= steps, diff_diff= this_difference,
-											steps_type= this_steps_type}
-					end
-				end
-			end
-		end
-		if closest then
-			cons_set_current_steps(pn, closest.steps)
-		else
-			cons_set_current_steps(pn, candidates[1])
-		end
-	end
-end
-
 local function adjust_difficulty(player, dir, sound)
 	local steps= gamestate_get_curr_steps(player)
 	if steps then
@@ -1063,6 +1084,7 @@ local function adjust_difficulty(player, dir, sound)
 			end
 		end
 	end
+	update_pain(player)
 end
 
 local keys_down= {[PLAYER_1]= {}, [PLAYER_2]= {}}
@@ -1680,27 +1702,8 @@ return Def.ActorFrame {
 			update_steps_types_to_show()
 			self:playcommand("Set")
 		end,
-		CurrentSongChangedMessageCommand=cmd(playcommand,"SCSet"),
-		CurrentCourseChangedMessageCommand=cmd(playcommand,"SCSet"),
-		PlayerUnJoinedMessageCommand=cmd(playcommand,"Set"),
-		CurrentStepsP1ChangedMessageCommand=cmd(playcommand,"Set"),
-		CurrentStepsP2ChangedMessageCommand=cmd(playcommand,"Set"),
-		CurrentTrailP1ChangedMessageCommand=cmd(playcommand,"Set"),
-		CurrentTrailP2ChangedMessageCommand=cmd(playcommand,"Set"),
-		SCSetCommand= function(self)
-			focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
-			self:playcommand("Set")
-			update_prev_song_bpm()
-		end,
-		SetCommand= function(self)
-			update_pain(PLAYER_1)
-			update_pain(PLAYER_2)
-			update_player_cursors()
-		end,
 		current_group_changedMessageCommand= function(self, param)
-			update_sort_prop()
 			curr_group_name= param[1] or ""
-			focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
 		end,
 	},
 	player_actors(PLAYER_1, lpane_x, 0),
@@ -1713,13 +1716,6 @@ return Def.ActorFrame {
 			self:effectperiod(2^16)
 			timer_actor= self
 		end,
-		CurrentCourseChangedMessageCommand= cmd(playcommand, "sc_changed"),
-		CurrentSongChangedMessageCommand= cmd(playcommand, "sc_changed"),
-		sc_changedCommand= function(self)
-			local enabled_players= GAMESTATE:GetEnabledPlayers()
-			for i, v in ipairs(enabled_players) do
-				set_closest_steps_to_preferred(v)
-			end
 		end,
 	},
 	normal_text("code_text", "", Alpha(fetch_color("text"), 0), nil, 0, 0, .75),
