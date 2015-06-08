@@ -602,21 +602,16 @@ function get_display_bpms(steps, song)
 		bpms= {}
 		local timing_data= steps:GetTimingData()
 		local bpmsand= timing_data:GetBPMsAndTimes(true)
-		if type(bpmsand[1]) == "string" then
-			for i, s in ipairs(bpmsand) do
-				local sand= split("=", s)
-				bpmsand[i]= {tonumber(sand[1]), tonumber(sand[2])}
-			end
-		end
 		local totals= {}
 		local num_beats= timing_data:GetBeatFromElapsedTime(song:GetLastSecond())
 		local highest_sustained= 0
-		local sustain_limit= 32
+		local sustain_limit= 8
 		local max_bpm= false
 		for i, s in ipairs(bpmsand) do
---			put_bpm_in_disp_pair(bpms, s[2])
-			if gte_nil(s[2], max_bpm) then
-				max_bpm= s[2]
+			local start_beat= s[1]
+			local bpm= s[2]
+			if gte_nil(bpm, max_bpm) then
+				max_bpm= bpm
 			end
 			local end_beat= 0
 			if bpmsand[i+1] then
@@ -624,11 +619,12 @@ function get_display_bpms(steps, song)
 			else
 				end_beat= num_beats
 			end
-			local len= (end_beat - s[1])
-			if s[2] > highest_sustained and len > sustain_limit then
-				highest_sustained= s[2]
+			local len= (end_beat - start_beat)
+			local seconds= len / bpm * 60
+			if bpm > highest_sustained and seconds > sustain_limit then
+				highest_sustained= bpm
 			end
-			totals[s[2]]= len + (totals[s[2]] or 0)
+			totals[bpm]= len + (totals[bpm] or 0)
 		end
 		local tot= 0
 		local most_common= false
@@ -640,7 +636,7 @@ function get_display_bpms(steps, song)
 			tot= tot + (k * v)
 		end
 		local average= tot / num_beats
-		put_bpm_in_disp_pair(bpms, most_common[1])
+		put_bpm_in_disp_pair(bpms, math.max(most_common[1], highest_sustained))
 	end
 	return bpms
 end

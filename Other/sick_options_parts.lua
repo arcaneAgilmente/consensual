@@ -30,8 +30,9 @@ bpm_disp_mt= {
 		bpm_text= function(self)
 			-- TODO:  Find a way to call bpm_text when verbose_bpm changes.
 			local steps= gamestate_get_curr_steps(self.player_number)
-			if steps then
-				local bpms= steps_get_bpms(steps, gamestate_get_curr_song())
+			local song= gamestate_get_curr_song()
+			if steps and song then
+				local bpms= steps_get_bpms(steps, song)
 				local curr_rate= get_rate_from_songopts()
 				bpms[1]= bpms[1] * curr_rate
 				bpms[2]= bpms[2] * curr_rate

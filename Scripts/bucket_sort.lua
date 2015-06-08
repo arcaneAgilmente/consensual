@@ -13,8 +13,14 @@ local function depth_clip_name(name, depth)
 	return name:sub(1, depth), #name - depth
 end
 
+local function lowercase(n)
+	local lowered= utf8_lower and utf8_lower(n) or n:lower()
+	lowered:gsub("_", " ")
+	return lowered
+end
+
 local function str_cmp(a, b)
-	return a:lower() < b:lower()
+	return lowercase(a) < lowercase(b)
 end
 
 local function less_cmp(a, b)
@@ -252,14 +258,6 @@ end
 local function ensure_can_join(sf)
 	if sf then
 		sf.can_join= sf.can_join or noop_true
-	end
-end
-
-local function lowercase(n)
-	if utf8_lower then
-		return utf8_lower(n)
-	else
-		return n:lower()
 	end
 end
 

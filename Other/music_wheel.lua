@@ -35,6 +35,15 @@ do
 end
 recalc_heights()
 
+function nice_bucket_disp_name(bucket)
+	if not bucket.name then return "" end
+	local disp_name= bucket.name.value
+	if bucket.from_split then
+		disp_name= bucket_disp_name(bucket)
+	end
+	return disp_name
+end
+
 local function recalc_width_limit()
 	if dual_mode then
 		wheel_width_limit= wheel_width_limit * .5
@@ -581,11 +590,6 @@ local music_whale= {
 			end
 		elseif curr_element.bucket_info then
 			gamestate_set_curr_song(nil)
-			local group_name= curr_element.bucket_info.name.value
-			if curr_element.bucket_info.from_split then
-				group_name= bucket_disp_name(curr_element.bucket_info)
-			end
-			MESSAGEMAN:Broadcast("current_group_changed", {group_name})
 		elseif curr_element.song_info then
 			gamestate_set_curr_song(curr_element.song_info)
 		else
@@ -608,6 +612,8 @@ local music_whale= {
 				self:set_display_bucket(curr_element.bucket_info, 0)
 				play_sample_music()
 			end
+			local group_name= nice_bucket_disp_name(self.curr_bucket)
+			MESSAGEMAN:Broadcast("current_group_changed", {group_name})
 		elseif curr_element.sort_info then
 			-- TODO:  Avoid the work of sorting if the current sort type is chosen.
 			-- Problem:  Picking the current type when on a Random or Previous Song
@@ -653,6 +659,8 @@ local music_whale= {
 	close_group= function(self)
 		self.in_recent= false
 		self:pop_from_disp_stack()
+		local group_name= nice_bucket_disp_name(self.curr_bucket)
+		MESSAGEMAN:Broadcast("current_group_changed", {group_name})
 	end,
 	show_sort_list= function(self)
 		if self.current_sort_name ~= "Sort Menu" then

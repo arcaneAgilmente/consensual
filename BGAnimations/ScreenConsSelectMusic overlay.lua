@@ -442,7 +442,7 @@ local focus_element_info_mt= {
 			self.subtitle:visible(false)
 			self.jacket:visible(false)
 			if item.bucket_info then
-				self:set_title_text(curr_group_name)
+				self:set_title_text(nice_bucket_disp_name(item.bucket_info))
 				if item.is_current_group then
 					self.bg:diffuse(wheel_colors.current_group)
 				else
@@ -881,6 +881,7 @@ local player_cursor_button_list= {{"top", "MenuLeft"}, {"bottom", "MenuRight"}}
 reverse_button_list(player_cursor_button_list)
 
 local function update_all_info()
+	update_sort_prop()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
 	for i, v in ipairs(enabled_players) do
 		set_closest_steps_to_preferred(v)
@@ -978,6 +979,7 @@ local function deactivate_status()
 		status_finish_func()
 	end
 	change_sort_text(music_wheel.current_sort_name)
+	update_all_info()
 	status_active= false
 	status_worker= false
 	status_container:stoptweening():linear(0.5):diffusealpha(0)
@@ -1025,7 +1027,6 @@ local function Update(self)
 						fast_auto_scroll= true
 					end
 				end
-				update_sort_prop()
 				focus_element_info:update_title(music_wheel.sick_wheel:get_info_at_focus_pos())
 				pain_displays[PLAYER_1]:hide_elements()
 				pain_displays[PLAYER_2]:hide_elements()
@@ -1291,6 +1292,7 @@ local code_functions= {
 			stop_auto_scrolling()
 			music_wheel:show_sort_list()
 			change_sort_text(music_wheel.current_sort_name)
+			update_all_info()
 		end,
 		play_song= function(pn)
 			if was_picking_steps then was_picking_steps= false return end
@@ -1318,6 +1320,7 @@ local code_functions= {
 		close_group= function(pn)
 			stop_auto_scrolling()
 			music_wheel:close_group()
+			update_all_info()
 		end,
 		unjoin= function(pn)
 			SOUND:PlayOnce(THEME:GetPathS("Common", "Cancel"))
