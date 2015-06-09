@@ -1,3 +1,4 @@
+dofile(THEME:GetPathO("", "strokes.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 
 local function input(event)
@@ -10,6 +11,7 @@ local args= {
 		local screen= SCREENMAN:GetTopScreen()
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
 	end,
+	animated_text("Consensual", _screen.cx, _screen.cy, 4, 4, 10)
 }
 
 return Def.ActorFrame(args)
