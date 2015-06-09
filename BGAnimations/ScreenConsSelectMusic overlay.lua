@@ -145,7 +145,7 @@ local function change_sort_text(new_text)
 	local stext= overlay:GetChild("header"):GetChild("sort_text")
 	new_text= new_text or stext:GetText()
 	stext:settext(new_text)
-	width_limit_text(stext, sort_width)
+	width_clip_limit_text(stext, sort_width)
 	sort_prop:playcommand("Set")
 end
 
@@ -439,7 +439,7 @@ local focus_element_info_mt= {
 				self.title:settext(first_part):y(self.split_title_top_y)
 				self.sec_title:settext(second_part)
 					:y(self.split_title_bot_y):visible(true)
-				width_limit_text(self.sec_title, self.title_width)
+				width_clip_limit_text(self.sec_title, self.title_width)
 			else
 				self.title:y(self.title_y)
 				self.sec_title:visible(false)
@@ -493,11 +493,11 @@ local focus_element_info_mt= {
 					self.title:visible(false)
 				end
 			end
-			width_limit_text(self.title, self.title_width)
-			width_limit_text(self.subtitle, self.title_width, .5)
-			width_limit_text(self.artist, self.title_width, .5)
-			local len_len= self.length:GetWidth()
-			width_limit_text(self.genre, self.title_width - len_len - pad*2, .5)
+			width_clip_limit_text(self.title, self.title_width)
+			width_clip_limit_text(self.subtitle, self.title_width, .5)
+			width_clip_limit_text(self.artist, self.title_width, .5)
+			local len_len= self.length:GetZoomedWidth()
+			width_clip_limit_text(self.genre, self.title_width-len_len - pad*2, .5)
 			self.bg:diffusealpha(.5)
 		end,
 		update= function(self, item)
