@@ -84,6 +84,28 @@ function circle_amv(name, x, y, r, chords, color, out_color, blend)
 	end}
 end
 
+function hollow_circle_amv(x, y, r, t, chords, color, out_color, blend)
+	x= x or 0
+	y= y or 0
+	r= r or 4
+	t= t or r / 8
+	chords= chords or 6
+	out_color= out_color or color
+	return Def.ActorMultiVertex{
+		InitCommand= function(self)
+			local inner_verts= calc_circle_verts(r-t, chords, 0, 0, color)
+			local outer_verts= calc_circle_verts(r, chords, 0, 0, out_color)
+			local verts= {}
+			for i= 1, #inner_verts do
+				verts[#verts+1]= inner_verts[i]
+				verts[#verts+1]= outer_verts[i]
+			end
+			self:xy(x, y):SetDrawState{Mode= "DrawMode_Strip"}
+				:SetVertices(verts)
+			if blend then self:blend(blend) end
+	end}
+end
+
 star_amv_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, r, a, points, color, time, rot_step)

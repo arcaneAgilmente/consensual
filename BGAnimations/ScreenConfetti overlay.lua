@@ -114,6 +114,10 @@ dofile(THEME:GetPathO("", "art_helpers.lua"))
 big_circle_size= 512
 hbig_circle_size= big_circle_size * .5
 hollow_circle_inner_zoom= .8
+local circle_pos= hbig_circle_size-1
+local circle_rad= hbig_circle_size
+local circle_chords= hbig_circle_size
+local circle_smoother_thick= 8
 
 return Def.ActorFrame{
 	Def.ActorFrame{
@@ -154,9 +158,12 @@ return Def.ActorFrame{
 					:EnableAlphaBuffer(true):Create()
 					:EnablePreserveTexture(false):Draw()
 			end,
-			circle_amv("circle", hbig_circle_size-1, hbig_circle_size-1,
-								 hbig_circle_size, big_circle_size,
-								 {1, 1, 1, 1}),
+			circle_amv("circle", circle_pos, circle_pos,
+								 circle_rad-circle_smoother_thick,
+								 circle_chords, {1, 1, 1, 1}),
+			hollow_circle_amv(circle_pos, circle_pos, circle_rad,
+												circle_smoother_thick, circle_chords,
+												{1, 1, 1, 1}, {1, 1, 1, 0}, "BlendMode_CopySrc"),
 		},
 		Def.ActorFrameTexture{
 			InitCommand= function(self)

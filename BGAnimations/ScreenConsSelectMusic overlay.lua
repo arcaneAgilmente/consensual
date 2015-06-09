@@ -261,14 +261,16 @@ local focus_element_info_mt= {
 			self.middle_height= basic_info_height
 			self.left_x= wheel_width * -.15
 			self.right_x= wheel_width * .25
-			self.jacket_width= (basic_info_height*2) - (pad*2)
+			local bihd= (basic_info_height*2)
+			self.jacket_width= bihd - (pad*2)
 			local hwheelw= wheel_width * .5
 			local hjackw= self.jacket_width * .5
 			local jacket_x= -hwheelw + hjackw + hpad
-			local symbol_size= 16
+			local symbol_size= 12
+			local symbol_spacing= (bihd - symbol_size - pad * 2) / (#Difficulty-1)
 			local hsymw= symbol_size * .5
 			local symbol_x= hwheelw - hsymw - hpad
-			local symbol_y= -basic_info_height + hsymw
+			local symbol_y= -basic_info_height + hsymw + pad
 			local len_x= jacket_x + hjackw + pad
 			local genre_x= symbol_x - hsymw - pad
 			self.title_width= symbol_x - jacket_x - hjackw - hsymw - (pad*2)
@@ -367,7 +369,7 @@ local focus_element_info_mt= {
 						self.difficulty_symbols[diff]= subself
 						subself:visible(false):zoom(symbol_size/big_circle_size)
 							:diffuse(diff_to_color(diff))
-							:xy(symbol_x, symbol_y + ((i-1) * symbol_size))
+							:xy(symbol_x, symbol_y + ((i-1) * symbol_spacing))
 					end
 				}
 				local new_tani= setmetatable({}, text_and_number_interface_mt)
@@ -511,6 +513,7 @@ local focus_element_info_mt= {
 					self.song_count:set_number(song_count)
 					for i, diff in ipairs(Difficulty) do
 						local count= item.bucket_info.difficulties[diff]
+						self.difficulty_counts[diff]:set_text(diff)
 						if count then
 							self.difficulty_counts[diff]:set_number(("%03d"):format(count))
 							self.difficulty_counts[diff]:unhide()
@@ -558,15 +561,30 @@ local focus_element_info_mt= {
 						self:set_jacket_to_image(song:GetBackgroundPath())
 					end
 					local steps_list= get_filtered_steps_list()
+					local steps_texts= {}
+					local steps_counts= {}
+					local list_limit= 5
 					for i, steps in ipairs(steps_list) do
 						local diff= steps:GetDifficulty()
+						local text_list= steps_texts[diff] or {}
+						steps_counts[diff]= 1 + (steps_counts[diff] or 0)
 						self.difficulty_symbols[diff]:visible(true):diffusealpha(1)
-						local num_text= self.difficulty_counts[diff].number:GetText()
-						if num_text ~= "" then num_text= num_text .. ", " end
-						num_text= num_text .. get_string_wrapper(
+						if steps_counts[diff] < list_limit then
+							text_list[#text_list+1]= get_string_wrapper(
 							"DifficultyNames", steps:GetStepsType()) .. "-" ..
-							steps:GetMeter()
-						self.difficulty_counts[diff]:set_number(num_text)
+								steps:GetMeter()
+							steps_texts[diff]= text_list
+						end
+					end
+					for diff, text in pairs(steps_texts) do
+						if steps_counts[diff] >= list_limit then
+							text[list_limit]= get_string_wrapper(
+								"SelectMusicExtraInfo", "and_more")
+						end
+						self.difficulty_counts[diff]:set_number(table.concat(text, ", "))
+						self.difficulty_counts[diff]:set_text(
+							"(" .. steps_counts[diff] .. ")  " ..
+								get_string_wrapper("DifficultyNames", diff))
 						self.difficulty_counts[diff]:unhide()
 					end
 				end

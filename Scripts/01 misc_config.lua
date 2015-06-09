@@ -31,6 +31,7 @@ local default_config= {
 	transition_time= 2,
 
 	default_wheel_sort= "Group",
+	two_part_song_selection= false,
 
 	cursor_button_icon_size= 1,
 	menus_have_ud= true,
