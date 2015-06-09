@@ -2,6 +2,7 @@ local default_config= {
 	bg_tex_size= 256,
 	bg_zoomx= 1.25,
 	bg_zoomy= 1.25,
+	bg_start_angle= .25,
 	square_bg= false,
 	amount= 64,
 	pos_min_speed= 2,

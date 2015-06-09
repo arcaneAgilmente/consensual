@@ -90,12 +90,10 @@ local default_config= {
 	}},
 
 	{"common_background", {
-		 {"center_color", "accent.green"},
+		 {"center_color", color("#2895b5")},
 		 {"inner_colors", {
-				{"1", "accent.red"},
-				{"2", "accent.magenta"},
-				{"3", "accent.blue"},
-				{"4", "accent.violet"},
+				{"1", "accent.blue"},
+				{"2", "accent.cyan"},
 		 }},
 		 {"outer_colors", {
 				{"1", black},

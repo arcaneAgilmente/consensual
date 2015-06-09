@@ -510,6 +510,8 @@ local bubble_options= {
 	 args= bubble_val("bg_zoomx", 0, 4, -2, -1, 0)},
 	{name= "bubble_bg_zoomy", meta= options_sets.adjustable_float,
 	 args= bubble_val("bg_zoomy", 0, 4, -2, -1, 0)},
+	{name= "bubble_bg_start_angle", meta= options_sets.adjustable_float,
+	 args= bubble_val("bg_start_angle", -2, 2, -2, -1, 0)},
 	{name= "bubble_square_bg", meta= options_sets.special_functions,
 	 args= {
 		 eles= {

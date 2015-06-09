@@ -3,6 +3,7 @@ local black= {0, 0, 0, 1}
 
 local bg_tex_size
 local hbg_tex_size
+local bg_angle
 local bubble_amount
 local pos_min_speed
 local pos_max_speed
@@ -19,6 +20,7 @@ local function reload_config()
 	config_data= bubble_config:get_data()
 	bg_tex_size= config_data.bg_tex_size
 	hbg_tex_size= bg_tex_size / 2
+	bg_angle= config_data.bg_start_angle * math.pi
 	bubble_amount= config_data.amount
 	pos_min_speed= config_data.pos_min_speed
 	pos_max_speed= config_data.pos_max_speed
@@ -141,9 +143,9 @@ local args= {
 					local outer_colors= fetch_color("common_background.outer_colors")
 					local circle_vert_count= bg_tex_size * 2
 					local inner_circle= calc_circle_verts(
-						hbg_tex_size*.5, circle_vert_count, 0, 0)
+						hbg_tex_size*.5, circle_vert_count, bg_angle, bg_angle)
 					local outer_circle= calc_circle_verts(
-						hbg_tex_size, circle_vert_count, 0, 0)
+						hbg_tex_size, circle_vert_count, bg_angle, bg_angle)
 					color_verts_with_color_set(inner_circle, inner_colors)
 					color_verts_with_color_set(outer_circle, outer_colors)
 					local center_vert= {{0, 0, 0}, center_color}
