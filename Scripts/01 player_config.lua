@@ -256,6 +256,7 @@ local default_config= {
 	experience_level= 1, -- To ease triggering confetti on gaining a level.
 	life_blank_percent= .25,
 	life_use_width= 1,
+	life_stages= 1,
 	gameplay_element_colors= {
 		filter= fetch_color("accent.violet", 0),
 		life_full_outer= fetch_color("accent.blue"),

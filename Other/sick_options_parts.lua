@@ -1238,6 +1238,7 @@ local decorations= {
 										"low_score_random_threshold", 3, -4, -2, -1, 0, 1),
 	player_conf_float("Life Blank Area", "life_blank_percent", 3, -2, -1, 0, -1, 2),
 	player_conf_float("Life Use Width", "life_use_width", 3, -2, -1, 0, -1, 2),
+	player_conf_float("Life Stages", "life_stages", 3, 0, 0, 0, 1, 16),
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
 	{ name= "Noteskin", meta= options_sets.noteskins},
