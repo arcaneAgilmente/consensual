@@ -1485,6 +1485,7 @@ local function input(event)
 						return
 					end
 					steps_menus[pn]:interpret_code(key_pressed)
+					update_pain(pn)
 					if steps_menus[pn].needs_deactivate then
 						switch_to_not_picking_steps()
 					elseif steps_menus[pn].chosen_steps then
