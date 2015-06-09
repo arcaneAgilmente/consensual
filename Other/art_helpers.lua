@@ -526,6 +526,18 @@ local letter_vert_positions= {
 }
 local letter_w= 8
 
+function shuffle_verts(verts)
+	local ordering= {}
+	for i= 1, #verts do ordering[i]= i end
+	shuffle(ordering)
+	local shuffled_verts= {}
+	for i= 1, #verts do
+		local sv= verts[ordering[i]]
+		shuffled_verts[i]= {sv[1], sv[2], sv[3]}
+	end
+	return shuffled_verts
+end
+
 function unfolding_letter(name, x, y, letter, color, unfold_time, scale, thick, steps)
 	if not letter_vert_positions[letter] then return Def.Actor{} end
 	local function add_shuffle_step(self, source_verts, time)
@@ -584,6 +596,90 @@ function unfolding_text(name, x, y, text, color, unfold_time, scale, thick,
 		local lx= text_start+(space*(i-1))
 		args[#args+1]= unfolding_letter(
 			l, lx, 0, l, color, unfold_time/#text, scale, thick, step_ordering[i])
+	end
+	return Def.ActorFrame(args)
+end
+
+local function shuffle_spline(spline, points)
+	local shuffled_points= shuffle_verts(points)
+	for i= 1, #points do
+		spline:set_point(i, shuffled_points[i])
+	end
+	spline:solve()
+end
+local function color_verts(amv, color, num_verts)
+	for v= 1, num_verts do
+		amv:SetVertex(v, {color})
+	end
+end
+
+function animated_glyph(glyph_data, x, y, zoom, anim_time, fade_time)
+	local args= {InitCommand= function(self) self:xy(x, y):zoom(zoom) end}
+	for i, stroke_data in ipairs(glyph_data) do
+		local stroke_length= math.max(#stroke_data[1], #stroke_data[2])
+		args[#args+1]= Def.ActorMultiVertex{
+			InitCommand= function(self)
+				local num_verts= stroke_length * 2 * 2
+				local curr_color= {.5, .5, .5, 1}
+				self:SetNumVertices(num_verts):SetDrawState{Mode= "DrawMode_Strip"}
+					:blend("BlendMode_WeightedMultiply")
+				color_verts(self, curr_color, num_verts)
+				local move_time= scale(math.random(), 0, 1, anim_time * .25, anim_time)
+				local anim_steps= math.random(1, 8)
+				local per_step_time= move_time / anim_steps
+				local per_step_color= .5 / anim_steps
+				for s= 1, 2 do
+					self:GetSpline(s):set_size(#stroke_data[s]):set_loop(stroke_data[s].loop)
+				end
+				for a= 1, anim_steps do
+					for s= 1, 2 do
+						shuffle_spline(self:GetSpline(s), stroke_data[s])
+					end
+					self:SetVertsFromSplines():linear(per_step_time)
+					for c= 1, 3 do
+						curr_color[c]= curr_color[c] + per_step_color
+					end
+					color_verts(self, curr_color, num_verts)
+				end
+				for s= 1, 2 do
+					local spline= self:GetSpline(s)
+					for p, point in ipairs(stroke_data[s]) do
+						spline:set_point(p, point)
+					end
+					spline:solve()
+				end
+				self:SetVertsFromSplines()
+					:sleep(anim_time - move_time):linear(fade_time)
+				for c= 1, 3 do
+					curr_color[c]= .5
+				end
+				color_verts(self, curr_color, num_verts)
+			end
+		}
+	end
+	return Def.ActorFrame(args)
+end
+
+function animated_text(text, x, y, zoom, anim_time, fade_time)
+	local args= {
+		InitCommand= function(self)
+			self:xy(x, y):linear(anim_time)
+	end}
+	local letter_w= 16
+	local space= zoom * letter_w
+	local text_start= (space*1)-((#text * space) / 2)
+	for i= 1, #text do
+		local l= text:sub(i, i)
+		local lx= text_start+(space*(i-1))
+		local glyph_data= animated_text_glyphs[l]
+		if glyph_data then
+			args[#args+1]= animated_glyph(glyph_data, lx, 0, zoom, anim_time, fade_time)
+			args[#args+1]= animated_glyph(glyph_data, lx, 0, zoom, anim_time, fade_time)
+			args[#args+1]= animated_glyph(glyph_data, lx, 0, zoom, anim_time, fade_time)
+			args[#args+1]= animated_glyph(glyph_data, lx, 0, zoom, anim_time, fade_time)
+		else
+			lua.ReportScriptError(l .. " is not in the stroke data.")
+		end
 	end
 	return Def.ActorFrame(args)
 end

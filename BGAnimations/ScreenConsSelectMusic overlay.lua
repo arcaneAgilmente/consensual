@@ -801,12 +801,12 @@ local function close_visible_styles(pn)
 end
 
 base_options= {
+	{name= "scsm_mods", meta= options_sets.menu, level= 1, args= base_mods},
 	{name= "scsm_misc", meta= options_sets.menu, level= 1, args= misc_options},
 	{name= "scsm_favor", meta= options_sets.favor_menu, level= 1, args= {}},
 	{name= "scsm_tags", meta= options_sets.tags_menu, level= 1, args= true},
 --	{name= "scsm_stepstypes", meta= options_sets.special_functions, level= 1,
 --	args= make_visible_style_data, exec_args= true},
-	{name= "scsm_mods", meta= options_sets.menu, level= 1, args= base_mods},
 }
 
 dofile(THEME:GetPathO("", "auto_hider.lua"))
@@ -866,23 +866,6 @@ local function switch_to_not_picking_steps()
 	was_picking_steps= true
 	update_player_cursors()
 end
-
-local song_props= {
-	{name= "exit_menu"},
-	{name= "prof_favor_inc", req_func= player_using_profile},
-	{name= "prof_favor_dec", req_func= player_using_profile},
-	{name= "mach_favor_inc", level= 3},
-	{name= "mach_favor_dec", level= 3},
-	{name= "censor", req_func= privileged},
-	{name= "uncensor", req_func= privileged},
-	{name= "toggle_censoring", req_func= privileged},
-	{name= "edit_tags", level= 3},
-	{name= "edit_pain", level= 4},
-	{name= "edit_styles", level= 2},
-	{name= "convert_xml", req_func= convert_xml_exists},
-	{name= "edit_chart", level= 5},
-	{name= "end_credit", level= 4},
-}
 
 local player_cursor_button_list= {{"top", "MenuLeft"}, {"bottom", "MenuRight"}}
 reverse_button_list(player_cursor_button_list)

@@ -27,8 +27,10 @@ and GAMESTATE:GetCurrentGame():GetName():lower() ~= "kickbox" then
 	message= "If you see errors, report them with any information you have so they can be fixed."
 end
 
+dofile(THEME:GetPathO("", "strokes.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 local unfold_time= 4
+local fade_time= 1
 
 local function continue()
 	if version_failed or hate then
@@ -73,7 +75,7 @@ return Def.ActorFrame{
 			self:diffuse(fetch_color("text"))
 			self:strokecolor(fetch_color("stroke"))
 			self:diffusealpha(0)
-			self:sleep(unfold_time+1)
+			self:sleep(unfold_time+fade_time)
 			if show_message then
 				self:linear(.5)
 				self:diffusealpha(1)
@@ -88,9 +90,10 @@ return Def.ActorFrame{
 			continue()
 		end
 	},
-	unfolding_text(
-		"logo", _screen.cx, _screen.cy, "Consensual", fetch_color("text"),
-		unfold_time, nil, nil, .5),
+	animated_text("Consensual", _screen.cx, _screen.cy, 4, unfold_time, fade_time),
+--	unfolding_text(
+--		"logo", _screen.cx, _screen.cy, "Consensual", fetch_color("text"),
+--		unfold_time, nil, nil, .5),
 	Def.BitmapText{
 		Font= "Common Normal", InitCommand= function(self)
 			if misc_config:get_data().show_startup_time then
