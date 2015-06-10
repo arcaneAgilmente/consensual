@@ -3,8 +3,8 @@ update_steps_types_to_show()
 
 local press_ignore_reporter= false
 local function show_ignore_message(message)
-	press_ignore_reporter:settext(message):finishtweening()
-		:linear(.2):diffusealpha(1):sleep(5):linear(.5):diffusealpha(0)
+--	press_ignore_reporter:settext(message):finishtweening()
+--		:linear(.2):diffusealpha(1):sleep(5):linear(.5):diffusealpha(0)
 	Trace(message)
 end
 
@@ -590,6 +590,14 @@ local focus_element_info_mt= {
 				end
 			end
 		end,
+		hide= function(self)
+			self.container:visible(false)
+			self.hidden= true
+		end,
+		unhide= function(self)
+			self.container:visible(true)
+			self.hidden= false
+		end,
 		collapse= function(self)
 			local newy= self.middle_height
 			self.expanded= false
@@ -655,6 +663,7 @@ end
 
 local in_special_menu= {[PLAYER_1]= "wheel", [PLAYER_2]= "wheel"}
 local select_press_times= {}
+local expansion_toggle_times= {}
 local ignore_next_open_special= {}
 
 local function update_pain(pn)
@@ -831,28 +840,62 @@ dofile(THEME:GetPathO("", "auto_hider.lua"))
 dofile(THEME:GetPathO("", "music_wheel.lua"))
 local music_wheel= setmetatable({}, music_whale_mt)
 
+local function hide_focus()
+	focus_element_info:hide()
+	music_wheel:set_center_expansion(0)
+	update_player_cursors()
+end
+
 local function expand_center_for_more()
 	if picking_steps then return end
-	if focus_element_info.expanded then return end
 	music_wheel:set_center_expansion(expanded_info_height)
+	if focus_element_info.hidden then
+		focus_element_info:unhide()
+	end
 	focus_element_info:expand()
 	update_player_cursors()
 end
 
 local function collapse_center_for_less()
 	if picking_steps then return end
-	if focus_element_info.expanded == false then return end
 	music_wheel:set_center_expansion(basic_info_height)
+	if focus_element_info.hidden then
+		focus_element_info:unhide()
+	end
 	focus_element_info:collapse()
 	update_player_cursors()
 end
 
-local function toggle_expansion()
-	scsm_center_expanded= not scsm_center_expanded
-	if focus_element_info.expanded then
+local function set_preferred_expansion()
+	local expansion= misc_config:get_data().default_expansion_mode
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		local nopan= cons_players[pn].music_info_expansion_mode
+		if nopan and nopan ~= "" then
+			expansion= nopan
+		end
+	end
+	if expansion == "full" then
+		expand_center_for_more()
+	elseif expansion == "basic" then
 		collapse_center_for_less()
 	else
+		hide_focus()
+	end
+end
+
+local function unhide_focus()
+	focus_element_info:unhide()
+	set_preferred_expansion()
+	update_player_cursors()
+end
+
+local function toggle_expansion()
+	if focus_element_info.expanded then
+		collapse_center_for_less()
+		return "basic"
+	else
 		expand_center_for_more()
+		return "full"
 	end
 end
 
@@ -882,6 +925,7 @@ local function switch_to_not_picking_steps()
 	end
 	picking_steps= false
 	was_picking_steps= true
+	set_preferred_expansion()
 	update_player_cursors()
 end
 
@@ -945,7 +989,9 @@ update_player_cursors= function()
 				player_cursors[pn]:unhide()
 				player_cursors[pn].align= 0
 				local height= basic_info_height * 2
-				if focus_element_info.expanded then
+				if focus_element_info.hidden then
+					height= music_wheel:get_item_height()
+				elseif focus_element_info.expanded then
 					height= expanded_info_height * 2
 				end
 				player_cursors[pn]:refit(wheel_x, _screen.cy, wheel_width, height)
@@ -991,6 +1037,7 @@ local function deactivate_status()
 	status_active= false
 	status_worker= false
 	status_container:stoptweening():linear(0.5):diffusealpha(0)
+	unhide_focus()
 end
 
 local function status_update(self)
@@ -1300,6 +1347,7 @@ end
 local code_functions= {
 		sort_mode= function(pn)
 			stop_auto_scrolling()
+			hide_focus()
 			music_wheel:show_sort_list()
 			change_sort_text(music_wheel.current_sort_name)
 			update_all_info()
@@ -1463,7 +1511,15 @@ local function input(event)
 					and get_screen_time() < select_press_times[pn] + double_tap_time
 					and special_menus[pn]:can_exit_screen()
 				and in_special_menu[pn] == "menu" then
-					toggle_expansion()
+					if expansion_toggle_times[pn]
+					and get_screen_time() < expansion_toggle_times[pn] + (double_tap_time) then
+						cons_players[pn].music_info_expansion_mode= "title_only"
+						hide_focus()
+					else
+						local current_expansion= toggle_expansion()
+						cons_players[pn].music_info_expansion_mode= current_expansion
+						expansion_toggle_times[pn]= get_screen_time()
+					end
 					common_menu_change("wheel")
 					closed_menu= true
 					ignore_next_open_special[pn]= true
@@ -1708,11 +1764,7 @@ return Def.ActorFrame {
 			update_pain(pn)
 		end
 		music_wheel:find_actors(self:GetChild(music_wheel.name))
-		if scsm_center_expanded then
-			expand_center_for_more()
-		else
-			collapse_center_for_less()
-		end
+		set_preferred_expansion()
 		ensure_enough_stages()
 		april_spin(self)
 	end,

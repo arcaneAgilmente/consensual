@@ -253,6 +253,7 @@ local default_config= {
 	low_score_random_threshold= .9,
 	preferred_steps_type= "",
 	preferred_sort= "",
+	music_info_expansion_mode= "",
 	experience_level= 1, -- To ease triggering confetti on gaining a level.
 	life_blank_percent= .25,
 	life_use_width= 1,

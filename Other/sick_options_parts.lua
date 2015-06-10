@@ -870,6 +870,16 @@ local function player_enum(name, enum, func_name)
 			enum= enum, obj_get= pops_get }}
 end
 
+local function player_conf_enum(name, vals)
+	return {
+		name= name, meta= options_sets.enum_option, args= {
+			name= name, enum= vals, fake_enum= true,
+			obj_get= function(pn) return cons_players[pn] end,
+			get= function(cp) return cp[name] end,
+			set= function(cp, value) cp[name]= value end,
+	}}
+end
+
 local function song_enum(name, enum, func_name)
 	return {
 		name= name, meta= options_sets.enum_option, args= {

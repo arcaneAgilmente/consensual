@@ -31,6 +31,7 @@ local default_config= {
 	transition_time= 2,
 
 	default_wheel_sort= "Group",
+	default_expansion_mode= "full",
 	two_part_song_selection= false,
 
 	cursor_button_icon_size= 1,
@@ -65,6 +66,7 @@ local default_config= {
 }
 
 transition_type_enum= {"skew", "scramble", "random"}
+expansion_mode_enum= {"full", "basic", "title_only"}
 
 sorted_initial_menu_ops= {
 	"single_choice",

@@ -75,10 +75,12 @@ local wheel_item_mt= {
 		transform= function(self, item_index, num_items, is_focus, focus_pos)
 			local dist_from_focus= item_index - focus_pos
 			local start_y= _screen.cy
-			if dist_from_focus < 0 then
-				start_y= start_y - center_expansion + (per_item * .5) - pad
-			else
-				start_y= start_y + center_expansion - (per_item * .5) + pad
+			if center_expansion > 0 then
+				if dist_from_focus < 0 then
+					start_y= start_y - center_expansion + (per_item * .5) - pad
+				else
+					start_y= start_y + pad - (per_item * .5) + center_expansion
+				end
 			end
 			local x= 0
 			local y= 0
@@ -104,7 +106,8 @@ local wheel_item_mt= {
 			end
 			y= start_y + (dist_from_focus * per_item)
 			self.container:finishtweening():linear(wheel_move_time):xy(x, y)
-			if item_index == 1 or item_index == num_items or is_focus then
+			if item_index == 1 or item_index == num_items or
+			(is_focus and center_expansion > 0) then
 				self.container:diffusealpha(0)
 			else
 				self.container:diffusealpha(1)
@@ -671,6 +674,9 @@ local music_whale= {
 			self:push_onto_disp_stack()
 			self:set_display_bucket(bucket_man:get_sort_info(), 1)
 		end
-	end
+	end,
+	get_item_height= function(self)
+		return item_height
+	end,
 }
 music_whale_mt= { __index= music_whale }

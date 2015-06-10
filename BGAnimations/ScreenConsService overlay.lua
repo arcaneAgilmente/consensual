@@ -403,6 +403,15 @@ local function trans_type_extra()
 	}
 end
 
+local function nopan_mode_omake()
+	return {
+		name= "default_expansion_mode", enum= expansion_mode_enum,
+		fake_enum= true, obj_get= noop_nil,
+		get= function() return config_data.default_expansion_mode end,
+		set= function(value) config_data.default_expansion_mode= value end,
+	}
+end
+
 local function imop(show_name, op_name)
 	return {name= show_name,
 					init= function() return config_data.initial_menu_ops[op_name] end,
@@ -478,6 +487,8 @@ local consensual_options= {
 	 args= {eles= im_options}},
 	{name= "default_wheel_sort", meta= options_sets.menu,
 	 args= sorting_options()},
+	{name= "default_expansion_mode", meta= options_sets.enum_option,
+	 args= nopan_mode_omake()},
 }
 
 local confetti_options= {
