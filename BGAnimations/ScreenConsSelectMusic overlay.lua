@@ -138,7 +138,7 @@ local function set_closest_steps_to_preferred(pn)
 	end
 end
 
-local sort_prop= false
+local curr_group= false
 
 local function change_sort_text(new_text)
 	local overlay= SCREENMAN:GetTopScreen():GetChild("Overlay")
@@ -146,11 +146,11 @@ local function change_sort_text(new_text)
 	new_text= new_text or stext:GetText()
 	stext:settext(new_text)
 	width_clip_limit_text(stext, sort_width)
-	sort_prop:playcommand("Set")
+	curr_group:playcommand("Set")
 end
 
-local function update_sort_prop()
-	sort_prop:playcommand("Set")
+local function update_curr_group()
+	curr_group:playcommand("Set")
 end
 
 local cdtitle_size= (extra_info_height*2) - (pad * 2)
@@ -933,7 +933,7 @@ local player_cursor_button_list= {{"top", "MenuLeft"}, {"bottom", "MenuRight"}}
 reverse_button_list(player_cursor_button_list)
 
 local function update_all_info()
-	update_sort_prop()
+	update_curr_group()
 	local enabled_players= GAMESTATE:GetEnabledPlayers()
 	for i, v in ipairs(enabled_players) do
 		set_closest_steps_to_preferred(v)
@@ -1824,13 +1824,13 @@ return Def.ActorFrame {
 			end
 		},
 		normal_text("sort_text", "NO SORT",
-								fetch_color("music_select.music_wheel.sort_type"),
+								fetch_color("music_select.sort_type"),
 								nil, 8, 16, 1, left),
-		normal_text("sort_prop", "",
-								fetch_color("music_select.music_wheel.sort_value"), nil,
+		normal_text("curr_group", "",
+								fetch_color("music_select.curr_group"), nil,
 								_screen.cx, 16, 1, center, {
 									InitCommand= function(self)
-										sort_prop= self
+										curr_group= self
 									end,
 									SetCommand= function(self, param)
 										if music_wheel.curr_bucket.name then

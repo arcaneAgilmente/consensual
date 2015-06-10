@@ -859,9 +859,47 @@ colors in this group.
 help is used to color the help layer and text.
 
 music_select has the colors for the elements on Music Select.  
+music_select.remaining_time is used to color the text for the remaining time
+in the credit.  
 music_select.sort_head is the color of the word "Sort", which is the header
 for the sort info.  
 music_select.sort_type is the color for the name of the current sort.  
+music_select.curr_group is the color for the name of the current group.  
+music_select.music_wheel is the songs used by the music wheel.  They are used
+to color the quads behind the text of the music wheel items, at 0.25 luma.
+(luma is reduced using a gamma corrected method)  
+music_select.music_select.current_group is for the current group  
+music_select.music_select.group is for other groups  
+music_select.music_select.random is for a random entry  
+music_select.music_select.censored_song is for censored songs  
+music_select.music_select.prev_song is for the previous song  
+music_select.music_select.song is for a song  
+music_select.music_select.sort is for a sort  
+music_select.steps_selector has the colors used by the steps menu.  
+music_select.steps_selector.pick_steps_type is the color of the circle for
+the "Pick Steps Type" choice.  
+music_select.steps_selector.pick_song is the color of the circle for the
+"Pick Song" choice.  
+music_select.steps_selector.number_stroke is the stroke color for the numbers
+on the choices.  
+music_select.steps_selector.number_color is the main color for the numbers
+on the choices.  
+music_select.steps_selector.name_stroke is the stroke color for the names
+on the choices.  
+music_select.steps_selector.name_color is the main color for the names on the
+choices.  
+
+common_background is the set of colors used for coloring the background.  
+common_background.center_color is the color of the center of the circle.  
+common_background.inner_colors is a set of colors that will be equally spaced
+around the circle's inner edge.  
+common_background.outer_colors is a set of colors that will be equally spaced
+around the circle's outer edge.  The first entry in outer_colors will be used
+to color the fullscreen quad behind the circle.  
+This allows the circle to have one color in the center, then fade to other
+colors halfway to its edge, then fade to an edge color.  
+The bg_start_angle value in the bubble config controls the angle the first
+color is placed at.
 
 gameplay.failed, gameplay.normal_exit, and gameplay.cancel are used to color
 the circular wipe that is used when gameplay ends without a combo or score
@@ -872,7 +910,6 @@ battery life bar.
 prompt is used for coloring text entry prompts.
 
 score_list is used for coloring the high score lists shown on Name Entry.
-
 
 
 ## Congratulations

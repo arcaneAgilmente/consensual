@@ -101,12 +101,9 @@ local default_config= {
 	}},
 
 	{"music_select", {
-		 {"song_name", "text"},
-		 {"song_length", "text"},
 		 {"remaining_time", "text_other"},
-		 {"sort_head", "text_other"},
 		 {"sort_type", "text"},
-		 {"sort_value", "text_other"},
+		 {"curr_group", "text_other"},
 		 {"music_wheel", {
 				{"current_group", "accent.cyan"},
 				{"group", "accent.violet"},
@@ -115,9 +112,6 @@ local default_config= {
 				{"prev_song", "text"},
 				{"song", "text_other"},
 				{"sort", "accent.yellow"},
-				{"sort_head", "text_other"},
-				{"sort_type", "text"},
-				{"sort_value", "text_other"},
 		 }},
 		 {"steps_selector", {
 				{"pick_steps_type", color("#3f3f3f")},
