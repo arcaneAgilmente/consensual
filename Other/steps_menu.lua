@@ -362,6 +362,7 @@ steps_menu_mt= {
 			if funs[code] then return funs[code](self) end
 		end,
 		interpret_key= function(self, key)
+			do return end
 			if key == "DeviceButton_2" then
 				enable_configuring= not enable_configuring
 			end

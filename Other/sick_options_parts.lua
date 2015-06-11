@@ -1201,7 +1201,7 @@ local experimental_options= {
 	player_cons_mod("Side Swap", "side_swap", 5, -2, 0, 0, nil, nil, "cons"),
 }
 for i, window_name in ipairs{
-	"Scale", "Add", "Hopo", "Jump", "Scale", "SecondsAttack", "SecondsHold",
+	"Scale", "Add", "Hopo", "Jump", "SecondsAttack", "SecondsHold",
 	"SecondsMine", "SecondsRoll", "SecondsW1", "SecondsW2", "SecondsW3",
 	"SecondsW4", "SecondsW5", "Strum"} do
 	experimental_options[#experimental_options+1]= float_pref_val(

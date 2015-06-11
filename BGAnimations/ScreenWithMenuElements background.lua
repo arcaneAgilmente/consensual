@@ -63,12 +63,12 @@ local goal_funcs= {
 	function() return scale(((1-math.random())^8), 0, 1, min_size, max_size) / big_circle_size end,
 	col_goal, col_goal, col_goal,
 }
-local real_speeds= {}
 local function bubbles_update(self, delta)
-	for i= 1, #bubble_speeds do
-		real_speeds[i]= bubble_speeds[i] * delta;
+	if get_music_file_length then
+		multiapproach(bubble_currs, bubble_goals, bubble_speeds, delta)
+	else
+		multiapproach(bubble_currs, bubble_goals, bubble_speeds)
 	end
-	multiapproach(bubble_currs, bubble_goals, real_speeds)
 	for i= 1, #bubble_currs do
 		local funi= math.floor(((i-1)%#goal_funcs)+1)
 		if math.abs(bubble_goals[i] - bubble_currs[i]) < epsilon[funi] then
@@ -87,7 +87,6 @@ local function bubbles_draw()
 	end
 end
 function reset_bubble_amount()
-	real_speeds= {}
 	bubble_currs= {}
 	bubble_goals= {}
 	bubble_speeds= {}

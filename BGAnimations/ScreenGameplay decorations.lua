@@ -61,9 +61,9 @@ local note_drift_speeds= {}
 local note_drift_currents= {}
 local note_drift_goals= {}
 for i= 1, 4, 3 do
-	note_drift_speeds[i]= 1
-	note_drift_speeds[i+1]= 1
-	note_drift_speeds[i+2]= .01
+	note_drift_speeds[i]= 512
+	note_drift_speeds[i+1]= 128
+	note_drift_speeds[i+2]= .75
 	note_drift_currents[i]= rand_xnote_drift()
 	note_drift_currents[i+1]= rand_ynote_drift()
 	note_drift_currents[i+2]= rand_zoomx_drift()
@@ -811,7 +811,7 @@ local function rand_zoom()
 	return scale(math.random(), 0, 1, .25, 2)
 end
 
-local function Update(self)
+local function Update(self, delta)
 	if gameplay_start_time == -20 then
 		if GAMESTATE:GetCurMusicSeconds() >= 0 then
 			gameplay_start_time= get_screen_time()
@@ -824,7 +824,11 @@ local function Update(self)
 	end
 	song_progress_bar:update()
 	song_rate:update()
-	multiapproach(note_drift_currents, note_drift_goals, note_drift_speeds)
+	if get_music_file_length then
+		multiapproach(note_drift_currents, note_drift_goals, note_drift_speeds, delta)
+	else
+		multiapproach(note_drift_currents, note_drift_goals, note_drift_speeds)
+	end
 	for i, pn in pairs(enabled_players) do
 		player= cons_players[pn]
 		if player.man_lets_have_fun and notefields[pn] then
@@ -1489,8 +1493,11 @@ return Def.ActorFrame {
 					notefield_wrappers[pn][wrapper_layers]:xy(-tocx, tocy)
 					if notefields[pn].get_column_actors then
 						notecolumns[pn]= notefields[pn]:get_column_actors()
-						local period= 1 / screen_gameplay:GetTrueBPS(pn)
 						if cons_players[pn].man_lets_have_fun then
+							local style_width= GAMESTATE:GetCurrentStyle(pn):GetWidth(pn)
+							local column_width= style_width / #notecolumns[pn]
+							note_drift_minx= column_width * 2
+							note_drift_maxx= _screen.w - note_drift_minx
 							for i, actor in ipairs(notecolumns[pn]) do
 								actor:rainbow()
 									:effecttiming(math.random(), math.random(),

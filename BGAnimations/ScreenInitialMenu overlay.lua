@@ -558,11 +558,6 @@ local function update_cursor_pos()
 	end
 end
 
-local currents= {1, 2, 3}
-local goals= {2, 4, 6}
-local speeds= {1, 1, 1}
-
-
 local function input(event)
 	last_input_time= GetTimeSinceStart()
 	if event.type == "InputEventType_Release" then return false end

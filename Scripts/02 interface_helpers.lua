@@ -396,9 +396,13 @@ local vert_speed= 512
 local function handle_approach(currents, goals, delta)
 	local speeds= {}
 	for i= 1, #currents do
-		speeds[i]= math.abs(vert_speed * delta)
+		speeds[i]= vert_speed;
 	end
-	multiapproach(currents, goals, speeds)
+	if get_music_file_length then
+		multiapproach(currents, goals, speeds, delta)
+	else
+		multiapproach(currents, goals, speeds)
+	end
 end
 local function align_x(x, align, w)
 	return x + (align * w)
