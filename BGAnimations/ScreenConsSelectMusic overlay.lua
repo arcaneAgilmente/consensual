@@ -67,6 +67,10 @@ local function get_screen_time()
 	end
 end
 
+dofile(THEME:GetPathO("", "music_wheel.lua"))
+local music_wheel= setmetatable({}, music_whale_mt)
+local activate_status
+
 local player_profiles= {}
 local machine_profile= PROFILEMAN:GetMachineProfile()
 
@@ -679,12 +683,15 @@ local function update_pain(pn)
 	end
 end
 
-local function set_special_menu(pn, value)
-	if value == "menu" and ignore_next_open_special[pn] then
+local function set_special_menu(pn, next_menu)
+	if picking_steps and next_menu == "wheel" then
+		next_menu= "steps"
+	end
+	if next_menu == "menu" and ignore_next_open_special[pn] then
 		ignore_next_open_special[pn]= false
 		return
 	end
-	in_special_menu[pn]= value
+	in_special_menu[pn]= next_menu
 	if in_special_menu[pn] == "wheel" or in_special_menu[pn] == "pain"
 	or in_special_menu[pn] == "steps" then
 		close_menu(pn)
@@ -733,7 +740,7 @@ local misc_options= {
 		 set_special_menu(pn, "pain")
 	end},
 	{name= "convert_xml", req_func= convert_xml_exists, meta= "execute",
-	 level= 4, execute= function()
+	 level= 4, execute= function(pn)
 		 if not convert_xml_bgs then return end
 		 local cong= GAMESTATE:GetCurrentSong()
 		 if cong then
@@ -747,7 +754,7 @@ local misc_options= {
 				 bucket_traverse(bucket.bucket_info.contents, nil, convert_item)
 			 end
 		 end
-		 close_menu(pn)
+--		 set_special_menu(pn, "wheel")
 	end},
 	{name= "censor", req_func= privileged, meta= "execute",
 	 execute= function(pn)
@@ -761,7 +768,7 @@ local misc_options= {
 				 activate_status(music_wheel:resort_for_new_style())
 			 end
 		 end
-		 close_menu(pn)
+--		 set_special_menu(pn, "wheel")
 	end},
 	{name= "uncensor", req_func= privileged, meta= "execute",
 	 execute= function(pn)
@@ -775,13 +782,13 @@ local misc_options= {
 				 activate_status(music_wheel:resort_for_new_style())
 			 end
 		 end
-		 close_menu(pn)
+--		 set_special_menu(pn, "wheel")
 	end},
 	{name= "toggle_censoring", req_func= privileged, meta= "execute",
 	 execute= function(pn)
 		 toggle_censoring()
 		 activate_status(music_wheel:resort_for_new_style())
-		 close_menu(pn)
+--		 set_special_menu(pn, "wheel")
 	end},
 	{name= "edit_chart", level= 5, meta= "execute", execute= function(pn)
 		 local song= GAMESTATE:GetCurrentSong()
@@ -837,8 +844,6 @@ base_options= {
 }
 
 dofile(THEME:GetPathO("", "auto_hider.lua"))
-dofile(THEME:GetPathO("", "music_wheel.lua"))
-local music_wheel= setmetatable({}, music_whale_mt)
 
 local function hide_focus()
 	focus_element_info:hide()
@@ -1019,7 +1024,7 @@ local status_frame= setmetatable({}, frame_helper_mt)
 local status_active= false
 local status_worker= false
 local status_finish_func= false
-local function activate_status(worker, after_func)
+activate_status= function(worker, after_func)
 	status_active= true
 	status_worker= worker
 	status_finish_func= after_func
@@ -1499,9 +1504,6 @@ local function input(event)
 		else
 			local function common_menu_change(next_menu)
 				pressed_since_menu_change[pn]= {}
-				if picking_steps and next_menu == "wheel" then
-					next_menu= "steps"
-				end
 				set_special_menu(pn, next_menu)
 			end
 			local closed_menu= false
