@@ -3,15 +3,9 @@ local show_message= false
 local message= ""
 local next_screen= "ScreenInitialMenu"
 
-if not Actor.AddWrapperState then
+if not get_music_file_length then
 	show_message= true
-	message= "You should upgrade to Stepmania 5.0.5.  Some special effects require functions added in Stepmania 5.0.5."
-end
-
-if not NoteField or not NoteField.SetStepCallback then
-	version_failed= true
-	show_message= true
-	message= "Your version of Stepmania is too old for this version of Consensual.\nUpgrade to Stepmania 5.0.5.\nSwitching to a different theme."
+	message= "You must upgrade to Stepmania 5.0.9.  Some special effects require functions added in Stepmania 5.0.9."
 end
 
 if not PREFSMAN:GetPreference("SmoothLines") then
@@ -20,8 +14,7 @@ if not PREFSMAN:GetPreference("SmoothLines") then
 	message= "You have the Smooth Lines preference set to false.  Consensual uses linestrips in many places, and having Smooth Lines set to false will ruin your frame rate.\nGoing to Graphics options screen so you can set it to true."
 end
 
-if PREFSMAN:GetPreference("IgnoredDialogs") ~= ""
-and GAMESTATE:GetCurrentGame():GetName():lower() ~= "kickbox" then
+if PREFSMAN:GetPreference("IgnoredDialogs") ~= "" then
 	PREFSMAN:SetPreference("IgnoredDialogs", "")
 	show_message= true
 	message= "If you see errors, report them with any information you have so they can be fixed."

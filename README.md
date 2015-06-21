@@ -1,14 +1,18 @@
-# This is the reskin branch
-You can use this branch, and it should be just as stable as the master branch,
-but you should really give some feedback if you're using this branch.
-
 # Consensual
 
 A theme for stepmania.
 
 Minimalist in graphics, maximalist in functionality.
 
-## Minimum StepMania version: 5.0.8
+## Renderer
+You must use the opengl renderer for things to render correctly.  
+If you're not on Windows, you're using the opengl renderer already.  
+If you are on Windows, find %APPDATA%/Save/Preferences.ini and edit the
+VideoRenderers line to match this: ```VideoRenderers=opengl```
+
+## Minimum StepMania version: 5.0.9
+5.0.9 has several bug fixes that affect the logo, crash on d3d from blendmode
+subtract, the speed of the bubbles, and the image centering prefs.  
 NPS calculation uses the Notes radar category that was added in 5.0.8.  
 The screen filter is in the notefield board, which puts it above the judgment
 in 5.0.7 and under the judgment in 5.0.8 because the TapJudgmentsUnderField
