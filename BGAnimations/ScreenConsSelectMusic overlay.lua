@@ -1138,19 +1138,20 @@ local function adjust_difficulty(player, dir, sound)
 	local steps= gamestate_get_curr_steps(player)
 	if steps then
 		local steps_list= sort_steps_list(get_filtered_steps_list())
+		local next_steps= false
 		for i, v in ipairs(steps_list) do
 			if v == steps then
-				local picked_steps= steps_list[i+dir]
-				if picked_steps then
-					cons_set_current_steps(player, picked_steps)
-					GAMESTATE:SetPreferredDifficulty(player, picked_steps:GetDifficulty())
-					set_preferred_steps_type(player, picked_steps:GetStepsType())
-					SOUND:PlayOnce(THEME:GetPathS("_switch", sound))
-				else
-					SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
-				end
-				break
+				next_steps= i + dir
 			end
+		end
+		local picked_steps= steps_list[next_steps]
+		if picked_steps then
+			cons_set_current_steps(player, picked_steps)
+			GAMESTATE:SetPreferredDifficulty(player, picked_steps:GetDifficulty())
+			set_preferred_steps_type(player, picked_steps:GetStepsType())
+			SOUND:PlayOnce(THEME:GetPathS("_switch", sound))
+		else
+			SOUND:PlayOnce(THEME:GetPathS("Common", "invalid"))
 		end
 	end
 	update_pain(player)

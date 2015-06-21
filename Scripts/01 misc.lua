@@ -812,6 +812,7 @@ end
 local cached_steps_list= false
 local cached_steps_song= false
 local cached_steps_players= false
+local cached_list_is_sorted= false
 function get_filtered_steps_list(song)
 	song= song or gamestate_get_curr_song()
 	local num_players= GAMESTATE:GetNumPlayersEnabled()
@@ -831,21 +832,42 @@ function get_filtered_steps_list(song)
 	cached_steps_players= num_players
 	cached_steps_song= song
 	cached_steps_list= ret
+	cached_list_is_sorted= false
 	return ret
 end
 
+local steps_compare_fields= {
+	"GetMeter", "GetChartStyle", "GetDescription", "GetFilename",
+	"GetAuthorCredit", "GetChartName"}
+
 function sort_steps_list(list)
+	if cached_list_is_sorted and list == cached_steps_list then
+		return cached_steps_list
+	end
 	local function compare(ela, elb)
 		if not ela then return true end
 		if not elb then return false end
 		local type_diff= StepsType:Compare(ela:GetStepsType(), elb:GetStepsType())
 		if type_diff == 0 then
-			return Difficulty:Compare(ela:GetDifficulty(), elb:GetDifficulty()) < 0
+			local diff_diff= Difficulty:Compare(ela:GetDifficulty(), elb:GetDifficulty())
+			if diff_diff == 0 then
+				for i, comp in ipairs(steps_compare_fields) do
+					local ac= ela[comp](ela)
+					local bc= elb[comp](elb)
+					if ac ~= bc then
+						return ac < bc
+					end
+				end
+				return false
+			else
+				return diff_diff < 0
+			end
 		else
 			return type_diff < 0
 		end
 	end
 	table.sort(list, compare)
+	cached_list_is_sorted= true
 	return list
 end
 
