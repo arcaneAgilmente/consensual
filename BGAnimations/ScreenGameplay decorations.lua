@@ -1277,7 +1277,7 @@ local function horiz_invert_gameplay(tween)
 	local function invert_child(child, in_player)
 		tween_not_trans(child, tween)
 		if not in_player then
-			child:x(_screen.w - child:GetX())
+			child:x(_screen.w - child:GetDestX())
 		end
 		child:zoomx(next_x_zoom)
 	end
@@ -1291,7 +1291,7 @@ local function vert_invert_gameplay(tween)
 	local function invert_child(child, in_player)
 		tween_not_trans(child, tween)
 		if not in_player then
-			child:y(_screen.h - child:GetY())
+			child:y(_screen.h - child:GetDestY())
 		end
 		child:zoomy(next_y_zoom)
 	end

@@ -194,11 +194,13 @@ local function cdtitle()
 	end
 end
 
+local banner_act= false
 local function banner(x, y)
 	if scrambler_mode then
 		return swapping_amv(
 			"Banner", x, y, banner_w, banner_h, 16, 5, nil, "_",
 			false, true, true, {
+				SubInitCommand= function(self) banner_act= self end,
 				CurrentCourseChangedMessageCommand= play_set,
 				CurrentSongChangedMessageCommand= play_set,
 				SetCommand= function(self)
@@ -227,7 +229,7 @@ local function banner(x, y)
 		})
 	else
 		return Def.Sprite{
-			Name="Banner", InitCommand=cmd(xy, x, y),
+			InitCommand= function(self) banner_act= self:xy(x, y) end,
 			CurrentCourseChangedMessageCommand= cmd(playcommand, "Set"),
 			CurrentSongChangedMessageCommand= cmd(playcommand, "Set"),
 			SetCommand= function(self)
@@ -507,9 +509,11 @@ local focus_element_info_mt= {
 		update= function(self, item)
 			self:update_title(item)
 			if item.bucket_info then
-				if songman_does_group_exist(curr_group_name) then
+				local item_group_name= nice_bucket_disp_name(item.bucket_info)
+				if songman_does_group_exist(item_group_name) then
 					self:set_jacket_to_image(
-						songman_get_group_banner_path(curr_group_name))
+						songman_get_group_banner_path(item_group_name))
+					banner_act:playcommand("current_group_changed", {item_group_name})
 				end
 				if item.bucket_info.song_count then
 					local song_count= item.bucket_info.song_count or 0
@@ -1365,6 +1369,7 @@ local code_functions= {
 			else
 				change_sort_text(music_wheel.current_sort_name)
 			end
+			focus_element_info:update(music_wheel.sick_wheel:get_info_at_focus_pos())
 		end,
 		diff_up= function(pn)
 			stop_auto_scrolling()
