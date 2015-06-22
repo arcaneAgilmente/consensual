@@ -14,8 +14,8 @@ local vert_count= 256
 local zoom= 128
 local valstep= .01
 
-local xqvals= {0, .33, .67, 1}
-local yqvals= {0, .33, .67, 1}
+local xqvals= {0, .5, -.25, 1}
+local yqvals= {0, 2, .5, 1}
 
 local xvaltexts= {}
 local yvaltexts= {}
@@ -146,7 +146,7 @@ end
 local function action_quads()
 	local args= {}
 	local count= 16
-	local time= 2
+	local time= .4
 	for i= 1, count do
 		args[#args+1]= Def.ActorFrame{
 			InitCommand= function(self)
@@ -189,6 +189,16 @@ local args= {
 		InitCommand= function(self)
 			self:xy(_screen.cx-zoom, _screen.cy-zoom)
 		end,
+		quaid(zoom*.5, zoom*.0, zoom, 1, adjust_luma(xcol, .0)),
+		quaid(zoom*.5, zoom*.25, zoom, 1, adjust_luma(xcol, .25)),
+		quaid(zoom*.5, zoom*.5, zoom, 1, adjust_luma(xcol, .5)),
+		quaid(zoom*.5, zoom*.75, zoom, 1, adjust_luma(xcol, .25)),
+		quaid(zoom*.5, zoom*1., zoom, 1, adjust_luma(xcol, .0)),
+		quaid(zoom*.0, zoom*.5, 1, zoom, adjust_luma(ycol, .0)),
+		quaid(zoom*.25, zoom*.5, 1, zoom, adjust_luma(ycol, .25)),
+		quaid(zoom*.5, zoom*.5, 1, zoom, adjust_luma(ycol, .5)),
+		quaid(zoom*.75, zoom*.5, 1, zoom, adjust_luma(ycol, .25)),
+		quaid(zoom*1., zoom*.5, 1, zoom, adjust_luma(ycol, .0)),
 		Def.ActorMultiVertex{
 			InitCommand= function(self)
 				xamv= self:SetDrawState{Mode="DrawMode_LineStrip"}

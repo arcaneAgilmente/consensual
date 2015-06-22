@@ -252,14 +252,6 @@ function rand_tween(child, level)
 	possible_tweens[choice](child, time)
 end
 
-Actor.april_linear= function(self, time)
-	if april_fools then
-		return self:tween(time*5, "TweenType_Bezier", {0, -2, 3, 1})
-	else
-		return self:linear(time)
-	end
-end
-
 function for_all_children(parent, func)
 	local children= parent:GetChildren()
 	for name, child in pairs(children) do
@@ -523,11 +515,59 @@ function fracstr(a, b)
 	return a .. "/" .. b
 end
 
+-- Possibilities: (0+n, 1-n)
+local sub_makes= {
+	function(bez, yc)
+		bez[4]= 0 + yc
+		bez[6]= 1 - yc
+		return bez
+	end,
+	function(bez, yc)
+		bez[4]= 0 - yc
+		bez[6]= 1 + yc
+		return bez
+	end,
+	function(bez, yc)
+		bez[4]= 1 + yc
+		bez[6]= 0 - yc
+		return bez
+	end,
+	function(bez, yc)
+		bez[4]= 1 - yc
+		bez[6]= 0 + yc
+		return bez
+	end,
+}
+
+local function make_april_bezier()
+	local ret= {0, 0, math.random(), .5, math.random(), .5, 1, 1}
+	return sub_makes[math.random(#sub_makes)](ret, math.random() * 2)
+end
+
+local normal_bezier= {0, 0, .5, 2, -.25, .5, 1, 1}
+
+Actor.april_linear= function(self, time)
+	if april_fools then
+		return self:tween(time*5, "TweenType_Bezier", make_april_bezier())
+	else
+--		return self:linear(time)
+		return self:tween(time*4, "TweenType_Bezier", normal_bezier)
+	end
+end
+
+local function april_spin_dir()
+	if math.random(2) == 1 then
+		return .05
+	else
+		return -.05
+	end
+end
+
 function april_spin(self)
 	if april_fools then
 		self:xy(-_screen.cx, -_screen.cy)
 			:AddWrapperState():xy(_screen.cx, _screen.cy)
-			:spin():effectmagnitude(0, 0, (math.random()-.5)*.1)
+			:spin():effectmagnitude(0, 0, april_spin_dir())
 	end
 end
 
