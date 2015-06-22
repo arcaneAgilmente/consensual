@@ -522,7 +522,7 @@ pain_display_mt= {
 			local center_y= revealed_height/2 - (self.text_height/2)
 			self.frame_main:resize(self.el_w, revealed_height)
 			self.frame_main:move(nil, center_y-2)
-			self.container:finishtweening():linear(.1)
+			self.container:finishtweening():april_linear(.1)
 				:y(self.original_y+hidden_height)
 		end,
 		enter_edit_mode= function(self)

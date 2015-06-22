@@ -123,7 +123,7 @@ local item_mt= {
 			local angle_per= math.pi * 2 / items
 			local angle= angle_per * (item_index - focus_pos) - (math.pi * .5)
 			local radius= item_circle_radius
-			self.container:finishtweening():linear(item_move_time)
+			self.container:finishtweening():april_linear(item_move_time)
 				:xy(math.cos(angle) * radius, math.sin(angle) * radius)
 			if is_focus then
 				self.container:zoom(item_focus_zoom)

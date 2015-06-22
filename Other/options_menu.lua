@@ -68,9 +68,9 @@ local option_item_mt= {
 			if changing_edge then
 				self.container:diffusealpha(0)
 			end
-			self.container:finishtweening():linear(move_time)
+			self.container:finishtweening():april_linear(move_time)
 				:xy(0, (item_index-1) * (self.height or self.text:GetZoomedHeight()))
-				:linear(move_time):diffusealpha(1)
+				:april_linear(move_time):diffusealpha(1)
 			self.prev_index= item_index
 		end,
 		set= function(self, info)

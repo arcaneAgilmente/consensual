@@ -195,7 +195,7 @@ sigil_controller_mt= {
 			if self.detail == new_detail then return end
 			if self.sigil then
 				local new_verts, used_verts= calc_sigil_verts_alt(new_detail, self.max_detail, self.length)
-				self.sigil:linear(self.shift_time):SetVertices(new_verts)
+				self.sigil:april_linear(self.shift_time):SetVertices(new_verts)
 			end
 			self.detail= new_detail
 		end

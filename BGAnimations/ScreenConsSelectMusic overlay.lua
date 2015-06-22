@@ -609,17 +609,17 @@ local focus_element_info_mt= {
 		collapse= function(self)
 			local newy= self.middle_height
 			self.expanded= false
-			self.above_info:stoptweening():linear(wheel_move_time):zoomy(0):y(-newy)
-			self.below_info:stoptweening():linear(wheel_move_time):zoomy(0):y(newy)
-			self.bg:stoptweening():linear(wheel_move_time)
+			self.above_info:stoptweening():april_linear(wheel_move_time):zoomy(0):y(-newy)
+			self.below_info:stoptweening():april_linear(wheel_move_time):zoomy(0):y(newy)
+			self.bg:stoptweening():april_linear(wheel_move_time)
 				:zoomy((basic_info_height*2)/(expanded_info_height*2))
 		end,
 		expand= function(self)
 			local newy= self.middle_height + extra_info_height
 			self.expanded= true
-			self.above_info:stoptweening():linear(wheel_move_time):zoomy(1):y(-newy+hpad)
-			self.below_info:stoptweening():linear(wheel_move_time):zoomy(1):y(newy-hpad)
-			self.bg:stoptweening():linear(wheel_move_time):zoomy(1)
+			self.above_info:stoptweening():april_linear(wheel_move_time):zoomy(1):y(-newy+hpad)
+			self.below_info:stoptweening():april_linear(wheel_move_time):zoomy(1):y(newy-hpad)
+			self.bg:stoptweening():april_linear(wheel_move_time):zoomy(1)
 		end
 }}
 local focus_element_info= setmetatable({}, focus_element_info_mt)
@@ -909,9 +909,9 @@ local function toggle_expansion()
 end
 
 local function switch_to_picking_steps()
-	music_wheel.container:linear(wheel_move_time):diffusealpha(0)
+	music_wheel.container:april_linear(wheel_move_time):diffusealpha(0)
 	expand_center_for_more()
-	focus_element_info.container:linear(wheel_move_time)
+	focus_element_info.container:april_linear(wheel_move_time)
 		:y(_screen.h - expanded_info_height-32-pad)
 	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		steps_menus[dpn]:activate()
@@ -924,8 +924,8 @@ local function switch_to_picking_steps()
 end
 
 local function switch_to_not_picking_steps()
-	music_wheel.container:linear(wheel_move_time):diffusealpha(1)
-	focus_element_info.container:linear(wheel_move_time):y(_screen.cy)
+	music_wheel.container:april_linear(wheel_move_time):diffusealpha(1)
+	focus_element_info.container:april_linear(wheel_move_time):y(_screen.cy)
 	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		steps_menus[dpn]:deactivate()
 		if in_special_menu[dpn] == "steps" then
@@ -1032,7 +1032,7 @@ activate_status= function(worker, after_func)
 	status_active= true
 	status_worker= worker
 	status_finish_func= after_func
-	status_container:stoptweening():linear(0.5):diffusealpha(1)
+	status_container:stoptweening():april_linear(0.5):diffusealpha(1)
 	status_text:settext("")
 	status_count:settext("")
 end

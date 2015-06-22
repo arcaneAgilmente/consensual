@@ -246,7 +246,7 @@ local name_display_mt= {
 		update_cursor= function(self)
 			local xmn, xmx, ymn, ymx= rec_calc_actor_extent(self.text)
 			self.cursor:finishtweening()
-			self.cursor:linear(.1)
+			self.cursor:april_linear(.1)
 			self.cursor:x(xmx + 6)
 		end,
 		toggle_shift= function(self)
@@ -387,7 +387,7 @@ local score_display_mt= {
 					disp_start= -(math.floor(num_items/2) * score_disp_width)
 				end
 				local myx= disp_start + ((item_index-1) * score_disp_width)
-				self.container:finishtweening():linear(.1):x(myx)
+				self.container:finishtweening():april_linear(.1):x(myx)
 				if math.abs(myx) + hbanner_width > SCREEN_WIDTH/2 then
 					self.container:diffusealpha(0)
 				else

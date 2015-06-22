@@ -83,7 +83,7 @@ local frame_args= {
 			local curr_inner= lerp_color(life, empty_inner, full_inner)
 			local curr_outer= lerp_color(life, empty_outer, full_outer)
 			for i, part in ipairs(parts) do
-				part:stoptweening():linear(.1):zoomy(staged_life)
+				part:stoptweening():april_linear(.1):zoomy(staged_life)
 					:diffuseleftedge(colors[2]):diffuserightedge(colors[1])
 			end
 		end

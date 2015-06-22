@@ -10,7 +10,7 @@ return Def.ActorFrame{
 	FallCommand= function(self)
 		self:stoptweening():hibernate(0):visible(true)
 			:xy(confetti_x(), confetti_fall_start())
-			:linear(confetti_fall_time()):y(confetti_fall_end())
+			:april_linear(confetti_fall_time()):y(confetti_fall_end())
 		local part= self:GetChild("part")
 		part:setsize(confetti_size(), confetti_size()):diffuse(confetti_color())
 			:spin()

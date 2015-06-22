@@ -147,7 +147,7 @@ end
 function text_and_number_interface:move_to(x, y, time)
 	if self.container then
 		if tonumber(time) then
-			self.container:finishtweening():linear(time)
+			self.container:finishtweening():april_linear(time)
 		end
 		self.x= x
 		self.y= y
@@ -548,7 +548,7 @@ cursor_mt= {
 			}
 			local secs_into_pulse= self.container:GetSecsIntoEffect()
 			local remain= pulse_cycle - secs_into_pulse
-			self.container:stoptweening():linear(move_time):xy(nx, ny)
+			self.container:stoptweening():april_linear(move_time):xy(nx, ny)
 			if new_size then
 				for i= 1, #self.parts do
 					self.parts[i][2]:playcommand("Refit", {i})
@@ -647,7 +647,7 @@ amv_outline_mt= {
 			self.w= nw
 			self.h= nh
 			self.container:finishtweening()
-			self.container:linear(0.05)
+			self.container:april_linear(0.05)
 			self.container:xy(nx, ny)
 			self.container:SetVertices{
 				{{0, -nh/2, 0}},
@@ -715,7 +715,7 @@ frame_helper_mt= {
 		move= function(self, x, y)
 			x= x or self.x
 			y= y or self.y
-			self.container:stoptweening():linear(0.1):xy(x, y)
+			self.container:stoptweening():april_linear(0.1):xy(x, y)
 			self.x, self.y= x, y
 		end,
 		hide= function(self)

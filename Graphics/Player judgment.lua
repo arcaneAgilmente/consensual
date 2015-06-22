@@ -17,7 +17,7 @@ local PulseLabel = THEME:GetMetric("Combo", "PulseLabelCommand");
 local JudgeCmds = {}
 if cons_players[player].flags.gameplay.still_judge then
 	local function judge_general_effect(self)
-		self:diffusealpha(1):sleep(.8):linear(.1):diffusealpha(0)
+		self:diffusealpha(1):sleep(.8):april_linear(.1):diffusealpha(0)
 	end
 	for i, w in ipairs{"W2", "W3", "W4", "W5", "Miss"} do
 		JudgeCmds["TapNoteScore_"..w]= judge_general_effect
@@ -33,8 +33,8 @@ else
 	local function judge_general_effect(self, i)
 		local jscale= el_pos.judgment_scale
 		self:diffusealpha(1):zoom((1 + (.1 * (6 - i))) * jscale)
-			:linear(.05):zoom(jscale):sleep(.8)
-			:linear(.1):zoomy(.5 * jscale):zoomx(2 * jscale):diffusealpha(0)
+			:april_linear(.05):zoom(jscale):sleep(.8)
+			:april_linear(.1):zoomy(.5 * jscale):zoomx(2 * jscale):diffusealpha(0)
 	end
 	for i, w in ipairs{"W2", "W3", "W4"} do
 		JudgeCmds["TapNoteScore_"..w]= function(self)
@@ -53,8 +53,8 @@ else
 	JudgeCmds.TapNoteScore_Miss= function(self)
 		local jscale= el_pos.judgment_scale
 		self:diffusealpha(1):zoom(jscale):y(-20 * jscale)
-			:linear(.8):y(20 * jscale):sleep(.8)
-			:linear(.1):zoomy(.5 * jscale):zoomx(2 * jscale):diffusealpha(0)
+			:april_linear(.8):y(20 * jscale):sleep(.8)
+			:april_linear(.1):zoomy(.5 * jscale):zoomx(2 * jscale):diffusealpha(0)
 	end
 end
 

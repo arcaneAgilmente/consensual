@@ -280,38 +280,6 @@ function noteskin_arrow_amv(name, x, y, r, size, out_color, in_color)
 end
 
 function random_grow_circle(name, x, y, center_color, edge_color, step_time, end_radius, activate_command)
-	if not CubicSplineN then
-		return Def.ActorMultiVertex{
-			Name= name,
-			[activate_command.."Command"]= function(self)
-				if type(center_color) == "function" then center_color= center_color() end
-				if type(edge_color) == "function" then edge_color= edge_color() end
-				local verts= {{{0, 0, 0}, center_color}}
-				local points= 128
-				if misc_config:get_data().disable_extra_processing then
-					points= 16
-				end
-				for i= 1, points+1 do
-					verts[#verts+1]= {{0, 0, 0}, edge_color}
-				end
-				local expansion_vectors= calc_circle_verts(end_radius * .05, points, 0, 0)
-				self:xy(x, y):SetVertices(verts):SetDrawState{Mode= "DrawMode_Fan"}
-				for i= 1, 20 do
-					for v, vert in ipairs(verts) do
-						if v > 1 then
-							local scale= i + ((MersenneTwister.Random(1, 11) - 6) * .05)
-							vert[1][1]= expansion_vectors[v-1][1][1] * scale
-							vert[1][2]= expansion_vectors[v-1][1][2] * scale
-						end
-					end
-					-- Make the join point of the circle match.
-					verts[#verts][1][1]= verts[2][1][1]
-					verts[#verts][1][2]= verts[2][1][2]
-					self:linear(step_time):SetVertices(verts)
-				end
-			end
-		}
-	end
 	return Def.ActorMultiVertex{
 		Name= name,
 		[activate_command.."Command"]= function(self)
@@ -346,39 +314,6 @@ function random_grow_circle(name, x, y, center_color, edge_color, step_time, end
 end
 
 function random_grow_column(name, x, y, bottom_color, top_color, w, step_time, end_h, activate_command)
-	if not CubicSplineN then
-		return Def.ActorMultiVertex{
-			Name= name,
-			[activate_command.."Command"]= function(self)
-				if type(bottom_color) == "function" then bottom_color= bottom_color() end
-				if type(top_color) == "function" then top_color= top_color() end
-				if type(end_h) == "function" then end_h= end_h() end
-				local sx= w*-.5
-				local cols= 64
-				local xdiff= w / cols
-				local verts= {}
-				for i= 1, cols+1 do
-					local vx= sx + ((i-1) * xdiff)
-					verts[#verts+1]= {{vx, 0, 0}, bottom_color}
-					verts[#verts+1]= {{vx, 0, 0}, top_color}
-				end
-				local grow_amount= end_h / 20
-				self:xy(x, y):SetVertices(verts):SetDrawState{Mode= "DrawMode_Strip"}
-				for i= 1, 20 do
-					for v, vert in ipairs(verts) do
-						if v % 2 == 0 then
-							local scale= i
-							if i < 20 then
-								scale= i + ((MersenneTwister.Random(1, 11) - 6) * .2)
-							end
-							vert[1][2]= grow_amount * scale
-						end
-					end
-					self:linear(step_time):SetVertices(verts)
-				end
-			end
-		}
-	end
 	return Def.ActorMultiVertex{
 		Name= name,
 		[activate_command.."Command"]= function(self)
@@ -572,7 +507,7 @@ function unfolding_letter(name, x, y, letter, color, unfold_time, scale, thick, 
 			shuffled_verts[i]= {{sv[1]*scale, sv[2]*scale, 0}, color}
 		end
 		self:SetVertices(shuffled_verts)
-		self:linear(unfold_time)
+		self:april_linear(unfold_time)
 	end
 	return Def.ActorMultiVertex{
 		Name= name, InitCommand= function(self)
@@ -598,9 +533,9 @@ function unfolding_text(name, x, y, text, color, unfold_time, scale, thick,
 											 fade_time)
 	local args= {Name= name, InitCommand= function(self)
 								 self:xy(x, y)
-								 self:linear(unfold_time)
+								 self:april_linear(unfold_time)
 								 if fade_time then
-									 self:linear(fade_time)
+									 self:april_linear(fade_time)
 									 self:diffusealpha(0)
 								 end
 							end}
@@ -657,7 +592,7 @@ function animated_glyph(glyph_data, x, y, zoom, anim_time, fade_time)
 					for s= 1, 2 do
 						shuffle_spline(self:GetSpline(s), stroke_data[s])
 					end
-					self:SetVertsFromSplines():linear(per_step_time)
+					self:SetVertsFromSplines():april_linear(per_step_time)
 					for c= 1, 3 do
 						curr_color[c]= curr_color[c] + per_step_color
 					end
@@ -671,7 +606,7 @@ function animated_glyph(glyph_data, x, y, zoom, anim_time, fade_time)
 					spline:solve()
 				end
 				self:SetVertsFromSplines()
-					:sleep(anim_time - move_time):linear(fade_time)
+					:sleep(anim_time - move_time):april_linear(fade_time)
 				for c= 1, 3 do
 					curr_color[c]= .5
 				end
@@ -685,7 +620,7 @@ end
 function animated_text(text, x, y, zoom, anim_time, fade_time)
 	local args= {
 		InitCommand= function(self)
-			self:xy(x, y):linear(anim_time)
+			self:xy(x, y):april_linear(anim_time)
 	end}
 	local letter_w= 16
 	local space= zoom * letter_w

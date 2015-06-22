@@ -221,7 +221,7 @@ function rand_bezier2(actor, time)
 end
 
 local possible_tweens= {
-	noop_nil, Actor.linear, Actor.accelerate, Actor.decelerate, Actor.spring,
+	noop_nil, Actor.april_linear, Actor.accelerate, Actor.decelerate, Actor.spring,
 	rand_bezier1, rand_bezier2,
 }
 local tween_sets= {
@@ -250,6 +250,14 @@ function rand_tween(child, level)
 	local choice= rand_choice(level, tween_sets)
 	local time= rand_choice(level, tween_times)
 	possible_tweens[choice](child, time)
+end
+
+Actor.april_linear= function(self, time)
+	if april_fools then
+		return self:tween(time*5, "TweenType_Bezier", {0, -2, 3, 1})
+	else
+		return self:linear(time)
+	end
 end
 
 function for_all_children(parent, func)
