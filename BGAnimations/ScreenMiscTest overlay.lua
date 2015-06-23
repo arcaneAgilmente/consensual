@@ -146,7 +146,7 @@ end
 local function action_quads()
 	local args= {}
 	local count= 16
-	local time= .4
+	local time= 2
 	for i= 1, count do
 		args[#args+1]= Def.ActorFrame{
 			InitCommand= function(self)

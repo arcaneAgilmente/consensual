@@ -52,7 +52,6 @@ local entering_song= false
 local options_time= 1.5
 local go_to_options= false
 local picking_steps= false
-local was_picking_steps= false
 local double_tap_time= .5
 
 local update_player_cursors= noop_nil
@@ -924,16 +923,15 @@ local function switch_to_picking_steps()
 end
 
 local function switch_to_not_picking_steps()
-	music_wheel.container:april_linear(wheel_move_time):diffusealpha(1)
-	focus_element_info.container:april_linear(wheel_move_time):y(_screen.cy)
+	picking_steps= false
 	for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		steps_menus[dpn]:deactivate()
 		if in_special_menu[dpn] == "steps" then
 			set_special_menu(dpn, "wheel")
 		end
 	end
-	picking_steps= false
-	was_picking_steps= true
+	music_wheel.container:april_linear(wheel_move_time):diffusealpha(1)
+	focus_element_info.container:april_linear(wheel_move_time):y(_screen.cy)
 	set_preferred_expansion()
 	update_player_cursors()
 end
@@ -1363,7 +1361,6 @@ local code_functions= {
 			update_all_info()
 		end,
 		play_song= function(pn)
-			if was_picking_steps then was_picking_steps= false return end
 			local needs_work, after_func= music_wheel:interact_with_element(pn)
 			if needs_work then
 				activate_status(needs_work, after_func)
@@ -1564,13 +1561,15 @@ local function input(event)
 						if key_pressed == "Select" then
 							common_menu_change("menu")
 						end
+						steps_menus[pn]:interpret_release(key_pressed)
+						if steps_menus[pn].needs_deactivate then
+							switch_to_not_picking_steps()
+						end
 						return
 					end
 					steps_menus[pn]:interpret_code(key_pressed)
 					update_pain(pn)
-					if steps_menus[pn].needs_deactivate then
-						switch_to_not_picking_steps()
-					elseif steps_menus[pn].chosen_steps then
+					if steps_menus[pn].chosen_steps then
 						local all_chosen= true
 						for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 							if not steps_menus[dpn].chosen_steps

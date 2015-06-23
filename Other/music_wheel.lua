@@ -105,7 +105,7 @@ local wheel_item_mt= {
 				end
 			end
 			y= start_y + (dist_from_focus * per_item)
-			self.container:finishtweening():april_linear(wheel_move_time):xy(x, y)
+			self.container:stoptweening():april_linear(wheel_move_time):xy(x, y)
 			if item_index == 1 or item_index == num_items or
 			(is_focus and center_expansion > 0) then
 				self.container:diffusealpha(0)

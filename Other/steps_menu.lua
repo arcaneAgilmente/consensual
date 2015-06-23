@@ -123,7 +123,7 @@ local item_mt= {
 			local angle_per= math.pi * 2 / items
 			local angle= angle_per * (item_index - focus_pos) - (math.pi * .5)
 			local radius= item_circle_radius
-			self.container:finishtweening():april_linear(item_move_time)
+			self.container:stoptweening():april_linear(item_move_time)
 				:xy(math.cos(angle) * radius, math.sin(angle) * radius)
 			if is_focus then
 				self.container:zoom(item_focus_zoom)
@@ -340,6 +340,11 @@ steps_menu_mt= {
 					self:update_selection()
 					return true
 				end,
+			}
+			if funs[code] then return funs[code](self) end
+		end,
+		interpret_release= function(self, code)
+			local funs= {
 				Start= function(self)
 					local choice= self.choices[self.curr_choice]
 					if choice[1] == "pick_steps_type" then

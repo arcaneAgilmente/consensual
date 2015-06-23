@@ -213,11 +213,11 @@ local function rand_bezin()
 end
 
 function rand_bezier1(actor, time)
-	actor:tween(time, "TweenType_Bezier", {rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin()})
+	actor:tween(time, "TweenType_Bezier", {0, rand_bezin(), rand_bezin(), 1})
 end
 
 function rand_bezier2(actor, time)
-	actor:tween(time, "TweenType_Bezier", {rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin()})
+	actor:tween(time, "TweenType_Bezier", {0, 0, rand_bezin(), rand_bezin(), rand_bezin(), rand_bezin(), 1, 1})
 end
 
 local possible_tweens= {
@@ -544,14 +544,25 @@ local function make_april_bezier()
 	return sub_makes[math.random(#sub_makes)](ret, math.random() * 2)
 end
 
-local normal_bezier= {0, 0, .5, 2, -.25, .5, 1, 1}
+local normal_beziers= {
+	{0, 0, 1, 2, 0, .5, 1, 1},
+	{0, 0, .5, 2, 0, .5, 1, 1},
+	{0, 0, .5, 2, .5, .5, 1, 1},
+	{0, 0, .5, 2, 1, .5, 1, 1},
+	{0, 0, .5, 2, 0, .5, 1, 1},
+	{0, 0, .25, 2, .25, .5, 1, 1},
+	{0, 0, .5, 2, -.25, .5, 1, 1},
+}
+
+local function normal_bezier()
+	return normal_beziers[math.random(#normal_beziers)]
+end
 
 Actor.april_linear= function(self, time)
 	if april_fools then
 		return self:tween(time*5, "TweenType_Bezier", make_april_bezier())
 	else
---		return self:linear(time)
-		return self:tween(time*4, "TweenType_Bezier", normal_bezier)
+		return self:tween(time*4, "TweenType_Bezier", normal_bezier())
 	end
 end
 
