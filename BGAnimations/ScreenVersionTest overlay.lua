@@ -4,6 +4,7 @@ local message= ""
 local next_screen= "ScreenInitialMenu"
 
 if not get_music_file_length then
+	version_failed= true
 	show_message= true
 	message= "You must upgrade to Stepmania 5.0.9.  Some special effects require functions added in Stepmania 5.0.9."
 end
@@ -18,6 +19,12 @@ if PREFSMAN:GetPreference("IgnoredDialogs") ~= "" then
 	PREFSMAN:SetPreference("IgnoredDialogs", "")
 	show_message= true
 	message= "If you see errors, report them with any information you have so they can be fixed."
+end
+
+if PREFSMAN:GetPreference("VideoRenderers"):sub(1, 6) ~= "opengl" then
+	version_failed= true
+	show_message= true
+	message= "d3d renderer not supported.  Edit your Preferences.ini to switch VideoRenderers to opengl."
 end
 
 dofile(THEME:GetPathO("", "strokes.lua"))

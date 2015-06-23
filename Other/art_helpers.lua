@@ -507,7 +507,7 @@ function unfolding_letter(name, x, y, letter, color, unfold_time, scale, thick, 
 			shuffled_verts[i]= {{sv[1]*scale, sv[2]*scale, 0}, color}
 		end
 		self:SetVertices(shuffled_verts)
-		self:april_linear(unfold_time)
+		self:linear(unfold_time)
 	end
 	return Def.ActorMultiVertex{
 		Name= name, InitCommand= function(self)
@@ -533,9 +533,9 @@ function unfolding_text(name, x, y, text, color, unfold_time, scale, thick,
 											 fade_time)
 	local args= {Name= name, InitCommand= function(self)
 								 self:xy(x, y)
-								 self:april_linear(unfold_time)
+								 self:linear(unfold_time)
 								 if fade_time then
-									 self:april_linear(fade_time)
+									 self:linear(fade_time)
 									 self:diffusealpha(0)
 								 end
 							end}
@@ -592,7 +592,7 @@ function animated_glyph(glyph_data, x, y, zoom, anim_time, fade_time)
 					for s= 1, 2 do
 						shuffle_spline(self:GetSpline(s), stroke_data[s])
 					end
-					self:SetVertsFromSplines():april_linear(per_step_time)
+					self:SetVertsFromSplines():linear(per_step_time)
 					for c= 1, 3 do
 						curr_color[c]= curr_color[c] + per_step_color
 					end
@@ -606,7 +606,7 @@ function animated_glyph(glyph_data, x, y, zoom, anim_time, fade_time)
 					spline:solve()
 				end
 				self:SetVertsFromSplines()
-					:sleep(anim_time - move_time):april_linear(fade_time)
+					:sleep(anim_time - move_time):linear(fade_time)
 				for c= 1, 3 do
 					curr_color[c]= .5
 				end
@@ -620,7 +620,7 @@ end
 function animated_text(text, x, y, zoom, anim_time, fade_time)
 	local args= {
 		InitCommand= function(self)
-			self:xy(x, y):april_linear(anim_time)
+			self:xy(x, y):linear(anim_time)
 	end}
 	local letter_w= 16
 	local space= zoom * letter_w
