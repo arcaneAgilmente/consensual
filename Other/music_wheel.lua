@@ -311,6 +311,7 @@ local music_whale= {
 		self.cur_sort_info= bucket_man.cur_sort_info
 		self.sorted_songs= bucket_man.sorted_songs
 		self.disp_stack= {}
+		self.in_recent= false
 		self.display_bucket= nil
 		if self.cursor_song or self.cursor_item and #self.sorted_songs > 0 then
 			local function final_compare(a, b)

@@ -23,6 +23,7 @@ function cons_player:clear_init(player_number)
 	self.mine_effect= sorted_mine_effect_names[1]
 	self.sigil_data= {detail= 16, size= 150}
 	self.play_history= {}
+	self:load_default_ops()
 end
 
 function cons_player:clear_mods()
@@ -246,6 +247,13 @@ function set_speed_from_speed_info(player)
 	}
 	if mode_functions[speed_info.mode] then
 		mode_functions[speed_info.mode](speed_info.speed)
+	end
+end
+
+function cons_player:load_default_ops()
+	local defcon= DeepCopy(player_config:get_data(nil))
+	for k, v in pairs(defcon) do
+		self[k]= v
 	end
 end
 

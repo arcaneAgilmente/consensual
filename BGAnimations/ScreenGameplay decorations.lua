@@ -1578,9 +1578,11 @@ return Def.ActorFrame {
 			song_progress_bar:set_from_song()
 		end,
 		CurrentStepsP1ChangedMessageCommand= function(self, param)
+			if not GAMESTATE:GetCurrentSteps(PLAYER_1) then return end
 			set_speed_from_speed_info(cons_players[PLAYER_1])
 		end,
 		CurrentStepsP2ChangedMessageCommand= function(self, param)
+			if not GAMESTATE:GetCurrentSteps(PLAYER_2) then return end
 			set_speed_from_speed_info(cons_players[PLAYER_2])
 		end,
 		ToastyAchievedMessageCommand= function(self, param)

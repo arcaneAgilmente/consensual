@@ -223,6 +223,7 @@ function get_pad_arrow_for_col(pn, col)
 end
 
 function add_column_score_to_session(pn, session_stats, col_id, col_score)
+	if not gamestate_get_curr_steps(pn) then return end
 	local session_col_id= get_pad_arrow_for_col(pn, col_id)
 	local sesscol= session_stats[session_col_id]
 	-- Prevent reloading the screen from increasing session stats.
