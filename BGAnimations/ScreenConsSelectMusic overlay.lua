@@ -1565,41 +1565,41 @@ local function input(event)
 						if steps_menus[pn].needs_deactivate then
 							switch_to_not_picking_steps()
 						end
+						if steps_menus[pn].chosen_steps then
+							local all_chosen= true
+							for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+								if not steps_menus[dpn].chosen_steps
+								or in_special_menu[dpn] ~= "steps" then
+									all_chosen= false
+								end
+							end
+							if all_chosen then
+								local function do_entry()
+									SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
+									options_message:accelerate(0.25):diffusealpha(1)
+									entering_song= get_screen_time() + options_time
+									prev_picked_song= gamestate_get_curr_song()
+									save_all_favorites()
+									save_all_tags()
+									save_censored_list()
+								end
+								if not GAMESTATE.CanSafelyEnterGameplay then
+									do_entry()
+									return
+								end
+								local can, reason= GAMESTATE:CanSafelyEnterGameplay()
+								if can then
+									do_entry()
+								else
+									SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
+									lua.ReportScriptError("Cannot safely enter gameplay: " .. tostring(reason))
+								end
+							end
+						end
 						return
 					end
 					steps_menus[pn]:interpret_code(key_pressed)
 					update_pain(pn)
-					if steps_menus[pn].chosen_steps then
-						local all_chosen= true
-						for i, dpn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-							if not steps_menus[dpn].chosen_steps
-							or in_special_menu[dpn] ~= "steps" then
-								all_chosen= false
-							end
-						end
-						if all_chosen then
-							local function do_entry()
-								SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-								options_message:accelerate(0.25):diffusealpha(1)
-								entering_song= get_screen_time() + options_time
-								prev_picked_song= gamestate_get_curr_song()
-								save_all_favorites()
-								save_all_tags()
-								save_censored_list()
-							end
-							if not GAMESTATE.CanSafelyEnterGameplay then
-								do_entry()
-								return
-							end
-							local can, reason= GAMESTATE:CanSafelyEnterGameplay()
-							if can then
-								do_entry()
-							else
-								SOUND:PlayOnce(THEME:GetPathS("Common", "Invalid"))
-								lua.ReportScriptError("Cannot safely enter gameplay: " .. tostring(reason))
-							end
-						end
-					end
 				end,
 			}
 			update_keys_down(pn, key_pressed, press_type)
