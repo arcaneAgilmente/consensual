@@ -1013,7 +1013,7 @@ local chart_mods= {
 												"Planted", "AttackMines", "Quick", "Skippy", "Stomp",
 												"Twister", "Wide"}),
 	ass_bools("No", {"HoldRolls", "NoJumps","NoHands","NoQuads", "NoStretch",
-									 "NoLifts", "NoFakes", "NoMines"}),
+									 "NoLifts", "NoFakes", "NoMines", "NoRolls"}),
 }
 
 local song_options= {
