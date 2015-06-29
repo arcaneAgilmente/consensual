@@ -85,6 +85,7 @@ local swap_on_xs= {}
 local side_toggles= {}
 local side_actors= {}
 local notefields= {}
+local newfields= {}
 local notefield_wrappers= {}
 local notecolumns= {}
 local next_chuunibyou= {[PLAYER_1]= 0, [PLAYER_2]= 0}
@@ -1255,7 +1256,7 @@ local function invert_not_notefield(child, invert)
 	end
 	if side_names[name] then
 		for_all_children(child, sub_invert)
-	elseif name ~= "NoteField" then
+	elseif name ~= "NoteField" and name ~= "NewField" then
 		invert(child)
 	end
 end
@@ -1480,6 +1481,11 @@ return Def.ActorFrame {
 				side_actors[pn]:addy(cons_players[pn].gameplay_element_positions.notefield_yoffset)
 				side_actors[pn]:addx(cons_players[pn].gameplay_element_positions.notefield_xoffset)
 				notefields[pn]= side_actors[pn]:GetChild("NoteField")
+				newfields[pn]= side_actors[pn]:GetChild("NewField")
+				if newfields[pn] then
+					side_actors[pn]:addy(-70)
+					notefields[pn]:visible(false)
+				end
 				if notefields[pn] then
 					local nx= side_actors[pn]:GetX()
 					local ny= side_actors[pn]:GetY()
