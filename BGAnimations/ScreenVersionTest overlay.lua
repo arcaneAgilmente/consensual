@@ -95,7 +95,7 @@ return Def.ActorFrame{
 --		"logo", _screen.cx, _screen.cy, "Consensual", fetch_color("text"),
 --		unfold_time, nil, nil, .5),
 	Def.BitmapText{
-		Font= "Common Normal", InitCommand= function(self)
+		Font= "Common Normal", OnCommand= function(self)
 			if misc_config:get_data().show_startup_time then
 				if not startup_time then
 					startup_time= GetTimeSinceStart()

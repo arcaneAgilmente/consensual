@@ -143,6 +143,28 @@ if true_gameplay and (cons_players[PLAYER_1].chuunibyou or
 	end
 end
 
+local quant_mults= {}
+local quant_offs= {}
+local quant_args= {}
+for i= 1, 10 do
+	quant_args[#quant_args+1]= Def.BitmapText{
+		Font= "Common Normal", InitCommand= function(self)
+			quant_mults[i]= self
+			self:xy(64 + (i * 64), 32):zoom(.5):diffuse(fetch_color("text"))
+				:strokecolor(fetch_color("stroke"))
+		end
+	}
+	quant_args[#quant_args+1]= Def.BitmapText{
+		Font= "Common Normal", InitCommand= function(self)
+			quant_offs[i]= self
+			self:xy(64 + (i * 64), 64):zoom(.5):diffuse(fetch_color("text"))
+				:strokecolor(fetch_color("stroke"))
+		end
+	}
+end
+local curr_quant_offset= 0
+local quant_offset_change= 1/256
+
 local judge_feedback_interface= {}
 function judge_feedback_interface:create_actors(name, fx, fy, pn)
 	if not name then return nil end
@@ -202,6 +224,9 @@ local judge_feedback_interface_mt= { __index= judge_feedback_interface }
 
 dofile(THEME:GetPathO("", "sigil.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
+dofile(THEME:GetPathO("", "nps_counter.lua"))
+
+local nps_counters= {}
 
 local sigil_feedback_interface= {}
 function sigil_feedback_interface:create_actors(name, fx, fy, player_number)
@@ -847,6 +872,16 @@ local function Update(self, delta)
 				end
 			end
 		end
+		if false and newfields[pn] then
+			curr_quant_offset= curr_quant_offset + (quant_offset_change * delta)
+			local columns= newfields[pn]:get_columns()
+			for i, col in ipairs(columns) do
+				col:set_quantization_offset(curr_quant_offset)
+				if quant_offs[i] then
+					quant_offs[i]:settext(("Q+%.2f"):format(curr_quant_offset))
+				end
+			end
+		end
 		local unmine_time= player.unmine_time
 		if unmine_time and unmine_time <= get_screen_time() then
 			player.mine_data.unapply(pn)
@@ -1129,6 +1164,8 @@ local function make_special_actors_for_players()
 						end
 			})
 		end
+		nps_counters[pn]= setmetatable({}, nps_counter_mt)
+		a[#a+1]= nps_counters[pn]:create_actors(pn, _screen.cx*1.5, 8)
 		--[[
 		a[#a+1]= Def.BitmapText{
 			Font= THEME:GetPathF("Common", "Normal"), InitCommand= function(self)
@@ -1418,6 +1455,7 @@ return Def.ActorFrame {
 									 timer_actor= self
 								 end,
 	},
+	Def.ActorFrame(quant_args),
 	Def.Actor{
 		Name= "Cleaner S22", OnCommand= function(self)
 			screen_gameplay= SCREENMAN:GetTopScreen()
@@ -1475,7 +1513,6 @@ return Def.ActorFrame {
 				if speed_info then
 					speed_info.prev_bps= nil
 				end
-				set_speed_from_speed_info(cons_players[pn])
 				side_actors[pn]=
 					screen_gameplay:GetChild("Player" .. ToEnumShortString(pn))
 				side_actors[pn]:addy(cons_players[pn].gameplay_element_positions.notefield_yoffset)
@@ -1483,9 +1520,23 @@ return Def.ActorFrame {
 				notefields[pn]= side_actors[pn]:GetChild("NoteField")
 				newfields[pn]= side_actors[pn]:GetChild("NewField")
 				if newfields[pn] then
-					side_actors[pn]:addy(-70)
-					notefields[pn]:visible(false)
+					if false then
+						newfields[pn]:hibernate(math.huge)
+					else
+						side_actors[pn]:addy(-70)
+						newfields[pn]:zoom(.75)
+						notefields[pn]:hibernate(math.huge)
+						local columns= newfields[pn]:get_columns()
+						for i, col in ipairs(columns) do
+							local qm= 1 -- + ((i-1) / 3)
+							col:set_quantization_multiplier(qm)
+							if quant_mults[i] then
+								quant_mults[i]:settext(("Q*%.2f"):format(qm))
+							end
+						end
+					end
 				end
+				set_speed_from_speed_info(cons_players[pn], newfields[pn])
 				if notefields[pn] then
 					local nx= side_actors[pn]:GetX()
 					local ny= side_actors[pn]:GetY()

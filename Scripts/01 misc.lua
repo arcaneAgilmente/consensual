@@ -191,6 +191,27 @@ function rec_print_children(parent, indent)
 	end
 end
 
+function rec_count_children(parent)
+	local total= 1
+	if #parent > 0 and type(parent) == "table" then
+		for i, c in ipairs(parent) do
+			total= total + rec_print_children(c)
+		end
+	elseif parent.GetChildren then
+		local pname= (parent.GetName and parent:GetName()) or ""
+		local children= parent:GetChildren()
+		for k, v in pairs(children) do
+			if #v > 0 then
+				total= total + rec_print_children(v)
+			else
+				total= total + rec_print_children(v)
+			end
+		end
+	end
+	return total
+end
+
+
 function rec_find_child(parent, name)
 	if parent:GetName() == name then
 		--Trace("Found matching child: " .. parent:GetName())

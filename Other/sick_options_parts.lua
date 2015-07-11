@@ -1277,7 +1277,7 @@ local life_options= {
 }
 
 local base_options= {
---	{ name= "Experimental", meta= options_sets.menu, args= experimental_options, level= 5},
+	{ name= "Experimental", meta= options_sets.menu, args= experimental_options, level= 5},
 	{ name= "Speed", meta= options_sets.speed, level= 1},
 	{ name= "Perspective", meta= options_sets.menu,
 		args= make_menu_of_float_set(perspective_mods), level= 1},

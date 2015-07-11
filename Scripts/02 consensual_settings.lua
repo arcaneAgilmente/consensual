@@ -189,7 +189,7 @@ local function find_read_bpm_for_player_steps(player_number)
 	return bpms[2]
 end
 
-function set_speed_from_speed_info(player)
+function set_speed_from_speed_info(player, newfield)
 	-- mmods are just a poor mask over xmods, so if you set an mmod in
 	-- the middle of the song, it'll null out.  This means that if you
 	-- use PlayerState:SetPlayerOptions, it'll ruin whatever mmod the
@@ -203,6 +203,9 @@ function set_speed_from_speed_info(player)
 				 player.stage_options:XMod(speed)
 				 player.song_options:XMod(speed)
 				 player.current_options:XMod(speed)
+				 if newfield then
+					 newfield:set_speed(real_speed)
+				 end
 			 end,
 		C= function(speed)
 				 player.preferred_options:CMod(speed)
@@ -217,6 +220,9 @@ function set_speed_from_speed_info(player)
 				 player.stage_options:XMod(real_speed)
 				 player.song_options:XMod(real_speed)
 				 player.current_options:XMod(real_speed)
+				 if newfield then
+					 newfield:set_speed(real_speed)
+				 end
 				 --player.song_options:MMod(speed)
 				 --player.current_options:MMod(speed)
 			 end,
