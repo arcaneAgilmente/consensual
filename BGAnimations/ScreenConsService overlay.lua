@@ -454,6 +454,8 @@ local consensual_options= {
 	 args= key_get_set("color_config_key")},
 	{name= "set_censor_privilege_key", meta= options_sets.settable_thing,
 	 args= key_get_set("censor_privilege_key")},
+	{name= "set_enable_player_options", meta= options_sets.boolean_option,
+	 args= make_extra_for_bool_val("enable_player_options", "Yes", "No")},
 	{name= "set_have_select", meta= options_sets.boolean_option,
 	 args= make_extra_for_bool_val("have_select_button", "Yes", "No")},
 	{name= "set_cursor_button_icon_size", meta= options_sets.adjustable_float,

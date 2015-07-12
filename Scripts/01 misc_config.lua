@@ -33,6 +33,7 @@ local default_config= {
 	default_wheel_sort= "Group",
 	default_expansion_mode= "full",
 	two_part_song_selection= false,
+	enable_player_options= true,
 
 	cursor_button_icon_size= 1,
 	menus_have_ud= true,

@@ -1498,7 +1498,9 @@ local function input(event)
 	if GAMESTATE:IsSideJoined(pn) then
 		if entering_song then
 			show_ignore_message("Currently entering song, ignoring non-Start input")
-			if key_pressed == "Start" and press_type == "InputEventType_FirstPress" then
+			if misc_config:get_data().enable_player_options
+				and key_pressed == "Start"
+			and press_type == "InputEventType_FirstPress" then
 				Trace("Going to options")
 				SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
 				entering_song= 0
@@ -1576,8 +1578,12 @@ local function input(event)
 							if all_chosen then
 								local function do_entry()
 									SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-									options_message:accelerate(0.25):diffusealpha(1)
-									entering_song= get_screen_time() + options_time
+									if misc_config:get_data().enable_player_options then
+										options_message:accelerate(0.25):diffusealpha(1)
+										entering_song= get_screen_time() + options_time
+									else
+										entering_song= get_screen_time()
+									end
 									prev_picked_song= gamestate_get_curr_song()
 									save_all_favorites()
 									save_all_tags()

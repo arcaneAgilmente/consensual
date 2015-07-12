@@ -1164,8 +1164,8 @@ local function make_special_actors_for_players()
 						end
 			})
 		end
-		nps_counters[pn]= setmetatable({}, nps_counter_mt)
-		a[#a+1]= nps_counters[pn]:create_actors(pn, _screen.cx*1.5, 8)
+--		nps_counters[pn]= setmetatable({}, nps_counter_mt)
+--		a[#a+1]= nps_counters[pn]:create_actors(pn, _screen.cx*1.5, 8)
 		--[[
 		a[#a+1]= Def.BitmapText{
 			Font= THEME:GetPathF("Common", "Normal"), InitCommand= function(self)

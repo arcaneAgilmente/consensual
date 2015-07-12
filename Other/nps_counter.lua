@@ -11,7 +11,8 @@ local max_press_age= 10
 -- the average age of the notes in the recent_ages ranges.  {1, 1, 1, 1}
 -- would weight it heavily towards presses in the most recent second, and
 -- make the precision given by max_press_age unreachable.
-local recent_ages= {.25, .5, 1, 1, 2, 2, 3, 4, 5}
+--local recent_ages= {.25, .5, 1, 1, 2, 2, 3, 4, 5}
+local recent_ages= {1, 2, 10}
 -- sharp_change is used to detect a sudden change in the press rate, and
 -- switch from displaying max_press_age if it's too innaccurate.
 local sharp_change= 1
@@ -70,12 +71,10 @@ nps_counter_mt= {
 					end
 				end
 				local averaged_nps= nps_total / (totals)
-				--[[
 				if math.abs(averaged_nps - max_press_nps) < sharp_change
 				and nps_total > max_press_nps then
 					averaged_nps= max_press_nps
 				end
-				]]
 				self.display:settextf(nps_format, averaged_nps)
 			end
 			local function input(event)
