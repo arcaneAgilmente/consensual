@@ -118,6 +118,29 @@ local function nps(song)
 	end
 end
 
+local function radar_cat_wrapper(radar_name)
+	return function(song)
+		if song.GetStepsByStepsType then
+			local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
+			local filter_type= curr_style:GetStepsType()
+			local all_steps= song:GetStepsByStepsType(filter_type)
+			local ret= {}
+			local radar
+			local len= song_get_length(song)
+			for i, steps in ipairs(all_steps) do
+				radar= steps:GetRadarValues(nps_player)
+				ret[#ret+1]= math.round(radar:GetValue(radar_name) * 100) * .01
+			end
+			if #ret > 0 then
+				return ret
+			end
+			return {0}
+		else
+			return {0}
+		end
+	end
+end
+
 local timing_segments= {
 	{"Stops", "GetStops"},
 	{"Delays", "GetDelays"},
@@ -383,6 +406,14 @@ for i, seg_info in ipairs(timing_segments) do
 		pre_sort_func= set_nps_player}
 end
 
+local radar_sort_factors= {}
+for i, radar in ipairs(RadarCategory) do
+	radar_sort_factors[#radar_sort_factors+1]= {
+		name= ToEnumShortString(radar), get_names= radar_cat_wrapper(radar),
+		pre_sort_func= set_nps_player, returns_multiple= true}
+end
+radar_sort_factors[#radar_sort_factors+1]= nps_sort
+
 local song_sort_factors= {
 	{ name= "BPM", get_names= get_song_bpm},
 	{ name= "Artist", get_names= generic_get_wrapper("GetDisplayArtist"),
@@ -392,10 +423,8 @@ local song_sort_factors= {
 	{ name= "Length", get_names= length},
 	{ name= "Step Artist", insensitive_names= true, get_names= step_artist,
 		returns_multiple= true},
-	{ name= "Note Count", get_names= note_count, returns_multiple= true,
-		pre_sort_func= set_nps_player},
-	nps_sort,
 	make_bucket_from_factors("Timing Data", timing_sort_factors),
+	make_bucket_from_factors("Radar Value", radar_sort_factors),
 }
 
 local course_sort_factors= {

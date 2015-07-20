@@ -1455,7 +1455,7 @@ return Def.ActorFrame {
 									 timer_actor= self
 								 end,
 	},
-	Def.ActorFrame(quant_args),
+--	Def.ActorFrame(quant_args),
 	Def.Actor{
 		Name= "Cleaner S22", OnCommand= function(self)
 			screen_gameplay= SCREENMAN:GetTopScreen()
@@ -1527,12 +1527,19 @@ return Def.ActorFrame {
 						newfields[pn]:zoom(.75)
 						notefields[pn]:hibernate(math.huge)
 						local columns= newfields[pn]:get_columns()
+						local pi= math.pi
+						local off= math.pi / 2
+						local input= "ModInputType_EvalBeat"
+						local function apply_mods(moddable, mult, amp, phase)
+							moddable:add_mod(
+								"FieldModifierType_Sine", {
+									{input, 2*pi}, 0, amp, 0})
+						end
 						for i, col in ipairs(columns) do
-							local qm= 1 -- + ((i-1) / 3)
-							col:set_quantization_multiplier(qm)
-							if quant_mults[i] then
-								quant_mults[i]:settext(("Q*%.2f"):format(qm))
-							end
+--							apply_mods(col:get_x_pos_mod(), .5, 64, 0)
+--							apply_mods(col:get_y_zoom_mod(), 8, .5, i*math.pi)
+--							apply_mods(col:get_x_zoom_mod(), 8, .5, i*off)
+--							apply_mods(col:get_z_rot_mod(), 8, 10, i*off/2)
 						end
 					end
 				end
