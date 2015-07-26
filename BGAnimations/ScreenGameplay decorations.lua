@@ -143,28 +143,6 @@ if true_gameplay and (cons_players[PLAYER_1].chuunibyou or
 	end
 end
 
-local quant_mults= {}
-local quant_offs= {}
-local quant_args= {}
-for i= 1, 10 do
-	quant_args[#quant_args+1]= Def.BitmapText{
-		Font= "Common Normal", InitCommand= function(self)
-			quant_mults[i]= self
-			self:xy(64 + (i * 64), 32):zoom(.5):diffuse(fetch_color("text"))
-				:strokecolor(fetch_color("stroke"))
-		end
-	}
-	quant_args[#quant_args+1]= Def.BitmapText{
-		Font= "Common Normal", InitCommand= function(self)
-			quant_offs[i]= self
-			self:xy(64 + (i * 64), 64):zoom(.5):diffuse(fetch_color("text"))
-				:strokecolor(fetch_color("stroke"))
-		end
-	}
-end
-local curr_quant_offset= 0
-local quant_offset_change= 1/256
-
 local judge_feedback_interface= {}
 function judge_feedback_interface:create_actors(name, fx, fy, pn)
 	if not name then return nil end
@@ -857,6 +835,9 @@ local function Update(self, delta)
 	end
 	for i, pn in pairs(enabled_players) do
 		player= cons_players[pn]
+		for fk, fv in pairs(feedback_things[pn]) do
+			if fv.update then fv:update(pstats[pn]) end
+		end
 		if player.man_lets_have_fun and notefields[pn] then
 			local xin= note_drift_indices[pn][1]
 			local yin= note_drift_indices[pn][2]
@@ -869,16 +850,6 @@ local function Update(self, delta)
 				if math.abs(note_drift_currents[index] - note_drift_goals[index])
 				< .001 then
 					note_drift_goals[index]= info[2]()
-				end
-			end
-		end
-		if false and newfields[pn] then
-			curr_quant_offset= curr_quant_offset + (quant_offset_change * delta)
-			local columns= newfields[pn]:get_columns()
-			for i, col in ipairs(columns) do
-				col:set_quantization_offset(curr_quant_offset)
-				if quant_offs[i] then
-					quant_offs[i]:settext(("Q+%.2f"):format(curr_quant_offset))
 				end
 			end
 		end
@@ -1455,7 +1426,6 @@ return Def.ActorFrame {
 									 timer_actor= self
 								 end,
 	},
---	Def.ActorFrame(quant_args),
 	Def.Actor{
 		Name= "Cleaner S22", OnCommand= function(self)
 			screen_gameplay= SCREENMAN:GetTopScreen()
@@ -1523,23 +1493,71 @@ return Def.ActorFrame {
 					if false then
 						newfields[pn]:hibernate(math.huge)
 					else
-						side_actors[pn]:addy(-70)
-						newfields[pn]:zoom(.75)
 						notefields[pn]:hibernate(math.huge)
 						local columns= newfields[pn]:get_columns()
 						local pi= math.pi
-						local off= math.pi / 2
-						local input= "ModInputType_EvalBeat"
-						local function apply_mods(moddable, mult, amp, phase)
-							moddable:add_mod(
-								"FieldModifierType_Sine", {
-									{input, 2*pi}, 0, amp, 0})
-						end
+						local hpi= math.pi / 2
+						local qpi= math.pi / 4
+						--side_actors[pn]:addy(-70)
+						--newfields[pn]:zoom(.75)
+						--newfields[pn]:get_trans_pos_y_mod():get_value():set_value_instant(-140)
+						local tilt= GAMESTATE:GetPlayerState(pn):GetPlayerOptions("ModsLevel_Preferred"):Tilt()
+						-- The tilt mod is -30 degrees rotation at 1.0.
+						local converted_tilt= (tilt * -30) * (pi / 180)
+						newfields[pn]:get_trans_rot_x_mod():get_value():set_value_instant(converted_tilt)
 						for i, col in ipairs(columns) do
+							col:get_reverse_offset_pixels():get_value():set_value_instant(_screen.cy - 64 + (96 * math.tan(math.abs(converted_tilt))))
+						end
+						local scalar= "ModInputType_Scalar"
+						local music= "ModInputType_MusicBeat"
+						local dist= "ModInputType_DistBeat"
+						local eval= "ModInputType_EvalBeat"
+						local const= "FieldModifierType_Constant"
+						local sine= "FieldModifierType_Sine"
+						local square= "FieldModifierType_Square"
+						local triangle= "FieldModifierType_Triangle"
+						local sawsine= "FieldModifierType_SawSine"
+						local sawsquare= "FieldModifierType_SawSquare"
+						local sawtriangle= "FieldModifierType_SawTriangle"
+						local pump_rots= {135, -45, -135, -135}
+						local coloff= {-1.5, -.5, .5, 1.5}
+						local cooloff= {-1.5, .5, -.5, 1.5}
+						local twirl= {-1.5 * pi, -hpi, hpi, 1.5 * pi}
+						local wave= {sine, sine, sine, sine}
+						local function apply_mods(moddable, mult, amp, phase)
+							moddable:add_mod(sine, {mult*pi, phase, amp, 0})
+						end
+						local song_beats= GAMESTATE:GetCurrentSong():GetLastBeat()
+						local calib_beats= 575
+						local beat_factor= calib_beats / song_beats
+						local song_bpm= get_display_bpms(GAMESTATE:GetCurrentSteps(pn), GAMESTATE:GetCurrentSong())[2]
+						local calib_bpm= 50
+						local bpm_factor= calib_bpm / song_bpm
+						local ampm= 16
+						for i, col in ipairs(columns) do
+--							col:get_reverse_offset_pixels():get_value():set_value_instant(_screen.cy+64)
+							--col:get_reverse_offset_pixels():add_mod(const, {{music, -4}})
+							--col:get_column_pos_y_mod():add_mod(const, {{music, -4}})
 --							apply_mods(col:get_x_pos_mod(), .5, 64, 0)
 --							apply_mods(col:get_y_zoom_mod(), 8, .5, i*math.pi)
 --							apply_mods(col:get_x_zoom_mod(), 8, .5, i*off)
---							apply_mods(col:get_z_rot_mod(), 8, 10, i*off/2)
+--							col:get_quantization_offset():add_mod(const, {{eval, 1/32}})
+							--local drift= coloff[i]*.375*beat_factor
+							--col:get_note_pos_x_mod():add_mod(const, {{music, drift}})
+							--col:get_note_pos_x_mod():add_mod(triangle, {{dist, pi * bpm_factor}, 0, {music, -drift}, 0})
+							--col:get_note_zoom_x_mod():add_mod(wave[i], {{dist, 2 * pi * bpm_factor}, 0, {music, beat_factor / 128}, 0})
+							--col:get_note_pos_x_mod():add_mod(wave[i], {{dist, 2 * pi * bpm_factor}, 0, {music, drift * .5}, 0})
+							--col:get_note_rot_y_mod():add_mod(wave[#wave-i+1], {{dist, 2 * pi * bpm_factor}, 0, {music, twirl[i] * .75 / song_beats}, 0})
+							--col:get_note_zoom_x_mod():add_mod(const, {{music, beat_factor / 128}})
+--							col:get_y_rot_mod():add_mod(const, {{dist, twirl[i] * 2 * bpm_factor}})
+--							col:get_x_pos_mod():add_mod(wave[i], {{eval, 2*pi}, 0, {music, cooloff[i] * .25*beat_factor}, 0})
+--							col:get_z_rot_mod():add_mod(const, {{dist, pump_rots[i]}})
+--							col:get_z_rot_mod():add_mod(const, {{music, pump_rots[i]}})
+--							col:get_x_pos_mod():add_mod(wave[i], {{eval, 2*pi}, 0, cooloff[i] * ampm * 1.5, 0 * cooloff[i] * ampm, -hpi, hpi})
+--							col:get_x_pos_mod():add_mod(sawsine, {{dist, pi}, 0, coloff[i] * ampm * 2, coloff[i] * ampm * 2, -hpi, hpi})
+--							col:get_z_rot_mod():add_mod(const, {{scalar, pump_rots[i]}})
+--							col:get_z_rot_mod():add_mod(const, {{dist, 90}})
+--							col:get_z_rot_mod():add_mod(const, {{music, 90}})
 						end
 					end
 				end
@@ -1659,9 +1677,6 @@ return Def.ActorFrame {
 		JudgmentMessageCommand= function(self, param)
 			local pn= param.Player
 			local confidence= confidence_data[pn]
-			for fk, fv in pairs(feedback_things[pn]) do
-				if fv.update then fv:update(pstats[pn]) end
-			end
 			if confidence then
 				if confidence.active then
 					if confidence.chance < 100 then

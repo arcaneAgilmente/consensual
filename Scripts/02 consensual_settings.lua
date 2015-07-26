@@ -204,7 +204,9 @@ function set_speed_from_speed_info(player, newfield)
 				 player.song_options:XMod(speed)
 				 player.current_options:XMod(speed)
 				 if newfield then
-					 newfield:set_speed(real_speed)
+					 for col in ivalues(newfield:get_columns()) do
+						 col:get_speed_mod():add_mod("FieldModifierType_Constant", {{"ModInputType_DistBeat", speed}})
+					 end
 				 end
 			 end,
 		C= function(speed)
@@ -212,6 +214,11 @@ function set_speed_from_speed_info(player, newfield)
 				 player.stage_options:CMod(speed)
 				 player.song_options:CMod(speed)
 				 player.current_options:CMod(speed)
+				 if newfield then
+					 for col in ivalues(newfield:get_columns()) do
+						 col:get_speed_mod():add_mod("FieldModifierType_Constant", {{"ModInputType_DistSecond", speed / 60}})
+					 end
+				 end
 			 end,
 		m= function(speed)
 				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
@@ -221,7 +228,9 @@ function set_speed_from_speed_info(player, newfield)
 				 player.song_options:XMod(real_speed)
 				 player.current_options:XMod(real_speed)
 				 if newfield then
-					 newfield:set_speed(real_speed)
+					 for col in ivalues(newfield:get_columns()) do
+						 col:get_speed_mod():add_mod("FieldModifierType_Constant", {{"ModInputType_DistBeat", real_speed}})
+					 end
 				 end
 				 --player.song_options:MMod(speed)
 				 --player.current_options:MMod(speed)

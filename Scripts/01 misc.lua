@@ -699,6 +699,7 @@ end
 function get_display_bpms(steps, song)
 	local bpms= steps:GetDisplayBpms()
 	if steps:GetDisplayBPMType() ~= "DisplayBPM_Specified" or bpms[2] < 1
+		or bpms[2] > 1000
 	-- DDR worshippers like to give DDR simfiles Konami's false display bpms.
 	or steps_are_konami_trash(steps) then
 		bpms= {}
