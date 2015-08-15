@@ -63,11 +63,12 @@ local heart_entry_mt= {
 			if code == "Start" then
 				local num= self.numpad_nums[self.cursor_pos]
 				local as_num= tonumber(num)
+				local auto_end_num= 10
 				if as_num then
 					local new_value= (self.value * 10) + as_num
 					if new_value < 300 then
 						self.value= new_value
-						if new_value > 100 then
+						if new_value > auto_end_num then
 							self.cursor_pos= 11
 							self:update_cursor()
 						end
@@ -148,11 +149,12 @@ local function input(event)
 			for pn, en in pairs(heart_entries) do
 				local profile= PROFILEMAN:GetProfile(pn)
 				if profile and profile:GetIgnoreStepCountCalories() then
+					local heart_rate= en.value*6
 					local calories= profile:CalculateCaloriesFromHeartRate(
-						en.value, get_last_song_time())
+						heart_rate, get_last_song_time())
 					profile:AddCaloriesToDailyTotal(calories)
 					cons_players[pn].last_song_calories= calories
-					cons_players[pn].last_song_heart_rate= en.value
+					cons_players[pn].last_song_heart_rate= heart_rate
 				end
 			end
 			SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
@@ -174,7 +176,7 @@ local args= {
 		normal_text("timer_text", "00", nil, fetch_color("stroke"), SCREEN_CENTER_X, SCREEN_CENTER_Y)
 	},
 	normal_text("explanation",
-							get_string_wrapper("ScreenHeartEntry", "Enter Heart Rate"),
+							get_string_wrapper("ScreenHeartEntry", "heart_prompt"),
 							nil, fetch_color("stroke"), SCREEN_CENTER_X, SCREEN_CENTER_Y - 120),
 	normal_text("song_len_label",
 							get_string_wrapper("ScreenHeartEntry", "Song Length"),

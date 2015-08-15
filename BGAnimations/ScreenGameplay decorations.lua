@@ -1415,6 +1415,120 @@ local function bg_swap()
 	end
 end
 
+local function apply_tilt_mod(newfield, tilt)
+	-- The tilt mod is -30 degrees rotation at 1.0.
+	local converted_tilt= (tilt * -30) * (pi / 180)
+	newfield:get_trans_rot_x_mod():get_value():set_value_instant(converted_tilt)
+	local normal_offset= _screen.cy - 64
+	-- Adjust the offset for the tilt mod the player has.
+	-- cos(angle) == adjacent / hypotenuse
+	-- hypotenuse == adjacent / cos(angle)
+	local tilted_offset= normal_offset / math.cos(converted_tilt)
+	if tilt < 0 then
+		tilted_offset= normal_offset + (normal_offset - tilted_offset)
+	end
+	for i, col in ipairs(newfield:get_columns()) do
+		col:get_reverse_offset_pixels():get_value():set_value_instant(tilted_offset)
+	end
+end
+
+local pi= math.pi
+local hpi= math.pi / 2
+local qpi= math.pi / 4
+local scalar= "ModInputType_Scalar"
+local music= "ModInputType_MusicBeat"
+local dist= "ModInputType_DistBeat"
+local eval= "ModInputType_EvalBeat"
+local secmusic= "ModInputType_MusicSecond"
+local secdist= "ModInputType_DistSecond"
+local seceval= "ModInputType_EvalSecond"
+local const= "ModFunctionType_Constant"
+local sine= "ModFunctionType_Sine"
+local square= "ModFunctionType_Square"
+local triangle= "ModFunctionType_Triangle"
+local sawsine= "ModFunctionType_SawSine"
+local sawsquare= "ModFunctionType_SawSquare"
+local sawtriangle= "ModFunctionType_SawTriangle"
+local pump_rots= {135, -45, -135, -135}
+local coloff= {-1.5, -.5, .5, 1.5}
+local cooloff= {-1.5, .5, -.5, 1.5}
+local twirl= {-1.5 * pi, -hpi, hpi, 1.5 * pi}
+local wave= {sine, sine, sine, sine}
+
+local function apply_example_mods(newfield, pn)
+	local song= GAMESTATE:GetCurrentSong()
+	local song_beats= song:GetLastBeat()
+	local song_seconds= song:GetLastSecond()
+	local calib_beats= 575
+	local calib_seconds= 120
+	local beat_factor= calib_beats / song_beats
+	local second_factor= calib_seconds / song_seconds
+	local song_bpm= get_display_bpms(GAMESTATE:GetCurrentSteps(pn), GAMESTATE:GetCurrentSong())[2]
+	local calib_bpm= 50
+	local bpm_factor= calib_bpm / song_bpm
+	local display_bpm= find_read_bpm_for_player_steps(pn)
+
+	local play_bpm= 300
+	local play_x= 2
+
+	newfield:get_trans_rot_x_mod():add_mod(
+		sawtriangle, {{music, pi/16}, 0, -pi/4, 0, 0, pi/2})
+	newfield:get_trans_zoom_y_mod():get_value():set_value_instant(-1)
+	for column in ivalues(newfield:get_columns()) do
+		-- Double the quantization, so 16ths appear as 8ths, 8ths show up as 4ths.
+		column:get_quantization_multiplier():get_value():set_value_instant(2)
+		-- Offset the quantization, so notes appear a 32nd off.  There are eight
+		--   32nds per beat.
+		column:get_quantization_offset():get_value():set_value_instant(1/2)
+
+		-- Clear the speed mod the player had set, we're going to set our own.
+		column:get_speed_mod():clear_mods():get_value():set_value_instant(1)
+
+
+		-- Set a speed mod that is equivalent to Cplay_bpm.  The distance is in seconds,
+		--   and the 600 in C600 is in minutes, so play_bpm is divided by 60.
+		column:get_speed_mod():add_mod(
+			"ModFunctionType_Constant", {{"ModInputType_DistSecond", play_bpm / 60}})
+
+		-- Set a speed mod that is equivalent to 4x.
+		column:get_speed_mod():add_mod(
+			"ModFunctionType_Constant", {{"ModInputType_DistBeat", play_x}})
+
+		-- Set a speed mod that is equivalent to mplay_bpm.  Fetching the display bpm is
+		--   outside the scope of this document.
+		column:get_speed_mod():add_mod(
+			"ModFunctionType_Constant", {{"ModInputType_DistBeat", play_bpm / display_bpm}})
+
+		-- Note that if you actually do all three of these on a column, the speed mod
+		--   will be the sum of all three.  So for a chart with a display bpm of 150,
+		--   imagine a note that is 1 beat and 0.4 seconds away:
+		--     local cmod_result= 0.4 * 10
+		--     local xmod_result= 1 * 4
+		--     local mmod_result= 1 * 4
+		--     y_offset= (cmod_result + xmod_result + mmod_result) * 64
+		--   This puts the note 12 arrow heights away, 768 pixels.  With any one of
+		--   those speed mods, it would be only 4 arrow heights away, 256 pixels.
+
+
+		-- Put the notefield in reverse.
+		column:get_reverse_percent():get_value():set_value_instant(1)
+
+		-- Make the notes follow a sine wave left and right as they go up.
+		column:get_note_pos_x_mod():add_mod(
+			"ModFunctionType_Sine", {{"ModInputType_DistBeat", pi}, 0, 32, 0})
+
+		-- Make the column change size with the music, and have the size grow as the
+		--   song continues.  Calibrated to reach max amplitude at the end of the
+		--   song, regardless of length.  Fetching the length of the song is outside
+		--   the scope of this document.
+		--   1/130 is used so the x zoom doesn't quite hit zero at the end of the
+		--   song.
+		column:get_column_zoom_x_mod():add_mod(
+			"ModFunctionType_Triangle", {{"ModInputType_MusicBeat", pi/2}, 0,
+				{"ModInputType_MusicSecond", 1/130 * second_factor}, 0})
+	end
+end
+
 return Def.ActorFrame {
 	Name= "SGPbgf",
 	bg_swap(),
@@ -1495,47 +1609,15 @@ return Def.ActorFrame {
 					else
 						notefields[pn]:hibernate(math.huge)
 						local columns= newfields[pn]:get_columns()
-						local pi= math.pi
-						local hpi= math.pi / 2
-						local qpi= math.pi / 4
-						--side_actors[pn]:addy(-70)
-						--newfields[pn]:zoom(.75)
-						--newfields[pn]:get_trans_pos_y_mod():get_value():set_value_instant(-140)
-						local tilt= GAMESTATE:GetPlayerState(pn):GetPlayerOptions("ModsLevel_Preferred"):Tilt()
-						-- The tilt mod is -30 degrees rotation at 1.0.
-						local converted_tilt= (tilt * -30) * (pi / 180)
-						newfields[pn]:get_trans_rot_x_mod():get_value():set_value_instant(converted_tilt)
-						for i, col in ipairs(columns) do
-							col:get_reverse_offset_pixels():get_value():set_value_instant(_screen.cy - 64 + (96 * math.tan(math.abs(converted_tilt))))
-						end
-						local scalar= "ModInputType_Scalar"
-						local music= "ModInputType_MusicBeat"
-						local dist= "ModInputType_DistBeat"
-						local eval= "ModInputType_EvalBeat"
-						local const= "FieldModifierType_Constant"
-						local sine= "FieldModifierType_Sine"
-						local square= "FieldModifierType_Square"
-						local triangle= "FieldModifierType_Triangle"
-						local sawsine= "FieldModifierType_SawSine"
-						local sawsquare= "FieldModifierType_SawSquare"
-						local sawtriangle= "FieldModifierType_SawTriangle"
-						local pump_rots= {135, -45, -135, -135}
-						local coloff= {-1.5, -.5, .5, 1.5}
-						local cooloff= {-1.5, .5, -.5, 1.5}
-						local twirl= {-1.5 * pi, -hpi, hpi, 1.5 * pi}
-						local wave= {sine, sine, sine, sine}
-						local function apply_mods(moddable, mult, amp, phase)
-							moddable:add_mod(sine, {mult*pi, phase, amp, 0})
-						end
-						local song_beats= GAMESTATE:GetCurrentSong():GetLastBeat()
-						local calib_beats= 575
-						local beat_factor= calib_beats / song_beats
-						local song_bpm= get_display_bpms(GAMESTATE:GetCurrentSteps(pn), GAMESTATE:GetCurrentSong())[2]
-						local calib_bpm= 50
-						local bpm_factor= calib_bpm / song_bpm
+						apply_tilt_mod(newfields[pn], GAMESTATE:GetPlayerState(pn):GetPlayerOptions("ModsLevel_Preferred"):Tilt())
+						--apply_example_mods(newfields[pn], pn)
 						local ampm= 16
+						--newfields[pn]:get_trans_rot_y_mod():add_mod(square, {{music, pi * 16}, i * pi * .25 * 0, pi * .5, pi* .5})
 						for i, col in ipairs(columns) do
 --							col:get_reverse_offset_pixels():get_value():set_value_instant(_screen.cy+64)
+							--col:get_note_rot_y_mod():add_mod(triangle, {{music, pi / 4}, i * pi * .25 * 0, pi * .5, 0})
+--							col:get_column_zoom_x_mod():add_mod(const, {{secmusic, 1/120 * second_factor}})
+--							col:get_column_zoom_y_mod():add_mod(const, {{secmusic, -1/140 * second_factor}})
 							--col:get_reverse_offset_pixels():add_mod(const, {{music, -4}})
 							--col:get_column_pos_y_mod():add_mod(const, {{music, -4}})
 --							apply_mods(col:get_x_pos_mod(), .5, 64, 0)

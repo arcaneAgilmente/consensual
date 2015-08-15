@@ -131,14 +131,14 @@ return Def.ActorFrame{
 				inversion_level= param[1]
 				rand_tween(self, param[1])
 			end
-			self:zoomy(self:GetZoomY() * -1):y(_screen.h - self:GetY())
+			self:zoomy(self:GetZoomY() * -1):y(_screen.h - self:GetDestY())
 		end,
 		gameplay_xversionMessageCommand= function(self, param)
 			if param[2] then
 				inversion_level= param[1]
 				rand_tween(self, param[1])
 			end
-			self:zoomx(self:GetZoomX() * -1):x(_screen.w - self:GetX())
+			self:zoomx(self:GetZoomX() * -1):x(_screen.w - self:GetDestX())
 		end,
 		gameplay_unversionMessageCommand= function(self)
 			if self:GetZoomY() < 0 or self:GetZoomX() < 0 then

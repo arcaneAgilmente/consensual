@@ -131,6 +131,7 @@ end
 
 local speed_inc_base= 25
 local speed_inc_base_recip= 1/speed_inc_base
+local speed_large_mult= 4
 
 options_sets.speed= {
 	__index= {
@@ -204,10 +205,10 @@ options_sets.speed= {
 			else
 				bi= speed_inc_base
 			end
-			self:update_el_text(2, "+" .. (bi * 4))
+			self:update_el_text(2, "+" .. (bi * speed_large_mult))
 			self:update_el_text(3, "+" .. (bi))
 			self:update_el_text(4, "" .. (bi * -1))
-			self:update_el_text(5, "" .. (bi * -4))
+			self:update_el_text(5, "" .. (bi * -speed_large_mult))
 			self.mode= new_mode
 			self:update_speed_text()
 		end,
@@ -519,7 +520,7 @@ options_sets.noteskins= {
 			self.cursor_pos= 1
 			self.ops= NOTESKIN:GetNoteSkinNames()
 			local player_noteskin= mod_player(self.player_number, "NoteSkin")
-			function find_matching_noteskin()
+			local function find_matching_noteskin()
 				for ni, nv in ipairs(self.ops) do
 					--Trace("Noteskin found: '" .. tostring(nv) .. "'")
 					if player_noteskin == nv then
@@ -558,6 +559,76 @@ options_sets.noteskins= {
 		set_status= function(self)
 			self.display:set_heading("Noteskin")
 			self.display:set_display(mod_player(self.player_number, "NoteSkin"))
+		end
+}}
+
+local function find_current_stepstype(pn)
+	local steps= gamestate_get_curr_steps(pn)
+	if steps then
+		return steps:GetStepsType()
+	end
+	local style= GAMESTATE:GetCurrentStyle(pn)
+	if style then
+		return style:GetStepsType()
+	end
+	style= GAMEMAN:GetStylesForGame(GAMESTATE:GetCurrentGame():GetName())[1]
+	if style then
+		return style:GetStepsType()
+	end
+	return "StepsType_Dance_Single"
+end
+
+local function newskin_available()
+	if Def.NewField then return true end
+	return false
+end
+
+options_sets.newskins= {
+	__index= {
+		disallow_unset= true,
+		scroll_to_move_on_start= true,
+		initialize= function(self, pn)
+			self.player_number= pn
+			self.cursor_pos= 1
+			local stepstype= find_current_stepstype(pn)
+			self.ops= NEWSKIN:get_skin_names_for_stepstype(stepstype)
+			local player_skin= mod_player(self.player_number, "NewSkin")
+			local function find_matching_newskin()
+				for ni, nv in ipairs(self.ops) do
+					--Trace("Noteskin found: '" .. tostring(nv) .. "'")
+					if player_skin == nv then
+						return ni
+					end
+				end
+				return nil
+			end
+			self.selected_skin= find_matching_newskin()
+			self.info_set= {up_element()}
+			for ni, nv in ipairs(self.ops) do
+				self.info_set[#self.info_set+1]= {
+					text= nv, underline= ni == self.selected_skin}
+			end
+		end,
+		interpret_start= function(self)
+			local ops_pos= self.cursor_pos - 1
+			local info= self.info_set[self.cursor_pos]
+			if self.ops[ops_pos] then
+				for i, tinfo in ipairs(self.info_set) do
+					if i ~= self.cursor_pos and tinfo.underline then
+						self:update_el_underline(i, false)
+					end
+				end
+				local prev_note= mod_player(self.player_number, "NewSkin", self.ops[ops_pos])
+				self:update_el_underline(self.cursor_pos, true)
+				self:set_status()
+				return true
+			else
+				return false
+			end
+		end,
+		set_status= function(self)
+			self.display:set_heading("Newskin")
+			self.display:set_display(mod_player(self.player_number, "NewSkin"))
 		end
 }}
 
@@ -1252,6 +1323,7 @@ local decorations= {
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
 	{ name= "Noteskin", meta= options_sets.noteskins},
+	{ name= "Newskin", meta= options_sets.newskins, req_func= newskin_available},
 }
 
 local profile_options= {
@@ -1285,6 +1357,7 @@ local base_options= {
 		level= 3},
 	{ name= "Steps", meta= options_sets.steps_list, level= 1},
 	{ name= "Noteskin", meta= options_sets.noteskins, level= -1},
+	{ name= "Newskin", meta= options_sets.newskins, level= -1, req_func= newskin_available},
 	player_conf_float("Options Level", "options_level", -1, 0, 0, 0, 1, 4),
 	player_conf_float("Rating Cap", "rating_cap", -1, 0, 0, 1, nil, nil),
 	{ name= "Decorations", meta= options_sets.menu, args= decorations, level= 2},
