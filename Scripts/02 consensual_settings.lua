@@ -205,7 +205,7 @@ function set_speed_from_speed_info(player, newfield)
 				 player.current_options:XMod(speed)
 				 if newfield then
 					 for col in ivalues(newfield:get_columns()) do
-						 col:get_speed_mod():add_mod("ModFunctionType_Constant", {{"ModInputType_DistBeat", speed}})
+						 col:get_speed_mod():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", speed}}
 					 end
 				 end
 			 end,
@@ -216,7 +216,7 @@ function set_speed_from_speed_info(player, newfield)
 				 player.current_options:CMod(speed)
 				 if newfield then
 					 for col in ivalues(newfield:get_columns()) do
-						 col:get_speed_mod():add_mod("ModFunctionType_Constant", {{"ModInputType_DistSecond", speed / 60}})
+						 col:get_speed_mod():add_mod{"ModFunctionType_Constant", {"ModInputType_DistSecond", speed / 60}}
 					 end
 				 end
 			 end,
@@ -229,7 +229,7 @@ function set_speed_from_speed_info(player, newfield)
 				 player.current_options:XMod(real_speed)
 				 if newfield then
 					 for col in ivalues(newfield:get_columns()) do
-						 col:get_speed_mod():add_mod("ModFunctionType_Constant", {{"ModInputType_DistBeat", real_speed}})
+						 col:get_speed_mod():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", real_speed}}
 					 end
 				 end
 				 --player.song_options:MMod(speed)

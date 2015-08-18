@@ -1418,7 +1418,7 @@ end
 local function apply_tilt_mod(newfield, tilt)
 	-- The tilt mod is -30 degrees rotation at 1.0.
 	local converted_tilt= (tilt * -30) * (pi / 180)
-	newfield:get_trans_rot_x_mod():get_value():set_value_instant(converted_tilt)
+	newfield:get_trans_rot_x():get_value():set_value_instant(converted_tilt)
 	local normal_offset= _screen.cy - 64
 	-- Adjust the offset for the tilt mod the player has.
 	-- cos(angle) == adjacent / hypotenuse
@@ -1471,9 +1471,9 @@ local function apply_example_mods(newfield, pn)
 	local play_bpm= 300
 	local play_x= 2
 
-	newfield:get_trans_rot_x_mod():add_mod(
+	newfield:get_trans_rot_x():add_mod(
 		sawtriangle, {{music, pi/16}, 0, -pi/4, 0, 0, pi/2})
-	newfield:get_trans_zoom_y_mod():get_value():set_value_instant(-1)
+	newfield:get_trans_zoom_y():get_value():set_value_instant(-1)
 	for column in ivalues(newfield:get_columns()) do
 		-- Double the quantization, so 16ths appear as 8ths, 8ths show up as 4ths.
 		column:get_quantization_multiplier():get_value():set_value_instant(2)
@@ -1612,34 +1612,58 @@ return Def.ActorFrame {
 						apply_tilt_mod(newfields[pn], GAMESTATE:GetPlayerState(pn):GetPlayerOptions("ModsLevel_Preferred"):Tilt())
 						--apply_example_mods(newfields[pn], pn)
 						local ampm= 16
-						--newfields[pn]:get_trans_rot_y_mod():add_mod(square, {{music, pi * 16}, i * pi * .25 * 0, pi * .5, pi* .5})
+						--newfields[pn]:get_trans_rot_y():add_mod(square, {{music, pi * 16}, i * pi * .25 * 0, pi * .5, pi* .5})
 						for i, col in ipairs(columns) do
 --							col:get_reverse_offset_pixels():get_value():set_value_instant(_screen.cy+64)
-							--col:get_note_rot_y_mod():add_mod(triangle, {{music, pi / 4}, i * pi * .25 * 0, pi * .5, 0})
---							col:get_column_zoom_x_mod():add_mod(const, {{secmusic, 1/120 * second_factor}})
---							col:get_column_zoom_y_mod():add_mod(const, {{secmusic, -1/140 * second_factor}})
+							--[[
+							col:get_note_alpha():get_value():set_value_instant(0)
+							col:get_note_alpha():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", 1, unce= {0, 64, 1/128, 192, 1}, rep= {0, 320}}}
+							col:get_note_glow():get_value():set_value_instant(1)
+							col:get_note_glow():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", 1, unce= {0, 192, 1/64, 256, 0}, rep= {0, 320}}}
+							col:get_note_glow():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", -1, unce= {1, 256, 1/64, 320, 1}, rep= {0, 320}}}
+							]]
+							-- dist beat based hidden
+							--[[
+							col:get_note_alpha():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", 1, unce= {0, .25, 4, .5, 1}}}
+							col:get_note_glow():get_value():set_value_instant(1)
+							col:get_note_glow():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", -1, unce= {1, .5, 4, .75, 1}}}
+							col:get_note_glow():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", 1, unce= {0, .25, 4, .5, 0}}}
+							]]
+--							col:get_note_zoom_x():add_mod{'ModFunctionType_Sine',
+--  {'ModInputType_EvalBeat', 1, .5, rep= {.2, .4}, unce= {0, .25, 4, .35, 1}},
+--  {'ModInputType_EvalSecond', 1, -.5, rep= {.4, .6}, unce= {0, .45, 4, .55, 1}},
+--  {'ModInputType_DistBeat', 1, .5, rep= {.2, .4}, unce= {0, .25, 4, .35, 1}},
+--  {'ModInputType_DistSecond', 1, -.5, rep= {.4, .6}, unce= {0, .45, 4, .55, 1}}
+--}
+--							col:get_note_zoom_x():get_value():set_value_instant(0)
+--							col:get_note_zoom_x():add_mod{const, {"ModInputType_DistSecond", 1, rep= {0, .1}, unce= {1, .01, 10, .09, 1}}}
+--							col:get_note_zoom_x():add_mod{const, {"ModInputType_DistSecond", 1, unce= {1, .1, 4, .4, 1}}}
+--							col:get_note_pos_x():add_mod(sine, {{eval, 1/2}, 0, 64, 0, saw= {-.5, .5}, gap= {-1/16, 1/16, 8*pi, 0}})
+							--col:get_note_rot_y():add_mod(triangle, {{music, pi / 4}, i * pi * .25 * 0, pi * .5, 0})
+--							col:get_column_zoom_x():add_mod(const, {{secmusic, 1/120 * second_factor}})
+--							col:get_column_zoom_y():add_mod(const, {{secmusic, -1/140 * second_factor}})
 							--col:get_reverse_offset_pixels():add_mod(const, {{music, -4}})
-							--col:get_column_pos_y_mod():add_mod(const, {{music, -4}})
---							apply_mods(col:get_x_pos_mod(), .5, 64, 0)
---							apply_mods(col:get_y_zoom_mod(), 8, .5, i*math.pi)
---							apply_mods(col:get_x_zoom_mod(), 8, .5, i*off)
+							--col:get_column_pos_y():add_mod(const, {{music, -4}})
+--							apply_mods(col:get_x_pos(), .5, 64, 0)
+--							apply_mods(col:get_y_zoom(), 8, .5, i*math.pi)
+--							apply_mods(col:get_x_zoom(), 8, .5, i*off)
 --							col:get_quantization_offset():add_mod(const, {{eval, 1/32}})
 							--local drift= coloff[i]*.375*beat_factor
-							--col:get_note_pos_x_mod():add_mod(const, {{music, drift}})
-							--col:get_note_pos_x_mod():add_mod(triangle, {{dist, pi * bpm_factor}, 0, {music, -drift}, 0})
-							--col:get_note_zoom_x_mod():add_mod(wave[i], {{dist, 2 * pi * bpm_factor}, 0, {music, beat_factor / 128}, 0})
-							--col:get_note_pos_x_mod():add_mod(wave[i], {{dist, 2 * pi * bpm_factor}, 0, {music, drift * .5}, 0})
-							--col:get_note_rot_y_mod():add_mod(wave[#wave-i+1], {{dist, 2 * pi * bpm_factor}, 0, {music, twirl[i] * .75 / song_beats}, 0})
-							--col:get_note_zoom_x_mod():add_mod(const, {{music, beat_factor / 128}})
---							col:get_y_rot_mod():add_mod(const, {{dist, twirl[i] * 2 * bpm_factor}})
---							col:get_x_pos_mod():add_mod(wave[i], {{eval, 2*pi}, 0, {music, cooloff[i] * .25*beat_factor}, 0})
---							col:get_z_rot_mod():add_mod(const, {{dist, pump_rots[i]}})
---							col:get_z_rot_mod():add_mod(const, {{music, pump_rots[i]}})
---							col:get_x_pos_mod():add_mod(wave[i], {{eval, 2*pi}, 0, cooloff[i] * ampm * 1.5, 0 * cooloff[i] * ampm, -hpi, hpi})
---							col:get_x_pos_mod():add_mod(sawsine, {{dist, pi}, 0, coloff[i] * ampm * 2, coloff[i] * ampm * 2, -hpi, hpi})
---							col:get_z_rot_mod():add_mod(const, {{scalar, pump_rots[i]}})
---							col:get_z_rot_mod():add_mod(const, {{dist, 90}})
---							col:get_z_rot_mod():add_mod(const, {{music, 90}})
+							--col:get_note_pos_x():add_mod(const, {{music, drift}})
+							--col:get_note_pos_x():add_mod(triangle, {{dist, pi * bpm_factor}, 0, {music, -drift}, 0})
+							--col:get_note_zoom_x():add_mod(wave[i], {{dist, 2 * pi * bpm_factor}, 0, {music, beat_factor / 128}, 0})
+							--col:get_note_pos_x():add_mod(wave[i], {{dist, 2 * pi * bpm_factor}, 0, {music, drift * .5}, 0})
+							--col:get_note_rot_y():add_mod(wave[#wave-i+1], {{dist, 2 * pi * bpm_factor}, 0, {music, twirl[i] * .75 / song_beats}, 0})
+							--col:get_note_zoom_x():add_mod(const, {{music, beat_factor / 128}})
+--							col:get_y_rot():add_mod(const, {{dist, twirl[i] * 2 * bpm_factor}})
+--							col:get_x_pos():add_mod(wave[i], {{eval, 2*pi}, 0, {music, cooloff[i] * .25*beat_factor}, 0})
+--							col:get_z_rot():add_mod(const, {{dist, pump_rots[i]}})
+--							col:get_z_rot():add_mod(const, {{music, pump_rots[i]}})
+--							col:get_x_pos():add_mod(wave[i], {{eval, 2*pi}, 0, cooloff[i] * ampm * 1.5, 0 * cooloff[i] * ampm, -hpi, hpi})
+--							col:get_x_pos():add_mod(sawsine, {{dist, pi}, 0, coloff[i] * ampm * 2, coloff[i] * ampm * 2, -hpi, hpi})
+--							col:get_z_rot():add_mod(const, {{scalar, pump_rots[i]}})
+--							col:get_z_rot():add_mod(const, {{dist, 90}})
+--							col:get_z_rot():add_mod(const, {{music, 90}})
 						end
 					end
 				end
