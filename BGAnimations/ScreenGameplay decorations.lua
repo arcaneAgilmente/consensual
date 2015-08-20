@@ -815,6 +815,43 @@ local function rand_zoom()
 	return scale(math.random(), 0, 1, .25, 2)
 end
 
+local reverse_play_start_time= 114.541
+local reverse_play_curr_time= reverse_play_start_time
+local in_reverse_play_mode= false
+local reverse_play_end_time= 137.651
+
+local function one_more_time_gimmick(delta)
+	local curr_music_second= GAMESTATE:GetCurMusicSeconds()
+	if curr_music_second > reverse_play_start_time then
+		if curr_music_second > reverse_play_end_time then
+			if in_reverse_play_mode then
+				for pn, newfield in pairs(newfields) do
+					for i, col in ipairs(newfield:get_columns()) do
+						col:set_use_game_music_beat(true)
+					end
+				end
+				in_reverse_play_mode= false
+			end
+		else
+			if in_reverse_play_mode then
+				reverse_play_curr_time= reverse_play_curr_time - (delta * 5)
+				for pn, newfield in pairs(newfields) do
+					for i, col in ipairs(newfield:get_columns()) do
+						col:set_curr_second(reverse_play_curr_time)
+					end
+				end
+			else
+				for pn, newfield in pairs(newfields) do
+					for i, col in ipairs(newfield:get_columns()) do
+						col:set_use_game_music_beat(false)
+					end
+				end
+				in_reverse_play_mode= true
+			end
+		end
+	end
+end
+
 local function Update(self, delta)
 	if gameplay_start_time == -20 then
 		if GAMESTATE:GetCurMusicSeconds() >= 0 then
@@ -1418,7 +1455,7 @@ end
 local function apply_tilt_mod(newfield, tilt)
 	-- The tilt mod is -30 degrees rotation at 1.0.
 	local converted_tilt= (tilt * -30) * (pi / 180)
-	newfield:get_trans_rot_x():get_value():set_value_instant(converted_tilt)
+	newfield:get_trans_rot_x():set_value(converted_tilt)
 	local normal_offset= _screen.cy - 64
 	-- Adjust the offset for the tilt mod the player has.
 	-- cos(angle) == adjacent / hypotenuse
@@ -1428,7 +1465,7 @@ local function apply_tilt_mod(newfield, tilt)
 		tilted_offset= normal_offset + (normal_offset - tilted_offset)
 	end
 	for i, col in ipairs(newfield:get_columns()) do
-		col:get_reverse_offset_pixels():get_value():set_value_instant(tilted_offset)
+		col:get_reverse_offset_pixels():set_value(tilted_offset)
 	end
 end
 
@@ -1473,16 +1510,16 @@ local function apply_example_mods(newfield, pn)
 
 	newfield:get_trans_rot_x():add_mod(
 		sawtriangle, {{music, pi/16}, 0, -pi/4, 0, 0, pi/2})
-	newfield:get_trans_zoom_y():get_value():set_value_instant(-1)
+	newfield:get_trans_zoom_y():set_value(-1)
 	for column in ivalues(newfield:get_columns()) do
 		-- Double the quantization, so 16ths appear as 8ths, 8ths show up as 4ths.
-		column:get_quantization_multiplier():get_value():set_value_instant(2)
+		column:get_quantization_multiplier():set_value(2)
 		-- Offset the quantization, so notes appear a 32nd off.  There are eight
 		--   32nds per beat.
-		column:get_quantization_offset():get_value():set_value_instant(1/2)
+		column:get_quantization_offset():set_value(1/2)
 
 		-- Clear the speed mod the player had set, we're going to set our own.
-		column:get_speed_mod():clear_mods():get_value():set_value_instant(1)
+		column:get_speed_mod():clear_mods():set_value(1)
 
 
 		-- Set a speed mod that is equivalent to Cplay_bpm.  The distance is in seconds,
@@ -1511,7 +1548,7 @@ local function apply_example_mods(newfield, pn)
 
 
 		-- Put the notefield in reverse.
-		column:get_reverse_percent():get_value():set_value_instant(1)
+		column:get_reverse_percent():set_value(1)
 
 		-- Make the notes follow a sine wave left and right as they go up.
 		column:get_note_pos_x_mod():add_mod(
@@ -1614,18 +1651,42 @@ return Def.ActorFrame {
 						local ampm= 16
 						--newfields[pn]:get_trans_rot_y():add_mod(square, {{music, pi * 16}, i * pi * .25 * 0, pi * .5, pi* .5})
 						for i, col in ipairs(columns) do
---							col:get_reverse_offset_pixels():get_value():set_value_instant(_screen.cy+64)
+							--col:get_reverse_offset_pixels():set_value(_screen.cy+64)
 							--[[
-							col:get_note_alpha():get_value():set_value_instant(0)
+							col:get_note_rot_z():add_managed_mod_set{
+								{start_beat= 18, end_beat= 34, "ModFunctionType_Constant",
+								 {"ModInputType_StartDistBeat", pi/2}},
+								{start_beat= 38, end_beat= 54, "ModFunctionType_Constant",
+								 {"ModInputType_StartDistBeat", -pi/2}},
+																											}
+							col:get_note_rot_y():add_managed_mod_set{
+								{start_beat= 58, end_beat= 76, "ModFunctionType_Constant",
+								 {"ModInputType_EndDistBeat", pi/2}},
+								{start_beat= 80, end_beat= 96, "ModFunctionType_Constant",
+								 {"ModInputType_EndDistBeat", -pi/2}},
+																											}
+							col:get_note_pos_x():add_managed_mod_set{
+								{start_beat= 100, end_beat= 116, "ModFunctionType_Sine",
+								 {"ModInputType_EvalBeat", pi/2}, 0, {"ModInputType_StartDistBeat", 48, rep= {0, 1}, unce= {0, .8, 5, 1, 0}}, 0},
+								{start_beat= 100, end_beat= 116, "ModFunctionType_Sine",
+								 {"ModInputType_EvalBeat", pi/2}, 0, {"ModInputType_EndDistBeat", 48, rep= {0, 1}, unce= {0, .8, 5, 1, 0}}, 0},
+								{start_beat= 120, end_beat= 136, "ModFunctionType_Sine",
+								 {"ModInputType_EvalBeat", pi/2}, 0, {"ModInputType_StartDistBeat", -48, rep= {0, 1}, unce= {0, .8, 5, 1, 0}}, 0},
+								{start_beat= 120, end_beat= 136, "ModFunctionType_Sine",
+								 {"ModInputType_EvalBeat", pi/2}, 0, {"ModInputType_EndDistBeat", -48, rep= {0, 1}, unce= {0, .8, 5, 1, 0}}, 0},
+																											}
+							]]
+							--[[
+							col:get_note_alpha():set_value(0)
 							col:get_note_alpha():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", 1, unce= {0, 64, 1/128, 192, 1}, rep= {0, 320}}}
-							col:get_note_glow():get_value():set_value_instant(1)
+							col:get_note_glow():set_value(1)
 							col:get_note_glow():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", 1, unce= {0, 192, 1/64, 256, 0}, rep= {0, 320}}}
 							col:get_note_glow():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", -1, unce= {1, 256, 1/64, 320, 1}, rep= {0, 320}}}
 							]]
 							-- dist beat based hidden
 							--[[
 							col:get_note_alpha():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", 1, unce= {0, .25, 4, .5, 1}}}
-							col:get_note_glow():get_value():set_value_instant(1)
+							col:get_note_glow():set_value(1)
 							col:get_note_glow():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", -1, unce= {1, .5, 4, .75, 1}}}
 							col:get_note_glow():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", 1, unce= {0, .25, 4, .5, 0}}}
 							]]
@@ -1635,7 +1696,7 @@ return Def.ActorFrame {
 --  {'ModInputType_DistBeat', 1, .5, rep= {.2, .4}, unce= {0, .25, 4, .35, 1}},
 --  {'ModInputType_DistSecond', 1, -.5, rep= {.4, .6}, unce= {0, .45, 4, .55, 1}}
 --}
---							col:get_note_zoom_x():get_value():set_value_instant(0)
+--							col:get_note_zoom_x():set_value(0)
 --							col:get_note_zoom_x():add_mod{const, {"ModInputType_DistSecond", 1, rep= {0, .1}, unce= {1, .01, 10, .09, 1}}}
 --							col:get_note_zoom_x():add_mod{const, {"ModInputType_DistSecond", 1, unce= {1, .1, 4, .4, 1}}}
 --							col:get_note_pos_x():add_mod(sine, {{eval, 1/2}, 0, 64, 0, saw= {-.5, .5}, gap= {-1/16, 1/16, 8*pi, 0}})
