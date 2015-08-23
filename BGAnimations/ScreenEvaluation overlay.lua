@@ -1491,6 +1491,8 @@ local function evbg()
 	return Def.ActorFrame(args)
 end
 
+dofile(THEME:GetPathO("", "save_score.lua"))
+
 return Def.ActorFrame{
 	Name= "SEd",
 	InitCommand= function(self)
@@ -1523,6 +1525,9 @@ return Def.ActorFrame{
 				else
 					set_visible_score_data(pn, 0)
 				end
+			end
+			if misc_config:get_data().save_last_played_on_eval then
+				write_last_played_stats()
 			end
 			self:sleep(5)
 			self:queuecommand("ShowRealScore")

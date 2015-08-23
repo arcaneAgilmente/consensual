@@ -1651,7 +1651,7 @@ return Def.ActorFrame {
 						local ampm= 16
 						--newfields[pn]:get_trans_rot_y():add_mod(square, {{music, pi * 16}, i * pi * .25 * 0, pi * .5, pi* .5})
 						for i, col in ipairs(columns) do
-							--col:get_reverse_offset_pixels():set_value(_screen.cy+64)
+							col:get_reverse_offset_pixels():set_value(_screen.cy+64)
 							--[[
 							col:get_note_rot_z():add_managed_mod_set{
 								{start_beat= 18, end_beat= 34, "ModFunctionType_Constant",

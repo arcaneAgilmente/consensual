@@ -38,6 +38,7 @@ local default_config= {
 	cursor_button_icon_size= 1,
 	menus_have_ud= true,
 	show_startup_time= true,
+	save_last_played_on_eval= false,
 
 	seconds_per_clock_change= 3600,
 

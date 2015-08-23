@@ -630,10 +630,10 @@ function animated_text(text, x, y, zoom, anim_time, fade_time)
 		local lx= text_start+(space*(i-1))
 		local glyph_data= animated_text_glyphs[l]
 		if glyph_data then
-			args[#args+1]= animated_glyph(glyph_data, lx, 0, zoom, anim_time, fade_time)
-			args[#args+1]= animated_glyph(glyph_data, lx, 0, zoom, anim_time, fade_time)
-			args[#args+1]= animated_glyph(glyph_data, lx, 0, zoom, anim_time, fade_time)
-			args[#args+1]= animated_glyph(glyph_data, lx, 0, zoom, anim_time, fade_time)
+			-- Extra layers for opaqueness.
+			for i= 1, 4 do
+				args[#args+1]= animated_glyph(glyph_data, lx, 0, zoom, anim_time, fade_time)
+			end
 		else
 			lua.ReportScriptError(l .. " is not in the stroke data.")
 		end
