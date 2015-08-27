@@ -6,7 +6,7 @@ local next_screen= "ScreenInitialMenu"
 if not get_music_file_length then
 	version_failed= true
 	show_message= true
-	message= "You must upgrade to Stepmania 5.0.9.  Some special effects require functions added in Stepmania 5.0.9."
+	message= "You must upgrade to Stepmania 5.0.9.  Some special effects require functions added in Stepmania 5.0.9.  If you believe you are on 5.0.9 and are using the SSE2 exe, that executable is outdated.  Non-SSE2 support was dropped and the exe without the sse2 suffix should be the only one."
 end
 
 if not PREFSMAN:GetPreference("SmoothLines") then
@@ -14,6 +14,11 @@ if not PREFSMAN:GetPreference("SmoothLines") then
 	next_screen= "ScreenOptionsGraphicsSound"
 	message= "You have the Smooth Lines preference set to false.  Consensual uses linestrips in many places, and having Smooth Lines set to false will ruin your frame rate.\nGoing to Graphics options screen so you can set it to true."
 end
+
+-- The banner cache slows down startup time by forcing stepmania to look in
+-- every song folder.  It's not used by Consensual at all, and provides no
+-- benefit to other themes.
+PREFSMAN:SetPreference("BannerCache", "BannerCacheMode_Off")
 
 if PREFSMAN:GetPreference("IgnoredDialogs") ~= "" then
 	PREFSMAN:SetPreference("IgnoredDialogs", "")

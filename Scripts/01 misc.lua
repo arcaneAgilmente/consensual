@@ -7,6 +7,9 @@ function noop_retarg(...) return ... end
 -- For all those actors that need this for various things.
 function play_set(self) self:playcommand("Set") end
 
+-- ApplyGameCommand has no place in modern Stepmania lua.
+GameState.ApplyGameCommand= nil
+
 function gte_nil(value, min)
 	if min then
 		return value >= min

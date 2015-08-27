@@ -206,6 +206,9 @@ function set_speed_from_speed_info(player, newfield)
 				 if newfield then
 					 for col in ivalues(newfield:get_columns()) do
 						 col:get_speed_mod():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", speed}}
+						 col:set_show_unjudgable_notes(true)
+						 col:set_speed_segments_enabled(true)
+						 col:set_scroll_segments_enabled(true)
 					 end
 				 end
 			 end,
@@ -217,6 +220,9 @@ function set_speed_from_speed_info(player, newfield)
 				 if newfield then
 					 for col in ivalues(newfield:get_columns()) do
 						 col:get_speed_mod():add_mod{"ModFunctionType_Constant", {"ModInputType_DistSecond", speed / 60}}
+						 col:set_show_unjudgable_notes(false)
+						 col:set_speed_segments_enabled(false)
+						 col:set_scroll_segments_enabled(false)
 					 end
 				 end
 			 end,
@@ -230,6 +236,9 @@ function set_speed_from_speed_info(player, newfield)
 				 if newfield then
 					 for col in ivalues(newfield:get_columns()) do
 						 col:get_speed_mod():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", real_speed}}
+						 col:set_show_unjudgable_notes(true)
+						 col:set_speed_segments_enabled(true)
+						 col:set_scroll_segments_enabled(true)
 					 end
 				 end
 				 --player.song_options:MMod(speed)

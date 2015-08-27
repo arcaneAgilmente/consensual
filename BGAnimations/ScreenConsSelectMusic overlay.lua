@@ -1625,7 +1625,7 @@ local function input(event)
 	else
 		if key_pressed == "Start" then
 			local curr_style_type= GAMESTATE:GetCurrentStyle(pn):GetStyleType()
-			if curr_style_type == "StyleType_OnePlayerOneSide" and not kyzentun_birthday then
+			if curr_style_type == "StyleType_OnePlayerOneSide" and not picking_steps and not kyzentun_birthday then
 				if cons_join_player(pn) then
 					ensure_enough_stages()
 					GAMESTATE:LoadProfiles()
