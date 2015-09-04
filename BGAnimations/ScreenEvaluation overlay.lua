@@ -362,12 +362,22 @@ local life_graph_mt= {
 			self.gw= gw
 			self.gh= gh
 			self.reflect= reflect
-			return Def.ActorMultiVertex{
-				Name= "lgraph",
-				InitCommand= function(subself)
-					self.container= subself
-					subself:xy(gx - gw/2, gy):SetDrawState{Mode="DrawMode_QuadStrip"}
-				end
+			local lowlife_x= gx + gw
+			local lowlife_align= left
+			if reflect then
+				lowlife_x= gx - gw
+				lowlife_align= right
+			end
+			return Def.ActorFrame{
+				normal_text("lowlife", "", nil, eval_stroke, lowlife_x, 24, 1, lowlife_align),
+				Def.ActorMultiVertex{
+					Name= "lgraph",
+					InitCommand= function(subself)
+						self.container= subself
+						self.lowlife= subself:GetParent():GetChild("lowlife")
+						subself:xy(gx - gw/2, gy):SetDrawState{Mode="DrawMode_QuadStrip"}
+					end
+				}
 			}
 		end,
 		hide= function(self) self.container:visible(false) end,
@@ -387,6 +397,7 @@ local life_graph_mt= {
 			local half_color= fetch_color("accent.blue")
 			local full_color= fetch_color("accent.red")
 			local graph_color= fetch_color("evaluation.graphs.color")
+			local lowest_life= 1
 			local function combo_color(time)
 				local ret= judge_to_color("TapNoteScore_W1")
 				for i, v in ipairs(feedback_judgements) do
@@ -439,6 +450,7 @@ local life_graph_mt= {
 				local sv= life_record[i]
 				local ss= i * seconds_per_sample
 				set_colors(ss, sv)
+				lowest_life= math.min(sv, lowest_life)
 				if self.reflect then
 					verts[#verts+1]= {{self.gw, sy, 0}, bot_color}
 					verts[#verts+1]= {{self.gw * (1 - sv), sy, 0}, top_color}
@@ -448,6 +460,11 @@ local life_graph_mt= {
 				end
 			end
 			self.container:SetVertices(verts)
+			if flags.lowest_life then
+				self.lowlife:settextf("%.2f", lowest_life)
+			else
+				self.lowlife:hibernate(math.huge)
+			end
 		end
 }}
 
@@ -1166,8 +1183,10 @@ local function filter_input_for_menus(pn, code, press)
 			and ops_level(pn) >= 2 then
 				perform_screenshot(pn)
 			else
-				SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
-				SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
+				if not worker then
+					SOUND:PlayOnce(THEME:GetPathS("Common", "Start"))
+					SCREENMAN:GetTopScreen():StartTransitioningScreen("SM_GoToNextScreen")
+				end
 			end
 		end
 	else
@@ -1389,7 +1408,7 @@ local function input(event)
 			end
 		end
 	end
-	if worker then return end
+	--if worker then return end
 	if not pn or not GAMESTATE:IsPlayerEnabled(pn) then return end
 	if filter_input_for_menus(pn, code, press) then return end
 	if press ~= "InputEventType_Release" then return end

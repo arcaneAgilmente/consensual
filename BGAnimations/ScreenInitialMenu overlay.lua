@@ -568,7 +568,7 @@ local function input(event)
 		set_prev_song_bpm(math.random(60, 200))
 		play_sample_music(true)
 	elseif event.DeviceInput.button == "DeviceButton_n" then
---		trans_new_screen("ScreenMiscTest")
+		--trans_new_screen("ScreenMiscTest")
 	end
 	--[[
 	if event.DeviceInput.button == "DeviceButton_n" then

@@ -677,52 +677,58 @@ function put_bpm_in_disp_pair(disp_pair, bpm)
 	end
 end
 
+function get_timing_bpms(steps, song)
+	local bpms= {}
+	local timing_data= steps:GetTimingData()
+	local bpmsand= timing_data:GetBPMsAndTimes(true)
+	local totals= {}
+	local num_beats= timing_data:GetBeatFromElapsedTime(song:GetLastSecond())
+	local highest_sustained= 0
+	local sustain_limit= 8
+	local max_bpm= false
+	for i, s in ipairs(bpmsand) do
+		local start_beat= s[1]
+		local bpm= s[2]
+		if gte_nil(bpm, max_bpm) then
+			max_bpm= bpm
+		end
+		local end_beat= 0
+		if bpmsand[i+1] then
+			end_beat= bpmsand[i+1][1]
+		else
+			end_beat= num_beats
+		end
+		local len= (end_beat - start_beat)
+		local seconds= len / bpm * 60
+		if bpm > highest_sustained and seconds > sustain_limit then
+			highest_sustained= bpm
+		end
+		totals[bpm]= len + (totals[bpm] or 0)
+	end
+	local tot= 0
+	local most_common= false
+	for k, v in pairs(totals) do
+		local minutes_duration= v / k
+		if not most_common or minutes_duration > most_common[2] then
+			most_common= {k, minutes_duration}
+		end
+		tot= tot + (k * v)
+	end
+	local average= tot / num_beats
+	put_bpm_in_disp_pair(bpms, math.max(most_common[1], highest_sustained))
+	return bpms
+end
+
 function get_display_bpms(steps, song)
-	local bpms= steps:GetDisplayBpms()
-	if steps:GetDisplayBPMType() ~= "DisplayBPM_Specified" or bpms[2] < 1
-		or bpms[2] > 1000
+	local display_bpms= steps:GetDisplayBpms()
+	local timing_bpms= get_timing_bpms(steps, song)
+	if steps:GetDisplayBPMType() ~= "DisplayBPM_Specified" or
+		display_bpms[2] < 1 or display_bpms[2] > 1000
 	-- DDR worshippers like to give DDR simfiles Konami's false display bpms.
 	or steps_are_konami_trash(steps) then
-		bpms= {}
-		local timing_data= steps:GetTimingData()
-		local bpmsand= timing_data:GetBPMsAndTimes(true)
-		local totals= {}
-		local num_beats= timing_data:GetBeatFromElapsedTime(song:GetLastSecond())
-		local highest_sustained= 0
-		local sustain_limit= 8
-		local max_bpm= false
-		for i, s in ipairs(bpmsand) do
-			local start_beat= s[1]
-			local bpm= s[2]
-			if gte_nil(bpm, max_bpm) then
-				max_bpm= bpm
-			end
-			local end_beat= 0
-			if bpmsand[i+1] then
-				end_beat= bpmsand[i+1][1]
-			else
-				end_beat= num_beats
-			end
-			local len= (end_beat - start_beat)
-			local seconds= len / bpm * 60
-			if bpm > highest_sustained and seconds > sustain_limit then
-				highest_sustained= bpm
-			end
-			totals[bpm]= len + (totals[bpm] or 0)
-		end
-		local tot= 0
-		local most_common= false
-		for k, v in pairs(totals) do
-			local minutes_duration= v / k
-			if not most_common or minutes_duration > most_common[2] then
-				most_common= {k, minutes_duration}
-			end
-			tot= tot + (k * v)
-		end
-		local average= tot / num_beats
-		put_bpm_in_disp_pair(bpms, math.max(most_common[1], highest_sustained))
+		return timing_bpms
 	end
-	return bpms
+	return display_bpms
 end
 
 function steps_get_bpms(strail, song)

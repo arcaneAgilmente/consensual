@@ -184,9 +184,13 @@ function cons_player:get_speed_info()
 end
 
 local function find_read_bpm_for_player_steps(player_number)
-	local bpms= get_display_bpms(GAMESTATE:GetCurrentSteps(player_number),
+	local bpms= get_timing_bpms(GAMESTATE:GetCurrentSteps(player_number),
 															 GAMESTATE:GetCurrentSong())
 	return bpms[2]
+end
+
+if not set_newfield_speed_mod then
+	function set_newfield_speed_mod() return end
 end
 
 function set_speed_from_speed_info(player, newfield)
@@ -203,28 +207,14 @@ function set_speed_from_speed_info(player, newfield)
 				 player.stage_options:XMod(speed)
 				 player.song_options:XMod(speed)
 				 player.current_options:XMod(speed)
-				 if newfield then
-					 for col in ivalues(newfield:get_columns()) do
-						 col:get_speed_mod():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", speed}}
-						 col:set_show_unjudgable_notes(true)
-						 col:set_speed_segments_enabled(true)
-						 col:set_scroll_segments_enabled(true)
-					 end
-				 end
+				 set_newfield_speed_mod(newfield, false, speed)
 			 end,
 		C= function(speed)
 				 player.preferred_options:CMod(speed)
 				 player.stage_options:CMod(speed)
 				 player.song_options:CMod(speed)
 				 player.current_options:CMod(speed)
-				 if newfield then
-					 for col in ivalues(newfield:get_columns()) do
-						 col:get_speed_mod():add_mod{"ModFunctionType_Constant", {"ModInputType_DistSecond", speed / 60}}
-						 col:set_show_unjudgable_notes(false)
-						 col:set_speed_segments_enabled(false)
-						 col:set_scroll_segments_enabled(false)
-					 end
-				 end
+				 set_newfield_speed_mod(newfield, true, speed)
 			 end,
 		m= function(speed)
 				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
@@ -233,14 +223,7 @@ function set_speed_from_speed_info(player, newfield)
 				 player.stage_options:XMod(real_speed)
 				 player.song_options:XMod(real_speed)
 				 player.current_options:XMod(real_speed)
-				 if newfield then
-					 for col in ivalues(newfield:get_columns()) do
-						 col:get_speed_mod():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", real_speed}}
-						 col:set_show_unjudgable_notes(true)
-						 col:set_speed_segments_enabled(true)
-						 col:set_scroll_segments_enabled(true)
-					 end
-				 end
+				 set_newfield_speed_mod(newfield, false, speed, read_bpm)
 				 --player.song_options:MMod(speed)
 				 --player.current_options:MMod(speed)
 			 end,

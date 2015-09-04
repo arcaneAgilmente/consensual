@@ -9,6 +9,9 @@ local function can_have_special_actors()
 		screen_name == "ScreenDemonstration"
 end
 
+local game_text= fetch_color("text")
+local game_stroke= fetch_color("gameplay.text_stroke")
+
 local wrapper_layers= 3 -- x, y, z rotation
 local screen_gameplay= false
 local gameplay_wrappers= {}
@@ -157,8 +160,8 @@ function judge_feedback_interface:create_actors(name, fx, fy, pn)
 			self.container= subself
 			subself:xy(fx, fy)
 			for i, tani in ipairs(self.elements) do
-				tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
-				tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
+				tani.text:strokecolor(game_stroke)
+				tani.number:strokecolor(game_stroke)
 			end
 		end
 	}
@@ -356,20 +359,16 @@ local numerical_score_feedback_mt= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
 					self.container= subself
-					self.pct= subself:GetChild("pct")
 					subself:zoom(scale)
 				end,
 				OnCommand= function(subself)
 					local mdp= STATSMAN:GetCurStageStats():GetPlayerStageStats(self.player_number):GetPossibleDancePoints()
 					if self.pct then
-						self.pct:strokecolor(fetch_color("gameplay.text_stroke"))
 						self.precision= math.max(
 							2, math.ceil(math.log(mdp) / math.log(10))-2)
 						self.fmat= "%." .. self.precision .. "f%%"
 						-- maximum width for the pct will be -222%
 						self.pct:settext(self.fmat:format(-222))
-						local pct_width= self.pct:GetWidth()
-						self.pct:x(pct_width / 2):settext(self.fmat:format(0))
 					end
 					if self.max_dp then
 						self.max_dp:settext(mdp)
@@ -383,9 +382,12 @@ local numerical_score_feedback_mt= {
 						local pct_width= self.pct:GetWidth()
 						local total_width= dp_width + pct_width + pad
 						local pct_x= total_width / 2
-						self.pct:x(pct_x)
+						self.pct_container:x(pct_x)
 						self.dp_container:x(pct_x - pct_width - pad - (dp_width/2))
 						self.pct:settext(self.fmat:format(0))
+						if self.sub_pct then
+							self.sub_pct:settext(self.fmat:format(0))
+						end
 					end
 				end
 			}
@@ -393,39 +395,57 @@ local numerical_score_feedback_mt= {
 				if flags.pct_score then
 					self.dual_mode= true
 				end
-				args[#args+1]= Def.ActorFrame{
+				local dp_args= {
 					Name= "dp", InitCommand= function(subself)
 						self.dp_container= subself
 						self.curr_dp= subself:GetChild("curr_dp")
 						self.slash_dp= subself:GetChild("slash_dp")
 						self.max_dp= subself:GetChild("max_dp")
-						self.curr_dp:strokecolor(fetch_color("gameplay.text_stroke"))
-						self.slash_dp:strokecolor(fetch_color("gameplay.text_stroke"))
-						self.max_dp:strokecolor(fetch_color("gameplay.text_stroke"))
+						self.sub_dp= subself:GetChild("sub_dp")
 					end,
 					normal_text(
-						"curr_dp", "0", fetch_color("text"), nil, -dp_parts_pad, 0, 1, right),
+						"curr_dp", "0", game_text, game_stroke, -dp_parts_pad, 0, 1, right),
 					normal_text(
-						"slash_dp", "/", fetch_color("text"), nil, 0, 0, 1),
+						"slash_dp", "/", game_text, game_stroke, 0, 0, 1),
 					normal_text(
-						"max_dp", "0", fetch_color("text"), nil, dp_parts_pad, 0, 1, left),
+						"max_dp", "0", game_text, game_stroke, dp_parts_pad, 0, 1, left),
 				}
+				if flags.subtractive_score then
+					dp_args[#dp_args+1]= normal_text(
+						"sub_dp", "0", game_text, game_stroke, dp_parts_pad, 24, 1, left)
+				end
+				args[#args+1]= Def.ActorFrame(dp_args)
 			end
 			if flags.pct_score then
-				args[#args+1]= normal_text(
-					"pct", "", fetch_color("text"), nil, 0, 0, 1, right)
+				local pct_args= {
+					Name= "pct", InitCommand= function(subself)
+						self.pct_container= subself
+						self.pct= subself:GetChild("pct")
+						self.sub_pct= subself:GetChild("sub_pct")
+					end,
+					normal_text("pct", "", game_text, game_stroke, 0, 0, 1, right),
+				}
+				if flags.subtractive_score then
+					pct_args[#pct_args+1]= normal_text("sub_pct", "", game_text, game_stroke, 0, 24, 1, right)
+				end
+				args[#args+1]= Def.ActorFrame(pct_args)
 			end
 			return Def.ActorFrame(args)
+		end,
+		pct_round= function(self, pct)
+			return math.floor(pct * (10^(self.precision+2))) * (10^-self.precision)
 		end,
 		update= function(self, pss)
 			local adp= pss:GetActualDancePoints()
 			local mdp= pss:GetPossibleDancePoints()
+			local cdp= pss:GetCurrentPossibleDancePoints()
 			local fake_score
 			if cons_players[self.player_number].fake_judge then
 				fake_score= cons_players[self.player_number].fake_score
 				adp= fake_score.dp
 			end
-			local text_color= fetch_color("text")
+			local missed_points= cdp - adp
+			local text_color= game_text
 			if fake_score then
 				for i= #feedback_judgements, 1, -1 do
 					local fj= feedback_judgements[i]
@@ -444,13 +464,19 @@ local numerical_score_feedback_mt= {
 				end
 			end
 			if self.pct then
-				local pct= math.floor(adp/mdp*(10^(self.precision+2))) *
-					(10^-self.precision)
+				local pct= self:pct_round(adp/mdp)
+				local sub_pct= self:pct_round((mdp - missed_points) / mdp)
 				self.pct:settext(self.fmat:format(pct)):diffuse(text_color)
+				if self.sub_pct then
+					self.sub_pct:settext(self.fmat:format(sub_pct)):diffuse(text_color)
+				end
 			end
 			if self.dp_container then
 				self.curr_dp:settext(adp):diffuse(text_color)
 				self.max_dp:settext(mdp):diffuse(text_color)
+				if self.sub_dp then
+					self.sub_dp:settext(mdp-missed_points):diffuse(text_color)
+				end
 			end
 		end
 }}
@@ -466,8 +492,8 @@ function bpm_feedback_interface:create_actors(name, fx, fy, pn)
 		Name= self.name, InitCommand= function(subself)
 			subself:xy(fx, fy)
 			self.container= subself
-			self.tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
-			self.tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
+			self.tani.text:strokecolor(game_stroke)
+			self.tani.number:strokecolor(game_stroke)
 		end,
 		self.tani:create_actors(
 			"tani", { tx= -4, nx= 4, tt= "BPM: ", text_section= "ScreenGameplay",
@@ -502,7 +528,7 @@ function song_progress_bar_interface:create_actors()
 			self.song_len= 1
 		end,
 		normal_text(
-			"time", "", fetch_color("text"), fetch_color("gameplay.song_progress_bar.stroke"),
+			"time", "", game_text, fetch_color("gameplay.song_progress_bar.stroke"),
 			0, -spb_time_off)
 	}
 	if not disable_extra_processing then
@@ -576,8 +602,8 @@ local song_rate_mt= {
 				InitCommand= function(subself)
 					subself:xy(_screen.cx, spb_time_y - (line_spacing * 2))
 					self.container= subself
-					self.tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
-					self.tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
+					self.tani.text:strokecolor(game_stroke)
+					self.tani.number:strokecolor(game_stroke)
 				end,
 				self.tani:create_actors(
 					"tani", { tx= -4, nx= 4, tt= "Rate: " ,
@@ -1157,7 +1183,7 @@ local function make_special_actors_for_players()
 		if flags.chart_info then
 			a[#a+1]= normal_text(
 				"author", chart_info_text(pn), fetch_color("gameplay.chart_info"),
-				fetch_color("gameplay.text_stroke"),
+				game_stroke,
 				player_dec_centers[pn][1] + el_pos.chart_info_xoffset,
 				player_dec_centers[pn][2] + el_pos.chart_info_yoffset,
 				el_pos.chart_info_scale, center,
@@ -1194,7 +1220,7 @@ local function make_special_actors_for_players()
 				end
 		}
 		a[#a+1]= normal_text(
-			"toasties", "", nil, fetch_color("gameplay.text_stroke"),
+			"toasties", "", nil, game_stroke,
 				author_centers[pn][1], author_centers[pn][2]+24, 1, center,
 				{ OnCommand= cmd(queuecommand, "Update"),
 					ToastyAchievedMessageCommand= function(self, param)
@@ -1222,8 +1248,7 @@ local function make_special_actors_for_players()
 				local cur_song= GAMESTATE:GetCurrentSong()
 				if cur_song then
 					local title= cur_song:GetDisplayFullTitle()
-					self:settext(title)
-						:strokecolor(fetch_color("gameplay.text_stroke"))
+					self:settext(title):strokecolor(game_stroke)
 					width_limit_text(self, spb_width)
 				end
 			end
@@ -1471,6 +1496,34 @@ end
 
 --dofile(THEME:GetPathO("", "newfield_mods.lua"))
 
+local judgement_count_text= false
+local judgement_count= 0
+
+local function pause_input(event)
+	if event.type ~= "InputEventType_FirstPress" then return end
+	if event.DeviceInput.button == "DeviceButton_j" then
+		screen_gameplay:PauseGame(true)
+	elseif event.DeviceInput.button == "DeviceButton_k" then
+		screen_gameplay:PauseGame(false)
+	end
+end
+
+local function judgment_tracer()
+	return Def.BitmapText{
+		Font= "Common Normal", InitCommand= function(self)
+			judgement_count_text= self
+			self:DiffuseAndStroke(game_text, game_stroke)
+				:xy(_screen.cx*.5, 24)
+		end,
+		JudgmentMessageCommand= function(self, param)
+			judgement_count= judgement_count + 1
+			judgement_count_text:settext(judgement_count)
+			Trace("JudgmentMessageCommand " .. GetTimeSinceStart())
+			rec_print_table(param)
+		end
+	}
+end
+
 return Def.ActorFrame {
 	Name= "SGPbgf",
 	bg_swap(),
@@ -1485,6 +1538,7 @@ return Def.ActorFrame {
 	Def.Actor{
 		Name= "Cleaner S22", OnCommand= function(self)
 			screen_gameplay= SCREENMAN:GetTopScreen()
+			--screen_gameplay:AddInputCallback(pause_input)
 			if tilt_mode then
 				screen_gameplay:AddInputCallback(tilt_input)
 			end
@@ -1548,17 +1602,58 @@ return Def.ActorFrame {
 				set_speed_from_speed_info(cons_players[pn], newfields[pn])
 				if newfields[pn] then
 					if false then
-						newfields[pn]:hibernate(math.huge)
+						side_actors[pn]:set_newfield_preferred(false)
 					else
-						notefields[pn]:hibernate(math.huge)
+						side_actors[pn]:set_newfield_preferred(true)
 						local columns= newfields[pn]:get_columns()
 						apply_tilt_mod(newfields[pn], GAMESTATE:GetPlayerState(pn):GetPlayerOptions("ModsLevel_Preferred"):Tilt())
 						--apply_example_mods(newfields[pn], pn)
 						local ampm= 16
 						--newfields[pn]:get_trans_rot_y():add_mod(square, {{music, pi * 16}, i * pi * .25 * 0, pi * .5, pi* .5})
 						--newfield_mods.calibrate(pn)
+						local function wrap(tab, i)
+							return tab[((i-1)%#tab)+1]
+						end
+						--side_actors[pn]:x(_screen.cx*1.5)
+						--newfields[pn]:get_trans_pos_x():set_value(-_screen.cx*.5)
+						--newfields[pn]:get_trans_pos_x():add_mod{"ModFunctionType_Sine", {"ModInputType_MusicSecond", pi/4}, 0, _screen.cx*.25, 0}
+						--newfields[pn]:get_trans_pos_y():add_mod{"ModFunctionType_Sine", {"ModInputType_MusicSecond", pi/5}, 0, _screen.cy*.25, 0}
+						--newfields[pn]:set_vanish_type("FieldVanishType_RelativeToSelf")
+						local col_rots= {math.pi/2, math.pi, 0, -math.pi/2}
 						for i, col in ipairs(columns) do
 							col:get_reverse_offset_pixels():set_value(_screen.cy)
+							col:set_holds_skewed_by_mods(false)
+							--col:get_note_rot_y():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", math.pi / 256}}
+							--col:get_note_pos_z():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi/128}, 0, {"ModInputType_YOffset", 1/4}, 0}
+							--[[
+							col:get_note_pos_x():add_mod{
+								"ModFunctionType_Constant", {"ModInputType_YOffset", -1/8}}
+								:add_mod{
+								"ModFunctionType_Spline", t= {"ModInputType_YOffset", 1/16},
+								loop= true, solve_per_note= true, 0,
+								{"ModInputType_YOffset", 1/32},
+								{"ModInputType_YOffset", 1/16},
+								{"ModInputType_YOffset", 1/8},
+								{"ModInputType_YOffset", 1/4},
+								{"ModInputType_YOffset", 1/8},
+								{"ModInputType_YOffset", 1/16},
+								{"ModInputType_YOffset", 1/32},
+																					}
+							]]
+							--col:set_add_y_offset_to_position(false)
+							--col:get_note_pos_y():add_mod{"ModFunctionType_Constant", -_screen.cy}
+							--col:get_note_pos_y():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", 1}}
+							--col:get_note_pos_y():add_mod{"ModFunctionType_Product", {"ModInputType_YOffset", 1/64}, {"ModInputType_YOffset", 1/64}}
+							--[[
+							col:get_note_pos_x():add_mod{
+								"ModFunctionType_Spline", t= {"ModInputType_YOffset", 1/16},
+								loop= true, 0,
+								{"ModInputType_MusicSecond", 1/2, spline= {loop= true, 0, 4, 16, 4}},
+								{"ModInputType_MusicSecond", 1/2, spline= {loop= true, 0, 0, 0, 0}},
+								{"ModInputType_MusicSecond", 1/2, spline= {loop= true, 0, -4, -16, -4}},
+								{"ModInputType_MusicSecond", 1/2, spline= {loop= true, 0, 0, 0, 0}},
+																					}
+							]]
 							--trans_mods.beat:apply(col, 1)
 							--col:get_column_zoom_y():set_value(.5)
 							--newfield_mods.drift(col, i)

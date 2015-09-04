@@ -66,7 +66,15 @@ Transitions and the colored background might have problems in 5.0.6.
 * Vospi read all of the very long release notes I wrote for SM5 beta 4 and
 	Stepmania 5.0.5.  This guide is longer than both of those put together, so
 	be warned before you start reading.
-* milistisia made various feature suggestiongs.
+* milistisia made various feature suggestions.
+
+# Problems/Editing:
+Do not try to edit Consensual yourself, its complicated.  If you instead
+submit issues on github, then everybody can have the improved version.  
+The best place to report problems with Consensual is on the github page:
+https://github.com/kyzentun/consensual/issues
+Click the New Issue button and fill it out with all the info you can give.
+
 
 # Profiles:
 If you don't normally use a named profile on Stepmania, you should create
@@ -126,7 +134,7 @@ It also checks for version compatibility and shows a message if any problems
 are detected.
 
 #### Messages:
-* "You should upgrade to Stepmania 5.0.5."  
+* "You should upgrade to Stepmania 5.0.9."  
 	If the problem is severe enough (stepmania version too old to support
 	easily), Stepmania will be switched to a different theme that is less
 	bleeding-edge.  (It checks for Simply Love, then Ultralight, and if neither
