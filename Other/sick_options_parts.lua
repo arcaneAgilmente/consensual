@@ -575,6 +575,10 @@ local function find_current_stepstype(pn)
 	if style then
 		return style:GetStepsType()
 	end
+	local last_type= profiles[pn]:get_last_stepstype()
+	if last_type then
+		return last_type
+	end
 	return "StepsType_Dance_Single"
 end
 
@@ -590,13 +594,13 @@ options_sets.newskins= {
 		initialize= function(self, pn)
 			self.player_number= pn
 			self.cursor_pos= 1
-			local stepstype= find_current_stepstype(pn)
-			self.ops= NEWSKIN:get_skin_names_for_stepstype(stepstype)
-			local player_skin= mod_player(self.player_number, "NewSkin")
+			self.stepstype= find_current_stepstype(pn)
+			self.ops= NEWSKIN:get_skin_names_for_stepstype(self.stepstype)
+			self.player_skin= profiles[pn]:get_preferred_noteskin(self.stepstype)
 			local function find_matching_newskin()
 				for ni, nv in ipairs(self.ops) do
 					--Trace("Noteskin found: '" .. tostring(nv) .. "'")
-					if player_skin == nv then
+					if self.player_skin == nv then
 						return ni
 					end
 				end
@@ -618,7 +622,9 @@ options_sets.newskins= {
 						self:update_el_underline(i, false)
 					end
 				end
-				local prev_note= mod_player(self.player_number, "NewSkin", self.ops[ops_pos])
+				self.player_skin= self.ops[ops_pos]
+				mod_player(self.player_number, "NewSkin", self.player_skin)
+				profiles[self.player_number]:set_preferred_noteskin(self.stepstype, self.player_skin)
 				self:update_el_underline(self.cursor_pos, true)
 				self:set_status()
 				return true
@@ -628,7 +634,7 @@ options_sets.newskins= {
 		end,
 		set_status= function(self)
 			self.display:set_heading("Newskin")
-			self.display:set_display(mod_player(self.player_number, "NewSkin"))
+			self.display:set_display(self.player_skin)
 		end
 }}
 
@@ -1069,6 +1075,17 @@ make_x_y_s_for_set(
 		{"Judge List", "judge_list"}, {"BPM", "bpm"}, {"Sigil", "sigil"},
 		{"Score", "score"}, {"Chart Info", "chart_info"}})
 
+local notefield_config= {
+	player_conf_float(
+		"Field FOV", "notefield_config.fov", 1, 0, 1, 3, nil, nil),
+	player_conf_float(
+		"Skew X", "notefield_config.vanish_x", 1, 0, 1, 3, nil, nil),
+	player_conf_float(
+		"Skew Y", "notefield_config.vanish_y", 1, 0, 1, 3, nil, nil),
+	player_conf_float(
+		"Note YOffset", "notefield_config.yoffset", 1, 0, 1, 3, nil, nil),
+}
+
 local gameplay_colors= {
 	color_manip_option("Filter", "gameplay_element_colors.filter"),
 	color_manip_option("Life Full Outer", "gameplay_element_colors.life_full_outer"),
@@ -1302,6 +1319,8 @@ local playback_options= {
 local decorations= {
 	{ name= "Gameplay Layout", meta= options_sets.menu, args= gameplay_layout},
 	{ name= "Gameplay Colors", meta= options_sets.menu, args= gameplay_colors},
+	{ name= "Notefield Config", meta= options_sets.menu,
+		args= notefield_config, req_func= newskin_available},
 	{ name= "Evaluation Flags", meta= options_sets.special_functions,
 		args= { eles= eval_flag_eles}},
 	{ name= "Gameplay Flags", meta= options_sets.special_functions,

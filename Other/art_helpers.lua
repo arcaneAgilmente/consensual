@@ -28,6 +28,7 @@ function color_verts_with_color_set(verts, color_set)
 		color_ranges[c]= {
 			b= b, e= b+verts_per_color-1, bcol= color_set[c], ecol= color_set[c+1]}
 	end
+	color_ranges[#color_ranges].e= #verts
 	color_ranges[#color_ranges].ecol= color_set[1]
 	for c, range in ipairs(color_ranges) do
 		for v= range.b, range.e do

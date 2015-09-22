@@ -5,6 +5,8 @@ if ud_menus() then
 end
 reverse_button_list(button_list)
 
+local name_stroke= fetch_color("stroke")
+
 local keyboard_special_names= {"down", "up", "shift", "backspace", "enter"}
 local keyboard_num_rows= 4
 local keyboard_mt= {
@@ -101,7 +103,7 @@ local keyboard_mt= {
 				for c, v in ipairs(r) do
 					local cx= xmin + (keyw * (c-1))
 					local cy= (i-1) * row_height
-					args[#args+1]= normal_text("key"..i.."c"..c, v, nil, nil, cx, cy)
+					args[#args+1]= normal_text("key"..i.."c"..c, v, nil, name_stroke, cx, cy)
 				end
 			end
 			return Def.ActorFrame(args)
@@ -211,13 +213,13 @@ local name_display_mt= {
 			if player_number == PLAYER_2 then
 				time_x= time_x * -1
 			end
-			args[#args+1]= normal_text("text", player_name, color, nil, 0, 0, 1)
+			args[#args+1]= normal_text("text", player_name, color, name_stroke, 0, 0, 1)
 			args[#args+1]= normal_text(
 				"time", secs_to_str(cons_players[player_number].credit_time or 0),
-				color, nil, time_x, 0, 1)
+				color, name_stroke, time_x, 0, 1)
 			args[#args+1]= normal_text(
 				"songs", songs_played .. " songs played",
-				color, nil, time_x*.5, -24, 1)
+				color, name_stroke, time_x*.5, -24, 1)
 			args[#args+1]= Def.Quad{
 				Name= "cursor", InitCommand= cmd(xy, 0, 12; diffuse, color;
 																				 setsize, 12, 2)}
@@ -345,7 +347,7 @@ local score_display_mt= {
 				}
 				local next_y= line_height / 2
 				args[#args+1]= normal_text(
-					"timeframe", "", fetch_color("score_list.time"), nil, 0,next_y, tz)
+					"timeframe", "", fetch_color("score_list.time"), name_stroke, 0,next_y, tz)
 				next_y= next_y + banner_height + line_height
 				local why= self:banner_center_y()
 				-- The arrows used to indicate that there are scores to scroll

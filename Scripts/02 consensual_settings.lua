@@ -1,5 +1,9 @@
 local cons_player= {}
 
+function add_cons_player_field(name, value)
+	cons_player[name]= value
+end
+
 function cons_player:clear_init(player_number)
 	for k, v in pairs(self) do
 		if k ~= "id" then
@@ -43,7 +47,7 @@ end
 
 function cons_player:noob_mode()
 	-- TODO:  Test whether this accidentally overrides player_config.
-	-- Move rating_cap and options_level to somethign similar to
+	-- Move rating_cap and options_level to something similar to
 	-- profile_flag_setting so the machine owner can configure what each level
 	-- sets.
 	self.rating_cap= 5
@@ -71,28 +75,6 @@ function cons_player:excessive_options_mode()
 	self.options_level= 4
 	self.flags= set_player_flag_to_level(self.player_number, 4)
 	self.pain_config= set_player_pain_to_level(self.player_number, 4)
-end
-
-function cons_player:kyzentun_mode()
-	self.rating_cap= -1
-	self.options_level= 5
-	self.kyzentun= true
-	local styletype= GAMESTATE:GetCurrentStyle(self.player_number):GetStyleType()
-	local new_speed= {speed= 600, mode= "m"}
-	self.preferred_options:Distant(1.5)
-	if self.speed_info then
-		self.speed_info.speed= new_speed.speed
-		self.speed_info.mode= new_speed.mode
-	else
-		self.speed_info= new_speed
-	end
-	self.preferred_options:NoteSkin("uswshadow3dsm5")
-	self.flags= set_player_flag_to_level(self.player_number, 4)
-	self.pain_config= set_player_pain_to_level(self.player_number, 4)
-	self.combo_splash_threshold= "TapNoteScore_Miss"
-	self.combo_graph_threshold= "TapNoteScore_Miss"
-	self.sigil_data.detail= 32
-	activate_confetti("credit", true)
 end
 
 function cons_player:combo_qual_reset()

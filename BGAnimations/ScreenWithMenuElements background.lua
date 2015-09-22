@@ -1,9 +1,13 @@
 local config_data= false
 local black= {0, 0, 0, 1}
 
+local function calc_bg_angle()
+	return GetTimeSinceStart() * math.pi / 900
+end
+
 local bg_tex_size
 local hbg_tex_size
-local bg_angle
+local bg_angle= calc_bg_angle()
 local bubble_amount
 local pos_min_speed
 local pos_max_speed
@@ -20,7 +24,7 @@ local function reload_config()
 	config_data= bubble_config:get_data()
 	bg_tex_size= config_data.bg_tex_size
 	hbg_tex_size= bg_tex_size / 2
-	bg_angle= config_data.bg_start_angle * math.pi
+	--bg_angle= config_data.bg_start_angle * math.pi
 	bubble_amount= config_data.amount
 	pos_min_speed= config_data.pos_min_speed
 	pos_max_speed= config_data.pos_max_speed
@@ -38,13 +42,17 @@ reload_config()
 local bubble= false
 local bg_sprite= false
 local rerender_list= {}
-function update_common_bg_colors()
-	reload_config()
-	for i, actor in ipairs(rerender_list) do
-		actor:playcommand("render")
+local function rerender()
+	for i= #rerender_list, 1, -1 do
+		rerender_list[i]:playcommand("render")
 	end
 end
+function update_common_bg_colors()
+	reload_config()
+	rerender()
+end
 
+local prev_second= -1
 local bubble_currs= {}
 local bubble_goals= {}
 local bubble_speeds= {}
@@ -64,6 +72,13 @@ local goal_funcs= {
 	col_goal, col_goal, col_goal,
 }
 local function bubbles_update(self, delta)
+	local curr_second= GetTimeSinceStart()
+	local floor_sec= math.floor(curr_second)
+	if floor_sec ~= prev_second then
+		bg_angle= calc_bg_angle()
+		rerender()
+		prev_second= floor_sec
+	end
 	if get_music_file_length then
 		multiapproach(bubble_currs, bubble_goals, bubble_speeds, delta)
 	else
@@ -140,15 +155,16 @@ local args= {
 					local center_color= fetch_color("common_background.center_color")
 					local inner_colors= fetch_color("common_background.inner_colors")
 					local outer_colors= fetch_color("common_background.outer_colors")
-					local circle_vert_count= bg_tex_size * 2
+					local circle_vert_count= bg_tex_size * 1
 					local inner_circle= calc_circle_verts(
-						hbg_tex_size*.5, circle_vert_count, bg_angle, bg_angle)
+						hbg_tex_size*.66, circle_vert_count, bg_angle, bg_angle)
 					local outer_circle= calc_circle_verts(
 						hbg_tex_size, circle_vert_count, bg_angle, bg_angle)
 					color_verts_with_color_set(inner_circle, inner_colors)
 					color_verts_with_color_set(outer_circle, outer_colors)
 					local center_vert= {{0, 0, 0}, center_color}
-					self:SetNumVertices(circle_vert_count * 3 + circle_vert_count * 6)
+					local tvc= circle_vert_count * 3 + circle_vert_count * 6
+					self:SetNumVertices(tvc)
 					for i= 2, circle_vert_count do
 						local triseti= (i-2) * 9
 						self:SetVertex(triseti + 1, center_vert)

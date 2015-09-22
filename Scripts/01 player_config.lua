@@ -33,6 +33,7 @@ local default_flag_set= {
 		dance_points= {false, true},
 		error_bar= {false, false, false, true},
 		judge= {false, false, true},
+		judge_flashes= {false, false, false, false},
 		pct_score= {true},
 		reverse_tilts_judge= {false},
 		score_confetti= {true},
@@ -91,6 +92,7 @@ sorted_flag_names= {
 	 "pct_score",
 	 "score_splash",
 	 "judge",
+	 "judge_flashes",
 	 "error_bar",
 	 "reverse_tilts_judge",
 	 "score_confetti",
@@ -262,6 +264,12 @@ local default_config= {
 	life_blank_percent= .25,
 	life_use_width= 1,
 	life_stages= 1,
+	notefield_config= {
+		fov= 45,
+		vanish_x= 0,
+		vanish_y= 0,
+		yoffset= -88,
+	},
 	gameplay_element_colors= {
 		filter= fetch_color("accent.violet", 0),
 		life_full_outer= fetch_color("accent.blue"),

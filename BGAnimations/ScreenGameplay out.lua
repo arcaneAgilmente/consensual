@@ -126,10 +126,11 @@ for i, pn in ipairs(enabled) do
 		player_score_color(pn, .5), width, .125, player_score_height(pn),
 		"splash")
 end
+local circle_rad= math.sqrt(((_screen.w/2)^2) + ((_screen.h/2)^2))
 args[#args+1]= random_grow_circle(
 	"normal_exit", _screen.cx, _screen.cy,
 	adjust_luma(Alpha(fetch_color("gameplay.failed"), .75), .25),
 	adjust_luma(Alpha(fetch_color("gameplay.failed"), .75), .015625),
-		.125, _screen.w, "splash")
+		.125, circle_rad, "splash")
 
 return Def.ActorFrame(args)
