@@ -30,7 +30,7 @@ local args= {
 		this_pn= param.PlayerNumber
 		pstate= GAMESTATE:GetPlayerState(this_pn)
 		poptions= pstate:GetPlayerOptions("ModsLevel_Current")
-		judge_flashes_enabled= cons_players[this_pn].judge_flashes
+		judge_flashes_enabled= cons_players[this_pn].flags.gameplay.judge_flashes
 		-- The NewField will send WidthSetCommand if it exists.  But the old one
 		-- won't, so fetch the width from the style anyway.
 		local style= GAMESTATE:GetCurrentStyle(this_pn)
