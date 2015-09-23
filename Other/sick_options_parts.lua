@@ -582,11 +582,6 @@ local function find_current_stepstype(pn)
 	return "StepsType_Dance_Single"
 end
 
-local function newskin_available()
-	if Def.NewField then return true end
-	return false
-end
-
 options_sets.newskins= {
 	__index= {
 		disallow_unset= true,

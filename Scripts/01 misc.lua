@@ -66,6 +66,11 @@ function update_totals_table(tab, new_tab)
 	end
 end
 
+function newskin_available()
+	if Def.NewField then return true end
+	return false
+end
+
 -- Fun fact:  Because this file is in consensual/Scripts, while it is being
 -- loaded, THEME:GetCurrentThemeDirectory returns "Themes/consensual".
 -- So this table exists to allow things that run after script loading is

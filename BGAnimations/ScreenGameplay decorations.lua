@@ -1666,7 +1666,8 @@ return Def.ActorFrame {
 							col:get_note_pos_z():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi / 256}, math.pi / -2, -32, 0}
 							col:get_note_rot_y():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", math.pi / -256}}
 							]]
-							--col:get_note_rot_y():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", math.pi / 256}}
+							--col:get_note_zoom_x():add_mod{"ModFunctionType_Sine", {"ModInputType_EvalBeat", math.pi * 1}, {"ModInputType_EvalBeat", math.pi, math.pi * i}, .75, 0}
+							--col:get_note_zoom_y():add_mod{"ModFunctionType_Sine", {"ModInputType_EvalBeat", math.pi * 1}, {"ModInputType_EvalBeat", math.pi, math.pi * i}, -.75, 0}
 							--col:get_note_pos_z():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi/128}, 0, {"ModInputType_YOffset", 1/4}, 0}
 							--[[
 							col:get_note_pos_x():add_mod{

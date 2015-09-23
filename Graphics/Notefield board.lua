@@ -1,10 +1,19 @@
 local flash_quads= {}
+local flash_wraps= {}
+local columns= {}
 local this_pn= false
 local judge_flashes_enabled= false
 local pstate= false
 local poptions= false
 
 local judge_colors= fetch_color("judgment")
+local function handle_rev_flip(act, rev_per)
+	if rev_per > .5 then
+		act:zoomy(-1)
+	else
+		act:zoomy(1)
+	end
+end
 local args= {
 	JudgmentMessageCommand= function(self, param)
 		if param.Player ~= this_pn or not judge_flashes_enabled then return end
@@ -13,21 +22,41 @@ local args= {
 			for track, tapnote in pairs(taps) do
 				local tns= tapnote:GetTapNoteResult():GetTapNoteScore()
 				if judge_colors[tns] and flash_quads[track] then
-					local rev_per= poptions:GetReversePercentForColumn(track)
-					if rev_per > .5 then
-						flash_quads[track]:zoomy(-1)
+					if newskin_available() then
+						local col= columns[track]
+						if col then
+							local beat= col:get_curr_beat()
+							local second= col:get_curr_second()
+							local rev_per= col:get_reverse_percent():evaluate(
+								beat, second, beat, second, 0)
+							handle_rev_flip(flash_quads[track], rev_per)
+							col:apply_column_mods_to_actor(flash_wraps[track])
+								:apply_note_mods_to_actor(flash_quads[track])
+							-- Don't cancel out the zoomx from the mods becuase the flash
+							-- should have the same width as the column.
+							flash_quads[track]:zoomy(1):zoomz(1)
+								:rotationx(0):rotationy(0):rotationz(0)
+						end
 					else
-						flash_quads[track]:zoomy(1)
+						local rev_per= poptions:GetReversePercentForColumn(track)
+						handle_rev_flip(flash_quads[track])
+						local ypos= ArrowEffects.GetYPos(pstate, track, 0)
+						flash_quads[track]:y(ypos)
 					end
-					local ypos= ArrowEffects.GetYPos(pstate, track, 0)
-					flash_quads[track]:y(ypos)
-						:playcommand("flash", {color= judge_colors[tns]})
+					flash_quads[track]:playcommand("flash", {color= judge_colors[tns]})
 				end
 			end
 		end
 	end,
 	PlayerStateSetCommand= function(self, param)
 		this_pn= param.PlayerNumber
+		if newskin_available() then
+			-- The old notefield sets itself as the parent of the board.
+			if self:GetParent() then
+				self:hibernate(math.huge)
+				return
+			end
+		end
 		pstate= GAMESTATE:GetPlayerState(this_pn)
 		poptions= pstate:GetPlayerOptions("ModsLevel_Current")
 		judge_flashes_enabled= cons_players[this_pn].flags.gameplay.judge_flashes
@@ -41,38 +70,54 @@ local args= {
 			flash_quads[i]:x(col_info.XOffset):hibernate(0)
 		end
 	end,
-	Def.Quad{
-	InitCommand= function(self)
-		self:hibernate(math.huge)
-	end,
-	PlayerStateSetCommand= function(self, param)
-		this_pn= param.PlayerNumber
-		local filter_color= cons_players[this_pn].gameplay_element_colors.filter
-		-- The NewField will send WidthSetCommand if it exists.  But the old one
-		-- won't, so fetch the width from the style anyway.
-		local style= GAMESTATE:GetCurrentStyle(this_pn)
-		local alf= .2
-		local width= style:GetWidth(this_pn) + 8
-		self:setsize(width, _screen.h*4096)
-		self:diffuse(filter_color):hibernate(0)
-		if filter_color[4] < .001 then self:hibernate(math.huge) end
-	end,
 	WidthSetCommand= function(self, param)
-		local width= param.Width + 8
-		self:setsize(width, _screen.h*4096)
-	end
+		local newfield= param.newfield
+		if newfield then
+			columns= newfield:get_columns()
+		end
+		for i, col in ipairs(param.columns) do
+			if flash_quads[i] then
+				flash_quads[i]:SetWidth(col.width + col.padding)
+			end
+		end
+	end,
+	Def.Quad{
+		InitCommand= function(self)
+			self:hibernate(math.huge)
+		end,
+		PlayerStateSetCommand= function(self, param)
+			this_pn= param.PlayerNumber
+			local filk= cons_players[this_pn].gameplay_element_colors.filter
+			if not newskin_available() then
+				-- The NewField will send WidthSetCommand if it exists.  But the old
+				-- NoteField won't, so fetch the width from the style.
+				local style= GAMESTATE:GetCurrentStyle(this_pn)
+				local width= style:GetWidth(this_pn) + 8
+				self:SetWidth(width)
+			end
+			self:SetHeight(_screen.h*4096)
+			self:diffuse(filk):hibernate(0)
+			if filk[4] < .001 then self:hibernate(math.huge) end
+		end,
+		WidthSetCommand= function(self, param)
+			local width= param.width + 8
+			self:SetWidth(width)
+		end
 }}
 
 for i= 1, 16 do
 	args[#args+1]= Def.Quad{
 		InitCommand= function(self)
 			flash_quads[i]= self
-			self:hibernate(math.huge):setsize(64, 256):diffuse{0, 0, 0, 0}
+			if newskin_available() then
+				flash_wraps[i]= self:AddWrapperState()
+			end
+			self:hibernate(math.huge):setsize(64, 256):diffuse{1, 1, 1, 0}
 				:vertalign(top)
 		end,
 		flashCommand= function(self, param)
 			self:stoptweening():diffusetopedge(Alpha(param.color, .75))
-				:linear(.2):diffusetopedge{0, 0, 0, 0}
+				:linear(.2):diffusetopedge(Alpha(param.color, 0))
 		end
 	}
 end
