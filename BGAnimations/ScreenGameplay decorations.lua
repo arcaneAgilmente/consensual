@@ -87,6 +87,7 @@ local side_swap_vals= {}
 local swap_on_xs= {}
 local side_toggles= {}
 local side_actors= {}
+local mod_adjust_feedbacks= {}
 local notefields= {}
 local newfields= {}
 local notefield_wrappers= {}
@@ -508,6 +509,29 @@ function bpm_feedback_interface:update()
 end
 
 local feedback_things= { [PLAYER_1]= {}, [PLAYER_2]= {}}
+
+local mod_adjust_feedback= {
+	__index= {
+		create_actors= function(self, x, y, pn)
+			mod_adjust_feedbacks[pn]= self
+			self.pn= pn
+			return Def.ActorFrame{
+				InitCommand= function(subself)
+					self.container= subself
+					self.mod= subself:GetChild("mod")
+					self.value= subself:GetChild("value")
+					subself:xy(x, y):diffusealpha(0)
+				end,
+				normal_text("mod", "", game_text, game_stroke, -8, 0, 1, right),
+				normal_text("value", "", game_text, game_stroke, 8, 0, 1, left),
+			}
+		end,
+		display= function(self, mod, value)
+			self.mod:settext(mod)
+			self.value:settextf("%.2f", value)
+			self.container:stoptweening():diffusealpha(1):linear(1):diffusealpha(0)
+		end
+}}
 
 local song_progress_bar_interface= {}
 local song_progress_bar_interface_mt= { __index= song_progress_bar_interface }
@@ -1198,6 +1222,10 @@ local function make_special_actors_for_players()
 						end
 			})
 		end
+		if misc_config:get_data().adjust_mods_on_gameplay then
+			local maf= setmetatable({}, mod_adjust_feedback)
+			a[#a+1]= maf:create_actors(player_dec_centers[pn][1], 24, pn)
+		end
 --		nps_counters[pn]= setmetatable({}, nps_counter_mt)
 --		a[#a+1]= nps_counters[pn]:create_actors(pn, _screen.cx*1.5, 8)
 		--[[
@@ -1508,6 +1536,27 @@ local function pause_input(event)
 	end
 end
 
+local mod_adjust_keys= mod_adjust_config:get_data()
+local function mod_adjust_input(event)
+	if event.type == "InputEventType_Release" then return end
+	local mod_ad_entry= mod_adjust_keys[event.DeviceInput.button]
+	if mod_ad_entry then
+		local pn= mod_ad_entry.pn
+		if not GAMESTATE:IsPlayerEnabled(pn) then return end
+		local mod= mod_ad_entry.mod
+		local amount= mod_ad_entry.amount
+		local songops= cons_players[pn].song_options
+		local new_value= songops[mod](songops) + amount
+		songops[mod](songops, new_value, 10)
+		if mod_adjust_feedbacks[pn] then
+			mod_adjust_feedbacks[pn]:display(mod, new_value)
+		end
+		if player_using_profile(pn) then
+			cons_players[pn]:persist_mod(mod, new_value)
+		end
+	end
+end
+
 local function judgment_tracer()
 	return Def.BitmapText{
 		Font= "Common Normal", InitCommand= function(self)
@@ -1539,6 +1588,7 @@ return Def.ActorFrame {
 		Name= "Cleaner S22", OnCommand= function(self)
 			screen_gameplay= SCREENMAN:GetTopScreen()
 			--screen_gameplay:AddInputCallback(pause_input)
+			screen_gameplay:AddInputCallback(mod_adjust_input)
 			if tilt_mode then
 				screen_gameplay:AddInputCallback(tilt_input)
 			end

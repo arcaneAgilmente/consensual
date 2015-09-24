@@ -567,6 +567,12 @@ local special_options= {
 		 save_tags("ProfileSlot_Machine")
 		 SCREENMAN:SystemMessage(get_string_wrapper("ConsService", "finished_tagging"))
 	end},
+	{name= "set_adjust_mods_on_gameplay", meta= options_sets.boolean_option,
+	 args= make_extra_for_bool_val("adjust_mods_on_gameplay", "Yes", "No")},
+	{name= "reload_mods_adjust_keys", meta= "execute", execute= function()
+		 reload_mods_adjust_keys()
+		 SCREENMAN:SystemMessage(get_string_wrapper("ConsService", "finished_loading_mods_adjust_keys"))
+	end},
 	floating_center_pref_val("CenterImageAddHeight"),
 	floating_center_pref_val("CenterImageAddWidth"),
 	floating_center_pref_val("CenterImageTranslateX"),

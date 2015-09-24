@@ -29,15 +29,13 @@ end
 local args= {
 	OnCommand= function(self)
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
---		self:SetDrawFunction(draw)
+		self:SetDrawFunction(draw)
 	end,
-	--[[
 	Def.BitmapText{
 		Font= "Common Normal", InitCommand= function(self)
 			text= self:DiffuseAndStroke(fetch_color("text"), fetch_color("stroke"))
 		end
 	},
-	]]
 	Def.Sprite{
 		Texture= THEME:GetPathG("", "sleep_soon.png"),
 		InitCommand= function(self)

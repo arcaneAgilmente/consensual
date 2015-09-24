@@ -19,6 +19,7 @@ local default_config= {
 	color_help_time= 5,
 	ssm_advanced_help= true,
 
+	adjust_mods_on_gameplay= false,
 	gameplay_reset_limit= 5,
 	have_select_button= true,
 
