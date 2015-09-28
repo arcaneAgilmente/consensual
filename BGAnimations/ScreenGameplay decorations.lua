@@ -1682,12 +1682,18 @@ return Def.ActorFrame {
 							mags[i]= scale(i, 1, #columns, -1, 1)
 						end
 						for i, col in ipairs(columns) do
-							col:set_holds_skewed_by_mods(false)
-							--[[ twirl holds only
+							--col:set_holds_skewed_by_mods(false)
+							--[[
+							col:get_note_glow():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 128}, 0, .5, .5}
+							col:get_note_alpha():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 64}, 0, -.5, .5}
 							col:set_use_moddable_hold_normal(true)
 							local freq= 32
-							col:get_hold_normal_x():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi / freq}, 0, -1, 0}
-							col:get_hold_normal_z():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi / freq}, math.pi / -2, -1, 0}
+							col:get_hold_normal_x():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / freq}, 0, -1, 0}
+							col:get_hold_normal_z():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / freq}, math.pi / -2, -1, 0}
+							col:get_note_pos_x():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 64}, 0, 32, 0}
+							col:get_note_pos_y():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 48}, 0, 32, 0}
+							col:get_note_pos_z():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 80}, 0, 32, 0}
+							col:get_note_zoom_x():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 56}, 0, .5, .5}
 							]]
 							--col:get_note_rot_y():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", math.pi/64}}
 							--[[ drill hair
