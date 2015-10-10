@@ -470,6 +470,7 @@ options_sets.menu= {
 			self.name= self.menu_data.name or ""
 			self.recall_init_on_pop= self.menu_data.recall_init_on_pop
 			self.special_handler= self.menu_data.special_handler
+			self.destructor= self.menu_data.destructor
 			self:set_status()
 			self:reset_info()
 		end,

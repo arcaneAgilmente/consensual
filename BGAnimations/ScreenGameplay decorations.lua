@@ -1730,7 +1730,7 @@ return Def.ActorFrame {
 								"ModFunctionType_Constant", {"ModInputType_YOffset", -1/8}}
 								:add_mod{
 								"ModFunctionType_Spline", t= {"ModInputType_YOffset", 1/16},
-								loop= true, solve_per_note= true, 0,
+								loop= true, 0,
 								{"ModInputType_YOffset", 1/32 * mags[i]},
 								{"ModInputType_YOffset", 1/16 * mags[i]},
 								{"ModInputType_YOffset", 1/8 * mags[i]},
@@ -1784,8 +1784,14 @@ return Def.ActorFrame {
 					local tocy= (ny - (_screen.h*.5)) * 0
 					notefields[pn]:xy(tocx, -tocy)
 					notefield_wrappers[pn]= {}
-					for i= 1, wrapper_layers do
-						notefield_wrappers[pn][i]= notefields[pn]:AddWrapperState()
+					if newfields[pn] then
+						for i= 1, wrapper_layers do
+							notefield_wrappers[pn][i]= newfields[pn]:AddWrapperState()
+						end
+					else
+						for i= 1, wrapper_layers do
+							notefield_wrappers[pn][i]= notefields[pn]:AddWrapperState()
+						end
 					end
 					notefield_wrappers[pn][wrapper_layers]:xy(-tocx, tocy)
 					if notefields[pn].get_column_actors then

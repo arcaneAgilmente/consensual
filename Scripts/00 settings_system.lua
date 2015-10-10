@@ -96,6 +96,12 @@ local setting_mt= {
 			self.exceptions= exceptions
 			return self
 		end,
+		apply_force= function(self, cand)
+			if self.match_depth and self.match_depth ~= 0 then
+				force_table_elements_to_match_type(
+					cand, self.default, self.match_depth-1, self.exceptions)
+			end
+		end,
 		load= function(self, slot)
 			slot= slot or "ProfileSlot_Invalid"
 			local prof_dir= slot_to_prof_dir(slot, "read " .. self.name)
@@ -108,10 +114,7 @@ local setting_mt= {
 				else
 					local from_file= load_conf_file(fname)
 					if type(from_file) == "table" then
-						if self.match_depth and self.match_depth ~= 0 then
-							force_table_elements_to_match_type(
-								from_file, self.default, self.match_depth-1, self.exceptions)
-						end
+						self:apply_force(from_file)
 						self.data_set[slot]= from_file
 					else
 						self.data_set[slot]= DeepCopy(self.default)

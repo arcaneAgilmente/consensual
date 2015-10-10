@@ -6,6 +6,25 @@ local judge_flashes_enabled= false
 local pstate= false
 local poptions= false
 
+local pos_feedback_frame= false
+local pos_feedback_text= false
+local pos_feedback_pos= 0
+local pos_moves= {
+	DeviceButton_e= -10,
+	DeviceButton_r= -1,
+	DeviceButton_t= 1,
+	DeviceButton_y= 10,
+}
+local function pos_feedback_input(event)
+	if event.type == "InputEventType_Release" then return end
+	local move= pos_moves[event.DeviceInput.button]
+	if move then
+		pos_feedback_pos= pos_feedback_pos + move
+		pos_feedback_frame:y(pos_feedback_pos)
+		pos_feedback_text:settext(pos_feedback_pos)
+	end
+end
+
 local judge_colors= fetch_color("judgment")
 local function handle_rev_flip(act, rev_per)
 	if rev_per > .5 then
@@ -39,7 +58,7 @@ local args= {
 						end
 					else
 						local rev_per= poptions:GetReversePercentForColumn(track)
-						handle_rev_flip(flash_quads[track])
+						handle_rev_flip(flash_quads[track], rev_per)
 						local ypos= ArrowEffects.GetYPos(pstate, track, 0)
 						flash_quads[track]:y(ypos)
 					end
@@ -103,7 +122,30 @@ local args= {
 			local width= param.width + 8
 			self:SetWidth(width)
 		end
-}}
+	},
+}
+
+if false then
+	args[#args+1]= Def.ActorFrame{
+		OnCommand= function(self)
+			pos_feedback_frame= self
+			self:queuecommand("set_input")
+		end,
+		set_inputCommand= function(self)
+			SCREENMAN:GetTopScreen():AddInputCallback(pos_feedback_input)
+		end,
+		Def.Quad{
+			InitCommand= function(self)
+				self:setsize(280, 1):diffuse{1, 1, 1, 1}
+			end,
+		},
+		Def.BitmapText{
+			Font= "Common Normal", InitCommand= function(self)
+				pos_feedback_text= self:x(-140):horizalign(right)
+			end,
+		}
+	}
+end
 
 for i= 1, 16 do
 	args[#args+1]= Def.Quad{

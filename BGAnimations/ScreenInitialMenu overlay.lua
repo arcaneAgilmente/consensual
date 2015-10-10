@@ -562,9 +562,6 @@ local function input(event)
 	last_input_time= GetTimeSinceStart()
 	if event.type == "InputEventType_Release" then return false end
 	if event.DeviceInput.button == "DeviceButton_m" then
---		find_missing_strings_in_theme_translations("_fallback", "en.ini")
---		find_missing_strings_in_theme_translations("default", "en.ini")
---		trans_new_screen("ScreenSplineDesign")
 		set_prev_song_bpm(math.random(60, 200))
 		play_sample_music(true)
 	elseif event.DeviceInput.button == "DeviceButton_n" then

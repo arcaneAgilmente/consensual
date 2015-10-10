@@ -41,7 +41,7 @@ local offset_service_menu_mode= "edit"
 local offset_edit_key= false
 local offset_service_menu= false
 local menu_choice_names= {
-	save_offset_config= true, change_to_edit= true, change_to_rename= true,
+	change_to_edit= true, change_to_rename= true,
 	change_to_remove= true, add_offset_choice= true,
 }
 
@@ -105,11 +105,11 @@ function get_offset_service_menu()
 	local ret= {
 		recall_init_on_pop= true,
 		name= "offset_config",
+		destructor= function(self)
+			offset_config:save()
+		end,
 		special_handler= function(menu, data)
-			if data.name == "save_offset_config" then
-				offset_config:save()
-				return {}
-			elseif data.name == "change_to_edit" then
+			if data.name == "change_to_edit" then
 				offset_service_menu_mode= "edit"
 				return {recall_init= true}
 			elseif data.name == "change_to_rename" then
@@ -146,7 +146,6 @@ function get_offset_service_menu()
 				return {recall_init= true}
 			end
 		end,
-		{name= "save_offset_config"},
 		{name= "change_to_edit"},
 		{name= "change_to_rename"},
 		{name= "change_to_remove"},
