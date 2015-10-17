@@ -1,0 +1,6 @@
+Make a backup of your original "03 Gameplay.lua" and then overwrite it at the below location with the file in this folder.
+
+F:\Games\StepMania 5.0\Themes\_fallback\Scripts
+
+
+This will ensure combos work correctly on themes like consensual. This is not needed for the Simply Love SM5 remake.

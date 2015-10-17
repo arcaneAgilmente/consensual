@@ -82,11 +82,11 @@ local tns_opposition= {
 }
 
 local tns_texts= {
-	TapNoteScore_W1= "Fantastic",
-	TapNoteScore_W2= "Excellent",
-	TapNoteScore_W3= "Great",
-	TapNoteScore_W4= "Decent",
-	TapNoteScore_W5= "Wayoff",
+	TapNoteScore_W1= "Ridiculous",
+	TapNoteScore_W2= "Fantastic",
+	TapNoteScore_W3= "Excellent",
+	TapNoteScore_W4= "Great",
+	TapNoteScore_W5= "Decent",
 	TapNoteScore_Miss= "Miss"
 }
 

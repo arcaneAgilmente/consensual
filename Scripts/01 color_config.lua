@@ -30,6 +30,7 @@ local default_config= {
 		 {"blue", color("#268bd2")},
 		 {"cyan", color("#2aa198")},
 		 {"green", color("#859900")},
+		 {"silver", color("#8ba3a1")},
 	}},
 
 	{"credits", "accent.violet"},
@@ -46,11 +47,11 @@ local default_config= {
 		 {"HoldNoteScore_Held", "accent.cyan"},
 		 {"HoldNoteScore_MissedHold", "accent.orange"},
 		 {"TapNoteScore_Miss", "accent.red"},
-		 {"TapNoteScore_W5", "accent.violet"},
-		 {"TapNoteScore_W4", "accent.blue"},
-		 {"TapNoteScore_W3", "accent.green"},
-		 {"TapNoteScore_W2", "accent.yellow"},
-		 {"TapNoteScore_W1", "accent.cyan"},
+		 {"TapNoteScore_W5", "accent.blue"},
+		 {"TapNoteScore_W4", "accent.green"},
+		 {"TapNoteScore_W3", "accent.yellow"},
+		 {"TapNoteScore_W2", "accent.cyan"},
+		 {"TapNoteScore_W1", "accent.silver"},
 	}},
 
 	{"difficulty", {
