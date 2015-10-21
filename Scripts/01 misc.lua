@@ -847,6 +847,11 @@ function trans_new_screen(name)
 		:StartTransitioningScreen("SM_GoToNextScreen")
 end
 
+function prompt_text_entry(settings)
+	SCREENMAN:AddNewScreenToTop("ScreenTextEntry")
+	SCREENMAN:GetTopScreen():Load(settings)
+end
+
 function set_current_style(style, pn)
 	GAMESTATE:SetCurrentStyle(style, pn)
 end

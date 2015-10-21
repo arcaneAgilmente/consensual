@@ -518,11 +518,12 @@ options_sets.menu= {
 				if show then
 					local disp_slot= self:id_plus_up(next_shown)
 					self.shown_data[next_shown]= data
+					local disp_text= data.text or data.name
 					if self.info_set[disp_slot] then
-						self.info_set[disp_slot].text= data.name
+						self.info_set[disp_slot].text= disp_text
 						self.info_set[disp_slot].value= data.value
 					else
-						self.info_set[disp_slot]= {text= data.name, value= data.value}
+						self.info_set[disp_slot]= {text= disp_text, value= data.value}
 					end
 					if data.args and type(data.args) == "table" then
 						data.args.name= data.name
@@ -1276,3 +1277,17 @@ menu_stack_mt= {
 			return ""
 		end
 }}
+
+function float_pref_val(valname, level, min_scale, scale, max_scale)
+	return {
+		name= valname, meta= options_sets.adjustable_float, level= level,
+		args= {
+			name= valname, min_scale= min_scale, scale= scale, max_scale= max_scale,
+			initial_value= function()
+				return PREFSMAN:GetPreference(valname)
+			end,
+			set= function(pn, value)
+				PREFSMAN:SetPreference(valname, value)
+			end,
+	}}
+end
