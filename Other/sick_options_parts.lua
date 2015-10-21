@@ -518,7 +518,8 @@ options_sets.noteskins= {
 		initialize= function(self, player_number)
 			self.player_number= player_number
 			self.cursor_pos= 1
-			self.ops= NOTESKIN:GetNoteSkinNames()
+			self.ops= filter_noteskin_list_with_shown_config(
+				player_number, NOTESKIN:GetNoteSkinNames())
 			local player_noteskin= mod_player(self.player_number, "NoteSkin")
 			local function find_matching_noteskin()
 				for ni, nv in ipairs(self.ops) do
@@ -590,7 +591,8 @@ options_sets.newskins= {
 			self.player_number= pn
 			self.cursor_pos= 1
 			self.stepstype= find_current_stepstype(pn)
-			self.ops= NEWSKIN:get_skin_names_for_stepstype(self.stepstype)
+			self.ops= filter_noteskin_list_with_shown_config(
+				pn, NEWSKIN:get_skin_names_for_stepstype(self.stepstype))
 			self.player_skin= profiles[pn]:get_preferred_noteskin(self.stepstype)
 			local function find_matching_newskin()
 				for ni, nv in ipairs(self.ops) do
@@ -1318,6 +1320,7 @@ local decorations= {
 		args= extra_for_sigil_detail()},
 	{ name= "Noteskin", meta= options_sets.noteskins},
 	{ name= "Newskin", meta= options_sets.newskins, req_func= newskin_available},
+	{ name= "Shown Noteskins", meta= options_sets.shown_noteskins, args= {}},
 }
 
 local profile_options= {

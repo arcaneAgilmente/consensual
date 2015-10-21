@@ -85,7 +85,7 @@ end
 
 local setting_mt= {
 	__index= {
-		init= function(self, name, file, default, match_depth, exceptions)
+		init= function(self, name, file, default, match_depth, exceptions, use_global_as_default)
 			assert(type(default) == "table", "default for setting must be a table.")
 			self.name= name
 			self.file= file
@@ -94,30 +94,40 @@ local setting_mt= {
 			self.dirty_table= {}
 			self.data_set= {}
 			self.exceptions= exceptions
+			self.use_global_as_default= use_global_as_default
 			return self
 		end,
-		apply_force= function(self, cand)
+		apply_force= function(self, cand, slot)
 			if self.match_depth and self.match_depth ~= 0 then
 				force_table_elements_to_match_type(
-					cand, self.default, self.match_depth-1, self.exceptions)
+					cand, self:get_default(slot), self.match_depth-1, self.exceptions)
 			end
+		end,
+		get_default= function(self, slot)
+			if not self.use_global_as_default or not slot or slot == "ProfileSlot_Invalid" then
+				return self.default
+			end
+			if not self.data_set["ProfileSlot_Invalid"] then
+				self:load()
+			end
+			return self.data_set["ProfileSlot_Invalid"]
 		end,
 		load= function(self, slot)
 			slot= slot or "ProfileSlot_Invalid"
 			local prof_dir= slot_to_prof_dir(slot, "read " .. self.name)
 			if not prof_dir then
-				self.data_set[slot]= DeepCopy(self.default)
+				self.data_set[slot]= DeepCopy(self:get_default(slot))
 			else
 				local fname= self:get_filename(slot)
 				if not FILEMAN:DoesFileExist(fname) then
-					self.data_set[slot]= DeepCopy(self.default)
+					self.data_set[slot]= DeepCopy(self:get_default(slot))
 				else
 					local from_file= load_conf_file(fname)
 					if type(from_file) == "table" then
-						self:apply_force(from_file)
+						self:apply_force(from_file, slot)
 						self.data_set[slot]= from_file
 					else
-						self.data_set[slot]= DeepCopy(self.default)
+						self.data_set[slot]= DeepCopy(self:get_default(slot))
 					end
 				end
 			end
@@ -171,8 +181,8 @@ local setting_mt= {
 		end
 }}
 
-function create_setting(name, file, default, match_depth, exceptions)
-	return setmetatable({}, setting_mt):init(name, file, default, match_depth, exceptions)
+function create_setting(name, file, default, match_depth, exceptions, use_global_as_default)
+	return setmetatable({}, setting_mt):init(name, file, default, match_depth, exceptions, use_global_as_default)
 end
 
 function write_str_to_file(str, fname, str_name)

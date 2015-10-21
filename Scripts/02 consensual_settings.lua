@@ -254,6 +254,7 @@ function cons_player:set_ops_from_profile(profile)
 	self.pain_config= profile_pain_setting:load(prof_slot)
 	self.flags= profile_flag_setting:load(prof_slot)
 	self.style_config= style_config:load(prof_slot)
+	self.shown_noteskins= shown_noteskins:load(prof_slot)
 	style_config_sanity_enforcer(self.style_config)
 	local config= player_config:load(prof_slot)
 	local migrated= update_old_player_config(prof_slot, config)
@@ -733,6 +734,7 @@ function SaveProfileCustom(profile, dir)
 		player_config:set_dirty(prof_slot)
 		player_config:save(prof_slot)
 		style_config:save(prof_slot)
+		shown_noteskins:save(prof_slot)
 	end
 end
 
