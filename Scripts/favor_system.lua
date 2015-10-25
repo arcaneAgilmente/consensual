@@ -1,7 +1,7 @@
 local song_favorites= {}
 local favs_changed= {}
 
-local fav_fname= "/consensual_settings/favorites.lua"
+local fav_fname= "/consensual_ridiculous_settings/favorites.lua"
 
 function load_favorites(prof_slot)
 	local favorites_file_name= PROFILEMAN:GetProfileDir(prof_slot) .. fav_fname

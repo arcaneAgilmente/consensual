@@ -388,7 +388,7 @@ Choices:
 	Adjust the Favor value for the current song in the machine profile.
 * Edit Tags (L3)  
 	Brings up the tags menu, which can be used to toggle which tags are applied
-	to the song.  Create "consensual_settings/usable_tags.lua" in your profile
+	to the song.  Create "consensual_ridiculous_settings/usable_tags.lua" in your profile
 	folder and put the tags you want to use in it.  There is an example file
 	in consensual/Other/usable_tags_example.lua to show you the format.  
 	The machine profile has its own set of tags and tag settings.
@@ -693,7 +693,7 @@ reloading the service menu.
 Consensual has a censoring system that allows a machine operator to mark
 songs as censored.  When a song is marked, it is removed from the music wheel
 and is not selected by any Random item.  The list of censored songs is saved
-to Save/consensual_settings/censor_list.lua so that the machine operator can
+to Save/consensual_ridiculous_settings/censor_list.lua so that the machine operator can
 look at it later to decide whether to delete the song.
 
 To use the censoring system, you must either be on Select Music, or

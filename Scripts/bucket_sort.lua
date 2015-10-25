@@ -954,7 +954,7 @@ function generate_song_sort_test_data(sort_factors)
 			"dont_clip= " .. tostring(sf.dont_clip) .. "},\n"
 	end
 	local file_handle= RageFileUtil.CreateRageFile()
-	local file_name= "Save/consensual_settings/test_song_sort_data.lua"
+	local file_name= "Save/consensual_ridiculous_settings/test_song_sort_data.lua"
 	if not file_handle:Open(file_name, 2) then
 		Trace("Could not open '" .. file_name .. "' to write test song sort data.")
 	else

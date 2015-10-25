@@ -1,4 +1,4 @@
-local settings_prefix= "/consensual_settings/"
+local settings_prefix= "/consensual_ridiculous_settings/"
 global_cur_game= GAMESTATE:GetCurrentGame():GetName():lower()
 
 function get_element_by_path(container, path)
