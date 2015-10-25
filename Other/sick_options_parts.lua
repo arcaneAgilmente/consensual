@@ -832,20 +832,6 @@ local function extra_for_bg_bright()
 	}
 end
 
-local function float_pref_val(valname, level, min_scale, scale, max_scale)
-	return {
-		name= valname, meta= options_sets.adjustable_float, level= level,
-		args= {
-			name= valname, min_scale= min_scale, scale= scale, max_scale= max_scale,
-			initial_value= function()
-				return PREFSMAN:GetPreference(valname)
-			end,
-			set= function(pn, value)
-				PREFSMAN:SetPreference(valname, value)
-			end,
-	}}
-end
-
 local function extra_for_agen_arg(arg)
 	return {
 		name= "Autogen Arg " .. arg,
@@ -1283,13 +1269,7 @@ local experimental_options= {
 		args= ultra_special_effects},
 	player_cons_mod("Side Swap", "side_swap", 5, -2, 0, 0, nil, nil, "cons"),
 }
-for i, window_name in ipairs{
-	"Scale", "Add", "Hopo", "Jump", "SecondsAttack", "SecondsHold",
-	"SecondsMine", "SecondsRoll", "SecondsW1", "SecondsW2", "SecondsW3",
-	"SecondsW4", "SecondsW5", "Strum"} do
-	experimental_options[#experimental_options+1]= float_pref_val(
-		"TimingWindow" .. window_name, 5, -6, -3, 0)
-end
+add_timing_prefs_to_menu_choices(experimental_options)
 
 local eval_flag_eles= {}
 for i, fname in ipairs(sorted_eval_flag_names) do

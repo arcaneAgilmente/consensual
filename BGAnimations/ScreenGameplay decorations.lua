@@ -1656,7 +1656,6 @@ return Def.ActorFrame {
 					else
 						side_actors[pn]:set_newfield_preferred(true)
 						local columns= newfields[pn]:get_columns()
-						--apply_tilt_mod(newfields[pn], GAMESTATE:GetPlayerState(pn):GetPlayerOptions("ModsLevel_Preferred"):Tilt())
 						local field_conf= cons_players[pn].notefield_config
 						set_newfield_mods(screen_gameplay, pn, _screen.cy+field_conf.yoffset)
 						set_speed_from_speed_info(cons_players[pn], newfields[pn])
@@ -1664,116 +1663,7 @@ return Def.ActorFrame {
 						newfields[pn]:get_fov_mod():set_value(field_conf.fov)
 						newfields[pn]:get_vanish_x_mod():set_value(field_conf.vanish_x)
 						newfields[pn]:get_vanish_y_mod():set_value(field_conf.vanish_y)
-						--apply_example_mods(newfields[pn], pn)
-						local ampm= 16
-						--newfields[pn]:get_trans_rot_y():add_mod(square, {{music, pi * 16}, i * pi * .25 * 0, pi * .5, pi* .5})
-						--newfield_mods.calibrate(pn)
-						local function wrap(tab, i)
-							return tab[((i-1)%#tab)+1]
-						end
-						--side_actors[pn]:x(_screen.cx*.5)
-						--newfields[pn]:get_trans_pos_x():set_value(-_screen.cx*.5)
-						--newfields[pn]:get_trans_pos_x():add_mod{"ModFunctionType_Sine", {"ModInputType_MusicSecond", pi/4}, 0, _screen.cx*.25, 0}
-						--newfields[pn]:get_trans_pos_y():add_mod{"ModFunctionType_Sine", {"ModInputType_MusicSecond", pi/5}, 0, _screen.cy*.25, 0}
-						--newfields[pn]:set_vanish_type("FieldVanishType_RelativeToSelf")
-						local col_rots= {math.pi/2, math.pi, 0, -math.pi/2}
-						local mags= {}
-						for i= 1, #columns do
-							mags[i]= scale(i, 1, #columns, -1, 1)
-						end
 						for i, col in ipairs(columns) do
-							--col:set_holds_skewed_by_mods(false)
-							--[[
-							col:get_note_glow():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 128}, 0, .5, .5}
-							col:get_note_alpha():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 64}, 0, -.5, .5}
-							col:set_use_moddable_hold_normal(true)
-							local freq= 32
-							col:get_hold_normal_x():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / freq}, 0, -1, 0}
-							col:get_hold_normal_z():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / freq}, math.pi / -2, -1, 0}
-							col:get_note_pos_x():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 64}, 0, 32, 0}
-							col:get_note_pos_y():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 48}, 0, 32, 0}
-							col:get_note_pos_z():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 80}, 0, 32, 0}
-							col:get_note_zoom_x():add_mod{"ModFunctionType_Triangle", {"ModInputType_YOffset", math.pi / 56}, 0, .5, .5}
-							]]
-							--col:get_note_rot_y():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", math.pi/64}}
-							--[[ drill hair
-							--col:set_twirl_holds(false)
-							col:set_use_moddable_hold_normal(true)
-							local rad= {"ModInputType_YOffset", -1/4, 768/4}
-							local freq= 32
-							col:get_note_pos_x():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi / freq}, 0, rad, 0}
-							col:get_note_pos_z():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi / freq}, math.pi / -2, rad, 0}
-							col:get_hold_normal_x():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi / freq}, 0, -1, 0}
-							col:get_hold_normal_z():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi / freq}, math.pi / -2, -1, 0}
-							col:get_note_rot_y():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", math.pi / freq}}
-							]]
-							--[[
-							col:get_note_pos_x():add_mod{"ModFunctionType_Sine", {"ModInputType_DistBeat", math.pi / 8}, 0, 32, 0}
-							col:get_note_pos_z():add_mod{"ModFunctionType_Sine", {"ModInputType_DistBeat", math.pi / 8}, math.pi / -2, 32, 0}
-							col:get_note_rot_y():add_mod{"ModFunctionType_Constant", {"ModInputType_DistBeat", math.pi / 8}}
-							]]
-							--[[
-							col:get_note_pos_x():add_mod{"ModFunctionType_Sine", {"ModInputType_EvalBeat", math.pi / 8}, 0, 32, 0}
-							col:get_note_pos_z():add_mod{"ModFunctionType_Sine", {"ModInputType_EvalBeat", math.pi / 8}, math.pi / -2, 32, 0}
-							col:get_note_rot_y():add_mod{"ModFunctionType_Constant", {"ModInputType_EvalBeat", math.pi / 8}}
-							]]
-							--[[
-							col:get_note_pos_x():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi / 256}, 0, -32, 0}
-							col:get_note_pos_z():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi / 256}, math.pi / -2, -32, 0}
-							col:get_note_rot_y():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", math.pi / -256}}
-							]]
-							--col:get_note_zoom_x():add_mod{"ModFunctionType_Sine", {"ModInputType_EvalBeat", math.pi * 1}, {"ModInputType_EvalBeat", math.pi, math.pi * i}, .75, 0}
-							--col:get_note_zoom_y():add_mod{"ModFunctionType_Sine", {"ModInputType_EvalBeat", math.pi * 1}, {"ModInputType_EvalBeat", math.pi, math.pi * i}, -.75, 0}
-							--col:get_note_pos_z():add_mod{"ModFunctionType_Sine", {"ModInputType_YOffset", math.pi/128}, 0, {"ModInputType_YOffset", 1/4}, 0}
-							--[[
-							col:get_note_pos_x():add_mod{
-								"ModFunctionType_Constant", {"ModInputType_YOffset", -1/8}}
-								:add_mod{
-								"ModFunctionType_Spline", t= {"ModInputType_YOffset", 1/16},
-								loop= true, 0,
-								{"ModInputType_YOffset", 1/32 * mags[i]},
-								{"ModInputType_YOffset", 1/16 * mags[i]},
-								{"ModInputType_YOffset", 1/8 * mags[i]},
-								{"ModInputType_YOffset", 1/4 * mags[i]},
-								{"ModInputType_YOffset", 1/8 * mags[i]},
-								{"ModInputType_YOffset", 1/16 * mags[i]},
-								{"ModInputType_YOffset", 1/32 * mags[i]},
-												}
-							]]
-							--col:set_add_y_offset_to_position(false)
-							--col:get_note_pos_y():add_mod{"ModFunctionType_Constant", -_screen.cy}
-							--col:get_note_pos_y():add_mod{"ModFunctionType_Constant", {"ModInputType_YOffset", 1}}
-							--col:get_note_pos_y():add_mod{"ModFunctionType_Product", {"ModInputType_YOffset", 1/64}, {"ModInputType_YOffset", 1/64}}
-							--[[
-							col:get_note_pos_x():add_mod{
-								"ModFunctionType_Spline", t= {"ModInputType_YOffset", 1/16},
-								loop= true, 0,
-								{"ModInputType_MusicSecond", 1/2, spline= {loop= true, 0, 4, 16, 4}},
-								{"ModInputType_MusicSecond", 1/2, spline= {loop= true, 0, 0, 0, 0}},
-								{"ModInputType_MusicSecond", 1/2, spline= {loop= true, 0, -4, -16, -4}},
-								{"ModInputType_MusicSecond", 1/2, spline= {loop= true, 0, 0, 0, 0}},
-																					}
-							]]
-							--trans_mods.beat:apply(col, 1)
-							--col:get_column_zoom_y():set_value(.5)
-							--newfield_mods.drift(col, i)
---							col:get_quantization_offset():add_mod(const, {{eval, 1/32}})
-							--local drift= coloff[i]*.375*beat_factor
-							--col:get_note_pos_x():add_mod(const, {{music, drift}})
-							--col:get_note_pos_x():add_mod(triangle, {{dist, pi * bpm_factor}, 0, {music, -drift}, 0})
-							--col:get_note_zoom_x():add_mod(wave[i], {{dist, 2 * pi * bpm_factor}, 0, {music, beat_factor / 128}, 0})
-							--col:get_note_pos_x():add_mod(wave[i], {{dist, 2 * pi * bpm_factor}, 0, {music, drift * .5}, 0})
-							--col:get_note_rot_y():add_mod(wave[#wave-i+1], {{dist, 2 * pi * bpm_factor}, 0, {music, twirl[i] * .75 / song_beats}, 0})
-							--col:get_note_zoom_x():add_mod(const, {{music, beat_factor / 128}})
---							col:get_y_rot():add_mod(const, {{dist, twirl[i] * 2 * bpm_factor}})
---							col:get_x_pos():add_mod(wave[i], {{eval, 2*pi}, 0, {music, cooloff[i] * .25*beat_factor}, 0})
---							col:get_z_rot():add_mod(const, {{dist, pump_rots[i]}})
---							col:get_z_rot():add_mod(const, {{music, pump_rots[i]}})
---							col:get_x_pos():add_mod(wave[i], {{eval, 2*pi}, 0, cooloff[i] * ampm * 1.5, 0 * cooloff[i] * ampm, -hpi, hpi})
---							col:get_x_pos():add_mod(sawsine, {{dist, pi}, 0, coloff[i] * ampm * 2, coloff[i] * ampm * 2, -hpi, hpi})
---							col:get_z_rot():add_mod(const, {{scalar, pump_rots[i]}})
---							col:get_z_rot():add_mod(const, {{dist, 90}})
---							col:get_z_rot():add_mod(const, {{music, 90}})
 						end
 					end
 				end

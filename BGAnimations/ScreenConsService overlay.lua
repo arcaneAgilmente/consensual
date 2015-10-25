@@ -366,6 +366,57 @@ local function life_options()
 	return ret
 end
 
+local function timing_options()
+	local ret= {
+		recall_init_on_pop= true,
+		special_handler= function(menu, data)
+			if data.name:sub(1, 3) == "use" then
+				local group_name= data.name:sub(5, -1)
+				apply_timing_config(group_name)
+				return {ret_data= {true}}
+			elseif data.name == "save_new_timing_group" then
+				local text_settings= {
+					Question= get_string_wrapper("ServicePrompts", "timing_group_name_prompt"),
+					InitialAnswer= "",
+					MaxInputLength= 512,
+					OnOK= function(answer)
+						if answer ~= "" then
+							save_prefs_as_named_timing_config(answer)
+							menu:recall_init()
+						end
+					end
+				}
+				prompt_text_entry(text_settings)
+				return {ret_data= {true}}
+			elseif data.name == "remove_timing_group" then
+				local text_settings= {
+					Question= get_string_wrapper("ServicePrompts", "timing_group_remove_prompt"),
+					InitialAnswer= "",
+					MaxInputLength= 512,
+					OnOK= function(answer)
+						if answer ~= "" then
+							remove_named_timing_config(answer)
+							menu:recall_init()
+						end
+					end
+				}
+				prompt_text_entry(text_settings)
+				return {ret_data= {true}}
+			else
+				return {ret_data= {true, data}}
+			end
+		end,
+		destructor= function()
+			timing_config:save()
+		end,
+		{name= "save_new_timing_group"},
+		{name= "remove_timing_group"},
+	}
+	add_timing_config_to_menu_choices(ret)
+	add_timing_prefs_to_menu_choices(ret)
+	return ret;
+end
+
 local press_prompt= {}
 local on_press_prompt= false
 local function key_get(key_name)
@@ -588,6 +639,7 @@ local menu_items= {
 	{name= "grade_config", meta= options_sets.menu, args= gen_grade_options},
 	{name= "scoring_config", meta= options_sets.menu, args= scoring_options()},
 	{name= "life_config", meta= options_sets.menu, args= life_options()},
+	{name= "timing_config", meta= options_sets.menu, args= timing_options},
 	{name= "confetti_config", meta= options_sets.menu, args= confetti_options},
 	{name= "bubble_config", meta= options_sets.menu, args= bubble_options},
 	{name= "offset_config", meta= options_sets.menu, args= get_offset_service_menu},
