@@ -643,6 +643,7 @@ local menu_items= {
 	{name= "confetti_config", meta= options_sets.menu, args= confetti_options},
 	{name= "bubble_config", meta= options_sets.menu, args= bubble_options},
 	{name= "offset_config", meta= options_sets.menu, args= get_offset_service_menu},
+	{name= "shown_noteskins_config", meta= options_sets.shown_noteskins, args= {}},
 	{name= "special_options", meta= options_sets.menu, args= special_options},
 }
 

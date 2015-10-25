@@ -1061,6 +1061,44 @@ options_sets.extensible_boolean_menu= {
 		end
 }}
 
+options_sets.shown_noteskins= {
+	__index= {
+		initialize= function(self, pn, extra)
+			self.player_number= pn
+			self.name= extra.name
+			if newskin_available() then
+				self.all_noteskin_names= NEWSKIN:get_all_skin_names()
+			else
+				self.all_noteskin_names= NOTESKIN:GetNoteSkinNames()
+			end
+			self.config_slot= pn_to_profile_slot(pn)
+			self.shown_config= shown_noteskins:get_data(self.config_slot)
+			self.info_set= {up_element()}
+			for i, skin_name in ipairs(self.all_noteskin_names) do
+				local show= not self.shown_config[skin_name]
+				self.info_set[#self.info_set+1]= {text= skin_name, underline= show}
+			end
+			self.cursor_pos= 1
+		end,
+		destructor= function(self)
+			shown_noteskins:save(self.config_slot)
+		end,
+		set_status= function(self)
+			self.display:set_heading(self.name)
+			self.display:set_display("")
+		end,
+		interpret_start= function(self)
+			local info= self.info_set[self.cursor_pos]
+			if self.cursor_pos == 1 then return false end
+			shown_noteskins:set_dirty(self.config_slot)
+			local skin_name= info.text
+			self.shown_config[skin_name]= not self.shown_config[skin_name]
+			info.underline= not self.shown_config[skin_name]
+			self:update_el_underline(self.cursor_pos, info.underline)
+			return true
+		end,
+}}
+
 function set_option_set_metatables()
 	for k, set in pairs(options_sets) do
 		setmetatable(set.__index, option_set_general_mt)
