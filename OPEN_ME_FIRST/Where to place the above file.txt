@@ -1,6 +1,18 @@
+(You can completely ignore this if you only play the "dance" gamemode. Close this file and install the theme like any other. If you play any others, (pump, beat, etc.) follow these instructions.)
+
+
 Make a backup of your original "03 Gameplay.lua" and then overwrite it at the below location with the file in this folder.
 
 F:\Games\StepMania 5.0\Themes\_fallback\Scripts
 
 
-This will ensure combos work correctly on themes like consensual. This is not needed for the Simply Love SM5 remake.
+This will ensure combos work correctly on themes like consensual and metro quad. This is not needed for the Simply Love SM5 remake.
+
+Open metrics.ini in a text editor of your choice and find the [Gameplay] section.
+
+Remove these two lines:
+
+MinScoreToContinueCombo="TapNoteScore_W4"
+MinScoreToMaintainCombo="TapNoteScore_W4"
+
+Save the file.
