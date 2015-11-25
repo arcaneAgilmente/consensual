@@ -10,7 +10,7 @@ local function workout_goal_reached()
 end
 
 local function workout_pick_or_eval()
-	lua.ReportScriptError("workout_pick_or_eval called.")
+	--lua.ReportScriptError("workout_pick_or_eval called.")
 	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		local work_data= workout_mode[pn]
 		local score_data= cons_players[pn].score_data

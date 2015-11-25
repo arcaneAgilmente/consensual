@@ -71,7 +71,7 @@ local function try_song(song)
 	return false
 end
 
-local can_start_picking= false
+local can_start_picking= true
 local function input(event)
 	if event.type == "InputEventType_Release" then return end
 	if event.DeviceInput.button == "DeviceButton_g" then
@@ -88,7 +88,11 @@ local function update(self)
 	if not can_start_picking then return end
 	local tick_start= GetTimeSinceStart()
 	while not matched and GetTimeSinceStart() - tick_start < .02 do
-		local song= bucket_man.filtered_songs[math.random(1, num_songs)]
+		local songind= 1
+		if num_songs > 1 then
+			songind= math.random(1, num_songs)
+		end
+		local song= bucket_man.filtered_songs[songind]
 		if try_song(song) then
 			matched= true
 			if GAMESTATE:CanSafelyEnterGameplay() then

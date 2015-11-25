@@ -20,12 +20,6 @@ end
 -- benefit to other themes.
 PREFSMAN:SetPreference("BannerCache", "BannerCacheMode_Off")
 
-if PREFSMAN:GetPreference("IgnoredDialogs") ~= "" then
-	PREFSMAN:SetPreference("IgnoredDialogs", "")
-	show_message= true
-	message= "If you see errors, report them with any information you have so they can be fixed."
-end
-
 if PREFSMAN:GetPreference("VideoRenderers"):sub(1, 6) ~= "opengl" then
 	version_failed= true
 	show_message= true
@@ -38,7 +32,7 @@ local unfold_time= 4
 local fade_time= 1
 
 local function continue()
-	if version_failed or hate then
+	if version_failed then
 		local theme_names= THEME:GetSelectableThemeNames()
 		local simply_love= false
 		local ultralight= false
@@ -64,7 +58,6 @@ end
 local function input(event)
 	if event.DeviceInput.button == "DeviceButton_f" then
 		PREFSMAN:SetPreference("IgnoredDialogs", "")
-		hate= false
 		next_screen= "ScreenInitialMenu"
 	elseif event.type == "InputEventType_FirstPress"
 	and event.GameButton == "Start" then

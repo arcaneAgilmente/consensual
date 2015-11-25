@@ -83,15 +83,6 @@ cons_theme_dir_list= {THEME:GetCurrentThemeDirectory()}
 all_player_indices= {PLAYER_1, PLAYER_2}
 other_player= { [PLAYER_1]= PLAYER_2, [PLAYER_2]= PLAYER_1}
 
-difficulty_labels= {
-	Difficulty_Beginner= "Difficulty_Beginner",
-	Difficulty_Easy= "Difficulty_Easy",
-	Difficulty_Medium= "Difficulty_Medium",
-	Difficulty_Hard= "Difficulty_Hard",
-	Difficulty_Challenge= "Difficulty_Challenge",
-	Difficulty_Edit= "Difficulty_Edit"
-}
-
 -- this has to be a function instead of a constant because the game can change.
 function lowered_game_name()
 	return GAMESTATE:GetCurrentGame():GetName():lower()
@@ -464,21 +455,6 @@ local prev_day= -1
 function aprf_check()
 	local month= MonthOfYear()
 	local day= DayOfMonth()
-	if PREFSMAN:GetPreference("IgnoredDialogs") ~= ""
-	and GAMESTATE:GetCurrentGame():GetName():lower() ~= "kickbox" then
-		utf8_lower= function(n)
-			for i= 1, #n do
-				if unlower[n:sub(i, i)] then
-					n= n:sub(1, i-1) .. unlower[n:sub(i, i)] .. n:sub(i+1, -1)
-				end
-			end
-			return n
-		end
-		PREFSMAN:SetPreference("SoundVolume", math.random())
-	else
-		utf8_lower= nil
-		hate= nil
-	end
 	if day ~= prev_day then
 		activate_confetti("day", false)
 	end
