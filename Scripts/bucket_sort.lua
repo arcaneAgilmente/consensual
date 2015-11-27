@@ -14,7 +14,7 @@ local function depth_clip_name(name, depth)
 end
 
 local function lowercase(n)
-	local lowered= utf8_lower and utf8_lower(n) or n:lower()
+	local lowered= n:lower()
 	lowered:gsub("_", " ")
 	return lowered
 end

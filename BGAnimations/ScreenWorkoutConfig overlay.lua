@@ -6,6 +6,7 @@ local slots= {}
 for i, pn in ipairs(enabled_players) do
 	slots[i]= pn_to_profile_slot(pn)
 end
+update_steps_types_to_show()
 
 local workout_menu_mt= {
 	__index= {

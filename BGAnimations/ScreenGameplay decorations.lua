@@ -40,6 +40,7 @@ local player_dec_centers= {
 	[PLAYER_2]= {_screen.cx * 1.5, _screen.cy},
 }
 
+local note_drift_on= false
 local note_drift_minx= _screen.w * .15
 local note_drift_maxx= _screen.w * .85
 local note_drift_miny= _screen.h * .25
@@ -854,6 +855,7 @@ for i, pn in ipairs(enabled_players) do
 	pstats[pn]= curstats:GetPlayerStageStats(pn)
 end
 
+local spline_demos_on= {}
 local next_spline_change_time= 0
 local function rand_pos()
 	return math.random(-32, 32)
@@ -863,6 +865,60 @@ local function rand_angle()
 end
 local function rand_zoom()
 	return scale(math.random(), 0, 1, .25, 2)
+end
+local function update_spline_demos(pn)
+	if notecolumns[pn] and get_screen_time() > next_spline_change_time then
+		next_spline_change_time= next_spline_change_time + 20
+		for i= 1, #notecolumns[pn] do
+			if cons_players[pn].pos_splines_demo
+			and not cons_players[pn].spatial_arrows then
+				local handler= notecolumns[pn][i]:get_pos_handler()
+				handler:set_beats_per_t(64/math.random(1, 32))
+					:set_spline_mode("NoteColumnSplineMode_Offset")
+					:set_subtract_song_beat(false)
+				local spline= handler:get_spline()
+				local num_points= math.random(1, 8)
+				spline:set_loop(true):set_size(num_points)
+				for p= 1, num_points do
+					spline:set_point(p, {rand_pos(), rand_pos(), rand_pos()})
+				end
+				spline:solve()
+			end
+			if cons_players[pn].rot_splines_demo then
+				local handler= notecolumns[pn][i]:get_rot_handler()
+				handler:set_beats_per_t(64/math.random(1, 32))
+					:set_spline_mode("NoteColumnSplineMode_Position")
+					:set_subtract_song_beat(false)
+				local spline= handler:get_spline()
+				local num_points= math.random(1, 8)
+				spline:set_loop(true):set_size(num_points)
+				local prevx= rand_angle() * 4
+				local prevy= rand_angle() * 4
+				local prevz= rand_angle() * 4
+				for p= 1, num_points do
+					spline:set_point(p, {prevx, prevy, prevz})
+					prevx= prevx + rand_angle()
+					prevy= prevy + rand_angle()
+					prevz= prevz + rand_angle()
+				end
+				spline:solve()
+			end
+			if cons_players[pn].zoom_splines_demo then
+				local handler= notecolumns[pn][i]:get_zoom_handler()
+				handler:set_beats_per_t(64/math.random(1, 32))
+					:set_spline_mode("NoteColumnSplineMode_Position")
+					:set_subtract_song_beat(false)
+				local spline= handler:get_spline()
+				local num_points= math.random(1, 8)
+				spline:set_loop(true):set_size(num_points)
+				for p= 1, num_points do
+					spline:set_point(p, {rand_zoom(), rand_zoom(), rand_zoom()})
+				end
+				spline:solve()
+			end
+			notecolumns[pn][i]:linear(20)
+		end
+	end
 end
 
 local reverse_play_start_time= 114.541
@@ -910,15 +966,10 @@ local function Update(self, delta)
 	else
 		gameplay_end_time= get_screen_time()
 	end
-	if not curstats then
-		Trace("SGbg.Update:  curstats is nil.")
-	end
 	song_progress_bar:update()
 	song_rate:update()
-	if get_music_file_length then
+	if note_drift_on then
 		multiapproach(note_drift_currents, note_drift_goals, note_drift_speeds, delta)
-	else
-		multiapproach(note_drift_currents, note_drift_goals, note_drift_speeds)
 	end
 	for i, pn in pairs(enabled_players) do
 		player= cons_players[pn]
@@ -995,66 +1046,8 @@ local function Update(self, delta)
 				next_chuunibyou[pn]= next_chuunibyou[pn] + player.chuunibyou
 			end
 		end
-		if notecolumns[pn] and get_screen_time() > next_spline_change_time then
-			next_spline_change_time= next_spline_change_time + 20
-			if cons_players[pn].pos_splines_demo or cons_players[pn].rot_splines_demo
-			or cons_players[pn].zoom_splines_demo then
-				for i= 1, #notecolumns[pn] do
-					if hate then
-						local spread= math.random(-120, 120)
-						local per= spread / (#notecolumns[pn] - 1)
-						local start= (spread * -.5) - per
-						notecolumns[pn][i]:rotationz(start + (i * per))
-					end
-					if cons_players[pn].pos_splines_demo
-					and not cons_players[pn].spatial_arrows then
-						local handler= notecolumns[pn][i]:get_pos_handler()
-						handler:set_beats_per_t(64/math.random(1, 32))
-							:set_spline_mode("NoteColumnSplineMode_Offset")
-							:set_subtract_song_beat(false)
-						local spline= handler:get_spline()
-						local num_points= math.random(1, 8)
-						spline:set_loop(true):set_size(num_points)
-						for p= 1, num_points do
-							spline:set_point(p, {rand_pos(), rand_pos(), rand_pos()})
-						end
-						spline:solve()
-					end
-					if cons_players[pn].rot_splines_demo then
-						local handler= notecolumns[pn][i]:get_rot_handler()
-						handler:set_beats_per_t(64/math.random(1, 32))
-							:set_spline_mode("NoteColumnSplineMode_Position")
-							:set_subtract_song_beat(false)
-						local spline= handler:get_spline()
-						local num_points= math.random(1, 8)
-						spline:set_loop(true):set_size(num_points)
-						local prevx= rand_angle() * 4
-						local prevy= rand_angle() * 4
-						local prevz= rand_angle() * 4
-						for p= 1, num_points do
-							spline:set_point(p, {prevx, prevy, prevz})
-							prevx= prevx + rand_angle()
-							prevy= prevy + rand_angle()
-							prevz= prevz + rand_angle()
-						end
-						spline:solve()
-					end
-					if cons_players[pn].zoom_splines_demo then
-						local handler= notecolumns[pn][i]:get_zoom_handler()
-						handler:set_beats_per_t(64/math.random(1, 32))
-							:set_spline_mode("NoteColumnSplineMode_Position")
-							:set_subtract_song_beat(false)
-						local spline= handler:get_spline()
-						local num_points= math.random(1, 8)
-						spline:set_loop(true):set_size(num_points)
-						for p= 1, num_points do
-							spline:set_point(p, {rand_zoom(), rand_zoom(), rand_zoom()})
-						end
-						spline:solve()
-					end
-					notecolumns[pn][i]:linear(20)
-				end
-			end
+		if spline_demos_on[pn] then
+			update_spline_demos(pn)
 		end
 		if (side_swap_vals[pn] or 0) > 1 then
 			if side_toggles[pn] then
@@ -1065,6 +1058,7 @@ local function Update(self, delta)
 			side_toggles[pn]= not side_toggles[pn]
 		end
 	end
+	collectgarbage("step")
 end
 
 local tilt_scale= 1
@@ -1161,9 +1155,7 @@ local function make_special_actors_for_players()
 	if not can_have_special_actors() then
 		return Def.Actor{}
 	end
-	local args= { Name= "special_actors",
-								OnCommand= cmd(SetUpdateFunction,Update)
-              }
+	local args= {Name= "special_actors"}
 	local function add_feedback(add_to_feedback, pn, el_pos, name, meat)
 		add_to_feedback[#add_to_feedback+1]= {
 			name= name, meattable= meat, center= {
@@ -1533,6 +1525,8 @@ local function pause_input(event)
 		screen_gameplay:PauseGame(true)
 	elseif event.DeviceInput.button == "DeviceButton_k" then
 		screen_gameplay:PauseGame(false)
+	elseif event.DeviceInput.button == "DeviceButton_KP 0" then
+--		screen_gameplay:StartTransitioningScreen("SM_DoNextScreen")
 	end
 end
 
@@ -1584,15 +1578,24 @@ return Def.ActorFrame {
 									 timer_actor= self
 								 end,
 	},
-	Def.Actor{
+	Def.ActorFrame{
 		Name= "Cleaner S22", OnCommand= function(self)
+			self:SetUpdateFunction(Update)
 			screen_gameplay= SCREENMAN:GetTopScreen()
 			--screen_gameplay:AddInputCallback(pause_input)
-			screen_gameplay:AddInputCallback(mod_adjust_input)
+			if misc_config:get_data().adjust_mods_on_gameplay then
+				screen_gameplay:AddInputCallback(mod_adjust_input)
+			end
 			if tilt_mode then
 				screen_gameplay:AddInputCallback(tilt_input)
 			end
-			screen_gameplay:AddInputCallback(facing_input)
+			for i, pn in ipairs(enabled_players) do
+				local player= cons_players[pn]
+				if player and player.spatial_turning then
+					screen_gameplay:AddInputCallback(facing_input)
+					break
+				end
+			end
 			screen_gameplay:xy(-_screen.cx, -_screen.cy)
 			for i= 1, wrapper_layers do
 				gameplay_wrappers[i]= screen_gameplay:AddWrapperState()
@@ -1623,6 +1626,11 @@ return Def.ActorFrame {
 				cons_players[pn]:combo_qual_reset()
 				cons_players[pn].unmine_time= nil
 				cons_players[pn].mine_data= nil
+				if cons_players[pn].pos_splines_demo
+					or cons_players[pn].rot_splines_demo
+				or cons_players[pn].zoom_splines_demo then
+					spline_demos_on[pn]= true
+				end
 				local punacc= cons_players[pn].unacceptable_score
 				if punacc.enabled then
 					unacc_enable_votes= unacc_enable_votes + 1
@@ -1672,23 +1680,22 @@ return Def.ActorFrame {
 					local ny= side_actors[pn]:GetY()
 					local tocx= nx - (_screen.w*.5)
 					local tocy= (ny - (_screen.h*.5)) * 0
-					notefields[pn]:xy(tocx, -tocy)
 					notefield_wrappers[pn]= {}
 					if newfields[pn] then
 						for i= 1, wrapper_layers do
-							notefield_wrappers[pn][i]= newfields[pn]:AddWrapperState()
+							notefield_wrappers[pn][i]= side_actors[pn]:AddWrapperState()
 						end
 					else
 						for i= 1, wrapper_layers do
 							notefield_wrappers[pn][i]= notefields[pn]:AddWrapperState()
 						end
 					end
-					notefield_wrappers[pn][wrapper_layers]:xy(-tocx, tocy)
 					if notefields[pn].get_column_actors then
 						notecolumns[pn]= notefields[pn]:get_column_actors()
 						if cons_players[pn].man_lets_have_fun then
 							local style_width= GAMESTATE:GetCurrentStyle(pn):GetWidth(pn)
 							local column_width= style_width / #notecolumns[pn]
+							note_drift_on= true
 							note_drift_minx= column_width * 2
 							note_drift_maxx= _screen.w - note_drift_minx
 							for i, actor in ipairs(notecolumns[pn]) do
@@ -1727,7 +1734,6 @@ return Def.ActorFrame {
 							end
 						else
 							local spread= cons_players[pn].column_angle or 0
-							if hate then spread= math.random(-120, 120) end
 							local per= spread / (#notecolumns[pn] - 1)
 							local start= (spread * -.5) - per
 							for i= 1, #notecolumns[pn] do
