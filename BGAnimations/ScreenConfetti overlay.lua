@@ -119,6 +119,52 @@ local circle_rad= hbig_circle_size
 local circle_chords= hbig_circle_size
 local circle_smoother_thick= 8
 
+local hms_frame= false
+local hms_left= false
+local hms_right= false
+local hset= fetch_color("hours")
+local prev_timestamp= ""
+local function get_hour_indices()
+	local curr_second= (Hour() * 3600) + (Minute() * 60) + Second()
+	local sec_per= misc_config:get_data().seconds_per_clock_change
+	local curr_index= math.floor(curr_second / sec_per)
+	local next_index= curr_index + 1
+	local percent= (curr_second - (curr_index * sec_per)) / sec_per
+	return curr_index, next_index, percent
+end
+local function hms_update(self)
+	local this_stamp= hms_timestamp()
+	if this_stamp == prev_timestamp then return end
+	prev_timestamp= this_stamp
+	local split= #this_stamp/2
+	hms_left:settext(this_stamp:sub(1, split))
+	hms_right:settext(this_stamp:sub(split+1, -1))
+	local curr_index, next_index, percent= get_hour_indices()
+	local hour_curr= color_in_set(hset, curr_index, true, false, false)
+	local hour_next= color_in_set(hset, next_index, true, false, false)
+	local hms_color= lerp_color(percent, hour_curr, hour_next)
+	rot_color_text(hms_left, hms_color)
+	rot_color_text(hms_right, hms_color)
+end
+function hms_split()
+	local move_time= misc_config:get_data().transition_time
+	hms_left:linear(move_time):xy(hms_left:GetWidth()+8, _screen.h-16)
+	hms_right:linear(move_time):xy(_screen.w - (hms_right:GetWidth()+8), _screen.h-16)
+end
+function hms_join()
+	local move_time= misc_config:get_data().transition_time
+	hms_left:linear(move_time):xy(_screen.cx, _screen.h-16)
+	hms_right:linear(move_time):xy(_screen.cx, _screen.h-16)
+end
+function hms_fade()
+	local move_time= misc_config:get_data().transition_time
+	hms_frame:decelerate(move_time):diffusealpha(0)
+end
+function hms_unfade()
+	local move_time= misc_config:get_data().transition_time
+	hms_frame:accelerate(move_time):diffusealpha(1)
+end
+
 return Def.ActorFrame{
 	Def.ActorFrame{
 		Name= "confetti_container", InitCommand= function(self)
@@ -200,5 +246,19 @@ return Def.ActorFrame{
 				end
 			},
 		},
+	},
+	Def.ActorFrame{
+		Name="time", InitCommand= function(self)
+			hms_frame= self
+			hms_left= self:GetChild("hms_left")
+			hms_right= self:GetChild("hms_right")
+			self:SetUpdateFunction(hms_update)
+		end,
+		normal_text(
+			"hms_left", "", fetch_color("text"), fetch_color("stroke"),
+			_screen.cx, _screen.h-16, 1, right),
+		normal_text(
+			"hms_right", "", fetch_color("text"), fetch_color("stroke"),
+			_screen.cx, _screen.h-16, 1, left),
 	},
 }
