@@ -38,8 +38,9 @@ local pane_x_off= (pane_w*.5) + pad
 local lpane_x= pane_x_off
 local rpane_x= _screen.w - pane_x_off
 
+local width_pane_takes_from_wheel= pane_w + (pad * 2)
 local wheel_x= _screen.cx
-local wheel_width= _screen.w - ((pane_w + (pad * 2)) * 2)
+local wheel_width= _screen.w
 local wheel_move_time= .1
 local banner_w= wheel_width - 4
 local banner_h= 80
@@ -47,6 +48,8 @@ local curr_group_name= ""
 local basic_info_height= 48
 local extra_info_height= 40
 local expanded_info_height= basic_info_height + (extra_info_height * 2)
+local focus_element_info= false
+local player_stuff= {}
 
 local entering_song= false
 local options_time= 1.5
@@ -97,6 +100,125 @@ local function ensure_enough_stages()
 			GAMESTATE:AddStageToPlayer(pn)
 		end
 	end
+end
+
+local show_inactive_pane= false
+local active_pane_info= {}
+local function calc_wheel_width()
+	local active_pane_count= 0
+	if show_inactive_pane then
+		active_pane_count= 2
+	else
+		for pane, active in pairs(active_pane_info) do
+			if active then
+				active_pane_count= active_pane_count + 1
+			end
+		end
+	end
+	wheel_width= _screen.w - (width_pane_takes_from_wheel * active_pane_count)
+end
+local wheel_layout_choices= {
+	"left", "middle", "right", "opposite", "same",
+}
+local wheel_layouts= {
+	left= function()
+		if show_inactive_pane or active_pane_info[PLAYER_2] then
+			rpane_x= _screen.w - pane_x_off
+		else
+			rpane_x= _screen.w + pane_x_off
+		end
+		lpane_x= rpane_x - (pane_w + (pad*2))
+		wheel_x= wheel_width * .5
+	end,
+	middle= function()
+		lpane_x= pane_x_off
+		rpane_x= _screen.w - pane_x_off
+		if show_inactive_pane then
+			wheel_x= _screen.cx
+		else
+			if active_pane_info[PLAYER_1] then
+				if active_pane_info[PLAYER_2] then
+					wheel_x= _screen.cx
+				else
+					wheel_x= _screen.w - (wheel_width * .5)
+				end
+			else
+				if active_pane_info[PLAYER_2] then
+					wheel_x= wheel_width * .5
+				else
+					wheel_x= _screen.cx
+				end
+			end
+		end
+	end,
+	right= function()
+		if show_inactive_pane or active_pane_info[PLAYER_1] then
+			lpane_x= pane_x_off
+		else
+			lpane_x= -pane_x_off
+		end
+		rpane_x= lpane_x + (pane_w + (pad*2))
+		wheel_x= _screen.w - (wheel_width * .5)
+	end,
+	unset= noop_nil,
+}
+local curr_wheel_layout= "unset"
+local function update_wheel_layout()
+	calc_wheel_width()
+	wheel_layouts[curr_wheel_layout]()
+	music_wheel:move_resize(wheel_x, wheel_width)
+	focus_element_info:resize()
+	local pane_x= {[PLAYER_1]= lpane_x, [PLAYER_2]= rpane_x}
+	for pn, stuff in pairs(player_stuff) do
+		stuff:stoptweening():april_linear(wheel_move_time):x(pane_x[pn])
+	end
+end
+local function set_wheel_layout(layout)
+	if layout == curr_wheel_layout then return end
+	curr_wheel_layout= layout
+	update_wheel_layout()
+end
+local function set_show_inactive_pane(show)
+	if show == show_inactive_pane then return end
+	show_inactive_pane= show
+	update_wheel_layout()
+end
+local function update_show_inactive_pane()
+	local show= false
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		show= show or cons_players[pn].select_music.show_inactive_pane
+	end
+	set_show_inactive_pane(show)
+end
+local function set_pane_active(pane, active)
+	if active_pane_info[pane] == active then return end
+	active_pane_info[pane]= active
+	update_wheel_layout()
+end
+local opposite_layouts= {[PLAYER_1]= "right", [PLAYER_2]= "left"}
+local same_layouts= {[PLAYER_1]= "left", [PLAYER_2]= "right"}
+local function update_curr_wheel_layout()
+	local votes= {left= 0, middle= 0, right= 0}
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		local lay= cons_players[pn].select_music.wheel_layout
+		if lay == "opposite" then
+			lay= opposite_layouts[pn]
+		elseif lay == "same" then
+			lay= same_layouts[pn]
+		end
+		if votes[lay] then
+			votes[lay]= votes[lay] + 1
+		end
+	end
+	local new_layout= "middle"
+	if votes.middle > 0 or votes.left == votes.right then
+		new_layout= "middle"
+	elseif votes.left > votes.right then
+		new_layout= "left"
+	else
+		new_layout= "right"
+	end
+	set_wheel_layout(new_layout)
 end
 
 local function set_closest_steps_to_preferred(pn)
@@ -264,26 +386,15 @@ local focus_element_info_mt= {
 	__index= {
 		create_actors= function(self, x, y)
 			self.middle_height= basic_info_height
-			self.left_x= wheel_width * -.15
-			self.right_x= wheel_width * .25
 			local bihd= (basic_info_height*2)
 			self.jacket_width= bihd - (pad*2)
-			local hwheelw= wheel_width * .5
-			local hjackw= self.jacket_width * .5
-			local jacket_x= -hwheelw + hjackw + hpad
-			local symbol_size= 12
-			local symbol_spacing= (bihd - symbol_size - pad * 2) / (#Difficulty-1)
-			local hsymw= symbol_size * .5
-			local symbol_x= hwheelw - hsymw - hpad
-			local symbol_y= -basic_info_height + hsymw + pad
-			local len_x= jacket_x + hjackw + pad
-			local genre_x= symbol_x - hsymw - pad
-			self.title_width= symbol_x - jacket_x - hjackw - hsymw - (pad*2)
-			local title_x= jacket_x + hjackw + pad + (self.title_width * .5)
+			self.symbol_size= 12
+			local symbol_spacing= (bihd - self.symbol_size - pad * 2) / (#Difficulty-1)
+			self.hsymw= self.symbol_size * .5
+			local symbol_y= -basic_info_height + self.hsymw + pad
 			self.title_y= -22
 			self.split_title_top_y= self.title_y - 12
 			self.split_title_bot_y= self.title_y + 12
-			local cdtitle_x= hwheelw - cdtitle_size*.5 - pad
 			local cdtitle_y= 0
 			local auth_start= -extra_info_height+hpad
 			local args= {
@@ -295,6 +406,9 @@ local focus_element_info_mt= {
 					self.length= subself:GetChild("length")
 					self.genre= subself:GetChild("genre")
 					self.artist= subself:GetChild("artist")
+					rot_color_text(self.title, fetch_color("text"))
+					rot_color_text(self.sec_title, fetch_color("text"))
+					alt_rot_color_text(self.subtitle, fetch_color("text"))
 					local stroke= fetch_color("stroke")
 					for i, difft in pairs(self.difficulty_counts) do
 						difft.text:strokecolor(stroke)
@@ -305,25 +419,25 @@ local focus_element_info_mt= {
 						part.number:strokecolor(stroke)
 					end
 					subself:xy(x, y)
+					self:resize()
 				end,
 				Def.Quad{
 					InitCommand= function(subself)
 						self.bg= subself
-						subself:diffusealpha(0):setsize(wheel_width-hpad, expanded_info_height*2)
+						subself:diffusealpha(0)
 					end
 				},
 				Def.Sprite{
 					InitCommand= function(subself)
 						self.jacket= subself
-						subself:xy(jacket_x, 0)
 					end
 				},
-				normal_text("title", "", fetch_color("text"), fetch_color("stroke"), title_x, self.title_y, 1),
-				normal_text("sec_title", "", fetch_color("text"), fetch_color("stroke"), title_x, self.title_y, 1),
-				normal_text("subtitle", "", fetch_color("text"), fetch_color("stroke"), title_x, 12, .5),
-				normal_text("length", "", fetch_color("text"), fetch_color("stroke"), len_x, 24, .5, left),
-				normal_text("genre", "", fetch_color("text"), fetch_color("stroke"), genre_x, 24, .5, right),
-				normal_text("artist", "", fetch_color("text"), fetch_color("stroke"), title_x, 36, .5, center),
+				normal_text("title", "", fetch_color("text"), fetch_color("stroke"), 0, self.title_y, 1),
+				normal_text("sec_title", "", fetch_color("text"), fetch_color("stroke"), 0, self.title_y, 1),
+				normal_text("subtitle", "", fetch_color("text"), fetch_color("stroke"), 0, 12, .5),
+				normal_text("length", "", fetch_color("text"), fetch_color("stroke"), 0, 24, .5, left),
+				normal_text("genre", "", fetch_color("text"), fetch_color("stroke"), 0, 24, .5, right),
+				normal_text("artist", "", fetch_color("text"), fetch_color("stroke"), 0, 36, .5, center),
 			}
 			local above_args= {
 				InitCommand= function(subself)
@@ -336,27 +450,26 @@ local focus_element_info_mt= {
 				InitCommand= function(subself)
 					self.below_info= subself
 					self.cdtitle= subself:GetChild("CDTitle")
-					self.cdtitle:xy(cdtitle_x, cdtitle_y)
+					self.cdtitle:y(cdtitle_y)
 					self.steps_by= subself:GetChild("steps_by")
 					subself:xy(0, self.middle_height):zoomy(0)
 					self.steps_by:settext(
 						get_string_wrapper("SelectMusicExtraInfo", "steps_by"))
 				end,
 				cdtitle(),
-				normal_text("steps_by", "", fetch_color("text"), fetch_color("stroke"), self.right_x, auth_start, .5),
+				normal_text("steps_by", "", fetch_color("text"), fetch_color("stroke"), 0, auth_start, .5),
 			}
 			self.song_count= setmetatable({}, text_and_number_interface_mt)
 			args[#args+1]= self.song_count:create_actors(
-				"song_count", {sx= title_x, sy= 12, tx= -4, tz= .5, nx= 4,
+				"song_count", {sy= 12, tx= -4, tz= .5, nx= 4,
 											 nz= .5, ts= ":", tt= "song_count",
 											 text_section= "SelectMusicExtraInfo"})
 			self.auth_entries= {}
 			self.auth_limit= 5
-			self.auth_width= ((hwheelw - self.right_x) * 2) - pad
 			for i= 1, self.auth_limit do
 				below_args[#below_args+1]= normal_text(
 					"auth"..i, "", fetch_color("text"), fetch_color("stroke"),
-					self.right_x, auth_start + (i*12), .5, center, {
+					0, auth_start + (i*12), .5, center, {
 						InitCommand= function(subself) self.auth_entries[i]= subself end
 				})
 			end
@@ -365,16 +478,16 @@ local focus_element_info_mt= {
 			self.difficulty_symbols= {}
 			self.difficulty_counts= {}
 			local diff_tani_args= {
-				sx= self.left_x, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
+				tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
 				text_section= "DifficultyNames"
 			}
 			for i, diff in ipairs(Difficulty) do
 				args[#args+1]= Def.Sprite{
 					Texture= "big_circle", InitCommand= function(subself)
 						self.difficulty_symbols[diff]= subself
-						subself:visible(false):zoom(symbol_size/big_circle_size)
+						subself:visible(false):zoom(self.symbol_size/big_circle_size)
 							:diffuse(diff_to_color(diff))
-							:xy(symbol_x, symbol_y + ((i-1) * symbol_spacing))
+							:y(symbol_y + ((i-1) * symbol_spacing))
 					end
 				}
 				local new_tani= setmetatable({}, text_and_number_interface_mt)
@@ -386,14 +499,52 @@ local focus_element_info_mt= {
 					"tani_" .. diff, diff_tani_args)
 			end
 			args[#args+1]= self.diff_range:create_actors(
-				"diff_range", {sx= title_x, sy= 24, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
+				"diff_range", {sy= 24, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
 											 tt= "difficulty_range", text_section= "SelectMusicExtraInfo"})
 			args[#args+1]= self.nps_range:create_actors(
-				"nps_range", {sx= title_x, sy= 36, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
+				"nps_range", {sy= 36, tx= -4, tz= .5, nx= 4, nz= .5, ts= ":",
 											 tt= "nps_range", text_section= "SelectMusicExtraInfo"})
 			args[#args+1]= Def.ActorFrame(above_args)
 			args[#args+1]= Def.ActorFrame(below_args)
 			return Def.ActorFrame(args)
+		end,
+		resize= function(self)
+			self.bg:setsize(wheel_width-hpad, expanded_info_height*2)
+			self.left_x= wheel_width * -.15
+			self.right_x= wheel_width * .25
+			local hwheelw= wheel_width * .5
+			local hjackw= self.jacket_width * .5
+			local jacket_x= -hwheelw + hjackw + hpad
+			local symbol_x= hwheelw - self.hsymw - hpad
+			local len_x= jacket_x + hjackw + pad
+			local genre_x= symbol_x - self.hsymw - pad
+			self.title_width= symbol_x - jacket_x - hjackw - self.hsymw - (pad*2)
+			local title_x= jacket_x + hjackw + pad + (self.title_width * .5)
+			local cdtitle_x= hwheelw - cdtitle_size*.5 - pad
+			self.auth_width= ((hwheelw - self.right_x) * 2) - pad
+
+			self.container:stoptweening():april_linear(wheel_move_time):x(wheel_x)
+			self.jacket:x(jacket_x)
+			self.title:x(title_x)
+			self.sec_title:x(title_x)
+			self.subtitle:x(title_x)
+			self.length:x(len_x)
+			self.genre:x(genre_x)
+			self.artist:x(title_x)
+			for d, sym in pairs(self.difficulty_symbols) do
+				sym:x(symbol_x)
+			end
+			self.cdtitle:x(cdtitle_x)
+			self.steps_by:x(self.right_x)
+			self.song_count.container:x(title_x)
+			for i, ent in ipairs(self.auth_entries) do
+				ent:x(self.right_x)
+			end
+			for d, tani in pairs(self.difficulty_counts) do
+				tani.container:x(self.left_x)
+			end
+			self.diff_range.container:x(title_x)
+			self.nps_range.container:x(title_x)
 		end,
 		hide_song_bucket_info= function(self)
 			self.song_count:hide()
@@ -458,20 +609,21 @@ local focus_element_info_mt= {
 			if item.bucket_info then
 				self:set_title_text(nice_bucket_disp_name(item.bucket_info))
 				if item.is_current_group then
-					self.bg:diffuse(wheel_colors.current_group)
+					rot_color_text(self.bg, wheel_colors.current_group)
 				else
 					self.bg:diffuse(wheel_colors.group)
+					rot_color_text(self.bg, wheel_colors.group)
 				end
 			elseif item.sort_info then
 				self:set_title_text(item.sort_info.name)
-				self.bg:diffuse(wheel_colors.sort)
+				rot_color_text(self.bg, wheel_colors.sort)
 			else
 				if item.random_info then
-					self.bg:diffuse(wheel_colors.random)
+					rot_color_text(self.bg, wheel_colors.random)
 				elseif item.is_prev then
-					self.bg:diffuse(wheel_colors.prev_song)
+					rot_color_text(self.bg, wheel_colors.prev_song)
 				else
-					self.bg:diffuse(wheel_colors.song)
+					rot_color_text(self.bg, wheel_colors.song)
 				end
 				local song= gamestate_get_curr_song()
 				if song then
@@ -503,7 +655,7 @@ local focus_element_info_mt= {
 			width_clip_limit_text(self.artist, self.title_width, .5)
 			local len_len= self.length:GetZoomedWidth()
 			width_clip_limit_text(self.genre, self.title_width-len_len - pad*2, .5)
-			self.bg:diffusealpha(.5)
+			self.bg:diffusealpha(.75)
 		end,
 		update= function(self, item)
 			self:update_title(item)
@@ -621,7 +773,7 @@ local focus_element_info_mt= {
 			self.bg:stoptweening():april_linear(wheel_move_time):zoomy(1)
 		end
 }}
-local focus_element_info= setmetatable({}, focus_element_info_mt)
+focus_element_info= setmetatable({}, focus_element_info_mt)
 
 dofile(THEME:GetPathO("", "steps_menu.lua"))
 dofile(THEME:GetPathO("", "options_menu.lua"))
@@ -636,9 +788,9 @@ local rate_coordinator= setmetatable({}, rate_coordinator_interface_mt)
 rate_coordinator:initialize()
 local color_manips= {}
 local bpm_disps= {}
+local pain_displays= {}
 local special_menus= {}
 local steps_menus= {}
-local pain_displays= {}
 local song_props_menus= {}
 local tag_menus= {}
 local player_cursors= {}
@@ -678,11 +830,32 @@ local function update_pain(pn)
 		if in_special_menu[pn] == "wheel" or in_special_menu[pn] == "pain"
 		or in_special_menu[pn] == "steps" then
 			pain_displays[pn]:update_all_items()
-			pain_displays[pn]:unhide()
+			if pain_displays[pn]:empty() and cons_players[pn].select_music.hide_empty_pane then
+				pain_displays[pn]:hide()
+			else
+				pain_displays[pn]:unhide()
+			end
 		elseif in_special_menu[pn] == "menu" then
 		end
 	else
 		pain_displays[pn]:hide()
+	end
+end
+
+local function update_pain_active()
+	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
+		if in_special_menu[pn] == "wheel" then
+			if not cons_players[pn].select_music.show_pane_during_song_select or
+				(cons_players[pn].select_music.hide_empty_pane
+				 and pain_displays[pn]:empty()) then
+					set_pane_active(pn, false)
+					pain_displays[pn]:hide()
+			else
+				set_pane_active(pn, true)
+			end
+		else
+			set_pane_active(pn, true)
+		end
 	end
 end
 
@@ -717,6 +890,7 @@ local function set_special_menu(pn, next_menu)
 		pain_displays[pn]:show_frame()
 		open_menu(pn)
 	end
+	update_pain_active()
 end
 
 local function convert_xml_exists()
@@ -812,6 +986,57 @@ local misc_options= {
 	end},
 }
 
+local layout_options= {
+	reeval_init_on_change= true,
+	eles= {
+		{name= "show_inactive_pane",
+		 init= function(pn)
+			 return cons_players[pn].select_music.show_inactive_pane end,
+		 set= function(pn)
+			 cons_players[pn].select_music.show_inactive_pane= true
+			 update_show_inactive_pane()
+		 end,
+		 unset= function(pn)
+			 cons_players[pn].select_music.show_inactive_pane= false
+			 update_show_inactive_pane()
+		end},
+		{name= "hide_empty_pane",
+		 init= function(pn)
+			 return cons_players[pn].select_music.hide_empty_pane end,
+		 set= function(pn)
+			 cons_players[pn].select_music.hide_empty_pane= true
+			 update_pain_active()
+		 end,
+		 unset= function(pn)
+			 cons_players[pn].select_music.hide_empty_pane= false
+			 update_pain_active()
+		end},
+		{name= "show_pane_during_song_select",
+		 init= function(pn)
+			 return cons_players[pn].select_music.show_pane_during_song_select end,
+		 set= function(pn)
+			 cons_players[pn].select_music.show_pane_during_song_select= true
+			 update_pain_active()
+		 end,
+		 unset= function(pn)
+			 cons_players[pn].select_music.show_pane_during_song_select= false
+			 update_pain_active()
+		end},
+}}
+for i, choice in ipairs(wheel_layout_choices) do
+	layout_options.eles[#layout_options.eles+1]= {
+		name= "wheel_layout_" .. choice,
+		init= function(pn)
+			return cons_players[pn].select_music.wheel_layout == choice
+		end,
+		set= function(pn)
+			cons_players[pn].select_music.wheel_layout= choice
+			update_curr_wheel_layout()
+		end,
+		unset= noop_nil
+	}
+end
+
 local function make_visible_style_data(pn)
 	local num_players= GAMESTATE:GetNumPlayersEnabled()
 	local eles= {}
@@ -842,6 +1067,7 @@ base_options= {
 	{name= "scsm_misc", meta= options_sets.menu, level= 1, args= misc_options},
 	{name= "scsm_favor", meta= options_sets.favor_menu, level= 1, args= {}},
 	{name= "scsm_tags", meta= options_sets.tags_menu, level= 1, args= true},
+	{name= "scsm_layout", meta= options_sets.special_functions, level= 1, args= layout_options},
 --	{name= "scsm_stepstypes", meta= options_sets.special_functions, level= 1,
 --	args= make_visible_style_data, exec_args= true},
 }
@@ -1466,6 +1692,7 @@ local function input(event)
 		Trace("Removed from saw_first_press")
 		saw_first_press[event.DeviceInput.button]= nil
 	end
+	--[[
 	if event.DeviceInput.button == "DeviceButton_s" then
 		if press_type == "InputEventType_FirstPress" then
 			expand_center_for_more()
@@ -1473,6 +1700,7 @@ local function input(event)
 			collapse_center_for_less()
 		end
 	end
+	]]
 	if press_type == "InputEventType_FirstPress"
 	and event.DeviceInput.button == "DeviceButton_F9" then
 		PREFSMAN:SetPreference("ShowNativeLanguage", not PREFSMAN:GetPreference("ShowNativeLanguage"))
@@ -1754,7 +1982,10 @@ end
 
 local function player_actors(pn, x, y)
 	return Def.ActorFrame{
-		Name= pn .. "_stuff", InitCommand= function(self) self:xy(x, y) end,
+		Name= pn .. "_stuff", InitCommand= function(self)
+			player_stuff[pn]= self
+			self:xy(x, y)
+		end,
 		pain_displays[pn]:create_actors(
 			"pain", 0, pane_y + pane_yoff - pane_text_height, pn, pane_w,
 			pane_text_zoom),
@@ -1783,9 +2014,13 @@ return Def.ActorFrame {
 	end,
 	OnCommand= function(self)
 		local top_screen= SCREENMAN:GetTopScreen()
-		top_screen:SetAllowLateJoin(true):AddInputCallback(input)
+		top_screen:SetAllowLateJoin(false):AddInputCallback(input)
 		change_sort_text(music_wheel.current_sort_name)
 		update_all_info()
+		update_show_inactive_pane()
+		update_pain_active()
+		update_curr_wheel_layout()
+		update_player_cursors()
 	end,
 	play_songCommand= function(self)
 		switch_to_picking_steps()

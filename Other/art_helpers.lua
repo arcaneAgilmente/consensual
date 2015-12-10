@@ -625,7 +625,7 @@ function animated_text(text, x, y, zoom, anim_time, fade_time)
 	end}
 	local letter_w= 16
 	local space= zoom * letter_w
-	local text_start= (space*1)-((#text * space) / 2)
+	local text_start= (space*.75)-((#text * space) / 2)
 	for i= 1, #text do
 		local l= text:sub(i, i)
 		local lx= text_start+(space*(i-1))

@@ -1512,7 +1512,7 @@ end
 
 dofile(THEME:GetPathO("", "save_score.lua"))
 
-return Def.ActorFrame{
+local main_parts= {
 	Name= "SEd",
 	InitCommand= function(self)
 		find_actors(self)
@@ -1565,5 +1565,13 @@ return Def.ActorFrame{
 		end,
 	},
 	maybe_help(),
-	normal_text("tws", "TWS: " .. ("%.3f"):format(PREFSMAN:GetPreference("TimingWindowScale")), fetch_color("text"), fetch_color("stroke"), _screen.cx, 126),
 }
+
+do
+	local tws= PREFSMAN:GetPreference("TimingWindowScale")
+	if tws ~= 1 then
+		main_parts[#main_parts+1]= normal_text("tws", "TWS: " .. ("%.3f"):format(tws), fetch_color("text"), fetch_color("stroke"), _screen.cx, 126)
+	end
+end
+
+return Def.ActorFrame(main_parts)

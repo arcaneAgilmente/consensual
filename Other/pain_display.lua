@@ -478,6 +478,9 @@ pain_display_mt= {
 			args[#args+1]= Def.ActorFrame(el_args)
 			return Def.ActorFrame(args)
 		end,
+		empty= function(self)
+			return self.used_rows == 0
+		end,
 		stroke_items= function(self, set)
 			local stroke= fetch_color("stroke")
 			for i, item in ipairs(set) do

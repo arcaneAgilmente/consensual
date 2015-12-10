@@ -611,6 +611,7 @@ options_sets.special_functions= {
 			self.element_set= extra.eles
 			self.shared_display= shared_display
 			self.disallow_unset= extra.disallow_unset
+			self.reeval_init_on_change= extra.reeval_init_on_change
 			if shared_display then
 				self:reset_info()
 			else
@@ -662,6 +663,13 @@ options_sets.special_functions= {
 				else
 					ele_info.set(self.player_number)
 					self:update_el_underline(self.cursor_pos, true)
+				end
+				if self.reeval_init_on_change then
+					for i, el in ipairs(self.element_set) do
+						local info= self.info_set[i+1]
+						info.underline= el.init(self.player_number)
+						self:update_el_underline(i+1, info.underline)
+					end
 				end
 				return true
 			else

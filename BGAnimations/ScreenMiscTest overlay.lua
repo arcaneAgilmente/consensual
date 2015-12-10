@@ -7,25 +7,119 @@ local mapping_menu_row= {
 			end
 }}
 
-local movie= false
+local test_texts= {}
+local test_quads= {}
+local luma_texts= {}
+local angle_texts= {}
+local corner_lumas= {1, 1, 1, 1}
+local good_luma= {10, .5, .5, 5}
+local corner_angles= {0, 0, 0, 0}
+
+local function color_text(text, color)
+	text:diffuseupperleft(adjust_luma(color, corner_lumas[1]))
+		:diffuseupperright(adjust_luma(color, corner_lumas[2]))
+		:diffuselowerleft(adjust_luma(color, corner_lumas[3]))
+		:diffuselowerright(adjust_luma(color, corner_lumas[4]))
+end
+
+local function rot_color_text(text, color)
+	for i, corner in ipairs{"diffuseupperleft", "diffuseupperright", "diffuselowerleft", "diffuselowerright"} do
+		local new_color= color
+		new_color= rotate_color(new_color, corner_angles[i])
+		new_color= adjust_luma(new_color, corner_lumas[i])
+		text[corner](text, new_color)
+	end
+end
+
+local test_colors= {
+	fetch_color("text"),
+	fetch_color("text_other"),
+	fetch_color("rev_text"),
+	fetch_color("rev_text_other"),
+	fetch_color("accent.yellow"),
+	fetch_color("accent.orange"),
+	fetch_color("accent.red"),
+	fetch_color("accent.magenta"),
+	fetch_color("accent.violet"),
+	fetch_color("accent.blue"),
+	fetch_color("accent.cyan"),
+	fetch_color("accent.green"),
+}
+
+local function update_text()
+	for i, text in ipairs(test_texts) do
+		rot_color_text(text, test_colors[i])
+	end
+	for i, quad in ipairs(test_quads) do
+		rot_color_text(quad, test_colors[i])
+	end
+	for i, luma in ipairs(luma_texts) do
+		luma:settextf("%.2f", corner_lumas[i])
+	end
+	for i, angle in ipairs(angle_texts) do
+		angle:settextf("%.2f", corner_angles[i])
+	end
+end
+
+local function adjust_corner_angle(corner, amount)
+	corner_angles[corner]= corner_angles[corner] + amount
+	update_text()
+end
+
+local function adjust_corner_luma(corner, amount)
+	corner_lumas[corner]= corner_lumas[corner] + amount
+	update_text()
+end
+
+local function reset_corner(corner)
+	corner_lumas[corner]= 1
+	corner_angles[corner]= 0
+	update_text()
+end
 
 local function input(event)
 	if event.type == "InputEventType_Release" then return end
 	--input_list[#input_list+1]= event.DeviceInput
-	if event.type == "InputEventType_FirstPress" then
-		if event.DeviceInput.button == "DeviceButton_a" then
-			movie:SetSecondsIntoAnimation(10)
-		elseif event.DeviceInput.button == "DeviceButton_s" then
-			movie:SetSecondsIntoAnimation(20)
-		elseif event.DeviceInput.button == "DeviceButton_s" then
-			movie:SetSecondsIntoAnimation(30)
-		elseif event.DeviceInput.button == "DeviceButton_d" then
-			movie:SetSecondsIntoAnimation(40)
-		elseif event.DeviceInput.button == "DeviceButton_f" then
-			movie:SetSecondsIntoAnimation(50)
-		elseif event.DeviceInput.button == "DeviceButton_g" then
-			movie:decode_second(10)
-		end
+	if event.DeviceInput.button == "DeviceButton_3" then
+		reset_corner(1)
+	elseif event.DeviceInput.button == "DeviceButton_e" then
+		reset_corner(2)
+	elseif event.DeviceInput.button == "DeviceButton_d" then
+		reset_corner(3)
+	elseif event.DeviceInput.button == "DeviceButton_c" then
+		reset_corner(4)
+	elseif event.DeviceInput.button == "DeviceButton_1" then
+		adjust_corner_angle(1, -1)
+	elseif event.DeviceInput.button == "DeviceButton_q" then
+		adjust_corner_angle(2, -1)
+	elseif event.DeviceInput.button == "DeviceButton_a" then
+		adjust_corner_angle(3, -1)
+	elseif event.DeviceInput.button == "DeviceButton_z" then
+		adjust_corner_angle(4, -1)
+	elseif event.DeviceInput.button == "DeviceButton_5" then
+		adjust_corner_angle(1, 1)
+	elseif event.DeviceInput.button == "DeviceButton_t" then
+		adjust_corner_angle(2, 1)
+	elseif event.DeviceInput.button == "DeviceButton_g" then
+		adjust_corner_angle(3, 1)
+	elseif event.DeviceInput.button == "DeviceButton_b" then
+		adjust_corner_angle(4, 1)
+	elseif event.DeviceInput.button == "DeviceButton_2" then
+		adjust_corner_luma(1, -.1)
+	elseif event.DeviceInput.button == "DeviceButton_w" then
+		adjust_corner_luma(2, -.1)
+	elseif event.DeviceInput.button == "DeviceButton_s" then
+		adjust_corner_luma(3, -.1)
+	elseif event.DeviceInput.button == "DeviceButton_x" then
+		adjust_corner_luma(4, -.1)
+	elseif event.DeviceInput.button == "DeviceButton_4" then
+		adjust_corner_luma(1, .1)
+	elseif event.DeviceInput.button == "DeviceButton_r" then
+		adjust_corner_luma(2, .1)
+	elseif event.DeviceInput.button == "DeviceButton_f" then
+		adjust_corner_luma(3, .1)
+	elseif event.DeviceInput.button == "DeviceButton_v" then
+		adjust_corner_luma(4, .1)
 	end
 end
 
@@ -46,6 +140,7 @@ end
 local args= {
 	OnCommand= function(self)
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
+		update_text()
 --		self:SetDrawFunction(draw)
 	end,
 	Def.BitmapText{
@@ -53,95 +148,55 @@ local args= {
 			text= self:DiffuseAndStroke(fetch_color("text"), fetch_color("stroke"))
 		end
 	},
-	Def.ActorFrame{
-			circle_amv("circlekyz1", _screen.cx, _screen.cy, 40, 6, fetch_color("accent.red")),
-			circle_amv("circle2", _screen.cx, _screen.cy-20, 40, 8, fetch_color("accent.orange")),
-			circle_amv("circle3", _screen.cx, _screen.cy-40, 40, 10, fetch_color("accent.yellow")),
-			circle_amv("circle4", _screen.cx, _screen.cy-60, 40, 12, fetch_color("accent.green")),
-			circle_amv("circle5", _screen.cx, _screen.cy-80, 40, 14, fetch_color("accent.cyan")),
-			InitCommand= function(self)
-				self:visible(false)
-				self:GetChild("circlekyz1"):diffusealpha(1)
-				self:GetChild("circle2"):diffusealpha(.9)
-				self:GetChild("circle3"):diffusealpha(.8)
-				self:GetChild("circle4"):diffusealpha(.7)
-				self:GetChild("circle5"):diffusealpha(.6)
-			end
-	},
-	Def.BitmapText{
-		Font= "Common Normal", Text= "ATTR_TEST", InitCommand= function(self)
-			self:xy(_screen.cx, _screen.cy)
-				:diffuseupperleft{.5, .5, .5, 1}
-				:diffuseupperright{.75, .25, .75, 1}
-				:diffuselowerleft{.75, .75, .25, 1}
-				:diffuselowerright{.25, .75, .75, 1}
-				:AddAttribute(2, {Length= 4, Diffuses= {{.75, 0, 0, 1}, {0, .75, 0, 1}, {0, 0, .75, 1}, {.75, .75, .75, 1}}, Glow= {.9, 0, 0, .5}})
---				:set_mult_attrs_with_diffuse(true)
-				:glow{.5, .5, .5, .5}
-				:textglowmode("TextGlowMode_Both")
-		end
-	},
-	Def.Sprite{
-		Texture= THEME:GetPathG("", "sleep_soon.png"),
-		InitCommand= function(self)
-			self:xy(_screen.cx, _screen.cy)
-				:visible(false)
-				:texcoordvelocity(1/4, 1/64)
-		end
-	},
-	Def.Sprite{
-		Texture= THEME:GetPathG("", "grades/default_grades"),
-		Mask= THEME:GetPathG("", "grades/grade_mask"),
-		InitCommand= function(self)
-			self:xy(_screen.cx, _screen.cy)
-				:animate(false):setstate(0):SetTextureFiltering(false):zoom(4/2.5)
---				:set_mask_color{.75, .125, .675, .25}
-		end
-	},
-	Def.Sprite{
-		Texture= THEME:GetPathG("", "tash"),
-		InitCommand= function(self)
-			self:xy(_screen.cx, _screen.cy)
-			movie= self
-		end
-	},
-	--LoadActor(THEME:GetPathO("", "DDRKonamixBGAnimation110A/default")),
 }
-
---[[
-local spacing= 160
-local scaled_args= {}
-local display_height= DISPLAY:GetDisplayHeight()
-local display_scale= _screen.h / display_height
-local x_count= math.ceil(DISPLAY:GetDisplayWidth() / spacing)
-local y_count= math.ceil(DISPLAY:GetDisplayHeight() / spacing)
-for x= 1, x_count do
-	for y= 1, y_count do
-		scaled_args[#scaled_args+1]= LoadActor(THEME:GetPathO("", "DDRKonamixBGAnimation110A/2"))..{
-			InitCommand= function(self)
-				local curr_x= (x-.5) * spacing * display_scale
-				local curr_y= (y-.5) * spacing * display_scale
-				self:xy(curr_x, curr_y):zoom(display_scale)
-			end
-		}
+args[#args+1]= Def.Quad{
+	InitCommand= function(self)
+		self:xy(_screen.cx, _screen.cy):setsize(_screen.w, _screen.h):diffuse{0, 0, 0, 1}
 	end
-end
---args[#args+1]= Def.ActorFrame(scaled_args)
-
-local posed_args= {}
-for x= 1, 4 do
-	for y= 1, 3 do
-		posed_args[#posed_args+1]= LoadActor(THEME:GetPathO("", "DDRKonamixBGAnimation110A/2"))..{
-			InitCommand= function(self)
-				local curr_x= ((x-.5) * spacing)
-				local curr_y= ((y-.5) * spacing)
-				local extra_pixels= (1 / display_scale) - 1
-				self:xy(curr_x, curr_y):zoom((spacing+extra_pixels)/spacing)
-			end
-		}
+}
+for test_col= 1, #test_colors do
+args[#args+1]= Def.BitmapText{
+	Font= "Common Normal",
+	Text= "QWERTYUIOPASDFGHJKLZXCVBNM",
+	InitCommand= function(self)
+		test_texts[test_col]= self
+		self:xy(_screen.cx, 24*test_col)
+		color_text(self, test_colors[test_col])
 	end
+}
+	args[#args+1]= Def.Quad{
+		InitCommand= function(self)
+			test_quads[test_col]= self
+			self:xy(_screen.cx*.4, 24*test_col):setsize(20, 20)
+		end
+	}
 end
-args[#args+1]= Def.ActorFrame(posed_args)
-]]
+
+local luma_text_pos= {
+	{8, 8, left, top}, {_screen.w-8, 8, right, top},
+	{8, _screen.h-8, left, bottom}, {_screen.w-8, _screen.h-8, right, bottom}
+}
+local angle_text_pos= {
+	{32, 32, left, top}, {_screen.w-32, 32, right, top},
+	{32, _screen.h-32, left, bottom}, {_screen.w-32, _screen.h-32, right, bottom}
+}
+for l= 1, #luma_text_pos do
+	args[#args+1]= Def.BitmapText{
+		Font= "Common Normal",
+		InitCommand= function(self)
+			luma_texts[l]= self:diffuse(fetch_color("text"))
+			local pos= luma_text_pos[l]
+			self:xy(pos[1], pos[2]):horizalign(pos[3]):vertalign(pos[4])
+		end
+	}
+	args[#args+1]= Def.BitmapText{
+		Font= "Common Normal",
+		InitCommand= function(self)
+			angle_texts[l]= self:diffuse(fetch_color("text"))
+			local pos= angle_text_pos[l]
+			self:xy(pos[1], pos[2]):horizalign(pos[3]):vertalign(pos[4])
+		end
+	}
+end
 
 return Def.ActorFrame(args)
