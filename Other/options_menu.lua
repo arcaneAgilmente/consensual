@@ -1277,7 +1277,7 @@ menu_stack_mt= {
 					end
 				end
 			else
-				if code == "Start" and #oss > 1 then
+				if (code == "Start" or code == "Back") and #oss > 1 then
 					handled= true
 					self:pop_options_set_stack()
 				end

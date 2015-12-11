@@ -442,6 +442,8 @@ local music_whale= {
 				bucket[#bucket+1]= random_recent_bucket
 				self.played_recent_pos= #bucket+1
 				bucket[#bucket+1]= played_recent_bucket
+				self.favorite_folder_pos= #bucket+1
+				bucket[#bucket+1]= favor_folder_bucket
 				self:add_randoms(bucket)
 			end
 			bucket[#bucket+1]= last_el
