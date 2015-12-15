@@ -801,7 +801,7 @@ function finalize_bucket(bucket, depth_above, no_yield)
 	local step_artist_count= 0
 	local max_step_artists= 5
 	local handle_item= noop_nil
-	if bucket.contents[1].contents then
+	if #bucket.contents > 0 and bucket.contents[1].contents then
 		handle_item= function(item)
 			finalize_bucket(item, depth_above + 1, no_yield)
 			song_count= song_count + item.song_count
