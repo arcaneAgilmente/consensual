@@ -1,6 +1,13 @@
 GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(1)
 update_steps_types_to_show()
 
+--[[
+GAMESTATE:set_noteskin_params(PLAYER_2, {tap_graphic= "Chromatic", rots= {Left= -5, Right= 45}})
+local skin_info= NEWSKIN:get_skin_parameter_info("judgmental")
+rec_print_table(skin_info)
+lua.ReportScriptError("dumped skin_info from SCSM")
+]]
+
 local press_ignore_reporter= false
 local function show_ignore_message(message)
 --	press_ignore_reporter:settext(message):finishtweening()
