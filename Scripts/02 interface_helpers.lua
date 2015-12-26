@@ -1,5 +1,30 @@
 local text_and_number_interface= {}
 
+local function rotate_color(color, angle)
+	local hsv= ColorToHSV(color)
+	hsv.Hue= (hsv.Hue + angle) % 360
+	return HSVToColor(hsv)
+end
+
+local corner_lumas= {2, .5, .5, 2}
+local alt_corner_lumas= {2, .5, .5, 2}
+local corner_angles= {30, 0, 0, -30}
+local alt_corner_angles= {-30, 0, 0, 30}
+local function rct_internal(text, color, corners, lumas, angles)
+	for i, corner in ipairs(corners) do
+		local new_color= color
+		new_color= rotate_color(new_color, angles[i])
+		new_color= adjust_luma(new_color, lumas[i])
+		text[corner](text, new_color)
+	end
+end
+function rot_color_text(text, color)
+	rct_internal(text, color, {"diffuseupperleft", "diffuseupperright", "diffuselowerleft", "diffuselowerright"}, corner_lumas, corner_angles)
+end
+function alt_rot_color_text(text, color)
+	rct_internal(text, color, {"diffuseupperleft", "diffuseupperright", "diffuselowerleft", "diffuselowerright"}, alt_corner_lumas, alt_corner_angles)
+end
+
 function normal_text(name, text, color, stroke, tx, ty, z, align, commands)
 	color= color or fetch_color("text")
 	tx= tx or 0
@@ -11,7 +36,7 @@ function normal_text(name, text, color, stroke, tx, ty, z, align, commands)
 	commands.Name= name
 	commands.Text= text
 	commands.InitCommand= function(self)
-		self:xy(tx,ty):zoom(z):diffuse(color):horizalign(align)
+		self:xy(tx,ty):zoom(z):horizalign(align):diffuse(color)
 		if stroke and stroke[4] > 0 then self:strokecolor(stroke) end
 		maybe_distort_text(self)
 		if passed_init then passed_init(self) end

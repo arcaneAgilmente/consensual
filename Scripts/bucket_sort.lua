@@ -864,6 +864,13 @@ function bucket_brute_search(set, match_element, final_compare)
 	return -1
 end
 
+
+smmaxx_packs= {
+	Amperage= "( ͡° ͜ʖ ͡°) / ᖍ(ツ)ᖌ",
+	Resistance= "( ͡° ͜ʖ ͡°) / ヽ(´▽｀)/",
+	Voltage= "ヽ(´▽｀)/ * ( ͡° ͜ʖ ͡°)",
+}
+
 function bucket_disp_name(bucket)
 	if bucket.name.disp then
 		return bucket.name.disp
@@ -873,6 +880,8 @@ function bucket_disp_name(bucket)
 	elseif bucket.combined_name_range then
 		return bucket.combined_name_range[1].value .. "..." ..
 			bucket.combined_name_range[2].value
+	elseif smmaxx_packs[bucket.name.value] then
+		return smmaxx_packs[bucket.name.value]
 	else
 		return bucket.name.value
 	end

@@ -769,6 +769,9 @@ function steps_get_author(steps, song)
 	if author == "" or author:lower():find("copied from") then
 		author= song:GetGroupName()
 	end
+	if author:lower() == "c. grab" then
+		author= "( ͡° ͜ʖ ͡°)"
+	end
 	return author
 end
 
@@ -1079,6 +1082,103 @@ end
 
 function screen_pixels(pix)
 	return pix * (DISPLAY:GetDisplayHeight() / _screen.h)
+end
+
+local number_names= {
+	[0]= "zero", "one", "two", "three", "four", "five", "six", "seven",
+	"eight", "nine"
+}
+local teen_names= {
+	"eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+	"seventeen", "eighteen", "nineteen"
+}
+local tens_names= {
+	"ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty",
+	"ninety"
+}
+local thousand_names= {
+	"thousand", "million", "billion", "trillion", "quadrillion", "pentillion",
+	"sexillion", "hepatitisillion", "octillion", "nonallion", "decillion"
+}
+function wordify_subk_number(number, result)
+	local hundreds= math.floor(number * .01)
+	local tens= math.floor((number * .1) % 10)
+	local ones= number % 10
+	if hundreds > 0 then
+		table.insert(result, number_names[hundreds])
+		table.insert(result, "hundred")
+	end
+	local is_teen= false
+	if tens > 0 then
+		if tens == 1 and ones ~= 0 then
+			is_teen= true
+			table.insert(result, teen_names[ones])
+		else
+			table.insert(result, tens_names[tens])
+		end
+	end
+	if not is_teen and (ones > 0 or number == 0) then
+		table.insert(result, number_names[ones])
+	end
+	return result
+end
+function wordify_number_internal(number, result)
+	if number < 0 then
+		table.insert(result, "negative")
+		return wordify_number_internal(-number, result)
+	end
+	if number < 1000 then
+		return wordify_subk_number(number, result)
+	end
+	local curr_number= number
+	local subk_parts= {}
+	while curr_number > 0 do
+		local subk= curr_number % 1000
+		table.insert(subk_parts, wordify_subk_number(subk, {}))
+		curr_number= math.floor(curr_number / 1000)
+	end
+	local worded_subk_parts= {}
+	for sk= #subk_parts, 1, -1 do
+		if sk > 1 then
+			table.insert(subk_parts[sk], thousand_names[sk-1])
+		end
+		if subk_parts[sk][1] ~= "zero" then
+			table.insert(worded_subk_parts, table.concat(subk_parts[sk], " "))
+		end
+	end
+	return worded_subk_parts
+end
+
+function wordify_number(number)
+	local result= wordify_number_internal(math.round(number), {})
+	return table.concat(result, " ")
+end
+
+function wordify_num_test()
+	Trace(wordify_number(123456789012345))
+	Trace(wordify_number(12345678901234))
+	Trace(wordify_number(1234567890123))
+	Trace(wordify_number(123456789012))
+	Trace(wordify_number(12345678901))
+	Trace(wordify_number(1234567890))
+	Trace(wordify_number(123456789))
+	Trace(wordify_number(12345678))
+	Trace(wordify_number(1234567))
+	Trace(wordify_number(123456))
+	Trace(wordify_number(12345))
+	Trace(wordify_number(1234))
+	Trace(wordify_number(123))
+	Trace(wordify_number(12))
+	Trace(wordify_number(1))
+	Trace(wordify_number(0))
+	Trace(wordify_number(-1))
+	Trace(wordify_number(10))
+	Trace(wordify_number(20))
+	Trace(wordify_number(30))
+	Trace(wordify_number(32))
+	Trace(wordify_number(333))
+	Trace(wordify_number(315))
+	lua.ReportScriptError("wordify_num_test done")
 end
 
 music_wheel_width= SCREEN_WIDTH*.3125

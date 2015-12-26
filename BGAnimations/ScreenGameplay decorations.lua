@@ -966,8 +966,11 @@ local function Update(self, delta)
 	else
 		gameplay_end_time= get_screen_time()
 	end
-	song_progress_bar:update()
-	song_rate:update()
+	-- FIXME: Does not work in sync mode.
+	if true or can_have_special_actors() then
+		song_progress_bar:update()
+		song_rate:update()
+	end
 	if note_drift_on then
 		multiapproach(note_drift_currents, note_drift_goals, note_drift_speeds, delta)
 	end
@@ -1567,6 +1570,49 @@ local function judgment_tracer()
 	}
 end
 
+local garbage_text= false
+local garb_aft= false
+local garb_pix= false
+local garbage_time= 0
+local pix_per_sec= 4
+local pix_per_garb= .004
+local garb_offset= 64
+local pix_per_delta= 8000
+local delta_offset= 0
+local next_garb_vert= 1
+local garb_dump= {}
+local delta_dump= {}
+local function add_vert_to_graph(line, x, y, color, raw, dump)
+	garb_pix:xy(x, y+256):diffuse(color)
+	garb_aft:hibernate(0):Draw():hibernate(math.huge)
+--	line:SetVertex(next_garb_vert, {{x, y, 0}, color})
+--	table.insert(dump, raw)
+end
+local function update_garbage(self, delta)
+	if screen_gameplay:IsPaused() then return end
+	local garb= collectgarbage("count")
+	garbage_text:settextf("%.2f", garb)
+	garbage_time= garbage_time + delta
+	local x= garbage_time * pix_per_sec
+	add_vert_to_graph(garbage_line, x, garb * -pix_per_garb + garb_offset, {1, 0, 0, 1}, garb, garb_dump)
+	add_vert_to_graph(delta_line, x, delta * -pix_per_delta + delta_offset, {0, 0, 1, 1}, delta, delta_dump)
+	next_garb_vert= next_garb_vert + 1
+	collectgarbage("step", 1)
+end
+local function quaid_set()
+	local frame= Def.ActorFrame{}
+	for i= 1, 32 do
+		frame[i]= quaid(0, (8 * i), 1200, 1, {1, 1, 1, 1}, left, top)
+	end
+	return frame
+end
+local function garb_input(event)
+	if event.type ~= "InputEventType_FirstPress" then return end
+	if event.DeviceInput.button == "DeviceButton_KP 0" then
+		screen_gameplay:PauseGame(not screen_gameplay:IsPaused())
+	end
+end
+
 return Def.ActorFrame {
 	Name= "SGPbgf",
 	bg_swap(),
@@ -1671,7 +1717,10 @@ return Def.ActorFrame {
 						newfields[pn]:get_fov_mod():set_value(field_conf.fov)
 						newfields[pn]:get_vanish_x_mod():set_value(field_conf.vanish_x)
 						newfields[pn]:get_vanish_y_mod():set_value(field_conf.vanish_y)
+						--newfield_mods.calibrate(pn)
 						for i, col in ipairs(columns) do
+--							col:get_quantization_multiplier():set_value(.5)
+--							newfield_mods.drift(col, i)
 						end
 					end
 				end
@@ -1849,4 +1898,49 @@ return Def.ActorFrame {
 			end
 		end,
 	},
+	Def.ActorFrame{
+		OnCommand= function(self)
+			self:hibernate(math.huge)
+			do return end
+			self:SetUpdateFunction(update_garbage)
+			screen_gameplay:AddInputCallback(garb_input)
+		end,
+		Def.ActorFrameTexture{
+			InitCommand= function(self)
+				garb_aft= self:setsize(1200, 256):SetTextureName("garbage_graph")
+					:Create()
+					:EnablePreserveTexture(true)
+				garb_pix:setsize(1200, 256):xy(600, 128):diffuse{0, 0, 0, 1}
+					:blend("BlendMode_CopySrc")
+				self:Draw()
+				garb_pix:diffuse{0, 0, 0, 0}
+				self:Draw()
+				garb_pix:setsize(1, 1)
+			end,
+			quaid_set(),
+			Def.Quad{
+				InitCommand= function(self)
+					garb_pix= self
+			end,
+			}
+		},
+		Def.Sprite{
+			Texture= "garbage_graph", InitCommand= function(self)
+				self:xy(4, 192):horizalign(left):zoomx(_screen.w / self:GetWidth())
+				self:queuecommand("hide")
+			end,
+			hideCommand= function(self)
+				for_all_children(garb_aft, function(child) child:hibernate(math.huge) end)
+				garb_pix:hibernate(0)
+				garb_aft:hibernate(math.huge)
+			end
+		},
+		Def.BitmapText{
+			Font= "Common Normal", InitCommand= function(self)
+				garbage_text= self:xy(16, 16)
+					:DiffuseAndStroke(fetch_color("text"), fetch_color("stroke"))
+					:horizalign(left)
+			end
+		},
+	}
 }

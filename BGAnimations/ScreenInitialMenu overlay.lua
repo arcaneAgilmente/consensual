@@ -29,6 +29,7 @@ end
 load_favorites("ProfileSlot_Machine")
 load_tags("ProfileSlot_Machine")
 
+local song_report_space= 4
 local num_songs= SONGMAN:GetNumSongs()
 local num_groups= SONGMAN:GetNumSongGroups()
 local num_courses= SONGMAN:GetNumCourses()
@@ -564,8 +565,11 @@ local function input(event)
 	if event.DeviceInput.button == "DeviceButton_m" then
 		set_prev_song_bpm(math.random(60, 200))
 		play_sample_music(true)
+	elseif event.DeviceInput.button == "DeviceButton_v" then
+--		trans_new_screen("ScreenVersionTest")
 	elseif event.DeviceInput.button == "DeviceButton_n" then
-		trans_new_screen("ScreenMiscTest")
+--		trans_new_screen("ScreenButtonMash")
+--		trans_new_screen("ScreenMiscTest")
 	end
 	--[[
 	if event.DeviceInput.button == "DeviceButton_n" then
@@ -629,7 +633,7 @@ local function hms_update(self)
 	local curr_index, next_index, percent= get_hour_indices()
 	local hour_curr= color_in_set(hset, curr_index, true, false, false)
 	local hour_next= color_in_set(hset, next_index, true, false, false)
-	hms:diffuse(lerp_color(percent, hour_curr, hour_next))
+	rot_color_text(hms, lerp_color(percent, hour_curr, hour_next))
 end
 
 local args= {
@@ -652,16 +656,19 @@ local args= {
 		Name= "song report",
 		InitCommand= function(self)
 			self:xy(_screen.cx, 0)
+			alt_rot_color_text(self:GetChild("songs_title"), fetch_color("initial_menu.song_count"))
+			alt_rot_color_text(self:GetChild("groups_title"), fetch_color("initial_menu.song_count"))
+			alt_rot_color_text(self:GetChild("courses_title"), fetch_color("initial_menu.song_count"))
+			rot_color_text(self:GetChild("songs_count"), fetch_color("initial_menu.song_count"))
+			rot_color_text(self:GetChild("groups_count"), fetch_color("initial_menu.song_count"))
+			rot_color_text(self:GetChild("courses_count"), fetch_color("initial_menu.song_count"))
 		end,
-		normal_text(
-			"songs", num_songs.." Songs", fetch_color("initial_menu.song_count"),
-			fetch_color("stroke"), 0, line_height*.5),
-		normal_text(
-			"groups",num_groups.." Groups",fetch_color("initial_menu.song_count"),
-			fetch_color("stroke"), 0, line_height*1.5),
-		normal_text(
-			"courses",num_courses.." Courses",fetch_color("initial_menu.song_count"),
-			fetch_color("stroke"), 0, line_height*2.5),
+		normal_text("songs_title", "Songs", nil, fetch_color("stroke"), song_report_space, line_height*.5, 1, left),
+		normal_text("groups_title", "Groups", nil, fetch_color("stroke"), song_report_space, line_height*1.5, 1, left),
+		normal_text("courses_title", "Courses", nil, fetch_color("stroke"), song_report_space, line_height*2.5, 1, left),
+		normal_text("songs_count", num_songs, nil, fetch_color("stroke"), -song_report_space, line_height*.5, 1, right),
+		normal_text("groups_count", num_groups, nil, fetch_color("stroke"), -song_report_space, line_height*1.5, 1, right),
+		normal_text("courses_count", num_courses, nil, fetch_color("stroke"), -song_report_space, line_height*2.5, 1, right),
 	},
   Def.ActorFrame{
 		Name="time", InitCommand= function(self)

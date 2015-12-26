@@ -41,6 +41,9 @@ function nice_bucket_disp_name(bucket)
 	if bucket.from_split then
 		disp_name= bucket_disp_name(bucket)
 	end
+	if smmaxx_packs[bucket.name.value] then
+		return smmaxx_packs[bucket.name.value]
+	end
 	return disp_name
 end
 
@@ -66,11 +69,13 @@ local wheel_item_mt= {
 					InitCommand= function(subself)
 						self.bg= subself
 						subself:diffuse({0, 0, 0, .125})
-							:setsize(wheel_width_limit-hpad, item_height)
 					end
 				},
 				normal_text("text", "", fetch_color("text"), fetch_color("stroke"), 0, 0, item_text_zoom, center),
 			}
+		end,
+		resize= function(self)
+			self.bg:setsize(wheel_width_limit-hpad, item_height)
 		end,
 		transform= function(self, item_index, num_items, is_focus, focus_pos)
 			local dist_from_focus= item_index - focus_pos
@@ -118,34 +123,34 @@ local wheel_item_mt= {
 			if not info then return end
 			if info.bucket_info then
 				if info.is_current_group then
-					self.bg:diffuse(wheel_colors.current_group)
+					rot_color_text(self.bg, wheel_colors.current_group)
 				else
-					self.bg:diffuse(wheel_colors.group)
+					rot_color_text(self.bg, wheel_colors.group)
 				end
 				self.text:settext(bucket_disp_name(info.bucket_info))
 			elseif info.random_info then
 				self.text:settext(info.disp_name)
-				self.bg:diffuse(wheel_colors.random)
+				rot_color_text(self.bg, wheel_colors.random)
 			elseif info.song_info then
 				if info.is_prev then
 					self.text:settext(info.disp_name)
-					self.bg:diffuse(wheel_colors.prev_song)
+					rot_color_text(self.bg, wheel_colors.prev_song)
 				else
 					self.text:settext(song_get_main_title(info.song_info))
-					self.bg:diffuse(wheel_colors.song)
+					rot_color_text(self.bg, wheel_colors.song)
 				end
 				if check_censor_list(info.song_info) then
-					self.bg:diffuse(wheel_colors.censored_song)
+					rot_color_text(self.bg, wheel_colors.censored_song)
 				end
 			elseif info.sort_info then
 				self.text:settext(info.sort_info.name)
-				self.bg:diffuse(wheel_colors.sort)
+				rot_color_text(self.bg, wheel_colors.sort)
 			else
 				Warn("Tried to display bad element in display bucket.")
 				rec_print_table(info)
 			end
 			width_limit_text(self.text, item_text_width, item_text_zoom)
-			self.bg:diffusealpha(.5)
+			self.bg:diffusealpha(.75)
 		end,
 }}
 
@@ -305,6 +310,16 @@ local music_whale= {
 			end
 		end
 		self:post_sort_update()
+	end,
+	move_resize= function(self, newx, neww)
+		wheel_width_limit= neww
+		wheel_x= newx
+		recalc_width_limit()
+		self.container:stoptweening():april_linear(wheel_move_time):x(wheel_x)
+		self.sick_wheel:scroll_by_amount(0)
+		for i, item in ipairs(self.sick_wheel.items) do
+			item:resize()
+		end
 	end,
 	post_sort_update= function(self)
 		self.current_sort_name= bucket_man.cur_sort_info.name

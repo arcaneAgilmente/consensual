@@ -260,6 +260,12 @@ local default_config= {
 	preferred_steps_type= "",
 	preferred_sort= "",
 	music_info_expansion_mode= "",
+	select_music= {
+		hide_empty_pane= false,
+		show_inactive_pane= false,
+		show_pane_during_song_select= true,
+		wheel_layout= "middle",
+	},
 	experience_level= 1, -- To ease triggering confetti on gaining a level.
 	life_blank_percent= .25,
 	life_use_width= 1,

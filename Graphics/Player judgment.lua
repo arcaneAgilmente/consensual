@@ -348,6 +348,7 @@ local function set_combo_stuff(param)
 		label_text= "Misses"
 	end
 	tani:set_text(label_text)
+	--tani:set_number(wordify_number(wombo))
 	tani:set_number(("%i"):format(wombo))
 	if combo_qual then
 		if combo_qual.worst_tns then
@@ -392,6 +393,7 @@ local args= {
 		tani.container:zoom(el_pos.combo_scale)
 		tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
 		tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
+		tani.number:wrapwidthpixels((_screen.cx / el_pos.combo_scale) - 16)
 	end,
 	ToastyAchievedMessageCommand=
 		function(self,params)
