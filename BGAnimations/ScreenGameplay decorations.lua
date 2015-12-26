@@ -1588,6 +1588,7 @@ local function add_vert_to_graph(line, x, y, color, raw, dump)
 --	line:SetVertex(next_garb_vert, {{x, y, 0}, color})
 --	table.insert(dump, raw)
 end
+collectgarbage("collect")
 local function update_garbage(self, delta)
 	if screen_gameplay:IsPaused() then return end
 	local garb= collectgarbage("count")

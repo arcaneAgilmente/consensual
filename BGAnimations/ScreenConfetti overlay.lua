@@ -148,8 +148,8 @@ local function hms_update(self)
 end
 function hms_split()
 	local move_time= misc_config:get_data().transition_time
-	hms_left:linear(move_time):xy(hms_left:GetWidth()+8, _screen.h-16)
-	hms_right:linear(move_time):xy(_screen.w - (hms_right:GetWidth()+8), _screen.h-16)
+	hms_left:linear(move_time):xy(hms_left:GetWidth()+4, _screen.h-16)
+	hms_right:linear(move_time):xy(_screen.w - (hms_right:GetWidth()+4), _screen.h-16)
 end
 function hms_join()
 	local move_time= misc_config:get_data().transition_time
