@@ -539,6 +539,7 @@ end
 
 local args= {
 	InitCommand= function(self)
+		hms_fade()
 		score_wheel:set_info_set(combined_play_history, 1)
 	end,
 	keyboard:create_actors("keyboard"),

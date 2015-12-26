@@ -1515,6 +1515,8 @@ dofile(THEME:GetPathO("", "save_score.lua"))
 local main_parts= {
 	Name= "SEd",
 	InitCommand= function(self)
+		hms_unfade()
+		hms_split()
 		find_actors(self)
 		april_spin(self)
 	end,

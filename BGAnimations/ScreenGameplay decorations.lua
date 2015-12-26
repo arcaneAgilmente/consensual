@@ -1620,9 +1620,11 @@ return Def.ActorFrame {
 	Def.Actor{
 		Name= "timer actor",
 		InitCommand= function(self)
-									 self:effectperiod(2^16)
-									 timer_actor= self
-								 end,
+			hms_join()
+			hms_fade()
+			self:effectperiod(2^16)
+			timer_actor= self
+		end,
 	},
 	Def.ActorFrame{
 		Name= "Cleaner S22", OnCommand= function(self)

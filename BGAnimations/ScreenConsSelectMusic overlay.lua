@@ -2000,6 +2000,8 @@ end
 
 return Def.ActorFrame {
 	InitCommand= function(self)
+		hms_split()
+		hms_unfade()
 		self:SetUpdateFunction(Update)
 		for i, pn in ipairs({PLAYER_1, PLAYER_2}) do
 			special_menus[pn]:hide()
