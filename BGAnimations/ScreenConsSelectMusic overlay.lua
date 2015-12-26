@@ -58,6 +58,7 @@ local picking_steps= false
 local double_tap_time= .5
 
 local update_player_cursors= noop_nil
+local reset_pressed_since_menu_change= noop_nil
 
 local options_message= false
 local timer_actor= false
@@ -860,6 +861,7 @@ local function update_pain_active()
 end
 
 local function set_special_menu(pn, next_menu)
+	reset_pressed_since_menu_change(pn)
 	if picking_steps and next_menu == "wheel" then
 		next_menu= "steps"
 	end
@@ -1062,10 +1064,53 @@ local function close_visible_styles(pn)
 	end
 end
 
+local function execute_add_favorite(pn)
+	local curr_song= gamestate_get_curr_song()
+	local prof_slot= pn_to_profile_slot(pn)
+	if curr_song then
+		change_favor(prof_slot, curr_song, 1)
+		add_song_to_favor_folder(curr_song)
+		set_special_menu(pn, "wheel")
+		return
+	end
+	local function add_to_favor(item, depth)
+		change_favor(prof_slot, item.el, 1)
+		add_song_to_favor_folder_internal(item.el)
+	end
+	local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
+	if bucket.bucket_info and not bucket.is_special then
+		bucket_traverse(bucket.bucket_info.contents, nil, add_to_favor)
+		finalize_favor_folder()
+	end
+	set_special_menu(pn, "wheel")
+end
+
+local function execute_remove_favorite(pn)
+	local curr_song= gamestate_get_curr_song()
+	if curr_song then
+		change_favor(pn_to_profile_slot(pn), curr_song, -1)
+		remove_song_from_favor_folder(curr_song)
+		set_special_menu(pn, "wheel")
+		return
+	end
+	local function remove_from_favor(item, depth)
+		change_favor(prof_slot, item.el, -1)
+		remove_song_from_favor_folder_internal(item.el)
+	end
+	local bucket= music_wheel.sick_wheel:get_info_at_focus_pos()
+	if bucket.bucket_info and not bucket.is_special then
+		bucket_traverse(bucket.bucket_info.contents, nil, remove_from_favor)
+		finalize_favor_folder()
+	end
+	set_special_menu(pn, "wheel")
+end
+
 base_options= {
 	{name= "scsm_mods", meta= options_sets.menu, level= 1, args= base_mods},
+	{name= "add_favorite", meta= "execute", execute= execute_add_favorite},
+	{name= "remove_favorite", meta= "execute", execute= execute_remove_favorite},
 	{name= "scsm_misc", meta= options_sets.menu, level= 1, args= misc_options},
-	{name= "scsm_favor", meta= options_sets.favor_menu, level= 1, args= {}},
+--	{name= "scsm_favor", meta= options_sets.favor_menu, level= 1, args= {}},
 	{name= "scsm_tags", meta= options_sets.tags_menu, level= 1, args= true},
 	{name= "scsm_layout", meta= options_sets.special_functions, level= 1, args= layout_options},
 --	{name= "scsm_stepstypes", meta= options_sets.special_functions, level= 1,
@@ -1396,6 +1441,10 @@ local scroll_affectors= {MenuLeft= true, MenuRight= true}
 if not PREFSMAN:GetPreference("OnlyDedicatedMenuButtons") then
 	scroll_affectors.Left= true
 	scroll_affectors.Right= true
+end
+
+reset_pressed_since_menu_change= function(pn)
+	pressed_since_menu_change[pn]= {}
 end
 
 local function menu_code_to_text(code)
@@ -1736,7 +1785,6 @@ local function input(event)
 			end
 		else
 			local function common_menu_change(next_menu)
-				pressed_since_menu_change[pn]= {}
 				set_special_menu(pn, next_menu)
 			end
 			local closed_menu= false

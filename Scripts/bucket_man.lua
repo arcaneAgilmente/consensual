@@ -646,6 +646,7 @@ end
 local bucket_man_interface= {}
 local bucket_man_interface_mt= { __index= bucket_man_interface }
 local prev_was_course= false
+local favorites_folder= {}
 
 local function find_named_factor(name_list, list)
 	for i, item in ipairs(list) do
@@ -673,23 +674,23 @@ function bucket_man_interface:initialize()
 	machine_profile= PROFILEMAN:GetMachineProfile()
 	if GAMESTATE:IsCourseMode() then
 		if not prev_was_course then
-			random_recent= {}
-			played_recent= {}
+			reset_recents()
 		end
 		prev_was_course= true
 		self.song_set= SONGMAN:GetAllCourses(false) -- fuck autogen courses
 		set_course_mode()
 	else
 		if prev_was_course then
-			random_recent= {}
-			played_recent= {}
+			reset_recents()
 		end
 		prev_was_course= false
 		self.song_set= SONGMAN:GetAllSongs()
 		set_song_mode()
 	end
 	rival_bucket= make_rival_bucket()
-	self.filter_functions= {song_short_and_uncensored}
+	self.pre_filter_functions= {}
+	self.filter_functions= {song_short_and_uncensored, collect_favored_songs}
+	self.post_filter_functions= {finalize_favor_folder}
 	self:style_filter_songs()
 	local sort_info= get_sort_info()
 	local default_sort= {misc_config:get_data().default_wheel_sort}
@@ -712,7 +713,7 @@ function bucket_man_interface:remove_filter_function(func)
 end
 
 function bucket_man_interface:clear_filter_functions()
-	self.filter_functions= {song_short_and_uncensored}
+	self.filter_functions= {song_short_and_uncensored, collect_favored_songs}
 end
 
 function bucket_man_interface:style_filter_songs()
@@ -746,6 +747,9 @@ function bucket_man_interface:filter_songs()
 	local refiltered_songs= {}
 	local num_songs= #self.style_filtered_songs
 	local num_filters= #self.filter_functions
+	for f= 1, #self.pre_filter_functions do
+		self.pre_filter_functions[f]()
+	end
 	for i= 1, num_songs do
 		local song= self.style_filtered_songs[i]
 		local show= true
@@ -761,6 +765,9 @@ function bucket_man_interface:filter_songs()
 		if i % 1000 == 0 then maybe_yield("Filtering", fracstr(i, num_songs)) end
 	end
 	self.filtered_songs= refiltered_songs
+	for f= 1, #self.post_filter_functions do
+		self.post_filter_functions[f]()
+	end
 end
 
 function bucket_man_interface:get_sort_info()
@@ -920,60 +927,4 @@ function finish_song_sort_worker()
 		end
 		song_sort_worker= false
 	end
-end
-
-local recent_limit= 64
-local function add_song_to_recent_internal(song, recent)
-	local song_name= song_get_dir(song)
-	local shifted= recent[1]
-	recent[1]= {el= song}
-	if not shifted then return end
-	if song_get_dir(shifted.el) == song_name then return end
-	for i= 2, #recent+1 do
-		if recent[i] and song_get_dir(recent[i].el) == song_name then
-			recent[i]= shifted
-			return
-		else
-			shifted, recent[i]= recent[i], shifted
-		end
-	end
-	if recent[recent_limit+1] then recent[recent_limit+1]= nil end
-end
-
-local function make_bucket_from_recent(recent, name)
-	local i= 1
-	while i <= #recent do
-		if check_censor_list(recent[i]) then
-			table.remove(recent, i)
-		else
-			i= i + 1
-		end
-	end
-	local bucket= {
-		is_special= true, is_recent= true,
-		bucket_info= {
-			name= {
-				value= name, disp_name= get_string_wrapper("MusicWheel", name),
-				source= {
-					name, "make from recent",
-					get_names= generic_get_wrapper("GetDisplayMainTitle")}},
-			contents= recent}}
-	return bucket
-end
-
-local random_recent= {}
-local played_recent= {}
-random_recent_bucket= make_bucket_from_recent(random_recent, "Recent from Random")
-played_recent_bucket= make_bucket_from_recent(played_recent, "Recently played")
-
-local function add_song_to_recent(song, recent, bucket)
-	add_song_to_recent_internal(song, recent)
-	finalize_bucket(bucket.bucket_info, 0, true)
-end
-
-function add_song_to_recent_random(song)
-	add_song_to_recent(song, random_recent, random_recent_bucket)
-end
-function add_song_to_recent_played(song)
-	add_song_to_recent(song, played_recent, played_recent_bucket)
 end
