@@ -459,7 +459,7 @@ options_sets.menu= {
 		recall_init= function(self)
 			self.menu_data= self.init_args
 			if type(self.init_args) == "function" then
-				self.menu_data= self.init_args()
+				self.menu_data= self.init_args(self.player_number)
 			end
 			self.name= self.menu_data.name or ""
 			self.recall_init_on_pop= self.menu_data.recall_init_on_pop

@@ -635,6 +635,158 @@ options_sets.newskins= {
 		end
 }}
 
+local function get_noteskin_param_translation(param_name, type_info)
+	local translation_table= type_info.translation
+	local ret= {title= param_name, explanation= param_name}
+	if type(translation_table) == "table" then
+		local language= PREFSMAN:GetPreference("Language")
+		if translation_table[language] then
+			ret= translation_table[language]
+		else
+			local base_language= "en"
+			if translation_table[base_language] then
+				ret= translation_table[base_language]
+			else
+				local lang, text= next(translation_table)
+				if text then ret= text end
+			end
+		end
+	end
+	if type_info.choices and not ret.choices then
+		ret.choices= type_info.choices
+	end
+	return ret
+end
+local function int_val_text(pn, val)
+	return ("%d"):format(val)
+end
+local function float_val_text(pn, val)
+	return ("%.2f"):format(val)
+end
+local function noteskin_param_float_val(param_name, param_section, type_info)
+	local min_scale= 0
+	local max_scale= 0
+	local val_text= int_val_text
+	if type_info.type ~= "int" then
+		min_scale= -2
+		val_text= float_val_text
+	end
+	local validator= noop_true
+	if type_info.max then
+		max_scale= math.floor(math.log(type_info.max) / math.log(10))
+		if type_info.min then
+			validator= function(value)
+				return value >= type_info.min and value <= type_info.max
+			end
+		else
+			validator= function(value) return value <= type_info.max end
+		end
+	else
+		max_scale= 2
+		if type_info.min then
+			validator= function(value) return value >= type_info.min end
+		end
+	end
+	local translation= get_noteskin_param_translation(param_name, type_info)
+	return {
+		name= translation.title, meta= options_sets.adjustable_float, args= {
+			name= translation.title, min_scale= min_scale, scale= 0,
+			max_scale= max_scale, initial_value= function()
+				return param_section[param_name]
+			end,
+			set= function(pn, value) param_section[param_name]= value end,
+			val_to_text= val_to_text, validator= validator,
+	}}
+end
+local function noteskin_param_choice_val(param_name, param_section, type_info)
+	local eles= {}
+	local translation= get_noteskin_param_translation(param_name, type_info)
+	for i, choice in ipairs(type_info.choices) do
+		eles[#eles+1]= {
+			name= translation.choices[i], init= function(pn)
+				return param_section[param_name] == choice
+			end,
+			set= function(pn)
+				param_section[param_name]= choice
+			end,
+			unset= noop_nil,
+		}
+	end
+	return {name= translation.title, args= {eles= eles, disallow_unset= true},
+					meta= options_sets.mutually_exclusive_special_functions}
+end
+local function noteskin_param_bool_val(param_name, param_section, type_info)
+	local translation= get_noteskin_param_translation(param_name, type_info)
+	local eles= {}
+	for i, val in ipairs{true, false} do
+		eles[#eles+1]= {
+			name= tostring(val), init= function(pn)
+				return param_section[param_name] == val
+			end,
+			set= function(pn) param_section[param_name]= val end, unset= noop_nil}
+	end
+	return {name= translation.title, args= {eles= eles, disallow_unset= true},
+					meta= options_sets.mutually_exclusive_special_functions}
+end
+local function gen_noteskin_param_submenu(pn, param_section, type_info, skin_defaults, add_to)
+	for field, info in pairs(type_info) do
+		if field ~= "translation" then
+			local field_type= type(skin_defaults[field])
+			local translation= get_noteskin_param_translation(field, type_info[field])
+			local submenu= {name= translation.title}
+			if not param_section[field] then
+				if field_type == "table" then
+					param_section[field]= DeepCopy(skin_defaults[field])
+				else
+					param_section[field]= skin_defaults[field]
+				end
+			end
+			if field_type == "table" then
+				submenu.meta= options_sets.menu
+				local menu_args= {}
+				gen_noteskin_param_submenu(pn, param_section[field], info, skin_defaults[field], menu_args)
+				submenu.args= menu_args
+			elseif field_type == "string" then
+				if info.choices then
+					submenu= noteskin_param_choice_val(field, param_section, info)
+				else
+					submenu= nil
+				end
+			elseif field_type == "number" then
+				if info.choices then
+					submenu= noteskin_param_choice_val(field, param_section, info)
+				else
+					submenu= noteskin_param_float_val(field, param_section, info)
+				end
+			elseif field_type == "boolean" then
+				submenu= noteskin_param_bool_val(field, param_section, info)
+			end
+			add_to[#add_to+1]= submenu
+		end
+	end
+	local function submenu_cmp(a, b)
+		return a.name < b.name
+	end
+	table.sort(add_to, submenu_cmp)
+end
+local function gen_noteskin_param_menu(pn)
+	local stepstype= find_current_stepstype(pn)
+	local player_skin= profiles[pn]:get_preferred_noteskin(stepstype)
+	local skin_info= NEWSKIN:get_skin_parameter_info(player_skin)
+	local skin_defaults= NEWSKIN:get_skin_parameter_defaults(player_skin)
+	local player_params= GAMESTATE:get_noteskin_params(pn)
+	if not player_params then
+		player_params= {}
+		GAMESTATE:set_noteskin_params(pn, player_params)
+	end
+	local ret= {
+		recall_init_on_pop= true,
+		name= "noteskin_params",
+	}
+	gen_noteskin_param_submenu(pn, player_params, skin_info, skin_defaults, ret)
+	return ret
+end
+
 dofile(THEME:GetPathO("", "tags_menu.lua"))
 
 set_option_set_metatables()
@@ -1320,6 +1472,7 @@ local decorations= {
 		args= extra_for_sigil_detail()},
 	{ name= "Noteskin", meta= options_sets.noteskins},
 	{ name= "Newskin", meta= options_sets.newskins, req_func= newskin_available},
+	{ name= "Newskin params", meta= options_sets.menu, req_func= newskin_available, args= gen_noteskin_param_menu},
 	{ name= "Shown Noteskins", meta= options_sets.shown_noteskins, args= {}},
 }
 
