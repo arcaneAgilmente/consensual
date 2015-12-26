@@ -120,11 +120,17 @@ star_amv_mt= {
 			self.shift_time= time or 8
 			self.rot= 0
 			self.rot_step= rot_step or 90
+			self.colors= DeepCopy(fetch_color("common_background.inner_colors"))
+			for ic, color in ipairs(self.colors) do
+				for chan= 1, 3 do
+					color[chan]= color[chan] * .125
+				end
+			end
 			self:repoint(self.points, self.r)
 			return Def.ActorMultiVertex{
 				Name= name, InitCommand= function(subself)
 					self.container= subself
-					subself:xy(x, y):queuecommand("change")
+					subself:xy(x, y):blend("BlendMode_Add"):queuecommand("change")
 				end,
 				changeCommand= function(subself)
 					local step= self.step_set[self.curr_step]
@@ -132,9 +138,10 @@ star_amv_mt= {
 					local verts= {}
 					repeat
 						local curr_pos= self.point_poses[curr_point]
-						verts[#verts+1]= {curr_pos[1], self.color}
+						verts[#verts+1]= {curr_pos[1]}
 						curr_point= wrapped_index(curr_point, step, self.points)
 					until curr_point == 1
+					color_verts_with_color_set(verts, self.colors)
 					verts[#verts+1]= verts[1]
 					subself:SetDrawState{Mode="DrawMode_LineStrip"}
 						:SetVertices(verts):SetNumVertices(#verts):SetLineWidth(.125)
