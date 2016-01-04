@@ -774,10 +774,10 @@ local function gen_noteskin_param_menu(pn)
 	local player_skin= profiles[pn]:get_preferred_noteskin(stepstype)
 	local skin_info= NEWSKIN:get_skin_parameter_info(player_skin)
 	local skin_defaults= NEWSKIN:get_skin_parameter_defaults(player_skin)
-	local player_params= GAMESTATE:get_noteskin_params(pn)
+	local player_params= profiles[pn]:get_noteskin_params(player_skin, stepstype)
 	if not player_params then
 		player_params= {}
-		GAMESTATE:set_noteskin_params(pn, player_params)
+		profiles[pn]:set_noteskin_params(player_skin, stepstype, player_params)
 	end
 	local ret= {
 		recall_init_on_pop= true,
@@ -785,6 +785,14 @@ local function gen_noteskin_param_menu(pn)
 	}
 	gen_noteskin_param_submenu(pn, player_params, skin_info, skin_defaults, ret)
 	return ret
+end
+local function show_noteskin_param_menu(pn)
+	if not newskin_available() then return false end
+	local stepstype= find_current_stepstype(pn)
+	local player_skin= profiles[pn]:get_preferred_noteskin(stepstype)
+	local skin_info= NEWSKIN:get_skin_parameter_info(player_skin)
+	local skin_defaults= NEWSKIN:get_skin_parameter_defaults(player_skin)
+	return skin_defaults ~= nil and skin_info ~= nil
 end
 
 dofile(THEME:GetPathO("", "tags_menu.lua"))
@@ -1472,7 +1480,7 @@ local decorations= {
 		args= extra_for_sigil_detail()},
 	{ name= "Noteskin", meta= options_sets.noteskins},
 	{ name= "Newskin", meta= options_sets.newskins, req_func= newskin_available},
-	{ name= "Newskin params", meta= options_sets.menu, req_func= newskin_available, args= gen_noteskin_param_menu},
+	{ name= "Newskin params", meta= options_sets.menu, args= gen_noteskin_param_menu, req_func= show_noteskin_param_menu},
 	{ name= "Shown Noteskins", meta= options_sets.shown_noteskins, args= {}},
 }
 

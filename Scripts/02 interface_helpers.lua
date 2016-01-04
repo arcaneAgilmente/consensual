@@ -812,3 +812,61 @@ function clip_scale(self, zw, zh)
 		handle_dim(yz, self:GetZoomedWidth(), zw, self.cropleft, self.cropright)
 	end
 end
+
+grade_image_mt= {
+	__index= {
+		create_actors= function(self, x, y, size, image)
+			image= image or grade_image_path()
+			return Def.ActorFrame{
+				InitCommand= function(subself)
+					self.container= subself
+					if x and y then
+						subself:xy(x, y)
+					end
+					self:set_size(size or 0)
+					self:set_image(image)
+				end,
+				Def.Sprite{
+					InitCommand= function(subself)
+						self.sprite= subself
+						subself:animate(false)
+					end
+				},
+			}
+		end,
+		get_x= function(self)
+			return self.container:GetX()
+		end,
+		move= function(self, x, y)
+			self.container:xy(x, y)
+		end,
+		set_image= function(self, path)
+			self.sprite:Load(path)
+			self.sprite_loaded= true
+			scale_to_fit(self.sprite, self.size, self.size)
+		end,
+		set_size= function(self, size)
+			self.size= size
+			if self.sprite_loaded then
+				scale_to_fit(self.sprite, self.size, self.size)
+			end
+		end,
+		set_grade= function(self, grade, color)
+			if self.sprite_loaded then
+				self.sprite:setstate(math.min(grade-1, self.sprite:GetNumStates()-1))
+				if color then
+					rot_color_text(self.sprite, color)
+				else
+					self.sprite:diffuse{1, 1, 1, 1}
+				end
+			end
+		end,
+		hide= function(self)
+			self.hidden= true
+			self.container:hibernate(math.huge)
+		end,
+		unhide= function(self)
+			self.hidden= false
+			self.container:hibernate(0)
+		end,
+}}

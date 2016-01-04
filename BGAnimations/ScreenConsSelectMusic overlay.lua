@@ -17,6 +17,8 @@ rec_print_table(skin_info)
 lua.ReportScriptError("dumped skin_info for default")
 ]]
 
+dofile(THEME:GetPathO("", "../Scripts/02 interface_helpers.lua"))
+
 local press_ignore_reporter= false
 local function show_ignore_message(message)
 --	press_ignore_reporter:settext(message):finishtweening()
@@ -134,8 +136,9 @@ local function calc_wheel_width()
 	end
 	wheel_width= _screen.w - (width_pane_takes_from_wheel * active_pane_count)
 end
+local normal_layout_choices= 3
 local wheel_layout_choices= {
-	"left", "middle", "right", "opposite", "same",
+	"left", "middle", "right", "opposite", "same", "random",
 }
 local wheel_layouts= {
 	left= function()
@@ -218,6 +221,9 @@ local function update_curr_wheel_layout()
 	local votes= {left= 0, middle= 0, right= 0}
 	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		local lay= cons_players[pn].select_music.wheel_layout
+		if lay == "random" then
+			lay= wheel_layout_choices[math.random(1, normal_layout_choices)]
+		end
 		if lay == "opposite" then
 			lay= opposite_layouts[pn]
 		elseif lay == "same" then
@@ -412,6 +418,10 @@ local focus_element_info_mt= {
 			self.title_y= -22
 			self.split_title_top_y= self.title_y - 12
 			self.split_title_bot_y= self.title_y + 12
+			self.full_title= ""
+			self.full_genre= ""
+			self.full_artist= ""
+			self.full_subtitle= ""
 			local cdtitle_y= 0
 			local auth_start= -extra_info_height+hpad
 			local args= {
@@ -533,10 +543,11 @@ local focus_element_info_mt= {
 			local hjackw= self.jacket_width * .5
 			local jacket_x= -hwheelw + hjackw + hpad
 			local symbol_x= hwheelw - self.hsymw - hpad
-			local len_x= jacket_x + hjackw + pad
-			local genre_x= symbol_x - self.hsymw - pad
 			self.title_width= symbol_x - jacket_x - hjackw - self.hsymw - (pad*2)
 			local title_x= jacket_x + hjackw + pad + (self.title_width * .5)
+			local artist_x= title_x
+			local len_x= jacket_x + hjackw + pad
+			local genre_x= symbol_x - self.hsymw - pad
 			local cdtitle_x= hwheelw - cdtitle_size*.5 - pad
 			self.auth_width= ((hwheelw - self.right_x) * 2) - pad
 
@@ -548,6 +559,7 @@ local focus_element_info_mt= {
 			self.length:x(len_x)
 			self.genre:x(genre_x)
 			self.artist:x(title_x)
+			self:width_clip_text()
 			for d, sym in pairs(self.difficulty_symbols) do
 				sym:x(symbol_x)
 			end
@@ -562,6 +574,26 @@ local focus_element_info_mt= {
 			end
 			self.diff_range.container:x(title_x)
 			self.nps_range.container:x(title_x)
+		end,
+		width_clip_text= function(self)
+			self:set_title_text(self.full_title)
+			if self.full_genre ~= "" then
+				self.genre:settext(
+					get_string_wrapper("SelectMusicExtraInfo", "song_genre") ..
+						": " .. self.full_genre):visible(true)
+			end
+			if self.full_artist ~= "" then
+				self.artist:settext(
+					get_string_wrapper("SelectMusicExtraInfo", "song_artist") ..
+						": " .. self.full_artist):visible(true)
+			end
+			if self.full_subtitle ~= "" then
+				self.subtitle:settext(self.full_subtitle):visible(true)
+			end
+			width_clip_limit_text(self.subtitle, self.title_width, .5)
+			width_clip_limit_text(self.artist, self.title_width, .5)
+			local len_len= self.length:GetZoomedWidth()
+			width_clip_limit_text(self.genre, self.title_width-len_len - pad*2, .5)
 		end,
 		hide_song_bucket_info= function(self)
 			self.song_count:hide()
@@ -590,10 +622,15 @@ local focus_element_info_mt= {
 			end
 		end,
 		set_title_text= function(self, text)
+			self.full_title= text
 			self.title:zoomx(1)
 			self.title:settext(text)
 			local total_width= self.title:GetWidth()
 			if total_width > self.title_width then
+				if total_width > self.title_width * 2 then
+					width_clip_limit_text(self.title, self.title_width * 2)
+					text= self.title:GetText()
+				end
 				local split_point= math.floor(#text / 2)
 				local space_before_split= text:sub(1, split_point):reverse():find(" ")
 				local space_after_split= text:sub(split_point):find(" ")
@@ -610,6 +647,7 @@ local focus_element_info_mt= {
 				local first_part= text:sub(1, split_point)
 				local second_part= text:sub(split_point + 1)
 				self.title:settext(first_part):y(self.split_title_top_y)
+				width_limit_text(self.title, self.title_width)
 				self.sec_title:settext(second_part)
 					:y(self.split_title_bot_y):visible(true)
 				width_clip_limit_text(self.sec_title, self.title_width)
@@ -644,37 +682,26 @@ local focus_element_info_mt= {
 				end
 				local song= gamestate_get_curr_song()
 				if song then
-					self:set_title_text(song_get_main_title(song))
+					self.full_title= song_get_main_title(song)
 					self.length:settext(
 						get_string_wrapper("SelectMusicExtraInfo", "song_len") .. ": " ..
 							secs_to_str(song_get_length(song))):visible(true)
-					local genre= song:GetGenre()
-					if genre ~= "" then
-						self.genre:settext(
-							get_string_wrapper("SelectMusicExtraInfo", "song_genre") ..
-								": " .. genre):visible(true)
-					end
-					local artist= song:GetDisplayArtist()
-					if artist ~= "" then
-						self.artist:settext(
-							get_string_wrapper("SelectMusicExtraInfo", "song_artist") ..
-								": " .. artist):visible(true)
-					end
-					if song.GetDisplaySubTitle then
-						self.subtitle:settext(song:GetDisplaySubTitle()):visible(true)
-					end
+					self.full_genre= song:GetGenre()
+					self.full_artist= song:GetDisplayArtist()
+					self.full_subtitle= song:GetDisplaySubTitle()
 				else
 					self.title:visible(false)
 				end
 			end
 			width_clip_limit_text(self.title, self.title_width)
-			width_clip_limit_text(self.subtitle, self.title_width, .5)
-			width_clip_limit_text(self.artist, self.title_width, .5)
-			local len_len= self.length:GetZoomedWidth()
-			width_clip_limit_text(self.genre, self.title_width-len_len - pad*2, .5)
+			self:width_clip_text()
 			self.bg:diffusealpha(.75)
 		end,
 		update= function(self, item)
+			self.full_genre= ""
+			self.full_artist= ""
+			self.full_subtitle= ""
+			self.info= item
 			self:update_title(item)
 			if item.bucket_info then
 				local item_group_name= nice_bucket_disp_name(item.bucket_info)
@@ -2107,7 +2134,8 @@ return Def.ActorFrame {
 			end
 		end,
 		get_music_wheelMessageCommand= function(self, param)
-			tag_menus[param.pn].music_wheel= music_wheel
+			if not music_wheel.ready then return end
+			if param.requester then param.requester.music_wheel= music_wheel end
 		end,
 		PlayerJoinedMessageCommand= function(self)
 			update_steps_types_to_show()

@@ -13,8 +13,6 @@ local default_config= {
 		SecondsCheckpoint= .1664,
 		Add= 0,
 		Jump= .25,
-		Hopo= .25,
-		Strum= .1,
 	},
 	sm5= {
     Scale= 1,
@@ -30,8 +28,6 @@ local default_config= {
 		SecondsCheckpoint= .1664,
 		Add= 0,
 		Jump= .25,
-		Hopo= .25,
-		Strum= .1,
 	},
 	ddr= {
     Scale= 1,
@@ -47,8 +43,6 @@ local default_config= {
 		SecondsCheckpoint= .1664,
 		Add= 0,
 		Jump= .25,
-		Hopo= .25,
-		Strum= .1,
 	},
 }
 
@@ -57,7 +51,7 @@ timing_config= create_setting("timing_config", "timing_config.lua", default_conf
 sorted_timing_window_names= {
 	"Scale", "SecondsW1", "SecondsW2", "SecondsW3", "SecondsW4", "SecondsW5",
 	"SecondsMine", "SecondsHold", "SecondsRoll", "SecondsAttack",
-	"SecondsCheckpoint", "Add", "Jump", "Hopo", "Strum"}
+	"SecondsCheckpoint", "Add", "Jump"}
 
 local timing_window_names= {}
 for i, name in ipairs(sorted_timing_window_names) do

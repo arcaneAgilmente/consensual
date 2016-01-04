@@ -109,24 +109,21 @@ end
 
 star_amv_mt= {
 	__index= {
-		create_actors= function(self, name, x, y, r, a, points, color, time, rot_step)
+		create_actors= function(self, name, x, y, r, a, points, time)
 			self.name= name
 			self.x= x or 0
 			self.y= y or 0
 			self.r= r or 24
 			self.a= a or 0
 			self.points= points or 5
-			self.color= color or fetch_color("accent.magenta")
 			self.shift_time= time or 8
-			self.rot= 0
-			self.rot_step= rot_step or 90
 			self.colors= DeepCopy(fetch_color("common_background.inner_colors"))
 			for ic, color in ipairs(self.colors) do
 				for chan= 1, 3 do
 					color[chan]= color[chan] * .125
 				end
 			end
-			self:repoint(self.points, self.r)
+			self:repoint(self.points, self.r, 0)
 			return Def.ActorMultiVertex{
 				Name= name, InitCommand= function(subself)
 					self.container= subself
@@ -145,10 +142,8 @@ star_amv_mt= {
 					verts[#verts+1]= verts[1]
 					subself:SetDrawState{Mode="DrawMode_LineStrip"}
 						:SetVertices(verts):SetNumVertices(#verts):SetLineWidth(.125)
-						:rotationz(self.rot)
 						:queuecommand("change"):linear(self.shift_time)
 					self.curr_step= wrapped_index(self.curr_step, 1, #self.step_set)
-					self.rot= self.rot + self.rot_step
 				end
 			}
 		end,
@@ -157,7 +152,7 @@ star_amv_mt= {
 			self.y= y or self.y
 			self.container:xy(self.x, self.y)
 		end,
-		repoint= function(self, new_points, new_radius)
+		repoint= function(self, new_points, new_radius, progress)
 			self.points= new_points or self.points
 			self.r= new_radius or self.r
 			self.point_poses= calc_circle_verts(self.r, self.points, self.a, self.a)
@@ -180,7 +175,8 @@ star_amv_mt= {
 					end
 				end
 			end
-			self.curr_step= wrapped_index(1, math.round(GetTimeSinceStart()/self.shift_time), #self.step_set)
+			self.curr_step= math.floor(progress * #self.step_set) + 1
+			--self.curr_step= wrapped_index(1, math.round(GetTimeSinceStart()/self.shift_time), #self.step_set)
 		end
 }}
 

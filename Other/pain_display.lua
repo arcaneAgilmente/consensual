@@ -391,6 +391,236 @@ options_sets.pain_menu= {
 		end
 }}
 
+local pain_item_mt= {
+	__index= {
+		create_actors= function(self, name, x, y, height, tani_args)
+			self.name= name
+			self.tani= setmetatable({}, text_and_number_interface_mt)
+			self.grade= setmetatable({}, grade_image_mt)
+			return Def.ActorFrame{
+				Name= name, InitCommand= function(subself)
+					self.container= subself
+					subself:xy(x, y)
+				end,
+				self.tani:create_actors("pain_item", tani_args),
+				self.grade:create_actors(0, 0, height),
+			}
+		end,
+		width_limit= function(self, el_z)
+			local number_x= self.tani.number:GetX()
+			local total_width= number_x - self.tani.text:GetX()
+			local text_width= self.tani.text:GetZoomedWidth()
+			width_limit_text(self.tani.number, total_width * .375, el_z)
+			local number_width= self.tani.number:GetZoomedWidth()
+			local text_width= total_width - number_width - 4
+			if not self.grade.hidden then
+				local grade_x= number_x - number_width - (self.grade.size * .5)
+				self.grade:move(grade_x, 0)
+				text_width= text_width - self.grade.size
+			end
+			width_clip_limit_text(self.tani.text, text_width, el_z)
+		end,
+		change_width= function(self, x, text_sep, num_sep)
+			self.container:x(x)
+			self.tani.text:x(text_sep)
+			self.tani.number:x(num_sep)
+		end,
+		set_score= function(self, show_grade, slot, hs_list)
+			if hs_list then
+				local score= hs_list[slot]
+				if score then
+					local judge_counts= convert_high_score_to_judge_counts(score)
+					local grade, grade_color, dp= convert_score_to_grade(judge_counts)
+					self.tani:set_text(score:GetName())
+					self.tani:set_number(("%.2f%%"):format(dp * 100))
+					self.tani.number:diffuse(color_for_score(dp))
+					if dp > .9999 then
+						if global_distortion_mode then
+							self.tani.number:undistort()
+						else
+							self.tani.number:distort(.5)
+						end
+					elseif not global_distortion_mode then
+						self.tani.number:undistort()
+					end
+					if show_grade then
+						self.grade:set_grade(grade, grade_color)
+						self.grade:unhide()
+					else
+						self.grade:hide()
+					end
+					return
+				end
+			end
+			self.tani:set_text("")
+			self.tani:set_number("")
+			self.grade:hide()
+		end,
+		set_tag= function(self, slot, tag_list)
+			self.grade:hide()
+			self.tani:set_number("")
+			if tag_list[slot] then
+				self.tani:set_text(tag_list[slot])
+			else
+				self.tani:set_text("")
+			end
+		end,
+		set_favor= function(self, pn, ftype, is_wide)
+			self.grade:hide()
+			local song= gamestate_get_curr_song()
+			local favor_val= 0
+			if ftype == "machine" then
+				if is_wide then
+					self.tani:set_text("Machine Favor")
+				else
+					self.tani:set_text("MFav")
+				end
+				favor_val= get_favor("ProfileSlot_Machine", song)
+			else
+				if is_wide then
+					self.tani:set_text("Player Favor")
+				else
+					self.tani:set_text("PFav")
+				end
+				favor_val= get_favor(pn_to_profile_slot(pn), song)
+			end
+			self.tani:set_number(favor_val)
+			self.tani.number:diffuse(color_percent_above(favor_val / 16, 0))
+		end,
+		set_timing= function(self, timing_data, timing_config)
+			self.grade:hide()
+			if timing_data and timing_config[1] then
+				local func_name= timing_config[2]
+				self.tani:set_text(timing_config[1])
+				self.tani:set_number(
+					("%02d"):format(#timing_data[func_name](timing_data)))
+			else
+				self.tani:set_text("")
+				self.tani:set_number("")
+			end
+		end,
+		set_chart_info= function(self, pn, narrow_el_w, wide_el_w, el_z, item_config, radars)
+			self.grade:hide()
+			local steps= gamestate_get_curr_steps(pn)
+			local song= gamestate_get_curr_song()
+			self.tani:set_number("")
+			if not song or not steps then
+				self.tani:set_text("")
+				return
+			end
+			if item_config.bpm then
+				self.tani:set_text("BPM")
+				set_bmt_to_bpms(self.tani.number, steps_get_bpms(steps, song))
+			elseif item_config.meter then
+				self.tani:set_text(steps_to_string(steps))
+				self.tani:set_number(steps:GetMeter())
+				self.tani.text:diffuse(diff_to_color(steps:GetDifficulty()))
+				self.tani.number:diffuse(color_number_above(steps:GetMeter(), 12))
+			elseif item_config.author then
+				self.tani:set_text(steps_get_author(steps, song))
+				local width= narrow_el_w
+				if item_config.is_wide then width= wide_el_w end
+				width_limit_text(self.tani.text, width, el_z)
+			elseif item_config.genre then
+				if song.GetGenre then
+					self.tani:set_text(song:GetGenre())
+					local width= narrow_el_w
+					if item_config.is_wide then width= wide_el_w end
+					width_limit_text(self.tani.text, width, el_z)
+				end
+			elseif item_config.radar_category then
+				self.tani:set_text(item_config.radar_category)
+				local rval= radars:GetValue(item_config.radar_category)
+				if rval == -1 then
+					self.tani:set_number("N/A")
+					self.tani.number:diffuse(fetch_color("text"))
+				else
+					if rval == math.floor(rval) then
+						self.tani:set_number(rval)
+						self.tani.number:diffuse(fetch_color("text"))
+					else
+						self.tani:set_number(("%.2f"):format(rval))
+						self.tani.number:diffuse(color_percent_above(rval, .5))
+					end
+				end
+			elseif item_config.nps then
+				self.tani:set_text("NPS")
+				local taps= radars:GetValue("RadarCategory_TapsAndHolds")
+				local jumps= radars:GetValue("RadarCategory_Jumps")
+				local hands= radars:GetValue("RadarCategory_Hands")
+				local length= song_get_length(song)
+				local nps= (taps + jumps + hands) / length
+				if length <= 0 then
+					self.tani:set_number("N/A")
+					self.tani.number:diffuse(fetch_color("text"))
+				else
+					self.tani:set_number(("%.2f"):format(nps))
+					self.tani.number:diffuse(color_percent_above(nps/10, .5))
+				end
+			else
+				self.tani:set_text("")
+				self.tani:set_number("")
+			end
+		end,
+		set_edit_info= function(self, item_config, show_grade)
+			self.grade:hide()
+			if item_config.score then
+				self.tani:set_text(
+					bool_text(item_config.score.machine, "MScore", "PScore"))
+				self.tani:set_number(item_config.score.slot)
+				if show_grade then
+					self.grade:unhide()
+					self.grade:set_grade(1, {1, 1, 1, 1})
+				end
+			elseif item_config.tag then
+				self.tani:set_text(bool_text(item_config.tag.machine, "MTag", "PTag"))
+				self.tani:set_number(item_config.tag.slot)
+			elseif item_config.favor then
+				self.tani:set_text(
+					bool_text(item_config.favor == "machine", "MFavor", "PFavor"))
+				self.tani:set_number("X")
+			elseif item_config.bpm then
+				self.tani:set_text("BPM")
+				self.tani:set_number("XXX")
+				self.tani.number:ClearAttributes()
+			elseif item_config.meter then
+				self.tani:set_text("Meter")
+				self.tani:set_number("XX")
+			elseif item_config.author then
+				self.tani:set_text("Author")
+				self.tani:set_number("")
+			elseif item_config.genre then
+				self.tani:set_text("Genre")
+				self.tani:set_number("")
+			elseif item_config.radar_category then
+				self.tani:set_text("Radar")
+				self.tani:set_number(
+					get_string_wrapper("PaneDisplay", item_config.radar_category))
+			elseif item_config.nps then
+				self.tani:set_text("NPS")
+				self.tani:set_number("X.XX")
+			elseif item_config.timing_info then
+				self.tani:set_text(item_config.timing_info[1] or "err")
+				self.tani:set_number("XX")
+			else
+				self.tani:set_text("")
+				self.tani:set_number("")
+			end
+			self.tani.text:diffuse(fetch_color("text"))
+			self.tani.number:diffuse(fetch_color("text"))
+		end,
+		set_edit_special_info= function(self, text)
+			self.grade:hide()
+			self.tani:set_text(text)
+			self.tani:set_number("")
+		end,
+		set_non_info= function(self)
+			self.grade:hide()
+			self.tani:set_text("")
+			self.tani:set_number("")
+		end,
+}}
+
 pain_display_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, player_number, el_w, el_z)
@@ -459,13 +689,13 @@ pain_display_mt= {
 			self.left_items= {}
 			self.right_items= {}
 			for r= 1, self.disp_row_limit do
-				tani_args.sy= (r - 1) * self.text_height
-				tani_args.sx= self.left_x
-				self.left_items[r]= setmetatable({}, text_and_number_interface_mt)
-				el_args[#el_args+1]= self.left_items[r]:create_actors("litem"..r,tani_args)
-				tani_args.sx= self.right_x
-				self.right_items[r]= setmetatable({}, text_and_number_interface_mt)
-				el_args[#el_args+1]=self.right_items[r]:create_actors("ritem"..r,tani_args)
+				local x= self.left_x
+				local y= (r - 1) * self.text_height
+				self.left_items[r]= setmetatable({}, pain_item_mt)
+				el_args[#el_args+1]= self.left_items[r]:create_actors("litem"..r, x, y, self.text_height, tani_args)
+				x= self.right_x
+				self.right_items[r]= setmetatable({}, pain_item_mt)
+				el_args[#el_args+1]= self.right_items[r]:create_actors("ritem"..r, x, y, self.text_height, tani_args)
 			end
 			self.cursor= setmetatable({}, cursor_mt)
 			el_args[#el_args+1]= self.cursor:create_actors(
@@ -484,8 +714,8 @@ pain_display_mt= {
 		stroke_items= function(self, set)
 			local stroke= fetch_color("stroke")
 			for i, item in ipairs(set) do
-				item.text:strokecolor(stroke)
-				item.number:strokecolor(stroke)
+				item.tani.text:strokecolor(stroke)
+				item.tani.number:strokecolor(stroke)
 			end
 		end,
 		fetch_config= function(self)
@@ -637,39 +867,31 @@ pain_display_mt= {
 			local yp= cursy * self.text_height
 			self.cursor:refit(xp, yp, self.narrow_el_w + 4, self.text_height)
 		end,
-		width_limit_item= function(self, item)
-			local total_width= item.number:GetX() - item.text:GetX()
-			local text_width= item.text:GetZoomedWidth()
-			local number_width= item.number:GetZoomedWidth()
-			width_limit_text(item.number, total_width * .375, self.el_z)
-			local tw= total_width - item.number:GetZoomedWidth() - 4
-			width_clip_limit_text(item.text, tw, self.el_z)
-		end,
 		make_item_narrow= function(self, item, left)
+			local x= 0
 			if left then
-				item.container:x(self.left_x)
+				x= self.left_x
 			else
-				item.container:x(self.right_x)
+				x= self.right_x
 			end
-			item.text:x(-self.half_sep)
-			item.number:x(self.half_sep)
+			item:change_width(x, -self.half_sep, self.half_sep)
 		end,
 		make_item_wide= function(self, item)
-			item.container:x(0)
-			item.text:x(-self.full_sep)
-			item.number:x(self.full_sep)
+			item:change_width(0, -self.full_sep, self.full_sep)
 		end,
 		make_item_semi_wide= function(self, item, left)
 			local avg_sep= (self.full_sep + self.half_sep) / 2
+			local x, text_sep, num_sep= 0, 0, 0
 			if left then
-				item.container:x(self.left_x)
-				item.text:x(-self.half_sep)
-				item.number:x(avg_sep)
+				x= self.left_x
+				text_sep= -self.half_sep
+				num_sep= avg_sep
 			else
-				item.container:x(self.right_x)
-				item.text:x(-avg_sep)
-				item.number:x(self.half_sep)
+				x= self.right_x
+				text_sep= -avg_sep
+				num_sep= self.half_sep
 			end
+			item:change_width(x, text_sep, num_sep)
 		end,
 		get_prof= function(self, machine)
 			if machine then
@@ -687,29 +909,6 @@ pain_display_mt= {
 			if hs_list then return hs_list:GetHighScores() end
 			return nil
 		end,
-		set_score_item= function(self, item, slot, hs_list)
-			if hs_list then
-				local score= hs_list[slot]
-				if score then
-					local dp= score:GetPercentDP()
-					item:set_text(score:GetName())
-					item:set_number(("%.2f%%"):format(dp * 100))
-					item.number:diffuse(color_for_score(dp))
-					if dp > .9999 then
-						if global_distortion_mode then
-							item.number:undistort()
-						else
-							item.number:distort(.5)
-						end
-					elseif not global_distortion_mode then
-						item.number:undistort()
-					end
-					return
-				end
-			end
-			item:set_text("")
-			item:set_number("")
-		end,
 		get_tag_list= function(self, machine)
 			local prof_slot
 			if machine then
@@ -722,147 +921,12 @@ pain_display_mt= {
 				return get_tags_for_song(prof_slot, song)
 			else
 				self.music_wheel= nil
-				MESSAGEMAN:Broadcast("get_music_wheel", {pn= self.player_number})
+				MESSAGEMAN:Broadcast("get_music_wheel", {requester= self})
 				if self.music_wheel then
 					return get_tags_for_bucket(
 						prof_slot, self.music_wheel.sick_wheel:get_info_at_focus_pos())
 				end
 			end
-		end,
-		set_tag_item= function(self, item, slot, tag_list)
-			item:set_number("")
-			if tag_list[slot] then
-				item:set_text(tag_list[slot])
-			else
-				item:set_text("")
-			end
-		end,
-		set_favor_item= function(self, item, ftype, is_wide)
-			local song= gamestate_get_curr_song()
-			local favor_val= 0
-			if ftype == "machine" then
-				if is_wide then
-					item:set_text("Machine Favor")
-				else
-					item:set_text("MFav")
-				end
-				favor_val= get_favor("ProfileSlot_Machine", song)
-			else
-				if is_wide then
-					item:set_text("Player Favor")
-				else
-					item:set_text("PFav")
-				end
-				favor_val= get_favor(pn_to_profile_slot(self.player_number), song)
-			end
-			item:set_number(favor_val)
-			item.number:diffuse(color_percent_above(favor_val / 16, 0))
-		end,
-		set_chart_info_item= function(self, item, item_config, radars)
-			local steps= gamestate_get_curr_steps(self.player_number)
-			local song= gamestate_get_curr_song()
-			if not song or not steps then
-				item:set_text("")
-				item:set_number("")
-				return
-			end
-			if item_config.bpm then
-				item:set_text("BPM")
-				set_bmt_to_bpms(item.number, steps_get_bpms(steps, song))
-			elseif item_config.meter then
-				item:set_text(steps_to_string(steps))
-				item:set_number(steps:GetMeter())
-				item.text:diffuse(diff_to_color(steps:GetDifficulty()))
-				item.number:diffuse(color_number_above(steps:GetMeter(), 12))
-			elseif item_config.author then
-				item:set_text(steps_get_author(steps, song))
-				local width= self.narrow_el_w
-				if item_config.is_wide then width= self.wide_el_w end
-				width_limit_text(item.text, width, self.el_z)
-				item:set_number("")
-			elseif item_config.genre then
-				if song.GetGenre then
-					item:set_text(song:GetGenre())
-					local width= self.narrow_el_w
-					if item_config.is_wide then width= self.wide_el_w end
-					width_limit_text(item.text, width, self.el_z)
-					item:set_number("")
-				end
-			elseif item_config.radar_category then
-				item:set_text(item_config.radar_category)
-				local rval= radars:GetValue(item_config.radar_category)
-				if rval == -1 then
-					item:set_number("N/A")
-					item.number:diffuse(fetch_color("text"))
-				else
-					if rval == math.floor(rval) then
-						item:set_number(rval)
-						item.number:diffuse(fetch_color("text"))
-					else
-						item:set_number(("%.2f"):format(rval))
-						item.number:diffuse(color_percent_above(rval, .5))
-					end
-				end
-			elseif item_config.nps then
-				item:set_text("NPS")
-				local taps= radars:GetValue("RadarCategory_TapsAndHolds")
-				local jumps= radars:GetValue("RadarCategory_Jumps")
-				local hands= radars:GetValue("RadarCategory_Hands")
-				local length= song_get_length(song)
-				local nps= (taps + jumps + hands) / length
-				if length <= 0 then
-					item:set_number("N/A")
-					item.number:diffuse(fetch_color("text"))
-				else
-					item:set_number(("%.2f"):format(nps))
-					item.number:diffuse(color_percent_above(nps/10, .5))
-				end
-			else
-				item:set_text("")
-				item:set_number("")
-			end
-		end,
-		set_edit_mode_item= function(self, item, item_config)
-			if item_config.score then
-				item:set_text(
-					bool_text(item_config.score.machine, "MScore", "PScore"))
-				item:set_number(item_config.score.slot)
-			elseif item_config.tag then
-				item:set_text(bool_text(item_config.tag.machine, "MTag", "PTag"))
-				item:set_number(item_config.tag.slot)
-			elseif item_config.favor then
-				item:set_text(
-					bool_text(item_config.favor == "machine", "MFavor", "PFavor"))
-				item:set_number("X")
-			elseif item_config.bpm then
-				item:set_text("BPM")
-				item:set_number("XXX")
-				item.number:ClearAttributes()
-			elseif item_config.meter then
-				item:set_text("Meter")
-				item:set_number("XX")
-			elseif item_config.author then
-				item:set_text("Author")
-				item:set_number("")
-			elseif item_config.genre then
-				item:set_text("Genre")
-				item:set_number("")
-			elseif item_config.radar_category then
-				item:set_text("Radar")
-				item:set_number(
-					get_string_wrapper("PaneDisplay", item_config.radar_category))
-			elseif item_config.nps then
-				item:set_text("NPS")
-				item:set_number("X.XX")
-			elseif item_config.timing_info then
-				item:set_text(item_config.timing_info[1] or "err")
-				item:set_number("XX")
-			else
-				item:set_text("")
-				item:set_number("")
-			end
-			item.text:diffuse(fetch_color("text"))
-			item.number:diffuse(fetch_color("text"))
 		end,
 		edit_mode_update_all= function(self)
 			self.used_rows= math.max(#self.config[1], #self.config[2])
@@ -871,6 +935,7 @@ pain_display_mt= {
 				show_rows= show_rows + 1
 			end
 			self:show_frame(show_rows)
+			local show_grade= cons_players[self.player_number].flags.interface.music_wheel_grades
 			local function update_half_edit(half_items, half_config, other_half, left)
 				for i, item in ipairs(half_items) do
 					local item_config= half_config[i]
@@ -883,24 +948,20 @@ pain_display_mt= {
 							else
 								self:make_item_narrow(item, left)
 							end
-							self:set_edit_mode_item(item, item_config)
+							item:set_edit_info(item_config, show_grade)
 						else
+							local text= ""
 							if i <= show_rows-1 then
-								item:set_text("Add Item")
-								item:set_number("")
+								text= "Add Item"
 							elseif i == show_rows then
-								item:set_text("Exit Edit")
-								item:set_number("")
-							else
-								item:set_text("")
-								item:set_number("")
+								text= "Exit Edit"
 							end
+							item:set_edit_special_info(text)
 						end
 					else
-						item:set_text("")
-						item:set_number("")
+						item:set_non_info()
 					end
-					self:width_limit_item(item)
+					item:width_limit(self.el_z)
 				end
 			end
 			update_half_edit(self.left_items, self.config[1], self.config[2], true)
@@ -928,6 +989,7 @@ pain_display_mt= {
 			local phs_list= self:get_hs_list(false)
 			local mtag_list= self:get_tag_list(true)
 			local ptag_list= self:get_tag_list(false)
+			local show_grade= cons_players[self.player_number].flags.interface.music_wheel_grades
 			local function update_half(half_items, half_config, other_half, left)
 				for i, item in ipairs(half_items) do
 					local item_config= half_config[i]
@@ -941,31 +1003,22 @@ pain_display_mt= {
 						end
 						if item_config.score then
 							local list=(item_config.score.machine and mhs_list) or phs_list
-							self:set_score_item(item, item_config.score.slot, list)
+							item:set_score(show_grade, item_config.score.slot, list)
 						elseif item_config.tag then
 							local list=(item_config.tag.machine and mtag_list) or ptag_list
-							self:set_tag_item(item, item_config.tag.slot, list)
+							item:set_tag(item_config.tag.slot, list)
 						elseif item_config.favor then
-							self:set_favor_item(
-								item, item_config.favor, item_config.is_wide)
+							item:set_favor(item_config.favor, item_config.is_wide)
 						elseif item_config.timing_info then
-							if timing_data and item_config.timing_info[1] then
-								local func_name= item_config.timing_info[2]
-								item:set_text(item_config.timing_info[1])
-								item:set_number(
-									("%02d"):format(#timing_data[func_name](timing_data)))
-							else
-								item:set_text("")
-								item:set_number("")
-							end
+							item:set_timing(timing_data, item_config.timing_info)
 						else
-							self:set_chart_info_item(item, item_config, radars)
+							item:set_chart_info(self.player_number, self.narrow_el_w,
+								self.wide_el_w, self.el_z, item_config, radars)
 						end
 					else
-						item:set_text("")
-						item:set_number("")
+						item:set_non_info()
 					end
-					self:width_limit_item(item)
+					item:width_limit(self.el_z)
 				end
 			end
 			update_half(self.left_items, self.config[1], self.config[2], true)

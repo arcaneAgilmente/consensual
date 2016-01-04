@@ -301,10 +301,10 @@ function rec_print_table(t, indent, depth_remaining)
 	if depth_remaining == 0 then return end
 	for k, v in pairs(t) do
 		if type(v) == "table" then
-			Trace(indent .. k .. ": table")
+			Trace(indent .. tostring(k) .. ": table")
 			rec_print_table(v, indent .. "  ", depth_remaining - 1)
 		else
-			Trace(indent .. "(" .. type(k) .. ")" .. k .. ": " ..
+			Trace(indent .. "(" .. type(k) .. ")" .. tostring(k) .. ": " ..
 							"(" .. type(v) .. ")" .. tostring(v))
 		end
 	end

@@ -51,6 +51,7 @@ local default_flag_set= {
 		score_random= {false, false, false, true},
 		unplayed_random= {false, false, true},
 		low_score_random= {false, false, false, true},
+		music_wheel_grades= {true},
 		straight_floats= {false, false, false, true},
 		verbose_bpm= {false, false, false, true},
 	}
@@ -109,6 +110,7 @@ sorted_flag_names= {
 	 "score_random",
 --	 "unplayed_random",
 --	 "low_score_random",
+	 "music_wheel_grades",
 	 "straight_floats",
 	 "verbose_bpm",
 	}

@@ -209,11 +209,12 @@ local cursors= {
 
 local star_xs= {[PLAYER_1]= SCREEN_WIDTH * .25, [PLAYER_2]= SCREEN_WIDTH * .75}
 local star_rad= SCREEN_HEIGHT*.25
-local star_rot= 45
-if april_fools then star_rot= 720 end
+local star_rot= 5.625
+if april_fools then star_rot= 90 end
 local star_points= 511
 local star_y= SCREEN_HEIGHT*.5
-local stars= {setmetatable({}, star_amv_mt), setmetatable({}, star_amv_mt)}
+local star= setmetatable({}, star_amv_mt)
+local stars= {}
 local function rescale_stars()
 	local pad= 16
 	local radius= ((SCREEN_WIDTH - display_frames[1].w) / 4) - pad
@@ -227,12 +228,13 @@ local function rescale_stars()
 	end
 	local apmul= 1
 	if april_fools then apmul= 4 end
-	stars[1]:repoint(star_points, radius * apmul)
-	stars[2]:repoint(star_points, radius * apmul)
+	local star_progress= math.random()
+	star:repoint(star_points, radius * apmul, star_progress)
+	star.container:visible(false)
 	star_xs[PLAYER_1]= radius+pad
 	star_xs[PLAYER_2]= SCREEN_WIDTH - (radius+pad)
-	stars[1]:move(star_xs[PLAYER_1])
-	stars[2]:move(star_xs[PLAYER_2])
+	stars[1]:x(star_xs[PLAYER_1])
+	stars[2]:x(star_xs[PLAYER_2])
 end
 
 local function create_actors()
@@ -606,12 +608,21 @@ end
 
 local star_args= {
 	Name= "Star frame",
-	stars[1]:create_actors(
-		"lstar", SCREEN_WIDTH * .25, star_y, star_rad, 0, star_points,
-		pn_to_color(PLAYER_1), 8, star_rot),
-	stars[2]:create_actors(
-		"rstar", SCREEN_WIDTH * .75, star_y, star_rad, math.pi, star_points,
-		pn_to_color(PLAYER_2), 8, -star_rot),
+	star:create_actors("star", 0, 0, star_rad, 0, star_points, 8),
+	Def.ActorProxy{
+		InitCommand= function(self)
+			stars[1]= self
+			self:SetTarget(star.container):spin():effectmagnitude(0, 0, star_rot)
+				:y(star_y)
+		end,
+	},
+	Def.ActorProxy{
+		InitCommand= function(self)
+			stars[2]= self
+			self:SetTarget(star.container):spin():effectmagnitude(0, 0, -star_rot)
+				:y(star_y)
+		end,
+	},
 }
 
 local args= {

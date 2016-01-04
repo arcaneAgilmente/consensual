@@ -98,12 +98,10 @@ function convert_score_to_grade(judge_counts)
 	local worst_tns_judge= ""
 	local tns_reverse= TapNoteScore:Reverse()
 	for judge, count in pairs(judge_counts) do
-		if judge:sub(1, 12) == "TapNoteScore" then
-			if colorable_judges[judge] and count > 0
-			and (worst_tns_judge == "" or tns_reverse[judge] < worst_tns_val) then
-				worst_tns_judge= judge
-				worst_tns_val= tns_reverse[judge]
-			end
+		if colorable_judges[judge] and count > 0
+		and (worst_tns_judge == "" or tns_reverse[judge] < worst_tns_val) then
+			worst_tns_judge= judge
+			worst_tns_val= tns_reverse[judge]
 		end
 		local short= ToEnumShortString(judge)
 		if better_judges[short] then
@@ -115,7 +113,22 @@ function convert_score_to_grade(judge_counts)
 	local score= adp / mdp
 	local grades= grade_config:get_data()
 	for i= 1, #grades do
-		if score >= grades[i] then return i, color end
+		if score >= grades[i] then return i, color, score end
 	end
-	return #grades, color
+	return #grades, color, score
+end
+
+function grade_image_path(pn)
+	return THEME:GetPathG("", "grades/"..grade_config:get_data(pn_to_profile_slot(pn)).file)
+end
+
+function convert_high_score_to_judge_counts(score)
+	local judge_counts= {}
+	for i, tns in ipairs(TapNoteScore) do
+		judge_counts[tns]= score:GetTapNoteScore(tns)
+	end
+	for i, hns in ipairs(HoldNoteScore) do
+		judge_counts[hns]= score:GetHoldNoteScore(hns)
+	end
+	return judge_counts
 end

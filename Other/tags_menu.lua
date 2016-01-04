@@ -107,7 +107,7 @@ options_sets.tags_menu= {
 					local apply_group= {gamestate_get_curr_song()}
 					if not apply_group[1] then
 						self.music_wheel= nil
-						MESSAGEMAN:Broadcast("get_music_wheel", {pn= self.player_number})
+						MESSAGEMAN:Broadcast("get_music_wheel", {requester= self})
 						if self.music_wheel then
 							local function add_item(item, depth)
 								apply_group[#apply_group+1]= item.el

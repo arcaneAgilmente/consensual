@@ -469,6 +469,10 @@ options_sets.menu= {
 			self:reset_info()
 		end,
 		reset_info= function(self)
+			local old_option_name= ""
+			if self.cursor_pos then
+				old_option_name= self.info_set[self.cursor_pos].text
+			end
 			self.info_set= {}
 			self.shown_data= {}
 			if not self.no_up then
@@ -483,8 +487,16 @@ options_sets.menu= {
 				self.curr_level= ops_level(self.player_number)
 			end
 			self:update_info(self.menu_data)
+			if old_option_name ~= "" then
+				for pos= 1, #self.info_set do
+					if self.info_set[pos].text == old_option_name then
+						self.cursor_pos= pos
+					end
+				end
+			end
 			if self.display then
 				self.display:set_info_set(self.info_set)
+				self:scroll_to_pos(self.cursor_pos)
 			end
 		end,
 		id_plus_up= function(self, id)
@@ -537,19 +549,10 @@ options_sets.menu= {
 					self.display:set_element_info(self:id_plus_up(index), nil)
 				end
 			end
-			if self.cursor_pos > #self.info_set then
-				self.cursor_pos= #self.info_set
-				if self.display then
-					self:scroll_to_pos(self.cursor_pos)
-				end
-			end
 			self.menu_data= new_menu_data
 		end,
-		recheck_levels= function(self, force)
-			if force or self.player_number and self.curr_level ~=
-			ops_level(self.player_number) then
-				self:reset_info()
-			end
+		recheck_levels= function(self)
+			self:reset_info()
 		end,
 		set_status= function(self)
 			if self.display then
@@ -648,7 +651,10 @@ options_sets.special_functions= {
 				self.display:hide()
 			end
 		end,
-		set_status= function(self) self.display:set_heading(self.name) end,
+		set_status= function(self)
+			self.display:set_heading(self.name)
+			self.display:set_display("")
+		end,
 		interpret_start= function(self)
 			if self.shared_display and self.cursor_pos == 1 then
 				return true, true
