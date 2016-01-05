@@ -671,21 +671,12 @@ local function noteskin_param_float_val(param_name, param_section, type_info)
 		min_scale= -2
 		val_text= float_val_text
 	end
-	local validator= noop_true
+	local val_min= type_info.min
+	local val_max= type_info.max
 	if type_info.max then
 		max_scale= math.floor(math.log(type_info.max) / math.log(10))
-		if type_info.min then
-			validator= function(value)
-				return value >= type_info.min and value <= type_info.max
-			end
-		else
-			validator= function(value) return value <= type_info.max end
-		end
 	else
 		max_scale= 2
-		if type_info.min then
-			validator= function(value) return value >= type_info.min end
-		end
 	end
 	local translation= get_noteskin_param_translation(param_name, type_info)
 	return {
@@ -695,7 +686,7 @@ local function noteskin_param_float_val(param_name, param_section, type_info)
 				return param_section[param_name]
 			end,
 			set= function(pn, value) param_section[param_name]= value end,
-			val_to_text= val_to_text, validator= validator,
+			val_to_text= val_to_text, val_min= val_min, val_max= val_max,
 	}}
 end
 local function noteskin_param_choice_val(param_name, param_section, type_info)
@@ -893,9 +884,7 @@ local function extra_for_sigil_detail()
 		initial_value= function(player_number)
 			return cons_players[player_number].sigil_data.detail
 		end,
-		validator= function(value)
-			return value >= 1 and value <= 32
-		end,
+		val_min= 1, val_max= 32,
 		set= function(player_number, value)
 			cons_players[player_number].sigil_data.detail= value
 		end,
@@ -912,9 +901,7 @@ local function player_conf_float(
 			initial_value= function(pn)
 				return get_element_by_path(cons_players[pn], field_name) or 0
 			end,
-			validator= function(value)
-				return gte_nil(value, minv) and lte_nil(value, maxv)
-			end,
+			val_min= minv, val_max= maxv,
 			set= function(pn, value)
 				set_element_by_path(cons_players[pn], field_name, value)
 			end
@@ -931,9 +918,7 @@ local function player_cons_mod(
 			initial_value= function(pn)
 				return get_element_by_path(cons_players[pn], field_name) or 0
 			end,
-			validator= function(value)
-				return gte_nil(value, minv) and lte_nil(value, maxv)
-			end,
+			val_min= minv, val_max= maxv,
 			set= function(pn, value)
 				cons_players[pn]:set_cons_mod(field_name, value)
 			end
@@ -950,9 +935,7 @@ local function extra_for_lives()
 		initial_value= function(player_number)
 			return mod_player(player_number, "BatteryLives")
 		end,
-		validator= function(value)
-			return value >= 1
-		end,
+		val_min= 1,
 		set= function(player_number, value)
 			mod_player(player_number, "BatteryLives", value)
 		end
@@ -969,9 +952,7 @@ local function extra_for_haste()
 		initial_value= function(player_number)
 			return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste()
 		end,
-		validator= function(value)
-			return value >= -1 and value <= 1
-		end,
+		val_min= -1, val_max= 1,
 		set= function(player_number, value)
 			GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste(value)
 		end
@@ -985,9 +966,7 @@ local function extra_for_bg_bright()
 		initial_value= function(pn)
 			return PREFSMAN:GetPreference("BGBrightness")
 		end,
-		validator= function(value)
-			return value >= 0 and value <= 1
-		end,
+		val_min= 0, val_max= 1,
 		set= function(pn, value)
 			PREFSMAN:SetPreference("BGBrightness", value)
 		end
@@ -1024,9 +1003,7 @@ local function make_profile_float_extra(func_name)
 				profiles[pn]["Set"..func_name](profiles[pn], val)
 			end
 		end,
-		validator= function(val)
-			return val >= 0
-		end
+		val_min= 0,
 	}
 end
 
@@ -1278,7 +1255,7 @@ local unacceptable_options= {
 		 initial_value= function(pn)
 			 return cons_players[pn].unacceptable_score.value
 		 end,
-		 validator= function(value) return value >= 0 end,
+		 val_min= 0,
 		 set= function(pn, value)
 			 cons_players[pn].unacceptable_score.value= value
 		 end
@@ -1288,10 +1265,7 @@ local unacceptable_options= {
 		 initial_value= function(pn)
 			 return cons_players[pn].unacceptable_score.limit
 		 end,
-		 validator= function(value)
-			 return value >= 0 and
-			 value <= misc_config:get_data().gameplay_reset_limit
-		 end,
+		 val_min= 0, val_max= misc_config:get_data().gameplay_reset_limit,
 		 set= function(pn, value)
 			 cons_players[pn].unacceptable_score.limit= value
 		 end

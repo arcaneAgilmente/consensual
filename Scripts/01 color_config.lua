@@ -81,6 +81,7 @@ local default_config= {
 	{"bpm", "percent"},
 	{"speed", "percent"},
 	{"hours", "percent"},
+	{"days", "percent"},
 	{"confetti", "percent"},
 
 	{"help", {

@@ -42,6 +42,7 @@ local default_config= {
 	save_last_played_on_eval= false,
 
 	seconds_per_clock_change= 3600,
+	days_per_clock_change= math.floor(365.25 / 8),
 
 	config_menu_key= "DeviceButton_z",
 	color_config_key= "DeviceButton_b",

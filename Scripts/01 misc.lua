@@ -959,10 +959,10 @@ convert_code_name_to_display_text= {
 	unjoin="Unjoin Other",
 }
 
-local function ymd_timestamp()
+function ymd_timestamp()
 	local y= Year()
-	local m= Month()
-	local d= Day()
+	local m= MonthOfYear() + 1
+	local d= DayOfMonth()
 	if m < 10 then m = "0" .. m end
 	if d < 10 then d = "0" .. d end
 	return y.."-"..m.."-"..d

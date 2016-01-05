@@ -22,23 +22,21 @@ local line_height= get_line_height()
 
 local option_item_mt= {
 	__index= {
-		create_actors= function(self, name, height)
+		create_actors= function(self, name)
 			self.name= name
 			self.zoom= 1
 			self.width= SCREEN_WIDTH
 			self.prev_index= 1
 			self.translation_section= "OptionNames"
-			self.icon_height= line_height / 2
-			self.icon_width= self.icon_height
 			return Def.ActorFrame{
 				Name= name,
 				InitCommand= function(subself)
 					self.container= subself
 					self.text= subself:GetChild("text")
+					self:lose_focus()
 				end,
 				Def.Quad{
 					Name= "underline", InitCommand= function(q) self.underline= q end},
-				Def.Sprite{Name= "icon", InitCommand= function(i) self.icon= i end},
 				normal_text("text", "", nil, fetch_color("stroke"), nil, nil, self.zoom),
 			}
 		end,
@@ -48,20 +46,12 @@ local option_item_mt= {
 			self.height= height
 			self.text:zoom(zoom)
 			self.underline:SetHeight(height/2):vertalign(top)
-			self.icon_height= height / 2
-			self.icon_width= self.icon_height
-			scale_to_fit(self.icon, self.icon_width, self.icon_height)
-			self.icon:x(0)
 		end,
 		set_underline_color= function(self, color)
 			self.underline:diffuse(color)
 		end,
 		set_text_colors= function(self, main, stroke)
 			self.text:diffuse(main):strokecolor(stroke)
-		end,
-		set_icon= function(self, texname)
-			self.icon:Load(texname)
-			scale_to_fit(self.icon, self.icon_width, self.icon_height)
 		end,
 		transform= function(self, item_index, num_items, is_focus)
 			local changing_edge= math.abs(item_index-self.prev_index)>num_items/2
@@ -102,6 +92,8 @@ local option_item_mt= {
 			end
 			return ret
 		end,
+		gain_focus= noop_nil,
+		lose_focus= noop_nil,
 }}
 
 local option_item_value_mt= {
@@ -117,6 +109,7 @@ local option_item_value_mt= {
 					self.container= subself
 					self.text= subself:GetChild("text")
 					self.value= subself:GetChild("value")
+					self:lose_focus()
 				end,
 				Def.Quad{
 					Name= "example", InitCommand= function(subself)
@@ -196,29 +189,123 @@ local option_item_value_mt= {
 		end,
 		set_underline_color= noop_nil,
 		set_underline= noop_nil,
+		gain_focus= noop_nil,
+		lose_focus= noop_nil,
+}}
+
+option_item_sector_mt= {
+	__index= {
+		create_actors= function(self, name)
+			self.name= name
+			self.zoom= 1
+			self.prev_index= 1
+			self.translation_section= "OptionNames"
+			local frame_parts= {
+				InitCommand= function(subself)
+					self.frame_cont= subself
+				end,
+			}
+			local colors= {
+				{1, 1, 1, 1},
+				{1, 0, 1, 1},
+				{1, 1, 0, 1},
+				{0, 1, 1, 1},
+			}
+			for qi, part_name in ipairs{"top_quad", "bottom_quad", "left_quad", "right_quad"} do
+				frame_parts[#frame_parts+1]= Def.Quad{
+					InitCommand= function(subself)
+						subself:diffuse(colors[qi])
+						self[part_name]= subself
+					end
+				}
+			end
+			local parts= {
+				Name= name, InitCommand= function(subself)
+					self.container= subself
+					self:lose_focus()
+				end,
+				Def.ActorFrame(frame_parts)
+			}
+			parts[#parts+1]= Def.BitmapText{
+				Font= FontChoiceBig, InitCommand= function(subself)
+					subself:diffuse{1, 1, 1, 1}
+					self.text= subself
+				end
+			}
+			return Def.ActorFrame(parts)
+		end,
+		set_geo= function(self, width, height, zoom, square_size)
+			local thick= 2
+			local hthick= thick / 2
+			self.width= width
+			self.height= height
+			self.square_size= square_size
+			self.top_quad:setsize(width-thick, thick):xy(0, -height/2 + thick)
+			self.bottom_quad:setsize(width-thick, thick):xy(0, height/2 - thick)
+			self.left_quad:setsize(thick, height-thick):xy(-width/2 + thick, 0)
+			self.right_quad:setsize(thick, height-thick):xy(width/2 - thick, 0)
+		end,
+		set_underline_color= noop_nil,
+		set_text_colors= function(self, main, stroke)
+			self.text:diffuse(main):strokecolor(stroke)
+		end,
+		transform= function(self, item_index, num_items, is_focus)
+			local x_items= self.square_size
+			local pos= item_index - 1
+			local xpos= pos % x_items
+			local ypos= math.floor(pos / x_items)
+			self.container:stoptweening():linear(.1)
+				:xy((xpos+.5) * self.width, (ypos+.5) * self.height)
+		end,
+		set= function(self, info)
+			self.info = info
+			if info then
+				self.container:hibernate(0)
+				self:set_text(info.text)
+			else
+				self.container:hibernate(math.huge)
+			end
+		end,
+		set_underline= noop_nil,
+		set_text= function(self, t)
+			self.text:settext(get_string_wrapper(self.translation_section, t))
+			width_limit_text(self.text, self.width, self.zoom)
+		end,
+		get_cursor_fit= function(self)
+			return {0, 0, self.width, self.height}
+		end,
+		set_frame_color= function(self, color)
+			for quad in ivalues{self.top_quad, self.bottom_quad, self.left_quad, self.right_quad} do
+				quad:diffuse(color)
+			end
+		end,
+		gain_focus= function(self)
+			self.frame_cont:stoptweening():linear(.1):zoom(1)
+		end,
+		lose_focus= function(self)
+			self.frame_cont:stoptweening():linear(.1):zoom(1)
+		end,
 }}
 
 option_display_mt= {
 	__index= {
 		create_actors= function(
 				self, name, x, y, display_height, el_width, el_height, el_zoom,
-				no_heading, no_display, value_style)
-			local el_count= 1
-			if display_height < 20 then
---				lua.ReportScriptError("The display '" .. name .. "' needs to have its height set.")
-				el_count= display_height
-			else
-				if not no_heading then
-					display_height= display_height - el_height
-				end
-				if not no_display then
-					display_height= display_height - el_height
-				end
-				if not no_heading or not no_display then
-					display_height= display_height - (el_height * .5)
-				end
-				el_count= math.floor(display_height / el_height)
+				no_heading, no_display, style)
+			if type(style) == "boolean" then
+				lua.ReportScriptError("Menu on this screen needs to be updated, it is sending the option_display_mt a bool style.")
 			end
+			local el_count= 1
+			if not no_heading then
+				display_height= display_height - el_height
+			end
+			if not no_display then
+				display_height= display_height - el_height
+			end
+			if not no_heading or not no_display then
+				display_height= display_height - (el_height * .5)
+			end
+			el_count= math.floor(display_height / el_height)
 			self.name= name
 			self.el_width= el_width or SCREEN_WIDTH
 			self.el_height= el_height or line_height
@@ -226,6 +313,7 @@ option_display_mt= {
 			self.no_heading= no_heading
 			self.no_display= no_display
 			self.translation_section= "OptionNames"
+			self.style= style
 			local args= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
@@ -252,9 +340,14 @@ option_display_mt= {
 				next_y= next_y + self.el_height * .5
 			end
 			self.sick_wheel= setmetatable({disable_wrapping= true}, sick_wheel_mt)
-			if value_style then
+			if style == "value" then
 				args[#args+1]= self.sick_wheel:create_actors(
 					"wheel", el_count, option_item_value_mt, 0, next_y)
+			elseif style == "sector" then
+				self.height= display_height
+				self.width= el_width
+				args[#args+1]= self.sick_wheel:create_actors(
+					"wheel", el_count, option_item_sector_mt, 0, next_y)
 			else
 				args[#args+1]= self.sick_wheel:create_actors(
 					"wheel", el_count, option_item_mt, 0, next_y)
@@ -294,7 +387,7 @@ option_display_mt= {
 		end,
 		regeo_items= function(self)
 			for i, item in ipairs(self.sick_wheel.items) do
-				item:set_geo(self.el_width, self.el_height, self.el_zoom)
+				item:set_geo(self.el_width, self.el_height, self.el_zoom, self.square_size)
 			end
 		end,
 		set_heading= function(self, h)
@@ -310,6 +403,15 @@ option_display_mt= {
 			end
 		end,
 		set_info_set= function(self, info, pos)
+			if self.style == "sector" then
+				local num_items= math.min(#self.sick_wheel.items, #info)
+				self.sick_wheel.fake_num_items= num_items
+				self.square_size= math.ceil(math.sqrt(num_items))
+				self.rows= math.ceil(num_items / self.square_size)
+				self.el_width= self.width / self.square_size
+				self.el_height= self.height / self.rows
+				self:regeo_items()
+			end
 			self.sick_wheel:set_info_set(info, pos or 1)
 			self:unhide()
 		end,
@@ -317,13 +419,19 @@ option_display_mt= {
 			self.sick_wheel:set_element_info(element, info)
 		end,
 		get_element= function(self, element)
+			rec_print_table(self.sick_wheel)
 			return self.sick_wheel:get_items_by_info_index(element)[1]
 		end,
 		scroll= function(self, pos)
 			self.sick_wheel:scroll_to_pos(pos)
 		end,
 		hide= function(self) self.hidden= true self.container:diffusealpha(0) end,
-		unhide= function(self) self.hidden= false self.container:diffusealpha(1) end
+		unhide= function(self) self.hidden= false self.container:diffusealpha(1) end,
+		lose_focus_items= function(self)
+			for i, item in ipairs(self.sick_wheel.items) do
+				item:lose_focus()
+			end
+		end,
 }}
 
 function up_element()
@@ -386,26 +494,29 @@ option_set_general_mt= {
 		interpret_code= function(self, code)
 			local funs= {
 				MenuLeft= function(self)
+					self:get_cursor_element():lose_focus()
 					if self.cursor_pos > 1 then
 						self.cursor_pos= self.cursor_pos - 1
 					else
 						self.cursor_pos= #self.info_set
 					end
 					self.display:scroll(self.cursor_pos)
+					self:get_cursor_element():gain_focus()
 					return true
 				end,
 				MenuRight= function(self)
+					self:get_cursor_element():lose_focus()
 					if self.cursor_pos < #self.info_set then
 						self.cursor_pos= self.cursor_pos + 1
 					else
 						self.cursor_pos= 1
 					end
 					self.display:scroll(self.cursor_pos)
+					self:get_cursor_element():gain_focus()
 					return true
 				end,
 				Start= function(self)
-					if self.info_set[self.cursor_pos].text ==
-					up_element().text then
+					if self.info_set[self.cursor_pos].text == up_element().text then
 						-- This position is the "up" element that moves the
 						-- cursor back up the options tree.
 						return false
@@ -422,15 +533,40 @@ option_set_general_mt= {
 						return false
 					end
 				end,
-				Select= function(sef)
+				Select= function(self)
 					self.cursor_pos= 1
 					self.display:scroll(self.cursor_pos)
 					return true
 				end
 			}
-			-- This breaks the feature of left being usable as back on the up
-			-- element, but I don't think that's important.
-			if ud_menus() then
+			local function square_adjust_pos(pos)
+				if pos > 0 and pos <= #self.info_set then return pos end
+				local rect_size= self.display.rows * self.display.square_size
+				if pos > #self.info_set then
+					pos= pos - rect_size
+					if pos <= 0 then
+						pos= pos + self.display.square_size
+					end
+					return pos
+				end
+				pos= pos + rect_size
+				if pos > #self.info_set then
+					return pos - self.display.square_size
+				end
+				return pos
+			end
+			if self.display.style == "sector" then
+				funs.MenuUp= function(self)
+					self:get_cursor_element():lose_focus()
+					self.cursor_pos= square_adjust_pos(self.cursor_pos - self.display.square_size)
+					self:get_cursor_element():gain_focus()
+				end
+				funs.MenuDown= function(self)
+					self:get_cursor_element():lose_focus()
+					self.cursor_pos= square_adjust_pos(self.cursor_pos + self.display.square_size)
+					self:get_cursor_element():gain_focus()
+				end
+			else
 				funs.MenuUp= funs.MenuLeft
 				funs.MenuDown= funs.MenuRight
 			end
@@ -777,7 +913,8 @@ options_sets.adjustable_float= {
 			check_member("max_scale")
 			self.set= extra.set
 			check_member("set")
-			self.validator= extra.validator or noop_true
+			self.val_min= extra.val_min
+			self.val_max= extra.val_max
 			self.val_to_text= extra.val_to_text or to_text_default
 			self.scale_to_text= extra.scale_to_text or to_text_default
 			local scale_text= get_string_wrapper("OptionNames", "scale")
@@ -885,12 +1022,16 @@ options_sets.adjustable_float= {
 			local raise= 10^-self.min_scale_used
 			local lower= 10^self.min_scale_used
 			local rounded_val= math.round(nval * raise) * lower
-			if self.validator(rounded_val) then
-				self.current_value= rounded_val
-				rounded_val= self:cooked_val(rounded_val)
-				self.set(self.player_number, rounded_val)
-				self:set_status()
+			if self.val_max and rounded_val > self.val_max then
+				rounded_val= self.val_max
 			end
+			if self.val_min and rounded_val < self.val_min then
+				rounded_val= self.val_min
+			end
+			self.current_value= rounded_val
+			rounded_val= self:cooked_val(rounded_val)
+			self.set(self.player_number, rounded_val)
+			self:set_status()
 		end,
 		set_new_scale= function(self, nscale)
 			if nscale >= self.min_scale and nscale <= self.max_scale then
@@ -1112,6 +1253,7 @@ function set_option_set_metatables()
 		setmetatable(set.__index, option_set_general_mt)
 	end
 end
+set_option_set_metatables()
 
 -- This exists to hand to menus that pass out of view but still exist.
 local fake_display= {is_fake= true}
@@ -1123,14 +1265,14 @@ menu_stack_mt= {
 	__index= {
 		create_actors= function(
 				self, name, x, y, width, height, player_number, num_displays,
-				el_height, zoom)
+				el_height, zoom, no_heading, no_display, style)
 			num_displays= num_displays or 2
 			self.name= name
 			self.player_number= player_number
 			self.options_set_stack= {}
 			self.zoom= zoom or 1
 			self.el_height= el_height or line_height
-			local pcolor= pn_to_color(player_number)
+			local pcolor= PlayerColor(player_number)
 			local args= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
@@ -1153,7 +1295,7 @@ menu_stack_mt= {
 			for i, disp in ipairs(self.displays) do
 				args[#args+1]= disp:create_actors(
 					"disp" .. i, off+sep * (i-1), 0,
-					height, disp_el_width_limit, self.el_height, self.zoom)
+					height, disp_el_width_limit, self.el_height, self.zoom, no_heading, no_display, style)
 			end
 			args[#args+1]= self.cursor:create_actors(
 				"cursor", sep, 0, 1, pcolor, fetch_color("player.hilight"),
@@ -1165,6 +1307,12 @@ menu_stack_mt= {
 			for i= #oss, 1, -1 do
 				oss[i]:set_display(self.displays[start] or fake_display)
 				start= start - 1
+			end
+		end,
+		lose_focus_top_display= function(self)
+			local top_display= math.min(#self.displays, #self.options_set_stack)
+			if self.displays[top_display] then
+				self.displays[top_display]:lose_focus_items()
 			end
 		end,
 		push_display_stack= function(self)
@@ -1195,20 +1343,23 @@ menu_stack_mt= {
 			end
 		end,
 		push_options_set_stack= function(
-				self, new_set_meta, new_set_initializer_args, base_exit)
+				self, new_set_meta, new_set_initializer_args, base_exit, no_up)
+			self:lose_focus_top_display()
 			local oss= self.options_set_stack
 			local use_display= self:push_display_stack()
 			local nos= setmetatable({}, new_set_meta)
 			oss[#oss+1]= nos
 			nos:set_player_info(self.player_number)
 			if #oss == 1 then
-				nos:initialize(self.player_number, new_set_initializer_args, false, base_exit)
+				nos:initialize(self.player_number, new_set_initializer_args, no_up, base_exit)
 			else
 				nos:initialize(self.player_number, new_set_initializer_args)
 			end
 			nos:set_display(self.displays[use_display])
+			self:update_cursor_pos()
 		end,
 		pop_options_set_stack= function(self)
+			self:lose_focus_top_display()
 			local oss= self.options_set_stack
 			if #oss > 0 then
 				local former_top= oss[#oss]
@@ -1216,6 +1367,7 @@ menu_stack_mt= {
 				oss[#oss]= nil
 				self:pop_display_stack()
 			end
+			self:update_cursor_pos()
 		end,
 		clear_options_set_stack= function(self)
 			while #self.options_set_stack > 0 do
@@ -1296,6 +1448,7 @@ menu_stack_mt= {
 			if not tos then return end
 			local item= tos:get_cursor_element()
 			if item then
+				item:gain_focus()
 				local xmn, xmx, ymn, ymx= rec_calc_actor_extent(item.container)
 				local xp, yp= rec_calc_actor_pos(item.container)
 				local xs, ys= rec_calc_actor_pos(self.container)
