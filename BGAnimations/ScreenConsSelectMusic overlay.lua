@@ -17,8 +17,6 @@ rec_print_table(skin_info)
 lua.ReportScriptError("dumped skin_info for default")
 ]]
 
-dofile(THEME:GetPathO("", "../Scripts/02 interface_helpers.lua"))
-
 local press_ignore_reporter= false
 local function show_ignore_message(message)
 --	press_ignore_reporter:settext(message):finishtweening()
@@ -38,6 +36,10 @@ local time_between_fast_scroll= .02
 local sort_width= _screen.w*.25
 local pad= 4
 local hpad= 2
+local header_size= 32
+local footer_size= 32
+local hhead_size= header_size * .5
+local hfoot_size= footer_size * .5
 
 local pane_text_zoom= .625
 local pane_text_height= 16 * (pane_text_zoom / 0.5875)
@@ -827,6 +829,7 @@ dofile(THEME:GetPathO("", "song_props_menu.lua"))
 dofile(THEME:GetPathO("", "tags_menu.lua"))
 dofile(THEME:GetPathO("", "favor_menu.lua"))
 dofile(THEME:GetPathO("", "sick_options_parts.lua"))
+dofile(THEME:GetPathO("", "gameplay_preview.lua"))
 
 local rate_coordinator= setmetatable({}, rate_coordinator_interface_mt)
 rate_coordinator:initialize()
@@ -838,6 +841,7 @@ local steps_menus= {}
 local song_props_menus= {}
 local tag_menus= {}
 local player_cursors= {}
+local gameplay_previews= {}
 local base_mods= get_sick_options(rate_coordinator, color_manips, bpm_disps)
 
 for i, pn in ipairs(all_player_indices) do
@@ -849,6 +853,7 @@ for i, pn in ipairs(all_player_indices) do
 	song_props_menus[pn]= setmetatable({}, options_sets.menu)
 	tag_menus[pn]= setmetatable({}, options_sets.tags_menu)
 	player_cursors[pn]= setmetatable({}, cursor_mt)
+	gameplay_previews[pn]= setmetatable({}, gameplay_preview_mt)
 end
 
 local base_options= {}
@@ -1264,6 +1269,11 @@ local function update_all_info()
 	update_pain(PLAYER_1)
 	update_pain(PLAYER_2)
 	update_player_cursors()
+	for pn, preview in pairs(gameplay_previews) do
+		if not preview.hidden then
+			preview:update_steps()
+		end
+	end
 end
 
 local function start_auto_scrolling(dir)
@@ -1467,6 +1477,9 @@ local function adjust_difficulty(player, dir, sound)
 		end
 	end
 	update_pain(player)
+	if not gameplay_previews[player].hidden then
+		gameplay_previews[player]:update_steps()
+	end
 end
 
 local keys_down= {[PLAYER_1]= {}, [PLAYER_2]= {}}
@@ -2072,6 +2085,11 @@ local function maybe_help()
 end
 
 local function player_actors(pn, x, y)
+	local header_bottom= header_size + pad
+	local menu_top= _screen.h - footer_size - pane_h - pad - pad
+	local preview_height= menu_top - header_bottom
+	local preview_scale= preview_height / _screen.h
+	local preview_width= (_screen.w * .5) * preview_scale
 	return Def.ActorFrame{
 		Name= pn .. "_stuff", InitCommand= function(self)
 			player_stuff[pn]= self
@@ -2081,6 +2099,7 @@ local function player_actors(pn, x, y)
 			"pain", 0, pane_y + pane_yoff - pane_text_height, pn, pane_w,
 			pane_text_zoom),
 		steps_menus[pn]:create_actors(0, _screen.cy*.5, pn),
+		gameplay_previews[pn]:create_actors(0, (header_bottom + menu_top) * .5, preview_width, preview_height, preview_scale, pn),
 		bpm_disps[pn]:create_actors("bpm", pn, 0, pane_y + pane_yoff - 36, pane_w),
 		color_manips[pn]:create_actors("color_manip", 0, pane_manip_y, nil, .5),
 		special_menus[pn]:create_actors(
@@ -2098,7 +2117,6 @@ return Def.ActorFrame {
 			special_menus[pn]:hide()
 			color_manips[pn]:hide()
 			bpm_disps[pn]:hide()
-			update_pain(pn)
 		end
 		music_wheel:find_actors(self:GetChild(music_wheel.name))
 		set_preferred_expansion()
@@ -2125,30 +2143,43 @@ return Def.ActorFrame {
 			trans_new_screen("ScreenStageInformation")
 		end
 	end,
-	Def.ActorFrame{
-		Name= "If these commands were in the parent actor frame, they would not activate.",
-		went_to_text_entryMessageCommand= function(self)
-			saw_first_press= {}
-			for pn, downs in pairs(keys_down) do
-				keys_down[pn]= {}
-			end
-		end,
-		get_music_wheelMessageCommand= function(self, param)
-			if not music_wheel.ready then return end
-			if param.requester then param.requester.music_wheel= music_wheel end
-		end,
-		PlayerJoinedMessageCommand= function(self)
-			update_steps_types_to_show()
-			self:playcommand("Set")
-		end,
-		current_group_changedMessageCommand= function(self, param)
-			curr_group_name= param[1] or ""
-		end,
-	},
-	player_actors(PLAYER_1, lpane_x, 0),
-	player_actors(PLAYER_2, rpane_x, 0),
+	went_to_text_entryMessageCommand= function(self)
+		saw_first_press= {}
+		for pn, downs in pairs(keys_down) do
+			keys_down[pn]= {}
+		end
+	end,
+	get_music_wheelMessageCommand= function(self, param)
+		if not music_wheel.ready then return end
+		if param.requester then param.requester.music_wheel= music_wheel end
+	end,
+	PlayerJoinedMessageCommand= function(self)
+		update_steps_types_to_show()
+		self:playcommand("Set")
+	end,
+	current_group_changedMessageCommand= function(self, param)
+		curr_group_name= param[1] or ""
+	end,
+	entered_gameplay_configMessageCommand= function(self, param)
+		if not_newskin_available() then return end
+		if picking_steps then
+			steps_menus[param.pn]:deactivate()
+		end
+		local preview= gameplay_previews[param.pn]
+		preview:unhide()
+		preview:update_steps()
+	end,
+	exited_gameplay_configMessageCommand= function(self, param)
+		if not_newskin_available() then return end
+		gameplay_previews[param.pn]:hide()
+		if picking_steps then
+			steps_menus[param.pn]:activate()
+		end
+	end,
 	music_wheel:create_actors(wheel_x, wheel_width, wheel_move_time),
 	focus_element_info:create_actors(_screen.cx, _screen.cy),
+	player_actors(PLAYER_1, lpane_x, 0),
+	player_actors(PLAYER_2, rpane_x, 0),
 	Def.Actor{
 		Name= "code_interpreter",
 		InitCommand= function(self)
@@ -2161,16 +2192,16 @@ return Def.ActorFrame {
 		Name= "header",
 		Def.Quad{
 			InitCommand= function(self)
-				self:xy(_screen.cx, 16):setsize(_screen.w, 32)
+				self:xy(_screen.cx, hhead_size):setsize(_screen.w, header_size)
 					:diffuse({0, 0, 0, 1})
 			end
 		},
 		normal_text("sort_text", "NO SORT",
 								fetch_color("music_select.sort_type"),
-								nil, 8, 16, 1, left),
+								nil, 8, hhead_size, 1, left),
 		normal_text("curr_group", "",
 								fetch_color("music_select.curr_group"), nil,
-								_screen.cx, 16, 1, center, {
+								_screen.cx, hhead_size, 1, center, {
 									InitCommand= function(self)
 										curr_group= self
 									end,
@@ -2184,7 +2215,7 @@ return Def.ActorFrame {
 									end,
 		}),
 		normal_text("remain", "", fetch_color("music_select.remaining_time"), nil,
-								_screen.w - 8, 16, 1, right, {
+								_screen.w - 8, hhead_size, 1, right, {
 									OnCommand= function(self)
 										if GAMESTATE:IsCourseMode() then
 											self:visible(false)
@@ -2197,11 +2228,11 @@ return Def.ActorFrame {
 	},
 	Def.ActorFrame{
 		Name= "footer", InitCommand= function(self)
-			self:xy(_screen.cx, _screen.h - 16)
+			self:xy(_screen.cx, _screen.h - hfoot_size)
 		end,
 		Def.Quad{
 			InitCommand= function(self)
-				self:xy(0, 0):setsize(_screen.w, 32)
+				self:xy(0, 0):setsize(_screen.w, footer_size)
 					:diffuse({0, 0, 0, 1})
 			end
 		},

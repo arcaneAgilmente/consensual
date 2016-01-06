@@ -419,7 +419,6 @@ option_display_mt= {
 			self.sick_wheel:set_element_info(element, info)
 		end,
 		get_element= function(self, element)
-			rec_print_table(self.sick_wheel)
 			return self.sick_wheel:get_items_by_info_index(element)[1]
 		end,
 		scroll= function(self, pos)
@@ -661,11 +660,16 @@ options_sets.menu= {
 					local disp_slot= self:id_plus_up(next_shown)
 					self.shown_data[next_shown]= data
 					local disp_text= data.text or data.name
+					local underline= data.underline
+					if type(underline) == "function" then
+						underline= underline(self.player_number)
+					end
 					if self.info_set[disp_slot] then
 						self.info_set[disp_slot].text= disp_text
+						self.info_set[disp_slot].underline= underline
 						self.info_set[disp_slot].value= data.value
 					else
-						self.info_set[disp_slot]= {text= disp_text, value= data.value}
+						self.info_set[disp_slot]= {text= disp_text, underline= underline, value= data.value}
 					end
 					if data.args and type(data.args) == "table" then
 						data.args.name= data.name
@@ -1363,7 +1367,7 @@ menu_stack_mt= {
 			local oss= self.options_set_stack
 			if #oss > 0 then
 				local former_top= oss[#oss]
-				if former_top.destructor then former_top:destructor() end
+				if former_top.destructor then former_top:destructor(self.player_number) end
 				oss[#oss]= nil
 				self:pop_display_stack()
 			end
@@ -1426,6 +1430,7 @@ menu_stack_mt= {
 						self.deextern= new_set_data.deextern
 					elseif new_set_data.meta == "execute" then
 						new_set_data.execute(self.player_number)
+						top_set:recheck_levels()
 					else
 						local nargs= new_set_data.args
 						if new_set_data.exec_args and type(nargs) == "function" then

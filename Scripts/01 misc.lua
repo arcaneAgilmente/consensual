@@ -71,6 +71,10 @@ function newskin_available()
 	return false
 end
 
+function not_newskin_available()
+	return not newskin_available()
+end
+
 -- Fun fact:  Because this file is in consensual/Scripts, while it is being
 -- loaded, THEME:GetCurrentThemeDirectory returns "Themes/consensual".
 -- So this table exists to allow things that run after script loading is

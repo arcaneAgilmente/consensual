@@ -1714,17 +1714,8 @@ return Def.ActorFrame {
 						side_actors[pn]:set_newfield_preferred(true)
 						local columns= newfields[pn]:get_columns()
 						local field_conf= cons_players[pn].notefield_config
-						set_newfield_mods(screen_gameplay, pn, _screen.cy+field_conf.yoffset)
 						set_speed_from_speed_info(cons_players[pn], newfields[pn])
-
-						newfields[pn]:get_fov_mod():set_value(field_conf.fov)
-						newfields[pn]:get_vanish_x_mod():set_value(field_conf.vanish_x)
-						newfields[pn]:get_vanish_y_mod():set_value(field_conf.vanish_y)
-						--newfield_mods.calibrate(pn)
-						for i, col in ipairs(columns) do
---							col:get_quantization_multiplier():set_value(.5)
---							newfield_mods.drift(col, i)
-						end
+						apply_newfield_config(newfields[pn], field_conf, 0, 0)
 					end
 				end
 				if notefields[pn] then
