@@ -1342,14 +1342,22 @@ local trans_names= {
 -- Don't feel like adding an arg to all the functions.
 local inversion_toasty_level= 0
 
+local inversion_exceptions= {
+	NoteField= true, NewField= true,
+	pause_stuff= true,
+}
+
 local function invert_not_notefield(child, invert)
 	local name= child:GetName()
 	local function sub_invert(sub_child)
 		invert_not_notefield(sub_child, invert, true)
 	end
+	if inversion_exceptions[name] then
+		return
+	end
 	if side_names[name] then
 		for_all_children(child, sub_invert)
-	elseif name ~= "NoteField" and name ~= "NewField" then
+	else
 		invert(child)
 	end
 end
@@ -1614,6 +1622,12 @@ local function garb_input(event)
 	end
 end
 
+local function set_newfield_config(pn)
+	local field_conf= cons_players[pn].notefield_config
+	set_speed_from_speed_info(cons_players[pn], newfields[pn])
+	apply_newfield_config(newfields[pn], field_conf, 0, 0)
+end
+
 return Def.ActorFrame {
 	Name= "SGPbgf",
 	bg_swap(),
@@ -1712,10 +1726,7 @@ return Def.ActorFrame {
 						side_actors[pn]:set_newfield_preferred(false)
 					else
 						side_actors[pn]:set_newfield_preferred(true)
-						local columns= newfields[pn]:get_columns()
-						local field_conf= cons_players[pn].notefield_config
-						set_speed_from_speed_info(cons_players[pn], newfields[pn])
-						apply_newfield_config(newfields[pn], field_conf, 0, 0)
+						set_newfield_config(pn)
 					end
 				end
 				if notefields[pn] then
@@ -1813,6 +1824,9 @@ return Def.ActorFrame {
 						do_unacceptable_check= true
 					end
 			end
+		end,
+		gameplay_conf_changedMessageCommand= function(self, param)
+			set_newfield_config(param.pn)
 		end,
 		OffCommand= cleanup,
 		CancelCommand= cleanup,

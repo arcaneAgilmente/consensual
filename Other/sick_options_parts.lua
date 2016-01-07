@@ -151,6 +151,10 @@ options_sets.speed= {
 			self.current_speed= speed_info.speed
 			self:set_mode_data_work(speed_info.mode)
 			self.cursor_pos= 1
+			MESSAGEMAN:Broadcast("entered_gameplay_config", {pn= player_number})
+		end,
+		destructor= function(self, pn)
+			MESSAGEMAN:Broadcast("exited_gameplay_config", {pn= pn})
 		end,
 		set_status= function(self)
 			self.display:set_heading("Speed")
@@ -161,6 +165,7 @@ options_sets.speed= {
 			spi.mode= self.mode
 			spi.speed= self.current_speed
 			bpm_disps[self.player_number]:bpm_text()
+			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= self.player_number, thing= "speed"})
 		end,
 		update_speed_text= function(self)
 			if self.display then
@@ -1169,7 +1174,7 @@ local function gameplay_conf_bool(disp_name, field_name, level)
 		execute= function(pn)
 			local val= get_element_by_path(cons_players[pn], field_name)
 			set_element_by_path(cons_players[pn], field_name, not val)
-			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= pn})
+			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= pn, thing= field_name})
 		end,
 	}
 end
@@ -1387,10 +1392,14 @@ local special= {
 	{ name= "Effects", meta= options_sets.special_functions, level= 4,
 		args= special_effects},
 	{ name= "Go To Select Music" ,meta= "execute", level= 4,
+		req_func= function()
+			return SCREENMAN:GetTopScreen():GetName() == "ScreenSickPlayerOptions"
+		end,
 		execute= function()
 			SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
 			trans_new_screen("ScreenConsSelectMusic")
 		end, unset= noop_nil},
+	player_conf_float("Pause Hold Time", "pause_hold_time", 1, -3, -1, 0, -1, 3),
 	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options, level= 4},
 	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions, level= 4,
 		args= {eles= {

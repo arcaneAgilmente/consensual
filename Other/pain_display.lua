@@ -1008,7 +1008,7 @@ pain_display_mt= {
 							local list=(item_config.tag.machine and mtag_list) or ptag_list
 							item:set_tag(item_config.tag.slot, list)
 						elseif item_config.favor then
-							item:set_favor(item_config.favor, item_config.is_wide)
+							item:set_favor(self.player_number, item_config.favor, item_config.is_wide)
 						elseif item_config.timing_info then
 							item:set_timing(timing_data, item_config.timing_info)
 						else

@@ -1276,7 +1276,7 @@ menu_stack_mt= {
 			self.options_set_stack= {}
 			self.zoom= zoom or 1
 			self.el_height= el_height or line_height
-			local pcolor= PlayerColor(player_number)
+			local pcolor= pn_to_color(player_number)
 			local args= {
 				Name= name, InitCommand= function(subself)
 					subself:xy(x, y)
@@ -1405,10 +1405,12 @@ menu_stack_mt= {
 			end
 		end,
 		hide= function(self)
+			self.hidden= true
 			self:hide_disp()
 			self.cursor:hide()
 		end,
 		unhide= function(self)
+			self.hidden= false
 			self.cursor:unhide()
 		end,
 		interpret_code= function(self, code)

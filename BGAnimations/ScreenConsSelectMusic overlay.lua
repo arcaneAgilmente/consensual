@@ -908,6 +908,7 @@ local function update_pain_active()
 	end
 end
 
+local delayed_set_special_menu= {}
 local function set_special_menu(pn, next_menu)
 	reset_pressed_since_menu_change(pn)
 	if picking_steps and next_menu == "wheel" then
@@ -964,7 +965,7 @@ end
 local misc_options= {
 	{name= "edit_pain", meta= "execute", level= 2, execute= function(pn)
 		 pain_displays[pn]:enter_edit_mode()
-		 set_special_menu(pn, "pain")
+		 delayed_set_special_menu[pn]= "pain"
 	end},
 	{name= "convert_xml", req_func= convert_xml_exists, meta= "execute",
 	 level= 4, execute= function(pn)
@@ -981,7 +982,7 @@ local misc_options= {
 				 bucket_traverse(bucket.bucket_info.contents, nil, convert_item)
 			 end
 		 end
---		 set_special_menu(pn, "wheel")
+--		 delayed_set_special_menu[pn]= "wheel"
 	end},
 	{name= "censor", req_func= privileged, meta= "execute",
 	 execute= function(pn)
@@ -995,7 +996,7 @@ local misc_options= {
 				 activate_status(music_wheel:resort_for_new_style())
 			 end
 		 end
---		 set_special_menu(pn, "wheel")
+--		 delayed_set_special_menu[pn]= "wheel"
 	end},
 	{name= "uncensor", req_func= privileged, meta= "execute",
 	 execute= function(pn)
@@ -1009,13 +1010,13 @@ local misc_options= {
 				 activate_status(music_wheel:resort_for_new_style())
 			 end
 		 end
---		 set_special_menu(pn, "wheel")
+--		 delayed_set_special_menu[pn]= "wheel"
 	end},
 	{name= "toggle_censoring", req_func= privileged, meta= "execute",
 	 execute= function(pn)
 		 toggle_censoring()
 		 activate_status(music_wheel:resort_for_new_style())
---		 set_special_menu(pn, "wheel")
+--		 delayed_set_special_menu[pn]= "wheel"
 	end},
 	{name= "edit_chart", level= 5, meta= "execute", execute= function(pn)
 		 local song= GAMESTATE:GetCurrentSong()
@@ -1118,7 +1119,7 @@ local function execute_add_favorite(pn)
 	if curr_song then
 		change_favor(prof_slot, curr_song, 1)
 		add_song_to_favor_folder(curr_song)
-		set_special_menu(pn, "wheel")
+		delayed_set_special_menu[pn]= "wheel"
 		return
 	end
 	local function add_to_favor(item, depth)
@@ -1130,7 +1131,7 @@ local function execute_add_favorite(pn)
 		bucket_traverse(bucket.bucket_info.contents, nil, add_to_favor)
 		finalize_favor_folder()
 	end
-	set_special_menu(pn, "wheel")
+	delayed_set_special_menu[pn]= "wheel"
 end
 
 local function execute_remove_favorite(pn)
@@ -1138,7 +1139,7 @@ local function execute_remove_favorite(pn)
 	if curr_song then
 		change_favor(pn_to_profile_slot(pn), curr_song, -1)
 		remove_song_from_favor_folder(curr_song)
-		set_special_menu(pn, "wheel")
+		delayed_set_special_menu[pn]= "wheel"
 		return
 	end
 	local function remove_from_favor(item, depth)
@@ -1150,7 +1151,7 @@ local function execute_remove_favorite(pn)
 		bucket_traverse(bucket.bucket_info.contents, nil, remove_from_favor)
 		finalize_favor_folder()
 	end
-	set_special_menu(pn, "wheel")
+	delayed_set_special_menu[pn]= "wheel"
 end
 
 base_options= {
@@ -1881,6 +1882,10 @@ local function input(event)
 						local fit= color_manips[pn]:get_cursor_fit()
 						fit[2]= fit[2] - pane_menu_y
 						special_menus[pn]:refit_cursor(fit)
+					end
+					if delayed_set_special_menu[pn] then
+						common_menu_change(delayed_set_special_menu[pn])
+						delayed_set_special_menu[pn]= nil
 					end
 				end,
 				pain= function()

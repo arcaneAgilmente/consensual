@@ -20,7 +20,7 @@ gameplay_preview_mt= {
 				end,
 				gameplay_conf_changedMessageCommand= function(subself, param)
 					if param.pn ~= self.pn then return end
-					self:update_config()
+					self:update_config(param)
 				end,
 				quaid(0, qh/-2, qw, 2, {1, 0, 0, 1}),
 				quaid(0, qh/2, qw, 2, {0, 1, 1, 1}),
@@ -65,7 +65,7 @@ gameplay_preview_mt= {
 				self:update_field()
 			end
 		end,
-		update_config= function(self)
+		update_config= function(self, param)
 			self.field_config= cons_players[self.pn].notefield_config
 			local stype= find_current_stepstype(self.pn)
 			local profile= PROFILEMAN:GetProfile(self.pn)
@@ -76,7 +76,8 @@ gameplay_preview_mt= {
 				self.skin= skin
 			end
 			local steps= gamestate_get_curr_steps(self.pn)
-			if steps then
+			local song= gamestate_get_curr_song()
+			if steps and song then
 				set_speed_from_speed_info(cons_players[self.pn], self.field)
 			end
 			self:update_field()
