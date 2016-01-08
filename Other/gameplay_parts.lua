@@ -88,7 +88,7 @@ sigil_feedback_mt= {
 			if pdp == 0 then
 				score= 1
 			end
-			score_update(score)
+			self:score_update(score)
 		end,
 		update_flag= function(self)
 			general_flag_check(self, cons_players[self.pn].flags.gameplay.sigil)
