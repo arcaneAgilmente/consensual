@@ -419,6 +419,8 @@ end
 
 local press_prompt= {}
 local on_press_prompt= false
+local press_prompt_start_time= 0
+local press_delay_time= .5
 local function key_get(key_name)
 	return function() return ToEnumShortString(config_data[key_name]) end
 end
@@ -429,8 +431,10 @@ local function key_set(key_name)
 		on_press_prompt= true
 		local tops= SCREENMAN:GetTopScreen()
 		local tempback= noop_false
+		press_prompt_start_time= GetTimeSinceStart()
 		tempback= function(event)
-			if event.type == "InputEventType_FirstPress" then
+			if event.type == "InputEventType_FirstPress"
+			and GetTimeSinceStart() - press_prompt_start_time > press_delay_time then
 				config_data[key_name]= event.DeviceInput.button
 				tops:RemoveInputCallback(tempback)
 				press_prompt:visible(false)
