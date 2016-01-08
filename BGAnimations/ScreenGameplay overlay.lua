@@ -1,3 +1,5 @@
+dofile(THEME:GetPathO("", "sick_options_parts.lua"))
+
 local menu_frames= {}
 local pause_menus= {}
 local menu_x= {
@@ -66,6 +68,17 @@ local function show_menu(pn)
 	pause_menus[pn]:update_cursor_pos()
 end
 
+local function set_hit_text(pn, button, press)
+	local press_text= ""
+	if press then
+		press_text= get_string_wrapper("ScreenGameplay", "pressed")
+	else
+		press_text= get_string_wrapper("ScreenGameplay", "released")
+	end
+	local trigger_text= get_string_wrapper("ScreenGameplay", "menu_triggered")
+	hit_texts[pn]:settext(trigger_text .. " " .. button .. " " .. press_text)
+end
+
 local function input(event)
 	local pn= event.PlayerNumber
 	if not enabled_players[pn] then return end
@@ -76,7 +89,7 @@ local function input(event)
 		if not is_paused and pause_buttons[button] and pause_press_times[pn] then
 			if GetTimeSinceStart() - pause_press_times[pn] >= cons_players[pn].pause_hold_time then
 				screen_gameplay:PauseGame(true)
-				hit_texts[pn]:settext(button .. " release")
+				set_hit_text(pn, button, false)
 				show_menu(pn)
 			end
 			pause_press_times[pn]= nil
@@ -101,7 +114,7 @@ local function input(event)
 			pause_press_times[pn]= GetTimeSinceStart()
 		else
 			screen_gameplay:PauseGame(true)
-			hit_texts[pn]:settext(button .. " press")
+			set_hit_text(pn, button, true)
 			show_menu(pn)
 		end
 		return true
@@ -143,14 +156,14 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 			self:zoomy(self:GetZoomY() * -1):y(_screen.h - self:GetDestY())
 		end,
 		menu_frames[pn]:create_actors(
-			"pause_frame", 2, menu_width, menu_height, pn_to_color(pn),
-			fetch_color("bg", .5), 0, menu_y-12 + (menu_height * .5)),
+			"pause_frame", 2, menu_width, menu_height+12, pn_to_color(pn),
+			fetch_color("bg", .5), 0, menu_y-6 + (menu_height * .5)),
 		pause_menus[pn]:create_actors(
 			pn .. "_menu", 0, menu_y, menu_width, menu_height,
 			pn, 1, 24, 1),
 		bpm_disps[pn]:create_actors("bpm", pn, 0, 0, 0),
 		color_manips[pn]:create_actors("color_manip", 0, menu_y, nil, .5),
-		normal_text("hit_text", "", fetch_color("text"), fetch_color("stroke"), 0, menu_y + menu_height - 24, .5),
+		normal_text("hit_text", "", fetch_color("text"), fetch_color("stroke"), 0, menu_y + menu_height - 12, .5),
 	}
 	main_frame[#main_frame+1]= player_frame
 end

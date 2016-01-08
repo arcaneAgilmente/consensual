@@ -171,7 +171,7 @@ end
 
 function text_and_number_interface:move_to(x, y, time)
 	if self.container then
-		if tonumber(time) then
+		if time and time > 0 then
 			self.container:finishtweening():april_linear(time)
 		end
 		self.x= x

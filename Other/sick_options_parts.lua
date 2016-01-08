@@ -165,7 +165,7 @@ options_sets.speed= {
 			spi.mode= self.mode
 			spi.speed= self.current_speed
 			bpm_disps[self.player_number]:bpm_text()
-			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= self.player_number, thing= "speed"})
+			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= self.player_number, thing= "notefield"})
 		end,
 		update_speed_text= function(self)
 			if self.display then
@@ -594,6 +594,10 @@ options_sets.newskins= {
 				self.info_set[#self.info_set+1]= {
 					text= nv, underline= ni == self.selected_skin}
 			end
+			MESSAGEMAN:Broadcast("entered_gameplay_config", {pn= player_number})
+		end,
+		destructor= function(self, pn)
+			MESSAGEMAN:Broadcast("exited_gameplay_config", {pn= pn})
 		end,
 		interpret_start= function(self)
 			local ops_pos= self.cursor_pos - 1
@@ -609,6 +613,7 @@ options_sets.newskins= {
 				profiles[self.player_number]:set_preferred_noteskin(self.stepstype, self.player_skin)
 				self:update_el_underline(self.cursor_pos, true)
 				self:set_status()
+				MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= self.player_number, thing= "noteskin"})
 				return true
 			else
 				return false
@@ -758,6 +763,9 @@ local function gen_noteskin_param_menu(pn)
 	local ret= {
 		recall_init_on_pop= true,
 		name= "noteskin_params",
+		destructor= function(self, pn)
+			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= pn, thing= "noteskin"})
+		end,
 	}
 	gen_noteskin_param_submenu(pn, player_params, skin_info, skin_defaults, ret)
 	return ret
@@ -872,6 +880,7 @@ local function extra_for_sigil_detail()
 		val_min= 1, val_max= 32,
 		set= function(player_number, value)
 			cons_players[player_number].sigil_data.detail= value
+			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= player_number, thing= "sigil"})
 		end,
 	}
 end
@@ -1157,16 +1166,16 @@ local floaty_mods= {
 }
 
 local function gameplay_conf_float(
-		disp_name, field_name, level, mins, scal, maxs, minv, maxv)
+		disp_name, field_name, field_thing, level, mins, scal, maxs, minv, maxv)
 	local pcf= player_conf_float(disp_name, field_name, level, mins, scal, maxs, minv, maxv)
 	pcf.args.set= function(pn, value)
 		set_element_by_path(cons_players[pn], field_name, value)
-		MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= pn})
+		MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= pn, thing= field_thing})
 	end
 	return pcf
 end
 
-local function gameplay_conf_bool(disp_name, field_name, level)
+local function gameplay_conf_bool(disp_name, field_name, field_thing, level)
 	return {
 		name= disp_name, meta= "execute", underline= function(pn)
 			return get_element_by_path(cons_players[pn], field_name)
@@ -1174,7 +1183,7 @@ local function gameplay_conf_bool(disp_name, field_name, level)
 		execute= function(pn)
 			local val= get_element_by_path(cons_players[pn], field_name)
 			set_element_by_path(cons_players[pn], field_name, not val)
-			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= pn, thing= field_name})
+			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= pn, thing= field_thing})
 		end,
 	}
 end
@@ -1183,19 +1192,19 @@ local function make_x_y_s_for_set(layout_options, set)
 	for i, info in ipairs(set) do
 		local gepi= "gameplay_element_positions."..info[2]
 		table.insert(layout_options, gameplay_conf_float(info[1].." X",
-			gepi.."_xoffset", 1, 0, 1, 2, nil, nil))
+			gepi.."_xoffset", info[2], 1, 0, 1, 2, nil, nil))
 		table.insert(layout_options, gameplay_conf_float(info[1].." Y",
-			gepi.."_yoffset", 1, 0, 1, 2, nil, nil))
+			gepi.."_yoffset", info[2], 1, 0, 1, 2, nil, nil))
 		table.insert(layout_options, gameplay_conf_float(info[1].." Scale",
-			gepi.."_scale", 1, -2, -1, 0, nil, nil))
+			gepi.."_scale", info[2], 1, -2, -1, 0, nil, nil))
 	end
 end
 
 local gameplay_layout= {
 	gameplay_conf_float("Notefield X",
-		"gameplay_element_positions.notefield_xoffset", 1, 0, 1, 2, nil, nil),
+		"gameplay_element_positions.notefield_xoffset", "notefield_pos", 1, 0, 1, 2, nil, nil),
 	gameplay_conf_float("Notefield Y",
-		"gameplay_element_positions.notefield_yoffset", 1, 0, 1, 2, nil, nil),
+		"gameplay_element_positions.notefield_yoffset", "notefield_pos", 1, 0, 1, 2, nil, nil),
 }
 make_x_y_s_for_set(
 	gameplay_layout, {
@@ -1206,35 +1215,36 @@ make_x_y_s_for_set(
 local function gen_notefield_config(pn)
 	MESSAGEMAN:Broadcast("entered_gameplay_config", {pn= pn})
 	return {
+		name= "NoteField Config",
 		destructor= function(self, pn)
 			MESSAGEMAN:Broadcast("exited_gameplay_config", {pn= pn})
 		end,
 		gameplay_conf_float(
-			"Reverse", "notefield_config.reverse", 1, -2, 0, 2, nil, nil),
+			"Reverse", "notefield_config.reverse", "notefield", 1, -2, 0, 2, nil, nil),
 		gameplay_conf_float(
-			"Field Zoom", "notefield_config.zoom", 1, -2, -1, 2, nil, nil),
+			"Field Zoom", "notefield_config.zoom", "notefield", 1, -2, -1, 2, nil, nil),
 		gameplay_conf_float(
-			"Note YOffset", "notefield_config.yoffset", 1, 0, 1, 3, nil, nil),
+			"Note YOffset", "notefield_config.yoffset", "notefield", 1, 0, 1, 3, nil, nil),
 		gameplay_conf_float(
-			"Field Rotation X", "notefield_config.rot_x", 1, 0, 1, 3, nil, nil),
+			"Field Rotation X", "notefield_config.rot_x", "notefield", 1, 0, 1, 3, nil, nil),
 		gameplay_conf_float(
-			"Field Rotation Y", "notefield_config.rot_y", 1, 0, 1, 3, nil, nil),
+			"Field Rotation Y", "notefield_config.rot_y", "notefield", 1, 0, 1, 3, nil, nil),
 		gameplay_conf_float(
-			"Field Rotation Z", "notefield_config.rot_z", 1, 0, 1, 3, nil, nil),
+			"Field Rotation Z", "notefield_config.rot_z", "notefield", 1, 0, 1, 3, nil, nil),
 		gameplay_conf_float(
-			"Field FOV", "notefield_config.fov", 1, 0, 1, 3, nil, nil),
+			"Field FOV", "notefield_config.fov", "notefield", 1, 0, 1, 3, nil, nil),
 		gameplay_conf_float(
-			"Skew X", "notefield_config.vanish_x", 1, 0, 1, 3, nil, nil),
+			"Skew X", "notefield_config.vanish_x", "notefield", 1, 0, 1, 3, nil, nil),
 		gameplay_conf_float(
-			"Skew Y", "notefield_config.vanish_y", 1, 0, 1, 3, nil, nil),
+			"Skew Y", "notefield_config.vanish_y", "notefield", 1, 0, 1, 3, nil, nil),
 		gameplay_conf_float(
-			"Field Zoom X", "notefield_config.zoom_x", 1, -2, -1, 2, nil, nil),
+			"Field Zoom X", "notefield_config.zoom_x", "notefield", 1, -2, -1, 2, nil, nil),
 		gameplay_conf_float(
-			"Field Zoom Y", "notefield_config.zoom_y", 1, -2, -1, 2, nil, nil),
+			"Field Zoom Y", "notefield_config.zoom_y", "notefield", 1, -2, -1, 2, nil, nil),
 		gameplay_conf_float(
-			"Field Zoom Z", "notefield_config.zoom_z", 1, -2, -1, 2, nil, nil),
+			"Field Zoom Z", "notefield_config.zoom_z", "notefield", 1, -2, -1, 2, nil, nil),
 		gameplay_conf_bool(
-			"Use Separate Zooms", "notefield_config.use_separate_zooms"),
+			"Use Separate Zooms", "notefield_config.use_separate_zooms", "notefield"),
 	}
 end
 

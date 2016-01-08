@@ -685,7 +685,8 @@ function cons_set_current_steps(pn, steps)
 	gamestate_set_curr_steps(pn, steps)
 end
 
-function JudgmentTransformCommand( self, params )
+function JudgmentTransformCommand(self, params)
+	do return end
 	local elpos= cons_players[params.Player].gameplay_element_positions
 	local rev_tilt= cons_players[params.Player].flags.gameplay.reverse_tilts_judge
 	local x= elpos.judgment_xoffset or 0
