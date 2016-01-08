@@ -1,5 +1,8 @@
 dofile(THEME:GetPathO("", "sick_options_parts.lua"))
 
+local menu_y= 56
+local menu_width= _screen.cx*.75
+local menu_height= _screen.h*.75
 local menu_frames= {}
 local pause_menus= {}
 local menu_x= {
@@ -107,6 +110,11 @@ local function input(event)
 					close_menu(pn)
 				end
 			end
+			if pause_menus[pn].external_thing then
+				local fit= color_manips[pn]:get_cursor_fit()
+				fit[2]= fit[2] - menu_y
+				pause_menus[pn]:refit_cursor(fit)
+			end
 		end
 		return true
 	elseif pause_buttons[button] then
@@ -141,9 +149,6 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	pause_menus[pn]= setmetatable({}, menu_stack_mt)
 	color_manips[pn]= setmetatable({}, color_manipulator_mt)
 	bpm_disps[pn]= setmetatable({}, bpm_disp_mt)
-	local menu_y= 56
-	local menu_width= _screen.cx*.75
-	local menu_height= _screen.h*.75
 	local player_frame= Def.ActorFrame{
 		Name= "pause_stuff", InitCommand= function(self)
 			self:x(menu_x[pn])
@@ -162,7 +167,7 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 			pn .. "_menu", 0, menu_y, menu_width, menu_height,
 			pn, 1, 24, 1),
 		bpm_disps[pn]:create_actors("bpm", pn, 0, 0, 0),
-		color_manips[pn]:create_actors("color_manip", 0, menu_y, nil, .5),
+		color_manips[pn]:create_actors("color_manip", 0, menu_y+64, nil, .5),
 		normal_text("hit_text", "", fetch_color("text"), fetch_color("stroke"), 0, menu_y + menu_height - 12, .5),
 	}
 	main_frame[#main_frame+1]= player_frame

@@ -5,6 +5,7 @@ local this_pn= false
 local judge_flashes_enabled= false
 local pstate= false
 local poptions= false
+local this_is_oldfield= true
 
 local pos_feedback_frame= false
 local pos_feedback_text= false
@@ -67,6 +68,9 @@ local args= {
 			end
 		end
 	end,
+	player_flags_changedMessageCommand= function(self, param)
+		judge_flashes_enabled= cons_players[param.pn].flags.gameplay.judge_flashes
+	end,
 	PlayerStateSetCommand= function(self, param)
 		this_pn= param.PlayerNumber
 		if newskin_available() then
@@ -90,6 +94,7 @@ local args= {
 		end
 	end,
 	WidthSetCommand= function(self, param)
+		this_is_oldfield= false
 		local newfield= param.newfield
 		if newfield then
 			columns= newfield:get_columns()
@@ -121,7 +126,13 @@ local args= {
 		WidthSetCommand= function(self, param)
 			local width= param.width + 8
 			self:SetWidth(width)
-		end
+		end,
+		color_changedMessageCommand= function(self, param)
+			if param.pn ~= this_pn then Trace("wrong pn") return end
+			local filk= cons_players[this_pn].gameplay_element_colors.filter
+			self:diffuse(filk):hibernate(0)
+			if filk[4] < .001 then self:hibernate(math.huge) end
+		end,
 	},
 }
 

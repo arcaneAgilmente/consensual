@@ -784,6 +784,15 @@ function chart_info_text(steps, song)
 	return info_text
 end
 
+function chart_info_text_for_pn(pn)
+	local cur_steps= gamestate_get_curr_steps(pn)
+	if not cur_steps then return "" end
+	local author= steps_get_author(cur_steps, gamestate_get_curr_song())
+	local difficulty= steps_to_string(cur_steps)
+	local rating= cur_steps:GetMeter()
+	return author .. ": " .. difficulty .. ": " .. rating
+end
+
 -- Because somebody decided stepmania's scaletofit should change the position
 -- of the actor.
 function scale_to_fit(actor, width, height)

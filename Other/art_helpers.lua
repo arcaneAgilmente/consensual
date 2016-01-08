@@ -819,7 +819,7 @@ color_manipulator_mt= {
 			end
 			return Def.ActorFrame(args)
 		end,
-		initialize= function(self, edit_name, example_color)
+		initialize= function(self, edit_name, example_color, live_edit, color_path, pn)
 			self.done= false
 			self.edit_channel= "done"
 			self.locked_in_editing= false
@@ -827,6 +827,9 @@ color_manipulator_mt= {
 			width_limit_text(self.editing_name, 128)
 			self.example:diffuse(example_color)
 			self.example_color= DeepCopy(example_color)
+			self.color_path= color_path
+			self.pn= pn
+			self.live_edit= live_edit
 			self.internal_values= {}
 			for i= 1, 4 do
 				self.internal_values[i]= math.round(example_color[i] * 255)
@@ -866,6 +869,10 @@ color_manipulator_mt= {
 			self:set_channel_text(chid, self.internal_values[chid])
 			for i= 1, 4 do
 				self:set_channel_example(i)
+			end
+			if self.live_edit then
+				set_element_by_path(cons_players[self.pn], self.color_path, DeepCopy(self.example_color))
+				MESSAGEMAN:Broadcast("color_changed", {name= self.color_path, pn= self.pn})
 			end
 		end,
 		interpret_code= function(self, code)

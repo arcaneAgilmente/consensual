@@ -478,3 +478,37 @@ numerical_score_feedback_mt= {
 			end
 		end,
 }}
+
+function gameplay_chart_info(pn, decor_center, width)
+	local el_pos= cons_players[pn].gameplay_element_positions
+	return normal_text(
+		"author", chart_info_text_for_pn(pn), fetch_color("gameplay.chart_info"),
+		game_stroke, 0, 0, 1, center,
+		{
+			OnCommand= function(self)
+				width_limit_text(self, width, el_pos.chart_info_scale)
+			end,
+			["CurrentSteps"..ToEnumShortString(pn).."ChangedMessageCommand"]= function(self)
+				if GAMESTATE:IsCourseMode() then return end
+				self:settext(chart_info_text_for_pn(pn))
+				width_limit_text(self, width, el_pos.chart_info_scale)
+				self:playcommand("player_flags_changed", {pn= pn, name= "chart_info"})
+				self:playcommand("gameplay_conf_changed", {pn= pn, thing= "chart_info"})
+			end,
+			gameplay_conf_changedMessageCommand= function(self, param)
+				if param.pn ~= pn then return end
+				if param.thing ~= "chart_info" then return end
+				self:xy(decor_center[1] + el_pos.chart_info_xoffset, decor_center[2] + el_pos.chart_info_yoffset):zoom(el_pos.chart_info_scale)
+			end,
+			player_flags_changedMessageCommand= function(self, param)
+				if param.pn ~= pn then return end
+				if param.name ~= "chart_info" then return end
+				if cons_players[pn].flags.gameplay.chart_info then
+					self:hibernate(0)
+					self:playcommand("gameplay_conf_changed", {pn= pn, thing= "chart_info"})
+				else
+					self:hibernate(math.huge)
+				end
+			end,
+	})
+end

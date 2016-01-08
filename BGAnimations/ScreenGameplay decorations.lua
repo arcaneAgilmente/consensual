@@ -778,15 +778,6 @@ local function facing_input(event)
 	end
 end
 
-local function chart_info_text(pn)
-	local cur_steps= gamestate_get_curr_steps(pn)
-	if not cur_steps then return "" end
-	local author= steps_get_author(cur_steps, gamestate_get_curr_song())
-	local difficulty= steps_to_string(cur_steps)
-	local rating= cur_steps:GetMeter()
-	return author .. ": " .. difficulty .. ": " .. rating
-end
-
 local lifex = {
 	[PLAYER_1]= 12,
 	[PLAYER_2]= _screen.w-12,
@@ -817,24 +808,7 @@ local function make_special_actors_for_players()
 			a[#a+1]= new_feedback:create_actors(fv.name, player_dec_centers[pn], pn)
 			feedback_things[pn][#feedback_things[pn]+1]= new_feedback
 		end
-		if flags.chart_info then
-			a[#a+1]= normal_text(
-				"author", chart_info_text(pn), fetch_color("gameplay.chart_info"),
-				game_stroke,
-				player_dec_centers[pn][1] + el_pos.chart_info_xoffset,
-				player_dec_centers[pn][2] + el_pos.chart_info_yoffset,
-				el_pos.chart_info_scale, center,
-				{ OnCommand= function(self)
-						width_limit_text(self, spb_width/2 - 48, el_pos.chart_info_scale)
-				end,
-					["CurrentSteps"..ToEnumShortString(pn).."ChangedMessageCommand"]=
-						function(self)
-							if GAMESTATE:IsCourseMode() then return end
-							self:settext(chart_info_text(pn))
-							width_limit_text(self, spb_width/2 - 48, el_pos.chart_info_scale)
-						end
-			})
-		end
+		a[#a+1]= gameplay_chart_info(pn, player_dec_centers[pn], spb_width/2-48)
 		if misc_config:get_data().adjust_mods_on_gameplay then
 			local maf= setmetatable({}, mod_adjust_feedback)
 			a[#a+1]= maf:create_actors(player_dec_centers[pn][1], 24, pn)

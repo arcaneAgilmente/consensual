@@ -1083,7 +1083,7 @@ local color_manip_targets= {}
 local function color_manip_extern(menu, params, pn)
 	local target_color= get_element_by_path(cons_players[pn], params.path)
 	color_manip_targets[pn]= target_color
-	color_manips[pn]:initialize(params.name, target_color)
+	color_manips[pn]:initialize(params.name, target_color, true, params.path, pn)
 	color_manips[pn]:unhide()
 	menu.external_thing= color_manips[pn]
 	menu:hide_disp()
