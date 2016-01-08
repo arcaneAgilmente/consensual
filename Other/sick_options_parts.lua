@@ -151,6 +151,10 @@ options_sets.speed= {
 			self.current_speed= speed_info.speed
 			self:set_mode_data_work(speed_info.mode)
 			self.cursor_pos= 1
+			MESSAGEMAN:Broadcast("entered_gameplay_config", {pn= player_number})
+		end,
+		destructor= function(self, pn)
+			MESSAGEMAN:Broadcast("exited_gameplay_config", {pn= pn})
 		end,
 		set_status= function(self)
 			self.display:set_heading("Speed")
@@ -161,6 +165,7 @@ options_sets.speed= {
 			spi.mode= self.mode
 			spi.speed= self.current_speed
 			bpm_disps[self.player_number]:bpm_text()
+			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= self.player_number, thing= "notefield"})
 		end,
 		update_speed_text= function(self)
 			if self.display then
@@ -563,26 +568,6 @@ options_sets.noteskins= {
 		end
 }}
 
-local function find_current_stepstype(pn)
-	local steps= gamestate_get_curr_steps(pn)
-	if steps then
-		return steps:GetStepsType()
-	end
-	local style= GAMESTATE:GetCurrentStyle(pn)
-	if style then
-		return style:GetStepsType()
-	end
-	style= GAMEMAN:GetStylesForGame(GAMESTATE:GetCurrentGame():GetName())[1]
-	if style then
-		return style:GetStepsType()
-	end
-	local last_type= profiles[pn]:get_last_stepstype()
-	if last_type then
-		return last_type
-	end
-	return "StepsType_Dance_Single"
-end
-
 options_sets.newskins= {
 	__index= {
 		disallow_unset= true,
@@ -609,6 +594,10 @@ options_sets.newskins= {
 				self.info_set[#self.info_set+1]= {
 					text= nv, underline= ni == self.selected_skin}
 			end
+			MESSAGEMAN:Broadcast("entered_gameplay_config", {pn= player_number})
+		end,
+		destructor= function(self, pn)
+			MESSAGEMAN:Broadcast("exited_gameplay_config", {pn= pn})
 		end,
 		interpret_start= function(self)
 			local ops_pos= self.cursor_pos - 1
@@ -624,6 +613,7 @@ options_sets.newskins= {
 				profiles[self.player_number]:set_preferred_noteskin(self.stepstype, self.player_skin)
 				self:update_el_underline(self.cursor_pos, true)
 				self:set_status()
+				MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= self.player_number, thing= "noteskin"})
 				return true
 			else
 				return false
@@ -634,6 +624,160 @@ options_sets.newskins= {
 			self.display:set_display(self.player_skin)
 		end
 }}
+
+local function get_noteskin_param_translation(param_name, type_info)
+	local translation_table= type_info.translation
+	local ret= {title= param_name, explanation= param_name}
+	if type(translation_table) == "table" then
+		local language= PREFSMAN:GetPreference("Language")
+		if translation_table[language] then
+			ret= translation_table[language]
+		else
+			local base_language= "en"
+			if translation_table[base_language] then
+				ret= translation_table[base_language]
+			else
+				local lang, text= next(translation_table)
+				if text then ret= text end
+			end
+		end
+	end
+	if type_info.choices and not ret.choices then
+		ret.choices= type_info.choices
+	end
+	return ret
+end
+local function int_val_text(pn, val)
+	return ("%d"):format(val)
+end
+local function float_val_text(pn, val)
+	return ("%.2f"):format(val)
+end
+local function noteskin_param_float_val(param_name, param_section, type_info)
+	local min_scale= 0
+	local max_scale= 0
+	local val_text= int_val_text
+	if type_info.type ~= "int" then
+		min_scale= -2
+		val_text= float_val_text
+	end
+	local val_min= type_info.min
+	local val_max= type_info.max
+	if type_info.max then
+		max_scale= math.floor(math.log(type_info.max) / math.log(10))
+	else
+		max_scale= 2
+	end
+	local translation= get_noteskin_param_translation(param_name, type_info)
+	return {
+		name= translation.title, meta= options_sets.adjustable_float, args= {
+			name= translation.title, min_scale= min_scale, scale= 0,
+			max_scale= max_scale, initial_value= function()
+				return param_section[param_name]
+			end,
+			set= function(pn, value) param_section[param_name]= value end,
+			val_to_text= val_to_text, val_min= val_min, val_max= val_max,
+	}}
+end
+local function noteskin_param_choice_val(param_name, param_section, type_info)
+	local eles= {}
+	local translation= get_noteskin_param_translation(param_name, type_info)
+	for i, choice in ipairs(type_info.choices) do
+		eles[#eles+1]= {
+			name= translation.choices[i], init= function(pn)
+				return param_section[param_name] == choice
+			end,
+			set= function(pn)
+				param_section[param_name]= choice
+			end,
+			unset= noop_nil,
+		}
+	end
+	return {name= translation.title, args= {eles= eles, disallow_unset= true},
+					meta= options_sets.mutually_exclusive_special_functions}
+end
+local function noteskin_param_bool_val(param_name, param_section, type_info)
+	local translation= get_noteskin_param_translation(param_name, type_info)
+	local eles= {}
+	for i, val in ipairs{true, false} do
+		eles[#eles+1]= {
+			name= tostring(val), init= function(pn)
+				return param_section[param_name] == val
+			end,
+			set= function(pn) param_section[param_name]= val end, unset= noop_nil}
+	end
+	return {name= translation.title, args= {eles= eles, disallow_unset= true},
+					meta= options_sets.mutually_exclusive_special_functions}
+end
+local function gen_noteskin_param_submenu(pn, param_section, type_info, skin_defaults, add_to)
+	for field, info in pairs(type_info) do
+		if field ~= "translation" then
+			local field_type= type(skin_defaults[field])
+			local translation= get_noteskin_param_translation(field, type_info[field])
+			local submenu= {name= translation.title}
+			if not param_section[field] then
+				if field_type == "table" then
+					param_section[field]= DeepCopy(skin_defaults[field])
+				else
+					param_section[field]= skin_defaults[field]
+				end
+			end
+			if field_type == "table" then
+				submenu.meta= options_sets.menu
+				local menu_args= {}
+				gen_noteskin_param_submenu(pn, param_section[field], info, skin_defaults[field], menu_args)
+				submenu.args= menu_args
+			elseif field_type == "string" then
+				if info.choices then
+					submenu= noteskin_param_choice_val(field, param_section, info)
+				else
+					submenu= nil
+				end
+			elseif field_type == "number" then
+				if info.choices then
+					submenu= noteskin_param_choice_val(field, param_section, info)
+				else
+					submenu= noteskin_param_float_val(field, param_section, info)
+				end
+			elseif field_type == "boolean" then
+				submenu= noteskin_param_bool_val(field, param_section, info)
+			end
+			add_to[#add_to+1]= submenu
+		end
+	end
+	local function submenu_cmp(a, b)
+		return a.name < b.name
+	end
+	table.sort(add_to, submenu_cmp)
+end
+local function gen_noteskin_param_menu(pn)
+	local stepstype= find_current_stepstype(pn)
+	local player_skin= profiles[pn]:get_preferred_noteskin(stepstype)
+	local skin_info= NEWSKIN:get_skin_parameter_info(player_skin)
+	local skin_defaults= NEWSKIN:get_skin_parameter_defaults(player_skin)
+	local player_params= profiles[pn]:get_noteskin_params(player_skin, stepstype)
+	if not player_params then
+		player_params= {}
+		profiles[pn]:set_noteskin_params(player_skin, stepstype, player_params)
+	end
+	local ret= {
+		recall_init_on_pop= true,
+		name= "noteskin_params",
+		destructor= function(self, pn)
+			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= pn, thing= "noteskin"})
+		end,
+	}
+	gen_noteskin_param_submenu(pn, player_params, skin_info, skin_defaults, ret)
+	return ret
+end
+local function show_noteskin_param_menu(pn)
+	if not newskin_available() then return false end
+	local stepstype= find_current_stepstype(pn)
+	local player_skin= profiles[pn]:get_preferred_noteskin(stepstype)
+	local skin_info= NEWSKIN:get_skin_parameter_info(player_skin)
+	local skin_defaults= NEWSKIN:get_skin_parameter_defaults(player_skin)
+	return skin_defaults ~= nil and skin_info ~= nil
+end
 
 dofile(THEME:GetPathO("", "tags_menu.lua"))
 
@@ -733,11 +877,10 @@ local function extra_for_sigil_detail()
 		initial_value= function(player_number)
 			return cons_players[player_number].sigil_data.detail
 		end,
-		validator= function(value)
-			return value >= 1 and value <= 32
-		end,
+		val_min= 1, val_max= 32,
 		set= function(player_number, value)
 			cons_players[player_number].sigil_data.detail= value
+			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= player_number, thing= "sigil"})
 		end,
 	}
 end
@@ -752,9 +895,7 @@ local function player_conf_float(
 			initial_value= function(pn)
 				return get_element_by_path(cons_players[pn], field_name) or 0
 			end,
-			validator= function(value)
-				return gte_nil(value, minv) and lte_nil(value, maxv)
-			end,
+			val_min= minv, val_max= maxv,
 			set= function(pn, value)
 				set_element_by_path(cons_players[pn], field_name, value)
 			end
@@ -771,9 +912,7 @@ local function player_cons_mod(
 			initial_value= function(pn)
 				return get_element_by_path(cons_players[pn], field_name) or 0
 			end,
-			validator= function(value)
-				return gte_nil(value, minv) and lte_nil(value, maxv)
-			end,
+			val_min= minv, val_max= maxv,
 			set= function(pn, value)
 				cons_players[pn]:set_cons_mod(field_name, value)
 			end
@@ -790,9 +929,7 @@ local function extra_for_lives()
 		initial_value= function(player_number)
 			return mod_player(player_number, "BatteryLives")
 		end,
-		validator= function(value)
-			return value >= 1
-		end,
+		val_min= 1,
 		set= function(player_number, value)
 			mod_player(player_number, "BatteryLives", value)
 		end
@@ -809,9 +946,7 @@ local function extra_for_haste()
 		initial_value= function(player_number)
 			return GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste()
 		end,
-		validator= function(value)
-			return value >= -1 and value <= 1
-		end,
+		val_min= -1, val_max= 1,
 		set= function(player_number, value)
 			GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):Haste(value)
 		end
@@ -825,9 +960,7 @@ local function extra_for_bg_bright()
 		initial_value= function(pn)
 			return PREFSMAN:GetPreference("BGBrightness")
 		end,
-		validator= function(value)
-			return value >= 0 and value <= 1
-		end,
+		val_min= 0, val_max= 1,
 		set= function(pn, value)
 			PREFSMAN:SetPreference("BGBrightness", value)
 		end
@@ -864,9 +997,7 @@ local function make_profile_float_extra(func_name)
 				profiles[pn]["Set"..func_name](profiles[pn], val)
 			end
 		end,
-		validator= function(val)
-			return val >= 0
-		end
+		val_min= 0,
 	}
 end
 
@@ -952,7 +1083,7 @@ local color_manip_targets= {}
 local function color_manip_extern(menu, params, pn)
 	local target_color= get_element_by_path(cons_players[pn], params.path)
 	color_manip_targets[pn]= target_color
-	color_manips[pn]:initialize(params.name, target_color)
+	color_manips[pn]:initialize(params.name, target_color, true, params.path, pn)
 	color_manips[pn]:unhide()
 	menu.external_thing= color_manips[pn]
 	menu:hide_disp()
@@ -1034,23 +1165,46 @@ local floaty_mods= {
 	player_conf_float("Toasty Level", "toasty_level", 4, 0, 0, 0, 1, 16),
 }
 
+local function gameplay_conf_float(
+		disp_name, field_name, field_thing, level, mins, scal, maxs, minv, maxv)
+	local pcf= player_conf_float(disp_name, field_name, level, mins, scal, maxs, minv, maxv)
+	pcf.args.set= function(pn, value)
+		set_element_by_path(cons_players[pn], field_name, value)
+		MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= pn, thing= field_thing})
+	end
+	return pcf
+end
+
+local function gameplay_conf_bool(disp_name, field_name, field_thing, level)
+	return {
+		name= disp_name, meta= "execute", underline= function(pn)
+			return get_element_by_path(cons_players[pn], field_name)
+		end,
+		execute= function(pn)
+			local val= get_element_by_path(cons_players[pn], field_name)
+			set_element_by_path(cons_players[pn], field_name, not val)
+			MESSAGEMAN:Broadcast("gameplay_conf_changed", {pn= pn, thing= field_thing})
+		end,
+	}
+end
+
 local function make_x_y_s_for_set(layout_options, set)
 	for i, info in ipairs(set) do
 		local gepi= "gameplay_element_positions."..info[2]
-		table.insert(layout_options, player_conf_float(info[1].." X",
-			gepi.."_xoffset", 1, 0, 1, 2, nil, nil))
-		table.insert(layout_options, player_conf_float(info[1].." Y",
-			gepi.."_yoffset", 1, 0, 1, 2, nil, nil))
-		table.insert(layout_options, player_conf_float(info[1].." Scale",
-			gepi.."_scale", 1, -2, -1, 0, nil, nil))
+		table.insert(layout_options, gameplay_conf_float(info[1].." X",
+			gepi.."_xoffset", info[2], 1, 0, 1, 2, nil, nil))
+		table.insert(layout_options, gameplay_conf_float(info[1].." Y",
+			gepi.."_yoffset", info[2], 1, 0, 1, 2, nil, nil))
+		table.insert(layout_options, gameplay_conf_float(info[1].." Scale",
+			gepi.."_scale", info[2], 1, -2, -1, 0, nil, nil))
 	end
 end
 
 local gameplay_layout= {
-	player_conf_float("Notefield X",
-		"gameplay_element_positions.notefield_xoffset", 1, 0, 1, 2, nil, nil),
-	player_conf_float("Notefield Y",
-		"gameplay_element_positions.notefield_yoffset", 1, 0, 1, 2, nil, nil),
+	gameplay_conf_float("Notefield X",
+		"gameplay_element_positions.notefield_xoffset", "notefield_pos", 1, 0, 1, 2, nil, nil),
+	gameplay_conf_float("Notefield Y",
+		"gameplay_element_positions.notefield_yoffset", "notefield_pos", 1, 0, 1, 2, nil, nil),
 }
 make_x_y_s_for_set(
 	gameplay_layout, {
@@ -1058,16 +1212,41 @@ make_x_y_s_for_set(
 		{"Judge List", "judge_list"}, {"BPM", "bpm"}, {"Sigil", "sigil"},
 		{"Score", "score"}, {"Chart Info", "chart_info"}})
 
-local notefield_config= {
-	player_conf_float(
-		"Field FOV", "notefield_config.fov", 1, 0, 1, 3, nil, nil),
-	player_conf_float(
-		"Skew X", "notefield_config.vanish_x", 1, 0, 1, 3, nil, nil),
-	player_conf_float(
-		"Skew Y", "notefield_config.vanish_y", 1, 0, 1, 3, nil, nil),
-	player_conf_float(
-		"Note YOffset", "notefield_config.yoffset", 1, 0, 1, 3, nil, nil),
-}
+local function gen_notefield_config(pn)
+	MESSAGEMAN:Broadcast("entered_gameplay_config", {pn= pn})
+	return {
+		name= "NoteField Config",
+		destructor= function(self, pn)
+			MESSAGEMAN:Broadcast("exited_gameplay_config", {pn= pn})
+		end,
+		gameplay_conf_float(
+			"Reverse", "notefield_config.reverse", "notefield", 1, -2, 0, 2, nil, nil),
+		gameplay_conf_float(
+			"Field Zoom", "notefield_config.zoom", "notefield", 1, -2, -1, 2, nil, nil),
+		gameplay_conf_float(
+			"Note YOffset", "notefield_config.yoffset", "notefield", 1, 0, 1, 3, nil, nil),
+		gameplay_conf_float(
+			"Field Rotation X", "notefield_config.rot_x", "notefield", 1, 0, 1, 3, nil, nil),
+		gameplay_conf_float(
+			"Field Rotation Y", "notefield_config.rot_y", "notefield", 1, 0, 1, 3, nil, nil),
+		gameplay_conf_float(
+			"Field Rotation Z", "notefield_config.rot_z", "notefield", 1, 0, 1, 3, nil, nil),
+		gameplay_conf_float(
+			"Field FOV", "notefield_config.fov", "notefield", 1, 0, 1, 3, nil, nil),
+		gameplay_conf_float(
+			"Skew X", "notefield_config.vanish_x", "notefield", 1, 0, 1, 3, nil, nil),
+		gameplay_conf_float(
+			"Skew Y", "notefield_config.vanish_y", "notefield", 1, 0, 1, 3, nil, nil),
+		gameplay_conf_float(
+			"Field Zoom X", "notefield_config.zoom_x", "notefield", 1, -2, -1, 2, nil, nil),
+		gameplay_conf_float(
+			"Field Zoom Y", "notefield_config.zoom_y", "notefield", 1, -2, -1, 2, nil, nil),
+		gameplay_conf_float(
+			"Field Zoom Z", "notefield_config.zoom_z", "notefield", 1, -2, -1, 2, nil, nil),
+		gameplay_conf_bool(
+			"Use Separate Zooms", "notefield_config.use_separate_zooms", "notefield"),
+	}
+end
 
 local gameplay_colors= {
 	color_manip_option("Filter", "gameplay_element_colors.filter"),
@@ -1118,7 +1297,7 @@ local unacceptable_options= {
 		 initial_value= function(pn)
 			 return cons_players[pn].unacceptable_score.value
 		 end,
-		 validator= function(value) return value >= 0 end,
+		 val_min= 0,
 		 set= function(pn, value)
 			 cons_players[pn].unacceptable_score.value= value
 		 end
@@ -1128,10 +1307,7 @@ local unacceptable_options= {
 		 initial_value= function(pn)
 			 return cons_players[pn].unacceptable_score.limit
 		 end,
-		 validator= function(value)
-			 return value >= 0 and
-			 value <= misc_config:get_data().gameplay_reset_limit
-		 end,
+		 val_min= 0, val_max= misc_config:get_data().gameplay_reset_limit,
 		 set= function(pn, value)
 			 cons_players[pn].unacceptable_score.limit= value
 		 end
@@ -1226,10 +1402,14 @@ local special= {
 	{ name= "Effects", meta= options_sets.special_functions, level= 4,
 		args= special_effects},
 	{ name= "Go To Select Music" ,meta= "execute", level= 4,
+		req_func= function()
+			return SCREENMAN:GetTopScreen():GetName() == "ScreenSickPlayerOptions"
+		end,
 		execute= function()
 			SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
 			trans_new_screen("ScreenConsSelectMusic")
 		end, unset= noop_nil},
+	player_conf_float("Pause Hold Time", "pause_hold_time", 1, -3, -1, 0, -1, 3),
 	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options, level= 4},
 	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions, level= 4,
 		args= {eles= {
@@ -1296,8 +1476,6 @@ local playback_options= {
 local decorations= {
 	{ name= "Gameplay Layout", meta= options_sets.menu, args= gameplay_layout},
 	{ name= "Gameplay Colors", meta= options_sets.menu, args= gameplay_colors},
-	{ name= "Notefield Config", meta= options_sets.menu,
-		args= notefield_config, req_func= newskin_available},
 	{ name= "Evaluation Flags", meta= options_sets.special_functions,
 		args= { eles= eval_flag_eles}},
 	{ name= "Gameplay Flags", meta= options_sets.special_functions,
@@ -1318,7 +1496,7 @@ local decorations= {
 	player_conf_float("Life Stages", "life_stages", 3, 0, 0, 0, 1, 16),
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
-	{ name= "Noteskin", meta= options_sets.noteskins},
+	{ name= "Noteskin", meta= options_sets.noteskins, req_func= not_newskin_available},
 	{ name= "Newskin", meta= options_sets.newskins, req_func= newskin_available},
 	{ name= "Shown Noteskins", meta= options_sets.shown_noteskins, args= {}},
 }
@@ -1349,12 +1527,20 @@ local base_options= {
 	{ name= "Experimental", meta= options_sets.menu, args= experimental_options, level= 5},
 	{ name= "Speed", meta= options_sets.speed, level= 1},
 	{ name= "Perspective", meta= options_sets.menu,
+		req_func= not_newskin_available,
 		args= make_menu_of_float_set(perspective_mods), level= 1},
+	{ name= "Notefield Config", meta= options_sets.menu,
+		args= gen_notefield_config, req_func= newskin_available},
+	{ name= "Newskin", meta= options_sets.newskins, level= 1,
+		req_func= newskin_available},
+	{ name= "Newskin params", meta= options_sets.menu,
+		args= gen_noteskin_param_menu, req_func= show_noteskin_param_menu},
+	{ name= "Shown Noteskins", meta= options_sets.shown_noteskins, args= {}},
 	{ name= "Playback Options", meta= options_sets.menu, args= playback_options,
 		level= 3},
 	{ name= "Steps", meta= options_sets.steps_list, level= 1},
-	{ name= "Noteskin", meta= options_sets.noteskins, level= -1},
-	{ name= "Newskin", meta= options_sets.newskins, level= -1, req_func= newskin_available},
+	{ name= "Noteskin", meta= options_sets.noteskins, level= -1,
+		req_func= not_newskin_available},
 	player_conf_float("Options Level", "options_level", -1, 0, 0, 0, 1, 4),
 	player_conf_float("Rating Cap", "rating_cap", -1, 0, 0, 1, nil, nil),
 	{ name= "Decorations", meta= options_sets.menu, args= decorations, level= 2},
@@ -1365,7 +1551,7 @@ local base_options= {
 		level= 4},
 	{ name= "Song tags", meta= options_sets.tags_menu, args= true, level= 4},
 	{ name= "Chart mods", meta= options_sets.menu, args= chart_mods, level= 2},
-	{ name= "Floaty mods", meta= options_sets.menu, args= floaty_mods, level= 2},
+	{ name= "Floaty mods", meta= options_sets.menu, args= floaty_mods, level= 2, req_func= not_newskin_available},
 	{ name= "Reset Mods", meta= "execute", level= 1,
 		execute= function(pn) cons_players[pn]:reset_to_persistent_mods() end,},
 }

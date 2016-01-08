@@ -123,28 +123,45 @@ local hms_frame= false
 local hms_left= false
 local hms_right= false
 local hset= fetch_color("hours")
+local dset= fetch_color("days")
+local prev_daystamp= ""
 local prev_timestamp= ""
-local function get_hour_indices()
-	local curr_second= (Hour() * 3600) + (Minute() * 60) + Second()
-	local sec_per= misc_config:get_data().seconds_per_clock_change
-	local curr_index= math.floor(curr_second / sec_per)
+local function get_indices(curr, per)
+	local curr_index= math.floor(curr / per)
 	local next_index= curr_index + 1
-	local percent= (curr_second - (curr_index * sec_per)) / sec_per
+	local percent= (curr - (curr_index * per)) / per
 	return curr_index, next_index, percent
+end
+local function color_stamp(stamp, get_stamp_indices)
+	local curr_index, next_index, percent= get_stamp_indices()
+	local curr_color= color_in_set(dset, curr_index, true, false, false)
+	local next_color= color_in_set(dset, next_index, true, false, false)
+	local stamp_color= lerp_color(percent, curr_color, next_color)
+	rot_color_text(stamp, stamp_color)
+end
+local function get_day_indices()
+	local curr= DayOfYear()
+	local per= misc_config:get_data().days_per_clock_change
+	return get_indices(curr, per)
+end
+local function get_hour_indices()
+	local curr= (Hour() * 3600) + (Minute() * 60) + Second()
+	local per= misc_config:get_data().seconds_per_clock_change
+	return get_indices(curr, per)
+end
+local function dmy_update(self)
+	local this_stamp= ymd_timestamp()
+	if this_stamp == prev_daystamp then return end
+	hms_right:settext(this_stamp)
+	color_stamp(hms_right, get_day_indices)
 end
 local function hms_update(self)
 	local this_stamp= hms_timestamp()
 	if this_stamp == prev_timestamp then return end
 	prev_timestamp= this_stamp
-	local split= #this_stamp/2
-	hms_left:settext(this_stamp:sub(1, split))
-	hms_right:settext(this_stamp:sub(split+1, -1))
-	local curr_index, next_index, percent= get_hour_indices()
-	local hour_curr= color_in_set(hset, curr_index, true, false, false)
-	local hour_next= color_in_set(hset, next_index, true, false, false)
-	local hms_color= lerp_color(percent, hour_curr, hour_next)
-	rot_color_text(hms_left, hms_color)
-	rot_color_text(hms_right, hms_color)
+	dmy_update(self)
+	hms_left:settext(this_stamp .. "  ")
+	color_stamp(hms_left, get_hour_indices)
 end
 function hms_split()
 	local move_time= misc_config:get_data().transition_time

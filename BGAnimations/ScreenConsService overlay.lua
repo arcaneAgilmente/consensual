@@ -33,7 +33,7 @@ local confetti_data= confetti_config:get_data()
 local function confetti_val(name, min, max, min_scale, scale, max_scale)
 	return {
 		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
-		validator= function(v) return v >= min and v <= max end,
+		val_min= min, val_max= max,
 		initial_value= function() return confetti_data[name] end,
 		set= function(pn, v)
 			confetti_data[name]= v
@@ -47,7 +47,7 @@ local bubble_data= bubble_config:get_data()
 local function bubble_val(name, min, max, min_scale, scale, max_scale)
 	return {
 		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
-		validator= function(v) return v >= min and v <= max end,
+		val_min= min, val_max= max,
 		initial_value= function() return bubble_data[name] end,
 		set= function(pn, v)
 			bubble_data[name]= v
@@ -60,7 +60,7 @@ end
 local function bubble_amount(name, min, max, min_scale, scale, max_scale)
 	return {
 		name= name, min_scale= min_scale, scale= scale, max_scale= max_scale,
-		validator= function(v) return v >= min and v <= max end,
+		val_min= min, val_max= max,
 		initial_value= function() return bubble_data[name] end,
 		set= function(pn, v)
 			bubble_data[name]= v
@@ -340,7 +340,7 @@ local function life_val_conf(name)
 			name= name, min_scale= -4, scale= -3, max_scale= -1,
 			initial_value= function() return life_data[name] end,
 			set= function(pn, value) life_data[name]= value end,
-			validator= function(value) return value >= -1 and value <= 1 end,
+			val_min= -1, val_max= 1,
 	}}
 end
 
@@ -419,6 +419,8 @@ end
 
 local press_prompt= {}
 local on_press_prompt= false
+local press_prompt_start_time= 0
+local press_delay_time= .5
 local function key_get(key_name)
 	return function() return ToEnumShortString(config_data[key_name]) end
 end
@@ -429,8 +431,10 @@ local function key_set(key_name)
 		on_press_prompt= true
 		local tops= SCREENMAN:GetTopScreen()
 		local tempback= noop_false
+		press_prompt_start_time= GetTimeSinceStart()
 		tempback= function(event)
-			if event.type == "InputEventType_FirstPress" then
+			if event.type == "InputEventType_FirstPress"
+			and GetTimeSinceStart() - press_prompt_start_time > press_delay_time then
 				config_data[key_name]= event.DeviceInput.button
 				tops:RemoveInputCallback(tempback)
 				press_prompt:visible(false)
@@ -528,6 +532,8 @@ local consensual_options= {
 --	 args= make_extra_for_conf_val("line_height", 0, 0, 1)},
 	{name= "sex_per_clock_change", meta= options_sets.adjustable_float,
 	 args= time_conf("seconds_per_clock_change", 0, 0, 3)},
+	{name= "days_per_clock_change", meta= options_sets.adjustable_float,
+	 args= time_conf("days_per_clock_change", 0, 0, 3)},
 	{name= "disable_extra_processing", meta= options_sets.boolean_option,
 	 args= make_extra_for_bool_val("disable_extra_processing", "Yes", "No")},
 	{name= "transition_split_min", meta= options_sets.adjustable_float,

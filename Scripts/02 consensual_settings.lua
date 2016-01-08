@@ -368,11 +368,11 @@ function generic_gsu_flag(flag_field, flag_name)
 	end,
 	function(player_number)
 		cons_players[player_number].flags[flag_field][flag_name]= true
-		MESSAGEMAN:Broadcast("player_flags_changed", {pn= player_number})
+		MESSAGEMAN:Broadcast("player_flags_changed", {pn= player_number, field= flag_field, name= flag_name})
 	end,
 	function(player_number)
 		cons_players[player_number].flags[flag_field][flag_name]= false
-		MESSAGEMAN:Broadcast("player_flags_changed", {pn= player_number})
+		MESSAGEMAN:Broadcast("player_flags_changed", {pn= player_number, field= flag_field, name= flag_name})
 	end
 end
 
@@ -685,7 +685,8 @@ function cons_set_current_steps(pn, steps)
 	gamestate_set_curr_steps(pn, steps)
 end
 
-function JudgmentTransformCommand( self, params )
+function JudgmentTransformCommand(self, params)
+	do return end
 	local elpos= cons_players[params.Player].gameplay_element_positions
 	local rev_tilt= cons_players[params.Player].flags.gameplay.reverse_tilts_judge
 	local x= elpos.judgment_xoffset or 0
@@ -788,4 +789,47 @@ function reset_mods(player, ops)
 		end
 		player.cons_mods_set= {}
 	end
+end
+
+function apply_newfield_config(newfield, config, vanxoff, vanyoff)
+	local torad= math.pi / 180
+	newfield:get_fov_mod():set_value(config.fov)
+	newfield:get_vanish_x_mod():set_value(config.vanish_x + vanxoff)
+	newfield:get_vanish_y_mod():set_value(config.vanish_y + vanyoff)
+	newfield:get_trans_rot_x():set_value(config.rot_x*torad)
+	newfield:get_trans_rot_y():set_value(config.rot_y*torad)
+	newfield:get_trans_rot_z():set_value(config.rot_z*torad)
+	if config.use_separate_zooms then
+		newfield:get_trans_zoom_x():set_value(config.zoom_x)
+		newfield:get_trans_zoom_y():set_value(config.zoom_y)
+		newfield:get_trans_zoom_z():set_value(config.zoom_z)
+	else
+		newfield:get_trans_zoom_x():set_value(config.zoom)
+		newfield:get_trans_zoom_y():set_value(config.zoom)
+		newfield:get_trans_zoom_z():set_value(config.zoom)
+	end
+	for i, col in ipairs(newfield:get_columns()) do
+		col:get_reverse_percent():set_value(config.reverse)
+		col:get_reverse_offset_pixels():set_value(_screen.cy + config.yoffset)
+	end
+end
+
+function find_current_stepstype(pn)
+	local steps= gamestate_get_curr_steps(pn)
+	if steps then
+		return steps:GetStepsType()
+	end
+	local style= GAMESTATE:GetCurrentStyle(pn)
+	if style then
+		return style:GetStepsType()
+	end
+	style= GAMEMAN:GetStylesForGame(GAMESTATE:GetCurrentGame():GetName())[1]
+	if style then
+		return style:GetStepsType()
+	end
+	local last_type= profiles[pn]:get_last_stepstype()
+	if last_type then
+		return last_type
+	end
+	return "StepsType_Dance_Single"
 end

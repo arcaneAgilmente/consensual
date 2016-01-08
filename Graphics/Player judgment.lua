@@ -179,7 +179,6 @@ local error_bar_mt= {
 			return Def.ActorFrame{
 				InitCommand= function(subself)
 					self.container= subself
-					subself:xy(el_pos.error_bar_xoffset, el_pos.error_bar_yoffset)
 				end,
 				Def.ActorFrame{
 					InitCommand= function(subself)
@@ -236,16 +235,11 @@ local error_bar_mt= {
 					InitCommand= function(subself)
 						self.cum_error= subself
 						subself:SetTexture(self.texture)
-							:xy(0, 8 * el_pos.error_bar_scale)
-							:setsize(error_width, 16 * el_pos.error_bar_scale)
 					end
 				},
 				Def.Quad{
 					InitCommand= function(subself)
-						self.recent_error= subself
-						subself
-							:xy(0, 8 * el_pos.error_bar_scale)
-							:setsize(0, 8 * el_pos.error_bar_scale):horizalign(left)
+						self.recent_error= subself:horizalign(left)
 					end
 				},
 			}
@@ -257,7 +251,12 @@ local error_bar_mt= {
 				:diffuse(offset_to_dark_color(offset))
 			self.prev_frame_aft:Draw()
 			self.aft:Draw()
-		end
+		end,
+		set_pos_scale= function(self, x, y, s)
+			self.container:xy(x, y)
+			self.cum_error:xy(0, 8 * s):setsize(error_width, 16 * s)
+			self.recent_error:xy(0, 8 * s):setsize(0, 8 * s)
+		end,
 }}
 local errbar= setmetatable({}, error_bar_mt)
 
@@ -378,8 +377,27 @@ local function disp_offset_from_judge(judge)
 	return offset
 end
 
+local judgment_conf_names= {
+	judgment= true, combo= true, error_bar= true,
+}
+
+local function set_display_judgment(disp_judge, disp_offset)
+	local text= tns_texts[disp_judge]
+	if text then
+		if cons_players[player].flags.gameplay.error_bar then
+			errbar:add_error(disp_offset)
+		end
+		Judgment:playcommand("Reset")
+			:settext(get_string_wrapper("JudgementNames", text):upper())
+			:diffuse(fjtc(disp_judge))
+			:visible(true)
+		JudgeCmds[disp_judge](Judgment)
+	end
+end
+
 local args= {
 	Name= "Judgement",
+	Def.ActorFrame{
 	normal_text(
 		"Judgment", "", nil, fetch_color("gameplay.text_stroke"), 0, 0, 1,
 		center, {
@@ -394,18 +412,28 @@ local args= {
 		tani.text:strokecolor(fetch_color("gameplay.text_stroke"))
 		tani.number:strokecolor(fetch_color("gameplay.text_stroke"))
 		tani.number:wrapwidthpixels((_screen.cx / el_pos.combo_scale) - 16)
+		self:playcommand("gameplay_conf_changed", {pn= player, thing= next(judgment_conf_names)})
 	end,
-	ToastyAchievedMessageCommand=
-		function(self,params)
-			if params.PlayerNumber == player then
-				--Trace("ToastyAchievedMessageCommand params:")
-				--rec_print_table(params)
-				if cons_players[player].flags.gameplay.allow_toasty then
-					cons_players[player].toasty= {
-						judge= "TapNoteScore_Miss", remaining= 5, progress= 0 }
-				end
+	ToastyAchievedMessageCommand= function(self,params)
+		if params.PlayerNumber == player then
+			--Trace("ToastyAchievedMessageCommand params:")
+			--rec_print_table(params)
+			if cons_players[player].flags.gameplay.allow_toasty then
+				cons_players[player].toasty= {
+					judge= "TapNoteScore_Miss", remaining= 5, progress= 0 }
 			end
-		end,
+		end
+	end,
+	gameplay_conf_changedMessageCommand= function(self, param)
+		if param.pn ~= player then return end
+		if not judgment_conf_names[param.thing] then return end
+		self:xy(el_pos.judgment_xoffset, el_pos.judgment_yoffset)
+		tani:move_to(el_pos.combo_xoffset, el_pos.combo_yoffset)
+		tani.container:zoom(el_pos.combo_scale)
+		Judgment:zoom(el_pos.judgment_scale)
+		set_display_judgment("TapNoteScore_W1", .0215)
+		errbar:set_pos_scale(el_pos.error_bar_xoffset, el_pos.error_bar_yoffset, el_pos.error_bar_scale)
+	end,
 	JudgmentMessageCommand=
 		function(self, param)
 			if param.Player ~= player then return end
@@ -512,7 +540,6 @@ local args= {
 				disp_judge= cons_players[player].toasty.judge
 				disp_offset= disp_offset_from_judge(disp_judge)
 			end
-			local text= tns_texts[disp_judge]
 			local combo_qual= cons_players[player].combo_quality
 			if combo_qual then
 				local prev_worst= combo_qual.worst_tns
@@ -528,16 +555,7 @@ local args= {
 					combo_qual.worst_tns= rev_disp
 				end
 			end
-			if text then
-				if cons_players[player].flags.gameplay.error_bar then
-					errbar:add_error(disp_offset)
-				end
-				Judgment:playcommand("Reset")
-					:settext(get_string_wrapper("JudgementNames", text):upper())
-					:diffuse(fjtc(disp_judge))
-					:visible(true)
-				JudgeCmds[disp_judge](Judgment)
-			end
+			set_display_judgment(disp_judge, disp_offset)
 			if fake_judge then
 				if fake_score.combo_is_misses then
 					set_combo_stuff({Misses= fake_score.combo})
@@ -564,6 +582,7 @@ local args= {
 			set_combo_stuff(param)
 		end
 	end
+	},
 }
 args[1].OnCommand= THEME:GetMetric("Judgment", "JudgmentOnCommand")
 

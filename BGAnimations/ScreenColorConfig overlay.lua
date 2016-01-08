@@ -415,10 +415,10 @@ return Def.ActorFrame{
 	end,
 	manip:create_actors("manip", SCREEN_RIGHT-76, 100, colors),
 	main_display:create_actors(
-		"main_disp", _screen.w * .25 + 8, 16, 18, _screen.w * .5-16, 24, 1,
-		false, true, true),
+		"main_disp", _screen.w * .25 + 8, 16, _screen.h-32, _screen.w * .5-16, 24, 1,
+		false, true, "value"),
 	second_display:create_actors(
-		"second_disp", _screen.w * .75, 56, 19, _screen.w * .25, 24, 1,
+		"second_disp", _screen.w * .75, 56, _screen.h-32, _screen.w * .25, 24, 1,
 		true, true),
 	cursor:create_actors(
 		"cursor", _screen.cx, _screen.cy, 1, fetch_color("player.both"),

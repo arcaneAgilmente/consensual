@@ -527,12 +527,12 @@ local score_report_mt= {
 			self.song_col= setmetatable({}, number_set_mt)
 			self.session_col= setmetatable({}, number_set_mt)
 			self.sum_col= setmetatable({}, number_set_mt)
+			self.grade= setmetatable({}, grade_image_mt)
 			local args= {
 				Name= name,
 				InitCommand= function(subself)
 					self.container= subself
 					self.chart_info= subself:GetChild("chart_info")
-					self.grade= subself:GetChild("grade")
 					self.score= subself:GetChild("score")
 					self.dp= subself:GetChild("dp")
 					self.offavgms= subself:GetChild("offavgms")
@@ -544,10 +544,7 @@ local score_report_mt= {
 				normal_text("chart_info", "",
 					fetch_color("evaluation.score_report.chart_info"),
 					eval_stroke, 0,0,self.scale),
-				Def.Sprite{
-					Name= "grade",
-					Texture= THEME:GetPathG("", "grades/"..grade_config:get_data().file)
-				},
+				self.grade:create_actors(nil, nil, 64),
 				normal_text("score", "", nil, eval_stroke, 0, 0, self.scale),
 				normal_text("dp", "", nil, eval_stroke, 0, 0, self.scale*.5),
 				normal_text("offavgms", "", nil, eval_stroke, 0, 0, self.scale),
@@ -663,22 +660,20 @@ local score_report_mt= {
 				self.offms:settext(""):visible(false)
 			end
 			if flags.grade then
-				local grade_width= 64 + 8
+				local grade_width= self.grade.size + 8
 				local grade_id, grade_color= convert_score_to_grade(
 					score_data.judge_counts)
-				local y= 46
+				local grade_y= 46
 				if not flags.chart_info then
-					y= 32
+					grade_y= 32
 				end
 				if flags.color_grade then
-					self.grade:diffuse(adjust_luma(grade_color, 2))
+					grade_color= adjust_luma(grade_color, 2)
 				else
-					self.grade:diffuse(color("#ffffff"))
+					grade_color= nil
 				end
-				self.grade:setstate(
-					math.min(grade_id-1, self.grade:GetNumStates()-1))
-					:animate(false):y(y):visible(true)
-				scale_to_fit(self.grade, 64, 64)
+				self.grade:set_grade(grade_id, grade_color)
+				self.grade:unhide()
 				next_y= after_info_y + (self.spacing * 2.5)
 				local widest_header= 0
 				for i, actor in ipairs{
@@ -688,22 +683,24 @@ local score_report_mt= {
 						widest_header= math.max(widest_header, actor[2]:GetZoomedWidth())
 					end
 				end
+				local grade_x= 0
 				if widest_header == 0 then
-					self.grade:x(0)
+					grade_x= 0
 				elseif allowed_width / 2 < (widest_header / 2) + 72 then
-					self.grade:x(-(allowed_width / 2) + (grade_width/2))
+					grade_x= -(allowed_width / 2) + (grade_width/2)
 					local remain= allowed_width - grade_width
-					local other_x= self.grade:GetX() + (remain/2) + (grade_width/2)
+					local other_x= grade_x + (remain/2) + (grade_width/2)
 					for i, actor in ipairs{
 						self.score, self.dp, self.offavgms, self.offms} do
 						width_limit_text(actor, remain - 4, actor:GetZoomY())
 						actor:x(other_x)
 					end
 				else
-					self.grade:x(-((widest_header/2)+4 + (grade_width/2)))
+					grade_x= -((widest_header/2)+4 + (grade_width/2))
 				end
+				self.grade:move(grade_x, grade_y)
 			else
-				self.grade:visible(false)
+				self.grade:hide()
 			end
 			do -- columns
 				local pct_data= {{}}

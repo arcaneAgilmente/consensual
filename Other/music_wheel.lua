@@ -14,6 +14,8 @@ local item_text_width= 0
 local item_height= 0
 local item_text_height= 0
 local item_text_zoom= 0
+local item_grade_width= 0
+local item_grade_offset= 0
 local center_expansion= 0
 local dual_mode= false
 
@@ -53,12 +55,19 @@ local function recalc_width_limit()
 	end
 	item_width= wheel_width_limit - 4
 	item_text_width= item_width - 4
+	item_grade_width= item_height
+	item_grade_offset= (item_width - item_grade_width) * .5
 end
 
 local wheel_item_mt= {
 	__index= {
 		create_actors= function(self, name)
 			self.name= name
+			self.prev_index= 1
+			self.grades= {
+				[PLAYER_1]= setmetatable({}, grade_image_mt),
+				[PLAYER_2]= setmetatable({}, grade_image_mt)}
+			self.grade_to_show= {}
 			return Def.ActorFrame{
 				Name= name,
 				InitCommand= function(subself)
@@ -72,12 +81,30 @@ local wheel_item_mt= {
 					end
 				},
 				normal_text("text", "", fetch_color("text"), fetch_color("stroke"), 0, 0, item_text_zoom, center),
+				self.grades[PLAYER_1]:create_actors(),
+				self.grades[PLAYER_2]:create_actors(),
 			}
+		end,
+		grade_is_showing= function(self)
+			return not (self.grades[PLAYER_1].hidden and self.grades[PLAYER_2].hidden)
+		end,
+		resize_text= function(self)
+			local text_width= item_text_width
+			if self:grade_is_showing() then
+				text_width= text_width - (item_grade_width * 2)
+			end
+			width_limit_text(self.text, text_width, item_text_zoom)
 		end,
 		resize= function(self)
 			self.bg:setsize(wheel_width_limit-hpad, item_height)
+			self.grades[PLAYER_1]:move(-item_grade_offset, 0)
+			self.grades[PLAYER_1]:set_size(item_grade_width)
+			self.grades[PLAYER_2]:move(item_grade_offset, 0)
+			self.grades[PLAYER_2]:set_size(item_grade_width)
+			self:resize_text()
 		end,
 		transform= function(self, item_index, num_items, is_focus, focus_pos)
+			local changing_edge= math.abs(item_index-self.prev_index)>num_items/2
 			local dist_from_focus= item_index - focus_pos
 			local start_y= _screen.cy
 			if center_expansion > 0 then
@@ -110,17 +137,35 @@ local wheel_item_mt= {
 				end
 			end
 			y= start_y + (dist_from_focus * per_item)
-			self.container:stoptweening():april_linear(wheel_move_time):xy(x, y)
+			if changing_edge then
+				self.container:diffusealpha(0)
+			end
+			if april_fools then
+				self.container:stoptweening()
+				local curr_x= self.container:GetX()
+				local curr_y= self.container:GetY()
+				local halfway_x= (curr_x + x) * .5
+				local halfway_y= (curr_y + y) * .5
+				local rot= math.random() * 180 * ((math.random(0, 1) * 2) - 1)
+				self.container:linear(wheel_move_time*4)
+					:xy(halfway_x, halfway_y):rotationz(rot)
+					:linear(wheel_move_time*4):xy(x, y):rotationz(0)
+			else
+				self.container:finishtweening()
+					:april_linear(wheel_move_time):xy(x, y)
+			end
 			if item_index == 1 or item_index == num_items or
 			(is_focus and center_expansion > 0) then
 				self.container:diffusealpha(0)
 			else
 				self.container:diffusealpha(1)
 			end
+			self.prev_index= item_index
 		end,
 		set= function(self, info)
 			self.info= info
 			if not info then return end
+			local text_width= item_text_width
 			if info.bucket_info then
 				if info.is_current_group then
 					rot_color_text(self.bg, wheel_colors.current_group)
@@ -149,8 +194,56 @@ local wheel_item_mt= {
 				Warn("Tried to display bad element in display bucket.")
 				rec_print_table(info)
 			end
-			width_limit_text(self.text, item_text_width, item_text_zoom)
+			for i, pn in ipairs(all_player_indices) do
+				self:update_grade(pn)
+			end
+			self:resize_text()
 			self.bg:diffusealpha(.75)
+		end,
+		update_grade= function(self, pn)
+			local set_grade= false
+			self.grade_to_show[pn]= false
+			if GAMESTATE:IsPlayerEnabled(pn)
+			and self.info and self.info.song_info then
+				local stype= get_preferred_steps_type(pn)
+				local diff= GAMESTATE:GetPreferredDifficulty(pn)
+				local steps= self.info.song_info:GetOneSteps(stype, diff)
+				local profile= PROFILEMAN:GetProfile(pn)
+				if steps and profile then
+					local score_list= profile:GetHighScoreListIfExists(self.info.song_info, steps)
+					if score_list then
+						local top_score= score_list:GetHighScores()[1]
+						if top_score then
+							local grade, color= convert_score_to_grade(convert_high_score_to_judge_counts(top_score))
+							self.grades[pn]:set_grade(grade, color)
+							self.grade_to_show[pn]= true
+							if cons_players[pn].flags.interface.music_wheel_grades then
+								set_grade= true
+							end
+						end
+					end
+				end
+			end
+			if set_grade then
+				self.grades[pn]:unhide()
+			else
+				self.grades[pn]:hide()
+			end
+		end,
+		update_grade_shown= function(self, pn)
+			local set_grade= false
+			if GAMESTATE:IsPlayerEnabled(pn)
+			and self.info and self.info.song_info
+			and cons_players[pn].flags.interface.music_wheel_grades
+			and self.grade_to_show[pn] then
+				set_grade= true
+			end
+			if set_grade then
+				self.grades[pn]:unhide()
+			else
+				self.grades[pn]:hide()
+			end
+			self:resize_text()
 		end,
 }}
 
@@ -286,6 +379,13 @@ local music_whale= {
 				self.container= subself
 				subself:xy(wheel_x, wheel_y)
 			end,
+			player_flags_changedMessageCommand= function(subself, param)
+				if param.field ~= "interface" then return end
+				if param.name ~= "music_wheel_grades" then return end
+				for i, item in ipairs(self.sick_wheel.items) do
+					item:update_grade_shown(param.pn)
+				end
+			end,
 			self.sick_wheel:create_actors("wheel", items_on_wheel, wheel_item_mt, 0, 0),
 		}
 		self.sick_wheel.focus_pos= self.sick_wheel.focus_pos + 1
@@ -310,6 +410,7 @@ local music_whale= {
 			end
 		end
 		self:post_sort_update()
+		self.ready= true
 	end,
 	move_resize= function(self, newx, neww)
 		wheel_width_limit= neww

@@ -71,6 +71,10 @@ function newskin_available()
 	return false
 end
 
+function not_newskin_available()
+	return not newskin_available()
+end
+
 -- Fun fact:  Because this file is in consensual/Scripts, while it is being
 -- loaded, THEME:GetCurrentThemeDirectory returns "Themes/consensual".
 -- So this table exists to allow things that run after script loading is
@@ -301,10 +305,10 @@ function rec_print_table(t, indent, depth_remaining)
 	if depth_remaining == 0 then return end
 	for k, v in pairs(t) do
 		if type(v) == "table" then
-			Trace(indent .. k .. ": table")
+			Trace(indent .. tostring(k) .. ": table")
 			rec_print_table(v, indent .. "  ", depth_remaining - 1)
 		else
-			Trace(indent .. "(" .. type(k) .. ")" .. k .. ": " ..
+			Trace(indent .. "(" .. type(k) .. ")" .. tostring(k) .. ": " ..
 							"(" .. type(v) .. ")" .. tostring(v))
 		end
 	end
@@ -959,10 +963,10 @@ convert_code_name_to_display_text= {
 	unjoin="Unjoin Other",
 }
 
-local function ymd_timestamp()
+function ymd_timestamp()
 	local y= Year()
-	local m= Month()
-	local d= Day()
+	local m= MonthOfYear() + 1
+	local d= DayOfMonth()
 	if m < 10 then m = "0" .. m end
 	if d < 10 then d = "0" .. d end
 	return y.."-"..m.."-"..d
