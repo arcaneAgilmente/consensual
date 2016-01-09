@@ -1,5 +1,6 @@
 dofile(THEME:GetPathO("", "sick_options_parts.lua"))
 
+gameplay_pause_count= 0
 local menu_y= 56
 local menu_width= _screen.cx*.75
 local menu_height= _screen.h*.75
@@ -38,30 +39,25 @@ local function close_menu(pn)
 	end
 end
 
+local function backout(screen)
+	screen_gameplay:SetPrevScreenName(screen):begin_backing_out()
+end
+
 local function forfeit(pn)
-	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-		STATSMAN:GetCurStageStats():GetPlayerStageStats(pn):FailPlayer()
-	end
-	screen_gameplay:SetNextScreenName("ScreenConsSelectMusic")
-		:StartTransitioningScreen("SM_LeaveGameplay")
+	backout("ScreenConsSelectMusic")
 end
 
 local function restart_song(pn)
-	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
-		STATSMAN:GetCurStageStats():GetPlayerStageStats(pn):FailPlayer()
-		while GAMESTATE:GetNumStagesLeft(pn) < 3 do
-			GAMESTATE:AddStageToPlayer(pn)
-		end
-	end
-	screen_gameplay:SetNextScreenName("ScreenGameplay")
-		:StartTransitioningScreen("SM_LeaveGameplay")
+	backout("ScreenGameplay")
 end
 
 local menu_options= {
 	{name= "Mods", meta= options_sets.menu, args= mods_menu},
-	{name= "Forfeit", meta= "execute", execute= forfeit},
-	{name= "Restart Song", meta= "execute", execute= restart_song},
 }
+if Screen.SetPrevScreenName then
+	table.insert(menu_options, {name= "Forfeit", meta= "execute", execute= forfeit})
+	table.insert(menu_options, {name= "Restart Song", meta= "execute", execute= restart_song})
+end
 
 local function show_menu(pn)
 	menu_frames[pn]:unhide()
@@ -121,6 +117,7 @@ local function input(event)
 		if cons_players[pn].pause_hold_time > 0 then
 			pause_press_times[pn]= GetTimeSinceStart()
 		else
+			gameplay_pause_count= gameplay_pause_count + 1
 			screen_gameplay:PauseGame(true)
 			set_hit_text(pn, button, true)
 			show_menu(pn)

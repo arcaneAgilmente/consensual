@@ -592,6 +592,11 @@ local score_report_mt= {
 				local raise= 10^(precision+2)
 				local lower= 10^-precision
 				local percent_score= fmat:format(math.floor(adp/mdp * raise) * lower)
+				local dp_text= adp.." / "..mdp
+				if gameplay_pause_count > 0 then
+					percent_score= "P: " .. gameplay_pause_count .. ", " .. percent_score
+					dp_text= "P: " .. gameplay_pause_count .. ", " .. dp_text
+				end
 				local score_color= color_for_score(adp/mdp)
 				if flags.pct_score then
 					self.score:settext(percent_score):diffuse(score_color)
@@ -607,7 +612,7 @@ local score_report_mt= {
 						self.dp:zoom(1)
 						next_y= next_y + (self.spacing * .25)
 					end
-					self.dp:settext(adp.." / "..mdp):diffuse(score_color)
+					self.dp:settext(dp_text):diffuse(score_color)
 						:xy(0, next_y):zoomx(self.dp:GetZoomY()):visible(true)
 					if not flags.pct_score then
 						next_y= next_y + (self.spacing * .5)

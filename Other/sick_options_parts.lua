@@ -118,6 +118,10 @@ end
 local function mod_player(pn, mod_name, value)
 	local mod_func= PlayerOptions[mod_name]
 	if mod_func then
+		if value then
+			mod_func(cons_players[pn].song_options, value)
+			mod_func(cons_players[pn].current_options, value)
+		end
 		return mod_func(cons_players[pn].preferred_options, value)
 	else
 		Warn("mod '" .. tostring(mod_name) .. "' does not exist.")
