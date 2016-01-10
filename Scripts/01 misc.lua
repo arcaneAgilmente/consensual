@@ -10,6 +10,11 @@ function play_set(self) self:playcommand("Set") end
 -- ApplyGameCommand has no place in modern Stepmania lua.
 GameState.ApplyGameCommand= nil
 
+function gameplay_back_gives_up()
+	if ScreenGameplay.begin_backing_out then return false end
+	return true
+end
+
 function gte_nil(value, min)
 	if min then
 		return value >= min
