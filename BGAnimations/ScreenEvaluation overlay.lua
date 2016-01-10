@@ -1573,9 +1573,16 @@ local main_parts= {
 
 do
 	local tws= PREFSMAN:GetPreference("TimingWindowScale")
+	local tws_parts= {}
 	if tws ~= 1 then
-		main_parts[#main_parts+1]= normal_text("tws", "TWS: " .. ("%.3f"):format(tws), fetch_color("text"), fetch_color("stroke"), _screen.cx, 126)
+		tws_parts[#tws_parts+1]= "TWS: " .. ("%.3f"):format(tws)
 	end
+	local rate= GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate()
+	if rate ~= 1 then
+		tws_parts[#tws_parts+1]= "Rate: " .. ("%.2f"):format(rate)
+	end
+	local tws_text= table.concat(tws_parts, ", ")
+	main_parts[#main_parts+1]= normal_text("tws", tws_text, fetch_color("text"), fetch_color("stroke"), _screen.cx, 126)
 end
 
 return Def.ActorFrame(main_parts)
