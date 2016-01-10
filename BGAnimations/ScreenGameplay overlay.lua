@@ -13,7 +13,7 @@ local menu_x= {
 
 local enabled_players= {}
 local pause_buttons= {Start= true, Select= true, Back= true}
-if not gameplay_back_gives_up() then
+if not ScreenGameplay.begin_backing_out then
 	pause_buttons.Back= false
 end
 local pause_press_times= {}
