@@ -194,6 +194,9 @@ bpm_feedback_mt= {
 					self:update_flag()
 					self:update_config()
 				end,
+				OnCommand= function(subself)
+					self.screen_gameplay= SCREENMAN:GetTopScreen()
+				end,
 				self.tani:create_actors("tani", tanarg),
 			}
 			add_conf_messages(self, frame, "bpm")
@@ -204,7 +207,7 @@ bpm_feedback_mt= {
 		end,
 		update= function(self)
 			if self.hidden then return end
-			local bpm= SCREENMAN:GetTopScreen():GetTrueBPS(self.pn) * 60
+			local bpm= self.screen_gameplay:GetTrueBPS(self.pn) * 60
 			self.tani:set_number(("%.0f"):format(bpm))
 		end,
 		update_flag= function(self)
