@@ -272,7 +272,7 @@ local default_config= {
 	life_stages= 1,
 	notefield_config= {
 		fov= 45,
-		reverse= 0,
+		reverse= 1,
 		rot_x= 0,
 		rot_y= 0,
 		rot_z= 0,
@@ -327,6 +327,10 @@ v1_player_config= create_setting("player_config", "player_config.lua", v1config,
 player_config= create_setting("player_config", "player_config_v2.lua", default_config, -1, {"persistent_mods", "cons_persistent_mods", "persistent_song_mods"})
 
 function update_old_player_config(prof_slot, config)
+	-- Reverse changed engine-side from [0, 1] range to [1, -1] range.
+	if config.notefield_config.reverse == 0 then
+		config.notefield_config.reverse= 1
+	end
 	local fname= v1_player_config:get_filename(prof_slot)
 	if not fname then return end
 	if FILEMAN:DoesFileExist(fname) then

@@ -2,16 +2,21 @@ local named_configs= {
 	default= {
 		file= "default_grades",
 		1, .9975, .995, .99, .985, .975, .965, .945,
-			.925, .885, .845, .765, .685, .525, .365, .045
+			.925, .885, .845, .765, .685, .525, .365, .045,
+		min_tns= {},
 	},
 	itg= {
 		file= "default_grades",
 		1, .99, .98, .96, .94, .92, .89, .86, .83, .80, .76, .72, .68, .64,
 			.60, .55, 0,
+		min_tns= {},
 	},
 	sm5= {
 		file= "default_grades",
 		1, .93, .8, .65, .45, 0,
+		min_tns= {
+			"TapNoteScore_W1", "TapNoteScore_W2",
+		},
 	},
 }
 
@@ -32,6 +37,9 @@ local function sanity_check_grades()
 	end
 	if type(grades.file) ~= "string" then
 		grades.file= "default_grades"
+	end
+	if type(grades.min_tns) ~= "table" then
+		grades.min_tns= {}
 	end
 end
 
@@ -113,7 +121,14 @@ function convert_score_to_grade(judge_counts)
 	local score= adp / mdp
 	local grades= grade_config:get_data()
 	for i= 1, #grades do
-		if score >= grades[i] then return i, color, score end
+		local min_tns= grades.min_tns[i]
+		if min_tns then
+			if worst_tns_val >= tns_reverse[min_tns] and score >= grades[i] then
+				return i, color, score
+			end
+		else
+			if score >= grades[i] then return i, color, score end
+		end
 	end
 	return #grades, color, score
 end

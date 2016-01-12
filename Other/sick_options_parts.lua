@@ -598,7 +598,7 @@ options_sets.newskins= {
 				self.info_set[#self.info_set+1]= {
 					text= nv, underline= ni == self.selected_skin}
 			end
-			MESSAGEMAN:Broadcast("entered_gameplay_config", {pn= player_number})
+			MESSAGEMAN:Broadcast("entered_gameplay_config", {pn= pn})
 		end,
 		destructor= function(self, pn)
 			MESSAGEMAN:Broadcast("exited_gameplay_config", {pn= pn})

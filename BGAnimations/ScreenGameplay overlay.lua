@@ -25,6 +25,7 @@ rate_coordinator:initialize()
 local color_manips= {}
 local bpm_disps= {}
 local mods_menu= get_sick_options(rate_coordinator, color_manips, bpm_disps)
+local old_fg_visible= false
 
 local function close_menu(pn)
 	pause_menus[pn]:clear_options_set_stack()
@@ -38,6 +39,8 @@ local function close_menu(pn)
 		end
 	end
 	if not stay_paused then
+		local fg= screen_gameplay:GetChild("SongForeground")
+		if fg then fg:visible(old_fg_visible) end
 		screen_gameplay:PauseGame(false)
 	end
 end
@@ -120,8 +123,15 @@ local function input(event)
 		if cons_players[pn].pause_hold_time > 0 then
 			pause_press_times[pn]= GetTimeSinceStart()
 		else
-			gameplay_pause_count= gameplay_pause_count + 1
+			if GAMESTATE:GetCurMusicSeconds() > GAMESTATE:GetCurrentSong():GetFirstSecond() then
+				gameplay_pause_count= gameplay_pause_count + 1
+			end
 			screen_gameplay:PauseGame(true)
+			local fg= screen_gameplay:GetChild("SongForeground")
+			if fg then
+				old_fg_visible= fg:GetVisible()
+				fg:visible(false)
+			end
 			set_hit_text(pn, button, true)
 			show_menu(pn)
 		end
