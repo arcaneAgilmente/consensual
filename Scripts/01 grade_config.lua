@@ -29,9 +29,8 @@ grade_config= create_setting("grade_config", "grade_config.lua", named_configs.d
 local function sanity_check_grades()
 	local grades= grade_config:get_data()
 	for key, grade in pairs(grades) do
-		if type(key) == "string" and key ~= "file" then
-			grades[key]= nil
-		elseif type(key) ~= "number" then
+		if type(key) ~= "number" and key ~= "file" and key ~= "min_tns" then
+			lua.ReportScriptError("Found strange grade field " .. tostring(key))
 			grades[key]= nil
 		end
 	end
