@@ -285,7 +285,6 @@ local default_config= {
 		zoom_y= 1,
 		zoom_z= 1,
 	},
-	pause_hold_time= 0,
 	gameplay_element_colors= {
 		filter= fetch_color("accent.violet", 0),
 		life_full_outer= fetch_color("accent.blue"),

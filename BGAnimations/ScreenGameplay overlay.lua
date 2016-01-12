@@ -17,6 +17,8 @@ if not ScreenGameplay.begin_backing_out then
 	pause_buttons.Back= false
 end
 local pause_press_times= {}
+local double_tap_time= 1
+local tap_debounce_time= .1
 local hit_texts= {}
 local screen_gameplay= false
 
@@ -89,18 +91,8 @@ local function input(event)
 	if not enabled_players[pn] then return end
 	local button= event.GameButton
 	if not button then return end
+	if event.type == "InputEventType_Release" then return end
 	local is_paused= screen_gameplay:IsPaused()
-	if event.type == "InputEventType_Release" then
-		if not is_paused and pause_buttons[button] and pause_press_times[pn] then
-			if GetTimeSinceStart() - pause_press_times[pn] >= cons_players[pn].pause_hold_time then
-				screen_gameplay:PauseGame(true)
-				set_hit_text(pn, button, false)
-				show_menu(pn)
-			end
-			pause_press_times[pn]= nil
-		end
-		return
-	end
 	if is_paused then
 		if pause_menus[pn].hidden then
 			if pause_buttons[button] then
@@ -119,21 +111,33 @@ local function input(event)
 			end
 		end
 		return true
-	elseif pause_buttons[button] then
-		if cons_players[pn].pause_hold_time > 0 then
-			pause_press_times[pn]= GetTimeSinceStart()
+	else
+		if event.type ~= "InputEventType_FirstPress" then return end
+		if pause_buttons[button] then
+			if pause_press_times[pn] then
+				local time_diff= GetTimeSinceStart() - pause_press_times[pn]
+				if time_diff > tap_debounce_time then
+					if time_diff < double_tap_time then
+						if GAMESTATE:GetCurMusicSeconds() > GAMESTATE:GetCurrentSong():GetFirstSecond() then
+							gameplay_pause_count= gameplay_pause_count + 1
+						end
+						local fg= screen_gameplay:GetChild("SongForeground")
+						if fg then
+							old_fg_visible= fg:GetVisible()
+							fg:visible(false)
+						end
+						screen_gameplay:PauseGame(true)
+						set_hit_text(pn, button, false)
+						show_menu(pn)
+					else
+						pause_press_times[pn]= GetTimeSinceStart()
+					end
+				end
+			else
+				pause_press_times[pn]= GetTimeSinceStart()
+			end
 		else
-			if GAMESTATE:GetCurMusicSeconds() > GAMESTATE:GetCurrentSong():GetFirstSecond() then
-				gameplay_pause_count= gameplay_pause_count + 1
-			end
-			screen_gameplay:PauseGame(true)
-			local fg= screen_gameplay:GetChild("SongForeground")
-			if fg then
-				old_fg_visible= fg:GetVisible()
-				fg:visible(false)
-			end
-			set_hit_text(pn, button, true)
-			show_menu(pn)
+			pause_press_times[pn]= nil
 		end
 		return true
 	end

@@ -1413,7 +1413,6 @@ local special= {
 			SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
 			trans_new_screen("ScreenConsSelectMusic")
 		end, unset= noop_nil},
-	player_conf_float("Pause Hold Time", "pause_hold_time", 1, -3, -1, 0, -1, 3),
 	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options, level= 4},
 	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions, level= 4,
 		args= {eles= {
