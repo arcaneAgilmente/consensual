@@ -56,7 +56,7 @@ local function forfeit(pn)
 end
 
 local function restart_song(pn)
-	backout("ScreenGameplay")
+	backout(Branch.GameplayScreen())
 end
 
 local menu_options= {
@@ -112,6 +112,7 @@ local function input(event)
 		end
 		return true
 	else
+		button= event.button
 		if event.type ~= "InputEventType_FirstPress" then return end
 		if pause_buttons[button] then
 			if pause_press_times[pn] then

@@ -719,7 +719,7 @@ local function gen_noteskin_param_submenu(pn, param_section, type_info, skin_def
 			local field_type= type(skin_defaults[field])
 			local translation= get_noteskin_param_translation(field, type_info[field])
 			local submenu= {name= translation.title}
-			if not param_section[field] then
+			if param_section[field] == nil then
 				if field_type == "table" then
 					param_section[field]= DeepCopy(skin_defaults[field])
 				else
@@ -1538,6 +1538,8 @@ local base_options= {
 		req_func= newskin_available},
 	{ name= "Newskin params", meta= options_sets.menu,
 		args= gen_noteskin_param_menu, req_func= show_noteskin_param_menu},
+	{ name= "Reload Newskins", meta= "execute", req_func= newskin_available,
+		execute= function() NEWSKIN:reload_skins() end},
 	{ name= "Shown Noteskins", meta= options_sets.shown_noteskins, args= {}},
 	{ name= "Playback Options", meta= options_sets.menu, args= playback_options,
 		level= 3},

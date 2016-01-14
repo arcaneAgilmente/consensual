@@ -1214,6 +1214,14 @@ local function garb_input(event)
 	end
 end
 
+local function maybe_playerize(pn, stype)
+	if GAMEMAN:stepstype_is_multiplayer(stype) then
+		for i, col in ipairs(newfields[pn]:get_columns()) do
+			col:set_playerize_mode("NotePlayerizeMode_Quanta")
+		end
+	end
+end
+
 local function set_notefield_pos(pn)
 	local el_pos= cons_players[pn].gameplay_element_positions
 	local base_pos= side_actor_base_pos[pn]
@@ -1237,6 +1245,7 @@ local function set_newfield_skin(pn)
 		local skin_params= profile:get_noteskin_params(skin, stype)
 		newfields[pn]:set_skin(skin, skin_params)
 		set_newfield_config(pn)
+		maybe_playerize(pn, stype)
 	end
 end
 
@@ -1345,6 +1354,7 @@ return Def.ActorFrame {
 					else
 						side_actors[pn]:set_newfield_preferred(true)
 						set_newfield_config(pn)
+						maybe_playerize(pn, find_current_stepstype(pn))
 					end
 				end
 				if notefields[pn] then
