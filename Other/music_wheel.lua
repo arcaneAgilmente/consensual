@@ -207,6 +207,7 @@ local wheel_item_mt= {
 			and self.info and self.info.song_info then
 				local stype= get_preferred_steps_type(pn)
 				local diff= GAMESTATE:GetPreferredDifficulty(pn)
+				if not diff then diff= "Difficulty_Beginner" end
 				local steps= self.info.song_info:GetOneSteps(stype, diff)
 				local profile= PROFILEMAN:GetProfile(pn)
 				if steps and profile then
