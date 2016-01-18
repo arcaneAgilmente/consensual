@@ -446,7 +446,7 @@ local music_whale= {
 --				rec_print_table(self.cursor_item)
 				search_path= {
 					bucket_search_for_item(self.sorted_songs, self.cursor_item, dir_compare)}
-				if search_path[1] == -1 then
+				if search_path[1] == -1 and self.cursor_song then
 --					Trace("Failed to find cursor item, searching for song:  " .. table.concat(search_path, ", "))
 					search_path= {bucket_search(self.sorted_songs, self.cursor_song,
 																			final_compare, true)}

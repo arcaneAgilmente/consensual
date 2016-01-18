@@ -99,22 +99,6 @@ function get_sick_options(rate_coordinator, color_manips, bpm_disps)
 -- get_current_rate()
 --   Returns the current rate.
 
--- The current rate is a leftover from the previous song.  It might slow the
--- current song down enough to go over the time limit.  So it needs to be
--- adjusted to bring the song within that limit.
-if GAMESTATE:GetCoinMode() ~= "CoinMode_Home" then
-	local remain= get_time_remaining()
-	local song_len= get_current_song_length()
-	local rate= get_rate_from_songopts()
-	if song_len / rate > remain then
-		local new_rate= song_len / remain
-		new_rate= force_to_range(0.5, new_rate, 2.0)
-		new_rate= math.round(new_rate * 100) / 100
-		GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(new_rate)
-		rate_coordinator:notify(new_rate, true)
-	end
-end
-
 local function mod_player(pn, mod_name, value)
 	local mod_func= PlayerOptions[mod_name]
 	if mod_func then
