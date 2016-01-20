@@ -247,6 +247,11 @@ local function update_curr_wheel_layout()
 end
 
 local function set_closest_steps_to_preferred(pn)
+	local song= gamestate_get_curr_song()
+	if not song then
+		gamestate_set_curr_steps(pn, nil)
+		return
+	end
 	local preferred_diff= GAMESTATE:GetPreferredDifficulty(pn) or
 		"Difficulty_Beginner"
 	local pref_steps_type= get_preferred_steps_type(pn)

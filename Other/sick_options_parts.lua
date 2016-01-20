@@ -764,7 +764,7 @@ local function show_noteskin_param_menu(pn)
 	local player_skin= profiles[pn]:get_preferred_noteskin(stepstype)
 	local skin_info= NEWSKIN:get_skin_parameter_info(player_skin)
 	local skin_defaults= NEWSKIN:get_skin_parameter_defaults(player_skin)
-	return skin_defaults ~= nil and skin_info ~= nil
+	return skin_defaults ~= nil and skin_info ~= nil and next(skin_defaults)
 end
 
 dofile(THEME:GetPathO("", "tags_menu.lua"))

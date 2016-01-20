@@ -42,6 +42,7 @@ gameplay_preview_mt= {
 		end,
 		per_frame_update= function(self, delta)
 			if self.hidden then return end
+			if not self.curr_steps then return end
 			local song_pos= GAMESTATE:GetSongPosition()
 			local music_seconds= song_pos:GetMusicSeconds()
 			self.field:set_curr_second(music_seconds)
@@ -59,8 +60,10 @@ gameplay_preview_mt= {
 			if steps ~= self.curr_steps then
 				self.curr_steps= steps
 				self.field:set_steps(steps)
-				set_speed_from_speed_info(cons_players[self.pn], self.field)
-				self:update_field()
+				if steps then
+					set_speed_from_speed_info(cons_players[self.pn], self.field)
+					self:update_field()
+				end
 			end
 		end,
 		update_config= function(self, param)
