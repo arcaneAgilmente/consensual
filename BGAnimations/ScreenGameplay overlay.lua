@@ -92,6 +92,7 @@ local function input(event)
 	local button= event.GameButton
 	if not button then return end
 	if event.type == "InputEventType_Release" then return end
+	if screen_gameplay:GetName() == "ScreenGameplaySyncMachine" then return end
 	local is_paused= screen_gameplay:IsPaused()
 	if is_paused then
 		if pause_menus[pn].hidden then

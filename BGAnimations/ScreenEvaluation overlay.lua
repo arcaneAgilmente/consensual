@@ -599,8 +599,9 @@ local score_report_mt= {
 				end
 				local score_color= color_for_score(adp/mdp)
 				if flags.pct_score then
-					self.score:settext(percent_score):diffuse(score_color)
+					self.score:settext(percent_score)
 						:xy(0, next_y):zoomx(self.score:GetZoomY()):visible(true)
+					rot_color_text(self.score, score_color)
 					next_y= next_y + (self.spacing * .75)
 				else
 					self.score:settext(""):visible(false)
@@ -612,8 +613,9 @@ local score_report_mt= {
 						self.dp:zoom(1)
 						next_y= next_y + (self.spacing * .25)
 					end
-					self.dp:settext(dp_text):diffuse(score_color)
+					self.dp:settext(dp_text)
 						:xy(0, next_y):zoomx(self.dp:GetZoomY()):visible(true)
+					rot_color_text(self.dp, score_color)
 					if not flags.pct_score then
 						next_y= next_y + (self.spacing * .5)
 					end

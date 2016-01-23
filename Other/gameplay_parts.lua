@@ -458,6 +458,9 @@ numerical_score_feedback_mt= {
 			self.curr_dp:settext(adp):diffuse(text_color)
 			self.max_dp:settext(mdp):diffuse(text_color)
 			self.sub_dp:settext(mdp-missed_points):diffuse(text_color)
+			for i, part in ipairs{self.pct, self.sub_pct, self.curr_dp, self.max_dp, self.sub_dp} do
+				rot_color_text(part, text_color)
+			end
 		end,
 		update_flag= function(self)
 			local something_showing= false

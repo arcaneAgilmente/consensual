@@ -467,6 +467,8 @@ local function interpret_code(pn, code)
 				attempt_play({pn}, pn, extra)
 			elseif extra == "versus_choice" then
 				attempt_play({PLAYER_1, PLAYER_2}, pn, extra)
+			elseif extra == "button_mash_choice" then
+				trans_new_screen("ScreenButtonMash")
 			elseif extra == "stepmania_ops" then
 				trans_new_screen("ScreenOptionsService")
 			elseif extra == "consensual_ops" then

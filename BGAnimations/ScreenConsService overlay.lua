@@ -501,6 +501,7 @@ end
 local im_options= {
 	imop("im_have_single", "single_choice"),
 	imop("im_have_versus", "versus_choice"),
+	imop("im_have_button_mash", "button_mash_choice"),
 	imop("im_have_playmode", "playmode_choice"),
 	imop("im_have_profile", "profile_choice"),
 	imop("im_have_smops", "stepmania_ops"),

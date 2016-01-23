@@ -597,7 +597,6 @@ options_sets.newskins= {
 					end
 				end
 				self.player_skin= self.ops[ops_pos]
-				mod_player(self.player_number, "NewSkin", self.player_skin)
 				profiles[self.player_number]:set_preferred_noteskin(self.stepstype, self.player_skin)
 				self:update_el_underline(self.cursor_pos, true)
 				self:set_status()

@@ -602,7 +602,7 @@ local args= {
 		if not cons_players[player].fake_judge then
 			set_combo_stuff(param)
 		end
-	end
+	end,
 	},
 }
 args[1].OnCommand= THEME:GetMetric("Judgment", "JudgmentOnCommand")

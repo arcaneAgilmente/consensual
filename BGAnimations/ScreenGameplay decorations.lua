@@ -2,8 +2,8 @@ local pi= math.pi
 local rate_coordinator= setmetatable({}, rate_coordinator_interface_mt)
 rate_coordinator:initialize()
 
+local screen_name= Var("LoadingScreen")
 local function can_have_special_actors()
-	local screen_name= Var("LoadingScreen")
 	return screen_name == "ScreenGameplay" or
 		screen_name == "ScreenGameplayShared" or
 		screen_name == "ScreenDemonstration"
@@ -605,7 +605,7 @@ local function Update(self, delta)
 		gameplay_end_time= get_screen_time()
 	end
 	-- FIXME: Does not work in sync mode.
-	if true or can_have_special_actors() then
+	if can_have_special_actors() then
 		song_progress_bar:update()
 		song_rate:update()
 	end
