@@ -21,9 +21,8 @@ end
 PREFSMAN:SetPreference("BannerCache", "BannerCacheMode_Off")
 
 if PREFSMAN:GetPreference("VideoRenderers"):sub(1, 6) ~= "opengl" then
-	version_failed= true
 	show_message= true
-	message= "d3d renderer not supported.  Edit your Preferences.ini to switch VideoRenderers to opengl."
+	message= "d3d renderer not supported.  If anything looks strange, edit your Preferences.ini to switch VideoRenderers to opengl."
 end
 
 dofile(THEME:GetPathO("", "strokes.lua"))
@@ -78,8 +77,9 @@ return Def.ActorFrame{
 				self:linear(.5)
 				self:diffusealpha(1)
 				self:linear(5)
+			else
+				self:queuecommand("Continue")
 			end
-			self:queuecommand("Continue")
 		end,
 		OnCommand= function(self)
 			SCREENMAN:GetTopScreen():AddInputCallback(input)

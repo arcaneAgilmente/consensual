@@ -211,6 +211,30 @@ local function grade_val_conf(index)
 			val_to_text= function(pn, value) return fmt_gpct(value) end,
 	}}
 end
+local function grade_tns_conf(index)
+	return {
+		name= "grade_min_tns", meta= options_sets.enum_option, args= {
+			name= "grade_min_tns", obj_get= noop_nil, enum= TapNoteScore,
+			get= function()
+				return grade_data.min_tns[index] or "TNS_None"
+			end,
+			set= function(value)
+				if value == "TNS_None" then
+					grade_data.min_tns[index]= nil
+				else
+					grade_data.min_tns[index]= value
+				end
+			end,
+	}}
+end
+
+local function grade_item_menu(index)
+	return {
+		name= "Grade " .. index, meta= options_sets.menu, args= {
+			grade_val_conf(index),
+			grade_tns_conf(index),
+	}}
+end
 
 local function gen_grade_image_menu()
 	local eles= {}
@@ -275,7 +299,7 @@ local function gen_grade_options()
 		ret[#ret+1]= {name= "set_grade_" .. name}
 	end
 	for i= 1, #grade_data do
-		ret[#ret+1]= grade_val_conf(i)
+		ret[#ret+1]= grade_item_menu(i)
 	end
 	ret[#ret+1]= {name= "add_grade"}
 	ret[#ret+1]= {name= "remove_grade"}
@@ -477,6 +501,7 @@ end
 local im_options= {
 	imop("im_have_single", "single_choice"),
 	imop("im_have_versus", "versus_choice"),
+	imop("im_have_button_mash", "button_mash_choice"),
 	imop("im_have_playmode", "playmode_choice"),
 	imop("im_have_profile", "profile_choice"),
 	imop("im_have_smops", "stepmania_ops"),

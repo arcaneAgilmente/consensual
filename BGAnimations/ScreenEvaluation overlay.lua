@@ -592,10 +592,16 @@ local score_report_mt= {
 				local raise= 10^(precision+2)
 				local lower= 10^-precision
 				local percent_score= fmat:format(math.floor(adp/mdp * raise) * lower)
+				local dp_text= adp.." / "..mdp
+				if gameplay_pause_count > 0 then
+					percent_score= "P: " .. gameplay_pause_count .. ", " .. percent_score
+					dp_text= "P: " .. gameplay_pause_count .. ", " .. dp_text
+				end
 				local score_color= color_for_score(adp/mdp)
 				if flags.pct_score then
-					self.score:settext(percent_score):diffuse(score_color)
+					self.score:settext(percent_score)
 						:xy(0, next_y):zoomx(self.score:GetZoomY()):visible(true)
+					rot_color_text(self.score, score_color)
 					next_y= next_y + (self.spacing * .75)
 				else
 					self.score:settext(""):visible(false)
@@ -607,8 +613,9 @@ local score_report_mt= {
 						self.dp:zoom(1)
 						next_y= next_y + (self.spacing * .25)
 					end
-					self.dp:settext(adp.." / "..mdp):diffuse(score_color)
+					self.dp:settext(dp_text)
 						:xy(0, next_y):zoomx(self.dp:GetZoomY()):visible(true)
+					rot_color_text(self.dp, score_color)
 					if not flags.pct_score then
 						next_y= next_y + (self.spacing * .5)
 					end
@@ -1568,9 +1575,16 @@ local main_parts= {
 
 do
 	local tws= PREFSMAN:GetPreference("TimingWindowScale")
+	local tws_parts= {}
 	if tws ~= 1 then
-		main_parts[#main_parts+1]= normal_text("tws", "TWS: " .. ("%.3f"):format(tws), fetch_color("text"), fetch_color("stroke"), _screen.cx, 126)
+		tws_parts[#tws_parts+1]= "TWS: " .. ("%.3f"):format(tws)
 	end
+	local rate= GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate()
+	if rate ~= 1 then
+		tws_parts[#tws_parts+1]= "Rate: " .. ("%.2f"):format(rate)
+	end
+	local tws_text= table.concat(tws_parts, ", ")
+	main_parts[#main_parts+1]= normal_text("tws", tws_text, fetch_color("text"), fetch_color("stroke"), _screen.cx, 126)
 end
 
 return Def.ActorFrame(main_parts)

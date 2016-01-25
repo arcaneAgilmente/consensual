@@ -99,25 +99,13 @@ function get_sick_options(rate_coordinator, color_manips, bpm_disps)
 -- get_current_rate()
 --   Returns the current rate.
 
--- The current rate is a leftover from the previous song.  It might slow the
--- current song down enough to go over the time limit.  So it needs to be
--- adjusted to bring the song within that limit.
-if GAMESTATE:GetCoinMode() ~= "CoinMode_Home" then
-	local remain= get_time_remaining()
-	local song_len= get_current_song_length()
-	local rate= get_rate_from_songopts()
-	if song_len / rate > remain then
-		local new_rate= song_len / remain
-		new_rate= force_to_range(0.5, new_rate, 2.0)
-		new_rate= math.round(new_rate * 100) / 100
-		GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(new_rate)
-		rate_coordinator:notify(new_rate, true)
-	end
-end
-
 local function mod_player(pn, mod_name, value)
 	local mod_func= PlayerOptions[mod_name]
 	if mod_func then
+		if value then
+			mod_func(cons_players[pn].song_options, value)
+			mod_func(cons_players[pn].current_options, value)
+		end
 		return mod_func(cons_players[pn].preferred_options, value)
 	else
 		Warn("mod '" .. tostring(mod_name) .. "' does not exist.")
@@ -594,7 +582,7 @@ options_sets.newskins= {
 				self.info_set[#self.info_set+1]= {
 					text= nv, underline= ni == self.selected_skin}
 			end
-			MESSAGEMAN:Broadcast("entered_gameplay_config", {pn= player_number})
+			MESSAGEMAN:Broadcast("entered_gameplay_config", {pn= pn})
 		end,
 		destructor= function(self, pn)
 			MESSAGEMAN:Broadcast("exited_gameplay_config", {pn= pn})
@@ -609,7 +597,6 @@ options_sets.newskins= {
 					end
 				end
 				self.player_skin= self.ops[ops_pos]
-				mod_player(self.player_number, "NewSkin", self.player_skin)
 				profiles[self.player_number]:set_preferred_noteskin(self.stepstype, self.player_skin)
 				self:update_el_underline(self.cursor_pos, true)
 				self:set_status()
@@ -715,7 +702,7 @@ local function gen_noteskin_param_submenu(pn, param_section, type_info, skin_def
 			local field_type= type(skin_defaults[field])
 			local translation= get_noteskin_param_translation(field, type_info[field])
 			local submenu= {name= translation.title}
-			if not param_section[field] then
+			if param_section[field] == nil then
 				if field_type == "table" then
 					param_section[field]= DeepCopy(skin_defaults[field])
 				else
@@ -776,7 +763,7 @@ local function show_noteskin_param_menu(pn)
 	local player_skin= profiles[pn]:get_preferred_noteskin(stepstype)
 	local skin_info= NEWSKIN:get_skin_parameter_info(player_skin)
 	local skin_defaults= NEWSKIN:get_skin_parameter_defaults(player_skin)
-	return skin_defaults ~= nil and skin_info ~= nil
+	return skin_defaults ~= nil and skin_info ~= nil and next(skin_defaults)
 end
 
 dofile(THEME:GetPathO("", "tags_menu.lua"))
@@ -1409,7 +1396,6 @@ local special= {
 			SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
 			trans_new_screen("ScreenConsSelectMusic")
 		end, unset= noop_nil},
-	player_conf_float("Pause Hold Time", "pause_hold_time", 1, -3, -1, 0, -1, 3),
 	{ name= "Unacceptable Score", meta= options_sets.menu, args= unacceptable_options, level= 4},
 	{ name= "Judgement", meta= options_sets.mutually_exclusive_special_functions, level= 4,
 		args= {eles= {
@@ -1491,9 +1477,9 @@ local decorations= {
 	player_conf_float("Error History Size", "error_history_size", 4, 0, 1, 2, 0, 512),
 	player_conf_float("Low Score Random Threshold",
 										"low_score_random_threshold", 3, -4, -2, -1, 0, 1),
-	player_conf_float("Life Blank Area", "life_blank_percent", 3, -2, -1, 0, -1, 2),
-	player_conf_float("Life Use Width", "life_use_width", 3, -2, -1, 0, -1, 2),
-	player_conf_float("Life Stages", "life_stages", 3, 0, 0, 0, 1, 16),
+	gameplay_conf_float("Life Blank Area", "life_blank_percent", "lifebar", 3, -2, -1, 0, -1, 2),
+	gameplay_conf_float("Life Use Width", "life_use_width", "lifebar", 3, -2, -1, 0, -1, 2),
+	gameplay_conf_float("Life Stages", "life_stages", "lifebar", 3, 0, 0, 0, 1, 16),
 	{ name= "Sigil Detail", meta= options_sets.adjustable_float,
 		args= extra_for_sigil_detail()},
 	{ name= "Noteskin", meta= options_sets.noteskins, req_func= not_newskin_available},
@@ -1535,6 +1521,8 @@ local base_options= {
 		req_func= newskin_available},
 	{ name= "Newskin params", meta= options_sets.menu,
 		args= gen_noteskin_param_menu, req_func= show_noteskin_param_menu},
+	{ name= "Reload Newskins", meta= "execute", req_func= newskin_available,
+		execute= function() NEWSKIN:reload_skins() end},
 	{ name= "Shown Noteskins", meta= options_sets.shown_noteskins, args= {}},
 	{ name= "Playback Options", meta= options_sets.menu, args= playback_options,
 		level= 3},

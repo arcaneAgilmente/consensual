@@ -29,6 +29,11 @@ local function length(song)
 	return {math.round(song_get_length(song))}
 end
 
+local function first_second(song)
+	if not song then return {0} end
+	return {song:GetFirstSecond()}
+end
+
 local function difficulty_wrapper(difficulty)
 	return function(song)
 					 if song.GetStepsByStepsType then
@@ -197,6 +202,10 @@ end
 
 local function by_words(song)
 	return split_string_to_words(song:GetDisplayMainTitle())
+end
+
+local function by_words_in_group(song)
+	return split_string_to_words(song:GetGroupName())
 end
 
 local function any_meter(song)
@@ -379,6 +388,8 @@ local shared_sort_factors= {
 	-- Fun fact:  Implemented 2 days before Anime Banzai 2014, just to show off.
 	{ name= "Word In Title", get_names= by_words, uses_depth= true,
 		can_join= noop_true, insensitive_names= true, returns_multiple= true},
+	{ name= "Word In Group", get_names= by_words_in_group, uses_depth= true,
+		can_join= noop_false, insensitive_names= true, returns_multiple= true},
 	{ name= "Favor+Group", multi_level_sort= true, get_names= noop_blank,
 		{name= "Favor", get_names= favor_wrapper("ProfileSlot_Machine"), can_join= noop_false},
 		group_sort,
@@ -421,6 +432,7 @@ local song_sort_factors= {
 	{ name= "Genre", get_names= generic_get_wrapper("GetGenre"),
 		uses_depth= true, insensitive_names= true},
 	{ name= "Length", get_names= length},
+	{ name= "First Second", get_names= first_second},
 	{ name= "Step Artist", insensitive_names= true, get_names= step_artist,
 		returns_multiple= true},
 	make_bucket_from_factors("Timing Data", timing_sort_factors),
@@ -526,7 +538,7 @@ local function make_rival_bucket()
 	bucket_traverse(sorted_names, nil, convert_name_to_bucket)
 --	Trace("Converted names to buckets:")
 --	rec_print_table(sorted_names)
-	return {name= {value= "Rival", source= source}, contents= sorted_names}
+	return {name= {value= "Highscore Name", source= source}, contents= sorted_names}
 end
 
 local rival_bucket= {}
@@ -560,7 +572,7 @@ local function add_factor_sets_to_sort_list(contents, sets)
 end
 
 local function add_common_buckets_to_sort_list(contents)
-	contents[#contents+1]= make_bucket_from_factors("Meter",meter_sort_factors)
+	contents[#contents+1]= make_bucket_from_factors("Difficulty",meter_sort_factors)
 	contents[#contents+1]= make_bucket_from_factors("Favor",favor_sort_factors)
 	contents[#contents+1]= make_bucket_from_factors("Tag",tag_sort_factors)
 	contents[#contents+1]= score_factor_bucket

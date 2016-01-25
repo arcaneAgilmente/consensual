@@ -632,6 +632,9 @@ options_sets.menu= {
 			if self.display then
 				self.display:set_info_set(self.info_set)
 				self:scroll_to_pos(self.cursor_pos)
+				for i, item in ipairs(self.display.sick_wheel.items) do
+					item.container:finishtweening()
+				end
 			end
 		end,
 		id_plus_up= function(self, id)

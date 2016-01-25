@@ -88,7 +88,7 @@ sigil_feedback_mt= {
 			if pdp == 0 then
 				score= 1
 			end
-			score_update(score)
+			self:score_update(score)
 		end,
 		update_flag= function(self)
 			general_flag_check(self, cons_players[self.pn].flags.gameplay.sigil)
@@ -194,6 +194,9 @@ bpm_feedback_mt= {
 					self:update_flag()
 					self:update_config()
 				end,
+				OnCommand= function(subself)
+					self.screen_gameplay= SCREENMAN:GetTopScreen()
+				end,
 				self.tani:create_actors("tani", tanarg),
 			}
 			add_conf_messages(self, frame, "bpm")
@@ -204,7 +207,7 @@ bpm_feedback_mt= {
 		end,
 		update= function(self)
 			if self.hidden then return end
-			local bpm= SCREENMAN:GetTopScreen():GetTrueBPS(self.pn) * 60
+			local bpm= self.screen_gameplay:GetTrueBPS(self.pn) * 60
 			self.tani:set_number(("%.0f"):format(bpm))
 		end,
 		update_flag= function(self)
@@ -455,6 +458,9 @@ numerical_score_feedback_mt= {
 			self.curr_dp:settext(adp):diffuse(text_color)
 			self.max_dp:settext(mdp):diffuse(text_color)
 			self.sub_dp:settext(mdp-missed_points):diffuse(text_color)
+			for i, part in ipairs{self.pct, self.sub_pct, self.curr_dp, self.max_dp, self.sub_dp} do
+				rot_color_text(part, text_color)
+			end
 		end,
 		update_flag= function(self)
 			local something_showing= false

@@ -809,7 +809,7 @@ function apply_newfield_config(newfield, config, vanxoff, vanyoff)
 		newfield:get_trans_zoom_z():set_value(config.zoom)
 	end
 	for i, col in ipairs(newfield:get_columns()) do
-		col:get_reverse_percent():set_value(config.reverse)
+		col:get_reverse_scale():set_value(config.reverse)
 		col:get_reverse_offset_pixels():set_value(_screen.cy + config.yoffset)
 	end
 end

@@ -15,48 +15,51 @@ local Pulse = THEME:GetMetric("Combo", "PulseCommand");
 local PulseLabel = THEME:GetMetric("Combo", "PulseLabelCommand");
 
 local JudgeCmds = {}
-if cons_players[player].flags.gameplay.still_judge then
-	local function judge_general_effect(self)
-		self:diffusealpha(1):sleep(.8):april_linear(.1):diffusealpha(0)
-	end
-	for i, w in ipairs{"W2", "W3", "W4", "W5", "Miss"} do
-		JudgeCmds["TapNoteScore_"..w]= judge_general_effect
-	end
-	JudgeCmds.TapNoteScore_W1= function(self)
-		self:glowblink():effectperiod(.05):effectcolor1(color("1,1,1,0"))
-			:effectcolor2(color("1,1,1,0.25"))
-		judge_general_effect(self)
-	end
-	Pulse= noop_nil
-	PulseLabel= noop_nil
-else
-	local function judge_general_effect(self, i)
-		local jscale= el_pos.judgment_scale
-		self:diffusealpha(1):zoom((1 + (.1 * (6 - i))) * jscale)
-			:april_linear(.05):zoom(jscale):sleep(.8)
-			:april_linear(.1):zoomy(.5 * jscale):zoomx(2 * jscale):diffusealpha(0)
-	end
-	for i, w in ipairs{"W2", "W3", "W4"} do
-		JudgeCmds["TapNoteScore_"..w]= function(self)
-			judge_general_effect(self, i + 1)
+local function set_judge_commands()
+	if cons_players[player].flags.gameplay.still_judge then
+		local function judge_general_effect(self)
+			self:diffusealpha(1):sleep(.8):april_linear(.1):diffusealpha(0)
+		end
+		for i, w in ipairs{"W2", "W3", "W4", "W5", "Miss"} do
+			JudgeCmds["TapNoteScore_"..w]= judge_general_effect
+		end
+		JudgeCmds.TapNoteScore_W1= function(self)
+			self:glowblink():effectperiod(.05):effectcolor1(color("1,1,1,0"))
+				:effectcolor2(color("1,1,1,0.25"))
+			judge_general_effect(self)
+		end
+		Pulse= noop_nil
+		PulseLabel= noop_nil
+	else
+		local function judge_general_effect(self, i)
+			local jscale= el_pos.judgment_scale
+			self:diffusealpha(1):zoom((1 + (.1 * (6 - i))) * jscale)
+				:april_linear(.05):zoom(jscale):sleep(.8)
+				:april_linear(.1):zoomy(.5 * jscale):zoomx(2 * jscale):diffusealpha(0)
+		end
+		for i, w in ipairs{"W2", "W3", "W4"} do
+			JudgeCmds["TapNoteScore_"..w]= function(self)
+				judge_general_effect(self, i + 1)
+			end
+		end
+		JudgeCmds.TapNoteScore_W1= function(self)
+			self:glowblink():effectperiod(.05):effectcolor1(color("1,1,1,0"))
+				:effectcolor2(color("1,1,1,0.25"))
+			judge_general_effect(self, 1)
+		end
+		JudgeCmds.TapNoteScore_W5= function(self)
+			self:vibrate():effectmagnitude(4, 8, 8)
+			judge_general_effect(self, 5)
+		end
+		JudgeCmds.TapNoteScore_Miss= function(self)
+			local jscale= el_pos.judgment_scale
+			self:diffusealpha(1):zoom(jscale):y(-20 * jscale)
+				:april_linear(.8):y(20 * jscale):sleep(.8)
+				:april_linear(.1):zoomy(.5 * jscale):zoomx(2 * jscale):diffusealpha(0)
 		end
 	end
-	JudgeCmds.TapNoteScore_W1= function(self)
-		self:glowblink():effectperiod(.05):effectcolor1(color("1,1,1,0"))
-			:effectcolor2(color("1,1,1,0.25"))
-		judge_general_effect(self, 1)
-	end
-	JudgeCmds.TapNoteScore_W5= function(self)
-		self:vibrate():effectmagnitude(4, 8, 8)
-		judge_general_effect(self, 5)
-	end
-	JudgeCmds.TapNoteScore_Miss= function(self)
-		local jscale= el_pos.judgment_scale
-		self:diffusealpha(1):zoom(jscale):y(-20 * jscale)
-			:april_linear(.8):y(20 * jscale):sleep(.8)
-			:april_linear(.1):zoomy(.5 * jscale):zoomx(2 * jscale):diffusealpha(0)
-	end
 end
+set_judge_commands()
 
 local NumberMinZoom = THEME:GetMetric("Combo", "NumberMinZoom");
 local NumberMaxZoom = THEME:GetMetric("Combo", "NumberMaxZoom");
@@ -179,6 +182,17 @@ local error_bar_mt= {
 			return Def.ActorFrame{
 				InitCommand= function(subself)
 					self.container= subself
+				end,
+				player_flags_changedMessageCommand= function(subself, param)
+					if param.pn ~= player then return end
+					if param.name ~= "error_bar" then return end
+					if cons_players[player].flags.gameplay.error_bar then
+						self.hidden= false
+						self.container:hibernate(0)
+					else
+						self.hidden= true
+						self.container:hibernate(math.huge)
+					end
 				end,
 				Def.ActorFrame{
 					InitCommand= function(subself)
@@ -424,6 +438,13 @@ local args= {
 			end
 		end
 	end,
+	player_flags_changedMessageCommand= function(self, param)
+		if param.pn ~= player then return end
+		if param.name ~= "still_judge" then return end
+		set_judge_commands()
+		Judgment:zoom(el_pos.judgment_scale)
+		set_display_judgment("TapNoteScore_W1", .0215)
+	end,
 	gameplay_conf_changedMessageCommand= function(self, param)
 		if param.pn ~= player then return end
 		if not judgment_conf_names[param.thing] then return end
@@ -581,7 +602,7 @@ local args= {
 		if not cons_players[player].fake_judge then
 			set_combo_stuff(param)
 		end
-	end
+	end,
 	},
 }
 args[1].OnCommand= THEME:GetMetric("Judgment", "JudgmentOnCommand")

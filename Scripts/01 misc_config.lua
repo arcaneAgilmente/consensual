@@ -58,6 +58,7 @@ local default_config= {
 	initial_menu_ops= {
 		single_choice= true,
 		versus_choice= true,
+		button_mash_choice= true,
 		playmode_choice= true,
 		profile_choice= true,
 		stepmania_ops= true,
@@ -75,6 +76,7 @@ expansion_mode_enum= {"full", "basic", "title_only"}
 sorted_initial_menu_ops= {
 	"single_choice",
 	"versus_choice",
+	"button_mash_choice",
 	"playmode_choice",
 	"profile_choice",
 	"stepmania_ops",

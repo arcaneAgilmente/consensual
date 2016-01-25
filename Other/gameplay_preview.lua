@@ -42,18 +42,17 @@ gameplay_preview_mt= {
 		end,
 		per_frame_update= function(self, delta)
 			if self.hidden then return end
+			if not self.curr_steps then return end
 			local song_pos= GAMESTATE:GetSongPosition()
 			local music_seconds= song_pos:GetMusicSeconds()
-			for i, col in ipairs(self.field:get_columns()) do
-				col:set_curr_second(music_seconds)
-			end
+			self.field:set_curr_second(music_seconds)
 			self.pos_text:settextf("%.2f\n%.2f", song_pos:GetMusicSeconds(), song_pos:GetSongBeat())
 		end,
 		update_field= function(self)
 			local fx, fy= rec_calc_actor_pos(self.field)
 			apply_newfield_config(self.field, self.field_config, fx, fy)
 			for i, col in ipairs(self.field:get_columns()) do
-				col:set_use_game_music_beat(false):set_pixels_visible_after(768)
+				col:set_pixels_visible_after(768)
 			end
 		end,
 		update_steps= function(self)
@@ -61,8 +60,10 @@ gameplay_preview_mt= {
 			if steps ~= self.curr_steps then
 				self.curr_steps= steps
 				self.field:set_steps(steps)
-				set_speed_from_speed_info(cons_players[self.pn], self.field)
-				self:update_field()
+				if steps then
+					set_speed_from_speed_info(cons_players[self.pn], self.field)
+					self:update_field()
+				end
 			end
 		end,
 		update_config= function(self, param)

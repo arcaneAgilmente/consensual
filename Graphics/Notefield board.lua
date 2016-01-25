@@ -47,14 +47,17 @@ local args= {
 						if col then
 							local beat= col:get_curr_beat()
 							local second= col:get_curr_second()
-							local rev_per= col:get_reverse_percent():evaluate(
+							local rev_per= col:get_reverse_scale():evaluate(
 								beat, second, beat, second, 0)
-							handle_rev_flip(flash_quads[track], rev_per)
+							local zoom_y= -1
+							if rev_per > 0 then
+								zoom_y= 1
+							end
 							col:apply_column_mods_to_actor(flash_wraps[track])
 								:apply_note_mods_to_actor(flash_quads[track])
-							-- Don't cancel out the zoomx from the mods becuase the flash
+							-- Don't cancel out the zoomx from the mods because the flash
 							-- should have the same width as the column.
-							flash_quads[track]:zoomy(1):zoomz(1)
+							flash_quads[track]:zoomy(zoom_y):zoomz(1)
 								:rotationx(0):rotationy(0):rotationz(0)
 						end
 					else
@@ -128,7 +131,7 @@ local args= {
 			self:SetWidth(width)
 		end,
 		color_changedMessageCommand= function(self, param)
-			if param.pn ~= this_pn then Trace("wrong pn") return end
+			if param.pn ~= this_pn then return end
 			local filk= cons_players[this_pn].gameplay_element_colors.filter
 			self:diffuse(filk):hibernate(0)
 			if filk[4] < .001 then self:hibernate(math.huge) end

@@ -207,6 +207,7 @@ local wheel_item_mt= {
 			and self.info and self.info.song_info then
 				local stype= get_preferred_steps_type(pn)
 				local diff= GAMESTATE:GetPreferredDifficulty(pn)
+				if not diff then diff= "Difficulty_Beginner" end
 				local steps= self.info.song_info:GetOneSteps(stype, diff)
 				local profile= PROFILEMAN:GetProfile(pn)
 				if steps and profile then
@@ -445,7 +446,7 @@ local music_whale= {
 --				rec_print_table(self.cursor_item)
 				search_path= {
 					bucket_search_for_item(self.sorted_songs, self.cursor_item, dir_compare)}
-				if search_path[1] == -1 then
+				if search_path[1] == -1 and self.cursor_song then
 --					Trace("Failed to find cursor item, searching for song:  " .. table.concat(search_path, ", "))
 					search_path= {bucket_search(self.sorted_songs, self.cursor_song,
 																			final_compare, true)}
