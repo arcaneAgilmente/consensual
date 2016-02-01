@@ -24,6 +24,11 @@ function generic_get_wrapper(func_name)
 				 end
 end
 
+local function title_length(song)
+	if not song then return {0} end
+	return {#song:GetDisplayMainTitle()}
+end
+
 local function length(song)
 	if not song then return {0} end
 	return {math.round(song_get_length(song))}
@@ -386,6 +391,7 @@ local shared_sort_factors= {
 	group_sort,
 	title_sort,
 	-- Fun fact:  Implemented 2 days before Anime Banzai 2014, just to show off.
+--	{ name= "Title Length", get_names= title_length, can_join= noop_false},
 	{ name= "Word In Title", get_names= by_words, uses_depth= true,
 		can_join= noop_true, insensitive_names= true, returns_multiple= true},
 	{ name= "Word In Group", get_names= by_words_in_group, uses_depth= true,

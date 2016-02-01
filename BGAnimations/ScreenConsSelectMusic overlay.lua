@@ -103,6 +103,12 @@ end
 update_player_profile(PLAYER_1)
 update_player_profile(PLAYER_2)
 
+local function save_profile_stuff()
+	save_all_favorites()
+	save_all_tags()
+	save_censored_list()
+end
+
 do
 	local song_ops= GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred")
 	for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
@@ -1032,6 +1038,7 @@ local misc_options= {
 		 end
 	end},
 	{name= "end_credit", meta= "execute", level= 4, execute= function(pn)
+		 save_profile_stuff()
 		 stop_music()
 		 SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
 		 if not GAMESTATE:IsEventMode() then
@@ -1440,6 +1447,7 @@ local input_functions= {
 	end,
 	stop_scroll= function() stop_auto_scrolling() end,
 	back= function()
+		save_profile_stuff()
 		stop_music()
 		SOUND:PlayOnce(THEME:GetPathS("Common", "cancel"))
 		if not GAMESTATE:IsEventMode() then
@@ -1927,9 +1935,7 @@ local function input(event)
 										entering_song= get_screen_time()
 									end
 									prev_picked_song= gamestate_get_curr_song()
-									save_all_favorites()
-									save_all_tags()
-									save_censored_list()
+									save_profile_stuff()
 								end
 								if not GAMESTATE.CanSafelyEnterGameplay then
 									do_entry()
