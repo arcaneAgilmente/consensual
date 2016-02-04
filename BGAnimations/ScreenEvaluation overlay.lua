@@ -1013,6 +1013,7 @@ local song_props= {
 	{name= "uncensor", req_func= privileged},
 	{name= "edit_tags", level= 3},
 	{name= "edit_flags", level= 2},
+	{name= "save_column_scores"},
 	{name= "end_credit", level= 4},
 }
 

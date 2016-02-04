@@ -1,5 +1,5 @@
 local min_bucket_size= 32
-local max_bucket_size= 64
+local max_bucket_size= 96
 
 local invalid_sort_item_name= "invalid_sort_item_name"
 local bad_name_source_factor= {

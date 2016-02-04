@@ -83,11 +83,15 @@ function set_nps_player(pn)
 	nps_player= pn or GAMESTATE:GetEnabledPlayers()[1]
 end
 
+local function get_steps_for_current_style(pn)
+	local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
+	local filter_type= curr_style:GetStepsType()
+	return song:GetStepsByStepsType(filter_type)
+end
+
 local function note_count(song)
 	if song.GetStepsByStepsType then
-		local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
-		local filter_type= curr_style:GetStepsType()
-		local all_steps= song:GetStepsByStepsType(filter_type)
+		local all_steps= get_steps_for_current_style(nps_player)
 		local ret= {}
 		local radar
 		for i, v in ipairs(all_steps) do
@@ -110,11 +114,8 @@ end
 
 local function nps(song)
 	if song.GetStepsByStepsType then
-		local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
-		local filter_type= curr_style:GetStepsType()
-		local all_steps= song:GetStepsByStepsType(filter_type)
+		local all_steps= get_steps_for_current_style(nps_player)
 		local ret= {}
-		local radar
 		local len= song_get_length(song)
 		for i, v in ipairs(all_steps) do
 			ret[#ret+1]= math.round(calc_nps(nps_player, len, v) * 100) / 100
@@ -131,9 +132,7 @@ end
 local function radar_cat_wrapper(radar_name)
 	return function(song)
 		if song.GetStepsByStepsType then
-			local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
-			local filter_type= curr_style:GetStepsType()
-			local all_steps= song:GetStepsByStepsType(filter_type)
+			local all_steps= get_steps_for_current_style(nps_player)
 			local ret= {}
 			local radar
 			local len= song_get_length(song)
@@ -165,9 +164,7 @@ local timing_segments= {
 local function timing_data_wrapper(func_name)
 	return function(song)
 		if song.GetStepsByStepsType then
-			local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
-			local filter_type= curr_style:GetStepsType()
-			local all_steps= song:GetStepsByStepsType(filter_type)
+			local all_steps= get_steps_for_current_style(nps_player)
 			local high_count= 0
 			for i, steps in ipairs(all_steps) do
 				local timing_data= steps:GetTimingData()
@@ -185,9 +182,7 @@ end
 
 local function timing_segment_count(song)
 	if song.GetStepsByStepsType then
-		local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
-		local filter_type= curr_style:GetStepsType()
-		local all_steps= song:GetStepsByStepsType(filter_type)
+		local all_steps= get_steps_for_current_style(nps_player)
 		local high_count= 0
 		for i, steps in ipairs(all_steps) do
 			local timing_data= steps:GetTimingData()
@@ -215,9 +210,7 @@ end
 
 local function any_meter(song)
 	if song.GetStepsByStepsType then
-		local curr_style= GAMESTATE:GetCurrentStyle()
-		local filter_type= curr_style:GetStepsType()
-		local all_steps= song:GetStepsByStepsType(filter_type)
+		local all_steps= get_steps_for_current_style(nps_player)
 		local meters= {}
 		for i, v in ipairs(all_steps) do
 			meters[#meters+1]= v:GetMeter()

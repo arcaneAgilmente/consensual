@@ -14,6 +14,9 @@ local song_prop_funcs= {
 	censor= function()
 		add_to_censor_list(gamestate_get_curr_song())
 	end,
+	save_column_scores= function(pn)
+		save_column_scores(pn)
+	end,
 	end_credit= function()
 		SOUND:PlayOnce("Themes/_fallback/Sounds/Common Start.ogg")
 		end_credit_now()
