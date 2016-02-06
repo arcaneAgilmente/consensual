@@ -435,6 +435,7 @@ local focus_element_info_mt= {
 			self.full_genre= ""
 			self.full_artist= ""
 			self.full_subtitle= ""
+			self.full_group= ""
 			local cdtitle_y= 0
 			local auth_start= -extra_info_height+hpad
 			local args= {
@@ -446,6 +447,7 @@ local focus_element_info_mt= {
 					self.length= subself:GetChild("length")
 					self.genre= subself:GetChild("genre")
 					self.artist= subself:GetChild("artist")
+					self.group= subself:GetChild("group")
 					rot_color_text(self.title, fetch_color("text"))
 					rot_color_text(self.sec_title, fetch_color("text"))
 					alt_rot_color_text(self.subtitle, fetch_color("text"))
@@ -477,7 +479,8 @@ local focus_element_info_mt= {
 				normal_text("subtitle", "", fetch_color("text"), fetch_color("stroke"), 0, 12, .5),
 				normal_text("length", "", fetch_color("text"), fetch_color("stroke"), 0, 24, .5, left),
 				normal_text("genre", "", fetch_color("text"), fetch_color("stroke"), 0, 24, .5, right),
-				normal_text("artist", "", fetch_color("text"), fetch_color("stroke"), 0, 36, .5, center),
+				normal_text("group", "", fetch_color("text"), fetch_color("stroke"), 0, 36, .5, left),
+				normal_text("artist", "", fetch_color("text"), fetch_color("stroke"), 0, 36, .5, right),
 			}
 			local above_args= {
 				InitCommand= function(subself)
@@ -558,9 +561,10 @@ local focus_element_info_mt= {
 			local symbol_x= hwheelw - self.hsymw - hpad
 			self.title_width= symbol_x - jacket_x - hjackw - self.hsymw - (pad*2)
 			local title_x= jacket_x + hjackw + pad + (self.title_width * .5)
-			local artist_x= title_x
 			local len_x= jacket_x + hjackw + pad
 			local genre_x= symbol_x - self.hsymw - pad
+			local artist_x= genre_x
+			local group_x= len_x
 			local cdtitle_x= hwheelw - cdtitle_size*.5 - pad
 			self.auth_width= ((hwheelw - self.right_x) * 2) - pad
 
@@ -571,7 +575,8 @@ local focus_element_info_mt= {
 			self.subtitle:x(title_x)
 			self.length:x(len_x)
 			self.genre:x(genre_x)
-			self.artist:x(title_x)
+			self.group:x(group_x)
+			self.artist:x(artist_x)
 			self:width_clip_text()
 			for d, sym in pairs(self.difficulty_symbols) do
 				sym:x(symbol_x)
@@ -595,6 +600,11 @@ local focus_element_info_mt= {
 					get_string_wrapper("SelectMusicExtraInfo", "song_genre") ..
 						": " .. self.full_genre):visible(true)
 			end
+			if self.full_group ~= "" then
+				self.group:settext(
+					get_string_wrapper("SelectMusicExtraInfo", "song_group") ..
+						": " .. self.full_group):visible(true)
+			end
 			if self.full_artist ~= "" then
 				self.artist:settext(
 					get_string_wrapper("SelectMusicExtraInfo", "song_artist") ..
@@ -604,7 +614,9 @@ local focus_element_info_mt= {
 				self.subtitle:settext(self.full_subtitle):visible(true)
 			end
 			width_clip_limit_text(self.subtitle, self.title_width, .5)
-			width_clip_limit_text(self.artist, self.title_width, .5)
+			width_clip_limit_text(self.artist, self.title_width*.5, .5)
+			local artist_len= self.artist:GetZoomedWidth()
+			width_clip_limit_text(self.group, self.title_width-artist_len - pad*2, .5)
 			local len_len= self.length:GetZoomedWidth()
 			width_clip_limit_text(self.genre, self.title_width-len_len - pad*2, .5)
 		end,
@@ -626,6 +638,7 @@ local focus_element_info_mt= {
 			self.length:visible(false)
 			self.genre:visible(false)
 			self.artist:visible(false)
+			self.group:visible(false)
 		end,
 		set_jacket_to_image= function(self, path)
 			if path and path ~= "" then
@@ -701,6 +714,7 @@ local focus_element_info_mt= {
 							secs_to_str(song_get_length(song))):visible(true)
 					self.full_genre= song:GetGenre()
 					self.full_artist= song:GetDisplayArtist()
+					self.full_group= song:GetGroupName()
 					self.full_subtitle= song:GetDisplaySubTitle()
 				else
 					self.title:visible(false)
@@ -714,6 +728,7 @@ local focus_element_info_mt= {
 			self.full_genre= ""
 			self.full_artist= ""
 			self.full_subtitle= ""
+			self.full_group= ""
 			self.info= item
 			self:update_title(item)
 			if item.bucket_info then
