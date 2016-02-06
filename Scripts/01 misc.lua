@@ -368,6 +368,8 @@ function lua_table_to_string(t, indent, line_pos)
 		local k_str= k
 		if type(k) == "number" then
 			k_str= "[" .. k .. "]"
+		elseif type(k) == "boolean" then
+			k_str= "[" .. tostring(k) .. "]"
 		else
 			if string_needs_escape(k) then
 				k_str= "[" .. ("%q"):format(k) .. "]"

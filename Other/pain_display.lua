@@ -545,12 +545,10 @@ local pain_item_mt= {
 				end
 			elseif item_config.nps then
 				self.tani:set_text("NPS")
-				local taps= radars:GetValue("RadarCategory_TapsAndHolds")
-				local jumps= radars:GetValue("RadarCategory_Jumps")
-				local hands= radars:GetValue("RadarCategory_Hands")
+				local notes= radars:GetValue("RadarCategory_Notes")
 				local length= song_get_length(song)
-				local nps= (taps + jumps + hands) / length
-				if length <= 0 then
+				local nps= notes / length
+				if length <= 0 or notes <= 0 then
 					self.tani:set_number("N/A")
 					self.tani.number:diffuse(fetch_color("text"))
 				else

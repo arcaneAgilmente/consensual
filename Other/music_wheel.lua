@@ -541,13 +541,13 @@ local music_whale= {
 						is_prev= true, song_info= prev_picked_song}
 				end
 				self.random_recent_pos= #bucket+1
-				bucket[#bucket+1]= random_recent_bucket
+				bucket[self.random_recent_pos]= random_recent_bucket
 				self.played_recent_pos= #bucket+1
-				bucket[#bucket+1]= played_recent_bucket
+				bucket[self.played_recent_pos]= played_recent_bucket
 				self.favorite_folder_pos= #bucket+1
-				bucket[#bucket+1]= favor_folder_bucket
-				self:add_randoms(bucket)
+				bucket[self.favorite_folder_pos]= favor_folder_bucket
 			end
+			self:add_randoms(bucket)
 			bucket[#bucket+1]= last_el
 			--Trace("Added special items.")
 		end

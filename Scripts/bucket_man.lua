@@ -83,7 +83,7 @@ function set_nps_player(pn)
 	nps_player= pn or GAMESTATE:GetEnabledPlayers()[1]
 end
 
-local function get_steps_for_current_style(pn)
+local function get_steps_for_current_style(song, pn)
 	local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
 	local filter_type= curr_style:GetStepsType()
 	return song:GetStepsByStepsType(filter_type)
@@ -91,7 +91,7 @@ end
 
 local function note_count(song)
 	if song.GetStepsByStepsType then
-		local all_steps= get_steps_for_current_style(nps_player)
+		local all_steps= get_steps_for_current_style(song, nps_player)
 		local ret= {}
 		local radar
 		for i, v in ipairs(all_steps) do
@@ -99,6 +99,7 @@ local function note_count(song)
 			ret[#ret+1]= radar:GetValue("RadarCategory_Notes")
 		end
 		if #ret > 0 then
+			table.sort(ret, grt_cmp)
 			return ret
 		end
 		return {0}
@@ -109,18 +110,21 @@ end
 
 function calc_nps(pn, song_len, steps)
 	local radar= steps:GetRadarValues(pn)
-	return radar:GetValue("RadarCategory_Notes") / song_len
+	local notes= radar:GetValue("RadarCategory_Notes")
+	if notes <= 0 or song_len <= 0 then return 0 end
+	return notes / song_len
 end
 
 local function nps(song)
 	if song.GetStepsByStepsType then
-		local all_steps= get_steps_for_current_style(nps_player)
+		local all_steps= get_steps_for_current_style(song, nps_player)
 		local ret= {}
 		local len= song_get_length(song)
 		for i, v in ipairs(all_steps) do
 			ret[#ret+1]= math.round(calc_nps(nps_player, len, v) * 100) / 100
 		end
 		if #ret > 0 then
+			table.sort(ret, grt_cmp)
 			return ret
 		end
 		return {0}
@@ -132,7 +136,7 @@ end
 local function radar_cat_wrapper(radar_name)
 	return function(song)
 		if song.GetStepsByStepsType then
-			local all_steps= get_steps_for_current_style(nps_player)
+			local all_steps= get_steps_for_current_style(song, nps_player)
 			local ret= {}
 			local radar
 			local len= song_get_length(song)
@@ -141,6 +145,7 @@ local function radar_cat_wrapper(radar_name)
 				ret[#ret+1]= math.round(radar:GetValue(radar_name) * 100) * .01
 			end
 			if #ret > 0 then
+				table.sort(ret, grt_cmp)
 				return ret
 			end
 			return {0}
@@ -164,7 +169,7 @@ local timing_segments= {
 local function timing_data_wrapper(func_name)
 	return function(song)
 		if song.GetStepsByStepsType then
-			local all_steps= get_steps_for_current_style(nps_player)
+			local all_steps= get_steps_for_current_style(song, nps_player)
 			local high_count= 0
 			for i, steps in ipairs(all_steps) do
 				local timing_data= steps:GetTimingData()
@@ -182,7 +187,7 @@ end
 
 local function timing_segment_count(song)
 	if song.GetStepsByStepsType then
-		local all_steps= get_steps_for_current_style(nps_player)
+		local all_steps= get_steps_for_current_style(song, nps_player)
 		local high_count= 0
 		for i, steps in ipairs(all_steps) do
 			local timing_data= steps:GetTimingData()
@@ -210,7 +215,7 @@ end
 
 local function any_meter(song)
 	if song.GetStepsByStepsType then
-		local all_steps= get_steps_for_current_style(nps_player)
+		local all_steps= get_steps_for_current_style(song, nps_player)
 		local meters= {}
 		for i, v in ipairs(all_steps) do
 			meters[#meters+1]= v:GetMeter()
