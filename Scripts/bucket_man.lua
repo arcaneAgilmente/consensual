@@ -99,7 +99,6 @@ local function note_count(song)
 			ret[#ret+1]= radar:GetValue("RadarCategory_Notes")
 		end
 		if #ret > 0 then
-			table.sort(ret, grt_cmp)
 			return ret
 		end
 		return {0}
@@ -124,7 +123,6 @@ local function nps(song)
 			ret[#ret+1]= math.round(calc_nps(nps_player, len, v) * 100) / 100
 		end
 		if #ret > 0 then
-			table.sort(ret, grt_cmp)
 			return ret
 		end
 		return {0}
@@ -145,7 +143,6 @@ local function radar_cat_wrapper(radar_name)
 				ret[#ret+1]= math.round(radar:GetValue(radar_name) * 100) * .01
 			end
 			if #ret > 0 then
-				table.sort(ret, grt_cmp)
 				return ret
 			end
 			return {0}
@@ -361,6 +358,10 @@ local function score_wrapper(score_func, difficulty)
 				 end
 end
 
+local function cant_join_if_contain_buckets(left, right)
+	return not left.contents[1].contents and not right.contents[1].contents
+end
+
 local function default_cant_join_wrapper(score_func, default_el)
 	local default_return= score_func(default_el)
 	return function(left, right)
@@ -377,9 +378,10 @@ local group_sort= {
 		can_join= noop_false, group_similar= true}
 local nps_sort= {
 	name= "NPS", get_names= nps, returns_multiple= true,
+	can_join= cant_join_if_contain_buckets,
 	pre_sort_func= set_nps_player}
 local any_meter_sort= {
-	name= "Any Meter", get_names= any_meter, returns_multiple= true, can_join= noop_false}
+	name= "Any Meter", get_names= any_meter, returns_multiple= true, can_join= cant_join_if_contain_buckets}
 
 function get_group_sort_info() return group_sort end
 function get_nps_sort_info() return nps_sort end
