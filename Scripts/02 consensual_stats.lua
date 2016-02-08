@@ -313,16 +313,16 @@ function save_column_scores(pn)
 			cons_players[pn].column_scores.timestamp= Year() .. "_" .. pad_num(MonthOfYear()) .. "_" .. pad_num(DayOfMonth()) .. "_" .. pad_num(Hour()) .. "_" .. pad_num(Minute()) .. "_" .. pad_num(Second())
 			all_attempts[#all_attempts+1]= cons_players[pn].column_scores
 			if not file_handle:Open(file_name, 2) then
-				Trace("Could not open '" .. file_name .. "' to write column scores.")
+				SCREENMAN:SystemMessage("Could not open '" .. file_name .. "' to write column scores.")
 			else
 				local output= "return " .. lua_table_to_string(all_attempts) .. "\n"
 				file_handle:Write(output)
 				file_handle:Close()
 				file_handle:destroy()
-				Trace("column scores written to '" .. file_name .. "'")
+				SCREENMAN:SystemMessage("column scores written to '" .. file_name .. "'")
 			end
 		else
-			Trace("Nil profile dir, unable to write column scores.")
+			SCREENMAN:SystemMessage("Nil profile dir, unable to write column scores.")
 		end
 	end
 end

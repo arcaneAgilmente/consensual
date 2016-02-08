@@ -1,5 +1,5 @@
 local min_bucket_size= 32
-local max_bucket_size= 64
+local max_bucket_size= 96
 
 local invalid_sort_item_name= "invalid_sort_item_name"
 local bad_name_source_factor= {
@@ -90,10 +90,12 @@ local function item_cmp_wrapper(sort_depth)
 		local rnames= right.name_set
 		assert(#lnames == #rnames)
 		for i= sort_depth, #lnames do
-			if #lnames[i].names == 1 and #rnames[i].names == 1 then
-				if lnames[i].names[1] ~= rnames[i].names[1] then
-					return lnames[i].names[1] < rnames[i].names[1]
-				end
+			local lsub= lnames[i].names
+			local rsub= rnames[i].names
+			local lame= lsub[#lsub]
+			local rame= rsub[#rsub]
+			if lame ~= rame then
+				return lame < rame
 			end
 		end
 		return lnames[#lnames].names[1] < rnames[#rnames].names[1]

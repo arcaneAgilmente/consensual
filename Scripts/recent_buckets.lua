@@ -36,7 +36,7 @@ local function make_bucket_from_recent(recent, name)
 		end
 	end
 	local bucket= {
-		is_special= true, is_recent= true,
+		is_special= true, is_recent= name,
 		bucket_info= {
 			name= {
 				value= name, disp_name= get_string_wrapper("MusicWheel", name),

@@ -24,6 +24,11 @@ function generic_get_wrapper(func_name)
 				 end
 end
 
+local function title_length(song)
+	if not song then return {0} end
+	return {#song:GetDisplayMainTitle()}
+end
+
 local function length(song)
 	if not song then return {0} end
 	return {math.round(song_get_length(song))}
@@ -78,11 +83,15 @@ function set_nps_player(pn)
 	nps_player= pn or GAMESTATE:GetEnabledPlayers()[1]
 end
 
+local function get_steps_for_current_style(song, pn)
+	local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
+	local filter_type= curr_style:GetStepsType()
+	return song:GetStepsByStepsType(filter_type)
+end
+
 local function note_count(song)
 	if song.GetStepsByStepsType then
-		local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
-		local filter_type= curr_style:GetStepsType()
-		local all_steps= song:GetStepsByStepsType(filter_type)
+		local all_steps= get_steps_for_current_style(song, nps_player)
 		local ret= {}
 		local radar
 		for i, v in ipairs(all_steps) do
@@ -100,16 +109,15 @@ end
 
 function calc_nps(pn, song_len, steps)
 	local radar= steps:GetRadarValues(pn)
-	return radar:GetValue("RadarCategory_Notes") / song_len
+	local notes= radar:GetValue("RadarCategory_Notes")
+	if notes <= 0 or song_len <= 0 then return 0 end
+	return notes / song_len
 end
 
 local function nps(song)
 	if song.GetStepsByStepsType then
-		local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
-		local filter_type= curr_style:GetStepsType()
-		local all_steps= song:GetStepsByStepsType(filter_type)
+		local all_steps= get_steps_for_current_style(song, nps_player)
 		local ret= {}
-		local radar
 		local len= song_get_length(song)
 		for i, v in ipairs(all_steps) do
 			ret[#ret+1]= math.round(calc_nps(nps_player, len, v) * 100) / 100
@@ -126,9 +134,7 @@ end
 local function radar_cat_wrapper(radar_name)
 	return function(song)
 		if song.GetStepsByStepsType then
-			local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
-			local filter_type= curr_style:GetStepsType()
-			local all_steps= song:GetStepsByStepsType(filter_type)
+			local all_steps= get_steps_for_current_style(song, nps_player)
 			local ret= {}
 			local radar
 			local len= song_get_length(song)
@@ -160,9 +166,7 @@ local timing_segments= {
 local function timing_data_wrapper(func_name)
 	return function(song)
 		if song.GetStepsByStepsType then
-			local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
-			local filter_type= curr_style:GetStepsType()
-			local all_steps= song:GetStepsByStepsType(filter_type)
+			local all_steps= get_steps_for_current_style(song, nps_player)
 			local high_count= 0
 			for i, steps in ipairs(all_steps) do
 				local timing_data= steps:GetTimingData()
@@ -180,9 +184,7 @@ end
 
 local function timing_segment_count(song)
 	if song.GetStepsByStepsType then
-		local curr_style= GAMESTATE:GetCurrentStyle(nps_player)
-		local filter_type= curr_style:GetStepsType()
-		local all_steps= song:GetStepsByStepsType(filter_type)
+		local all_steps= get_steps_for_current_style(song, nps_player)
 		local high_count= 0
 		for i, steps in ipairs(all_steps) do
 			local timing_data= steps:GetTimingData()
@@ -210,9 +212,7 @@ end
 
 local function any_meter(song)
 	if song.GetStepsByStepsType then
-		local curr_style= GAMESTATE:GetCurrentStyle()
-		local filter_type= curr_style:GetStepsType()
-		local all_steps= song:GetStepsByStepsType(filter_type)
+		local all_steps= get_steps_for_current_style(song, nps_player)
 		local meters= {}
 		for i, v in ipairs(all_steps) do
 			meters[#meters+1]= v:GetMeter()
@@ -358,6 +358,10 @@ local function score_wrapper(score_func, difficulty)
 				 end
 end
 
+local function cant_join_if_contain_buckets(left, right)
+	return not left.contents[1].contents and not right.contents[1].contents
+end
+
 local function default_cant_join_wrapper(score_func, default_el)
 	local default_return= score_func(default_el)
 	return function(left, right)
@@ -374,9 +378,10 @@ local group_sort= {
 		can_join= noop_false, group_similar= true}
 local nps_sort= {
 	name= "NPS", get_names= nps, returns_multiple= true,
+	can_join= cant_join_if_contain_buckets,
 	pre_sort_func= set_nps_player}
 local any_meter_sort= {
-	name= "Any Meter", get_names= any_meter, returns_multiple= true, can_join= noop_false}
+	name= "Any Meter", get_names= any_meter, returns_multiple= true, can_join= cant_join_if_contain_buckets}
 
 function get_group_sort_info() return group_sort end
 function get_nps_sort_info() return nps_sort end
@@ -386,6 +391,7 @@ local shared_sort_factors= {
 	group_sort,
 	title_sort,
 	-- Fun fact:  Implemented 2 days before Anime Banzai 2014, just to show off.
+--	{ name= "Title Length", get_names= title_length, can_join= noop_false},
 	{ name= "Word In Title", get_names= by_words, uses_depth= true,
 		can_join= noop_true, insensitive_names= true, returns_multiple= true},
 	{ name= "Word In Group", get_names= by_words_in_group, uses_depth= true,

@@ -1013,10 +1013,11 @@ local song_props= {
 	{name= "uncensor", req_func= privileged},
 	{name= "edit_tags", level= 3},
 	{name= "edit_flags", level= 2},
+	{name= "save_column_scores"},
 	{name= "end_credit", level= 4},
 }
 
-local special_menus= {{level= 2}, {level= 3}, {level= 2}}
+local special_menus= {{level= 0}, {level= 0}, {level= 0}}
 local menu_args= {{}, {}, {}}
 local player_cursors= {}
 local score_reports= {}
@@ -1166,7 +1167,7 @@ local function filter_input_for_menus(pn, code, press)
 		keys_down[pn][code]= down_map[press]
 	end
 	if spid == 0 then
-		if code == "Select" and (ops_level(pn) >= 2 or privileged(pn)) then
+		if code == "Select" and (ops_level(pn) >= 0 or privileged(pn)) then
 			if press == "InputEventType_FirstPress" then
 				select_press_times[pn]= GetTimeSinceStart()
 			elseif press == "InputEventType_Release" then
@@ -1180,11 +1181,11 @@ local function filter_input_for_menus(pn, code, press)
 				end
 			end
 		elseif code == "Start" and press == "InputEventType_FirstPress" then
-			if keys_down[pn].MenuLeft and (ops_level(pn) >= 2 or privileged(pn)) then
+			if keys_down[pn].MenuLeft and (ops_level(pn) >= 0 or privileged(pn)) then
 				set_special_menu(pn, 1)
 				handled= true
 			elseif keys_down[pn].MenuRight and player_using_profile(pn)
-			and ops_level(pn) >= 2 then
+			and ops_level(pn) >= 0 then
 				perform_screenshot(pn)
 			else
 				if not worker then
