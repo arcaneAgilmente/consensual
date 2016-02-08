@@ -94,7 +94,7 @@ local function item_cmp_wrapper(sort_depth)
 			local rsub= rnames[i].names
 			local lame= lsub[#lsub]
 			local rame= rsub[#rsub]
-			if i == sort_depth or lame ~= rame then
+			if lame ~= rame then
 				return lame < rame
 			end
 		end
