@@ -847,6 +847,119 @@ local focus_element_info_mt= {
 }}
 focus_element_info= setmetatable({}, focus_element_info_mt)
 
+local filter_reason_item_mt= {
+	__index= {
+		create_actors= function(self, name)
+			return Def.ActorFrame{
+				InitCommand= function(subself)
+					self.container= subself
+					self.group_name= subself:GetChild("group_name")
+					self.song_name= subself:GetChild("song_name")
+					self.filter_name= subself:GetChild("filter_name")
+				end,
+				normal_text("group_name", "", fetch_color("music_select.music_wheel.group"), fetch_color("stroke"), 0, 0, .5),
+				normal_text("song_name", "", fetch_color("music_select.music_wheel.song"), fetch_color("stroke"), 0, 12, .5),
+				normal_text("filter_name", "", fetch_color("music_select.music_wheel.sort"), fetch_color("stroke"), 0, 24, .5),
+			}
+		end,
+		transform= function(self, item_index, num_items)
+			self.container:y(item_index * 40)
+		end,
+		set= function(self, info)
+			self.info= info
+			if not info then
+				self.group_name:settext("")
+				self.song_name:settext("")
+				self.filter_name:settext("")
+				return
+			end
+			self.group_name:settext(info.song:GetGroupName())
+			self.song_name:settext(info.song:GetDisplayMainTitle())
+			self.filter_name:settext(info.filter)
+			for i, part in ipairs{self.group_name, self.song_name, self.filter_name} do
+				width_limit_text(part, pane_w - 8, .5)
+			end
+		end,
+}}
+
+local filter_reason_viewer_mt= {
+	__index= {
+		create_actors= function(self, x, y, pn)
+			self.framer= setmetatable({disable_wrapping= true}, frame_helper_mt)
+			self.scroller= setmetatable({}, sick_wheel_mt)
+			self.cursor_pos= 1
+			return Def.ActorFrame{
+				InitCommand= function(subself)
+					self.container= subself:xy(x, y)
+					self:hide()
+				end,
+				self.framer:create_actors(
+					"frame", 2, pane_w, 416, pn_to_color(pn), fetch_color("bg"), 0, 0),
+				self.scroller:create_actors("scroller", 10, filter_reason_item_mt, 0, -240),
+			}
+		end,
+		interpret_code= function(self, button)
+			local funs= {
+				Up= function()
+					if self.cursor_pos > 1 then
+						self.cursor_pos= self.cursor_pos - 1
+					end
+				end,
+				Down= function()
+					if self.cursor_pos < #self.reasons then
+						self.cursor_pos= self.cursor_pos + 1
+					end
+				end,
+			}
+			funs.MenuUp= funs.Up
+			funs.MenuLeft= funs.Up
+			funs.Left= funs.Up
+			funs.MenuDown= funs.Down
+			funs.MenuRight= funs.Down
+			funs.Right= funs.Down
+			if funs[button] then
+				funs[button]()
+				self.scroller:scroll_to_pos(self.cursor_pos)
+			end
+		end,
+		update_filter_reaons= function(self)
+			self.reasons= {}
+			for i, removal in ipairs(bucket_man.style_filter_removals) do
+				self.reasons[#self.reasons+1]= removal
+			end
+			for i, removal in ipairs(bucket_man.filter_removals) do
+				self.reasons[#self.reasons+1]= removal
+			end
+			local file_handle= RageFileUtil.CreateRageFile()
+			local fname= "Save/consensual_settings/filter_reasons.txt"
+			local save_message= ""
+			if not file_handle:Open(fname, 2) then
+				save_message= "Could not open '" .. fname .. "' to write filter reasons."
+			else
+				for i, reason in ipairs(self.reasons) do
+					file_handle:Write("Group: " .. reason.song:GetGroupName() .. "\n")
+					file_handle:Write("Song: " .. reason.song:GetDisplayMainTitle() .. "\n")
+					file_handle:Write("Filter: " .. reason.filter .. "\n")
+					file_handle:Write("\n")
+				end
+				file_handle:Close()
+				file_handle:destroy()
+				save_message= "Filter reasons written to '" .. fname .. "' successfully."
+			end
+			SCREENMAN:SystemMessage(save_message)
+			self.cursor_pos= 1
+			self.scroller:set_info_set(self.reasons, 1)
+		end,
+		hide= function(self)
+			self.hidden= true
+			self.container:hibernate(math.huge)
+		end,
+		unhide= function(self)
+			self.hidden= false
+			self.container:hibernate(0)
+		end,
+}}
+
 dofile(THEME:GetPathO("", "steps_menu.lua"))
 dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "pain_display.lua"))
@@ -868,6 +981,7 @@ local song_props_menus= {}
 local tag_menus= {}
 local player_cursors= {}
 local gameplay_previews= {}
+local filter_viewers= {}
 local base_mods= get_sick_options(rate_coordinator, color_manips, bpm_disps)
 
 for i, pn in ipairs(all_player_indices) do
@@ -880,6 +994,7 @@ for i, pn in ipairs(all_player_indices) do
 	tag_menus[pn]= setmetatable({}, options_sets.tags_menu)
 	player_cursors[pn]= setmetatable({}, cursor_mt)
 	gameplay_previews[pn]= setmetatable({}, gameplay_preview_mt)
+	filter_viewers[pn]= setmetatable({}, filter_reason_viewer_mt)
 end
 
 local base_options= {}
@@ -965,7 +1080,9 @@ local function set_special_menu(pn, next_menu)
 		end
 		pain_displays[pn]:hide()
 		pain_displays[pn]:show_frame()
-		open_menu(pn)
+		if in_special_menu[pn] ~= "filter" then
+			open_menu(pn)
+		end
 	end
 	update_pain_active()
 end
@@ -1181,6 +1298,12 @@ local function execute_remove_favorite(pn)
 	delayed_set_special_menu[pn]= "wheel"
 end
 
+local function show_filter_reasons(pn)
+	filter_viewers[pn]:update_filter_reaons()
+	filter_viewers[pn]:unhide()
+	delayed_set_special_menu[pn]= "filter_reasons"
+end
+
 base_options= {
 	{name= "scsm_mods", meta= options_sets.menu, level= 1, args= base_mods},
 	{name= "add_favorite", meta= "execute", execute= execute_add_favorite},
@@ -1189,6 +1312,8 @@ base_options= {
 --	{name= "scsm_favor", meta= options_sets.favor_menu, level= 1, args= {}},
 	{name= "scsm_tags", meta= options_sets.tags_menu, level= 1, args= true},
 	{name= "scsm_layout", meta= options_sets.special_functions, level= 1, args= layout_options},
+	{name= "view_filter_reasons", meta= "execute", execute= show_filter_reasons,
+	 req_func= function() return misc_config:get_data().track_song_filter_reasons end},
 --	{name= "scsm_stepstypes", meta= options_sets.special_functions, level= 1,
 --	args= make_visible_style_data, exec_args= true},
 }
@@ -1902,7 +2027,7 @@ local function input(event)
 				menu= function()
 					if press_type == "InputEventType_Release" then return end
 					if not special_menus[pn]:interpret_code(key_pressed) then
-						if key_pressed == "Start" then
+						if key_pressed == "Back" or key_pressed == "Start" then
 							common_menu_change("wheel")
 						end
 					end
@@ -1914,6 +2039,15 @@ local function input(event)
 					if delayed_set_special_menu[pn] then
 						common_menu_change(delayed_set_special_menu[pn])
 						delayed_set_special_menu[pn]= nil
+					end
+				end,
+				filter_reasons= function()
+					if press_type == "InputEventType_Release" then return end
+					if key_pressed == "Back" or key_pressed == "Select" then
+						filter_viewers[pn]:hide()
+						common_menu_change("menu")
+					else
+						filter_viewers[pn]:interpret_code(key_pressed)
 					end
 				end,
 				pain= function()
@@ -2136,6 +2270,7 @@ local function player_actors(pn, x, y)
 		special_menus[pn]:create_actors(
 			"menu", 0, pane_menu_y, pane_menu_w, pane_menu_h, pn, 1,
 			pane_text_height, menu_text_zoom),
+		filter_viewers[pn]:create_actors(0, _screen.cy, pn),
 	}
 end
 

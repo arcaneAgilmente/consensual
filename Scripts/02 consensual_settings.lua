@@ -189,14 +189,18 @@ function set_speed_from_speed_info(player, newfield)
 				 player.stage_options:XMod(speed)
 				 player.song_options:XMod(speed)
 				 player.current_options:XMod(speed)
-				 set_newfield_speed_mod(newfield, false, speed)
+				 if newfield then
+					 newfield:set_speed_mod(false, speed)
+				 end
 			 end,
 		C= function(speed)
 				 player.preferred_options:CMod(speed)
 				 player.stage_options:CMod(speed)
 				 player.song_options:CMod(speed)
 				 player.current_options:CMod(speed)
-				 set_newfield_speed_mod(newfield, true, speed)
+				 if newfield then
+					 newfield:set_speed_mod(true, speed)
+				 end
 			 end,
 		m= function(speed)
 				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
@@ -205,34 +209,12 @@ function set_speed_from_speed_info(player, newfield)
 				 player.stage_options:XMod(real_speed)
 				 player.song_options:XMod(real_speed)
 				 player.current_options:XMod(real_speed)
-				 set_newfield_speed_mod(newfield, false, speed, read_bpm)
+				 if newfield then
+					 newfield:set_speed_mod(false, speed, read_bpm)
+				 end
 				 --player.song_options:MMod(speed)
 				 --player.current_options:MMod(speed)
 			 end,
-		D= function(speed)
-				 local read_bpm= find_read_bpm_for_player_steps(player.player_number)
-				 local real_speed= (speed / read_bpm) / get_rate_from_songopts()
-				 player.dspeed_mult= real_speed
-				 player.preferred_options:XMod(real_speed)
-				 player.stage_options:XMod(real_speed)
-				 player.song_options:XMod(real_speed)
-				 player.current_options:XMod(real_speed)
-				 if math.abs(player.dspeed.max - player.dspeed.min) < .01 then
-					 player.dspeed.special= true
-					 if player.dspeed.alternate then
-						 player.current_options:Sudden(1)
-						 player.song_options:Sudden(1)
-						 player.song_options:SuddenOffset(suddmin)
-						 player.dspeed_phase= 1
-						 dspeed_special_phase_starts[player.dspeed_phase](player)
-					 else
-						 player.song_options:Centered(dspeed_default_max)
-					 end
-				 else
-					 player.dspeed.special= false
-					 player.song_options:Centered(player.dspeed.max)
-				 end
-			 end
 	}
 	if mode_functions[speed_info.mode] then
 		mode_functions[speed_info.mode](speed_info.speed)
@@ -551,12 +533,15 @@ function disable_rating_cap()
 	chart_rating_cap= -1
 end
 
-function song_short_and_uncensored(song)
-	local show= song_short_enough(song)
+function song_uncensored(song)
 	if censoring_on and check_censor_list(song) then
-		show= false
+		return false
 	end
-	if show and chart_rating_cap > 0 then
+	return true
+end
+
+function song_fits_rating_cap(song)
+	if chart_rating_cap > 0 then
 		local steps_list= get_filtered_steps_list(song)
 		local playable_steps= false
 		local i= 1
@@ -566,9 +551,9 @@ function song_short_and_uncensored(song)
 			end
 			i= i+1
 		end
-		show= playable_steps
+		return playable_steps
 	end
-	return show
+	return true
 end
 
 function time_short_enough(t)
@@ -711,7 +696,7 @@ function JudgmentTransformCommand(self, params)
 	self:xy(x, y)
 end
 
-function SaveProfileCustom(profile, dir)
+local function cons_save_profile(profile, dir)
 	if profile == PROFILEMAN:GetMachineProfile() then return end
 	local cp= false
 	for i, pn in pairs(cons_players) do
@@ -736,6 +721,14 @@ function SaveProfileCustom(profile, dir)
 		player_config:save(prof_slot)
 		style_config:save(prof_slot)
 		shown_noteskins:save(prof_slot)
+	end
+end
+
+if add_profile_load_callback then
+	add_profile_save_callback(cons_save_profile)
+else
+	function SaveProfileCustom(profile, dir)
+		cons_save_profile(profile, dir)
 	end
 end
 

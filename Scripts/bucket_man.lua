@@ -688,6 +688,7 @@ local function add_sort_names_to_list(list, contents)
 end
 
 function bucket_man_interface:initialize()
+	self.track_removals= misc_config:get_data().track_song_filter_reasons
 	init_songs_of_each_style()
 	machine_profile= PROFILEMAN:GetMachineProfile()
 	if GAMESTATE:IsCourseMode() then
@@ -707,7 +708,7 @@ function bucket_man_interface:initialize()
 	end
 	rival_bucket= make_rival_bucket()
 	self.pre_filter_functions= {}
-	self.filter_functions= {song_short_and_uncensored, collect_favored_songs}
+	self:clear_filter_functions()
 	self.post_filter_functions= {finalize_favor_folder}
 	self:style_filter_songs()
 	local sort_info= get_sort_info()
@@ -720,27 +721,35 @@ function bucket_man_interface:initialize()
 	self.cur_sort_info= sort_info[sort_index]
 end
 
-function bucket_man_interface:add_filter_function(func)
-	self.filter_functions[#self.filter_functions+1]= func
+function bucket_man_interface:add_filter_function(func, name)
+	local index= #self.filter_functions+1
+	self.filter_functions[index]= func
+	self.filter_names[index]= name
 end
 
 function bucket_man_interface:remove_filter_function(func)
 	for i, f in ipairs(self.filter_functions) do
-		if f == func then table.remove(self.filter_functions, i) return end
+		if f == func then
+			table.remove(self.filter_functions, i)
+			table.remove(self.filter_names, i)
+			return
+		end
 	end
 end
 
 function bucket_man_interface:clear_filter_functions()
-	self.filter_functions= {song_short_and_uncensored, collect_favored_songs}
+	self.filter_functions= {song_short_enough, song_uncensored, song_fits_rating_cap, collect_favored_songs}
+	self.filter_names= {"song_too_long", "song_censored", "song_fits_rating_cap", "collect_favored_songs"}
 end
 
 function bucket_man_interface:style_filter_songs()
+	self.style_filter_removals= {}
 	local filtered_songs= {}
 	local filter_types= cons_get_steps_types_to_show()
-	for i, v in ipairs(self.song_set) do
+	for i, song in ipairs(self.song_set) do
 		local matched= false
-		if not v.AllSongsAreFixed or v:AllSongsAreFixed() then
-			local song_steps= song_get_all_steps(v)
+		if not song.AllSongsAreFixed or song:AllSongsAreFixed() then
+			local song_steps= song_get_all_steps(song)
 			for si, sv in ipairs(song_steps) do
 				if filter_types[sv:GetStepsType()] then
 					matched= true
@@ -751,7 +760,10 @@ function bucket_man_interface:style_filter_songs()
 			matched= true
 		end
 		if matched then
-			filtered_songs[#filtered_songs+1]= v
+			filtered_songs[#filtered_songs+1]= song
+		elseif self.track_removals then
+			self.style_filter_removals[#self.style_filter_removals+1]=
+				{song= song, filter= "style_filter"}
 		end
 	end
 	self.style_filtered_songs= filtered_songs
@@ -762,6 +774,7 @@ function bucket_man_interface:filter_songs()
 		lua.ReportScriptError("bucket_man_interface:  filter_songs operates on already style-filtered songs.")
 		return
 	end
+	self.filter_removals= {}
 	local refiltered_songs= {}
 	local num_songs= #self.style_filtered_songs
 	local num_filters= #self.filter_functions
@@ -773,6 +786,10 @@ function bucket_man_interface:filter_songs()
 		local show= true
 		for f= 1, num_filters do
 			if not self.filter_functions[f](song) then
+				if self.track_removals then
+					self.filter_removals[#self.filter_removals+1]=
+						{song= song, filter= self.filter_names[f]}
+				end
 				show= false
 				break
 			end

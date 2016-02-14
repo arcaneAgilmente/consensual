@@ -179,11 +179,11 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 		menu_frames[pn]:create_actors(
 			"pause_frame", 2, menu_width, menu_height+12, pn_to_color(pn),
 			fetch_color("bg", .5), 0, menu_y-6 + (menu_height * .5)),
+		color_manips[pn]:create_actors("color_manip", 0, menu_y+64, nil, .5),
 		pause_menus[pn]:create_actors(
 			pn .. "_menu", 0, menu_y, menu_width, menu_height,
 			pn, 1, 24, 1),
 		bpm_disps[pn]:create_actors("bpm", pn, 0, 0, 0),
-		color_manips[pn]:create_actors("color_manip", 0, menu_y+64, nil, .5),
 		normal_text("hit_text", "", fetch_color("text"), fetch_color("stroke"), 0, menu_y + menu_height - 12, .5),
 	}
 	main_frame[#main_frame+1]= player_frame
