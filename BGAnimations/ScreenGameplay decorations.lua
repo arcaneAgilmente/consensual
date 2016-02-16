@@ -1453,6 +1453,11 @@ return Def.ActorFrame {
 					end
 			end
 		end,
+		ConfigValueChangedMessageCommand= function(self, param)
+			if param.pn then
+				set_newfield_config(param.pn)
+			end
+		end,
 		gameplay_conf_changedMessageCommand= function(self, param)
 			if conf_change_functions[param.thing] then
 				conf_change_functions[param.thing](param.pn)

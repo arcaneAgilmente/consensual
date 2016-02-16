@@ -31,6 +31,7 @@ local default_config= {
 	transition_type= "random",
 	transition_time= 2,
 
+	track_song_filter_reasons= false,
 	default_wheel_sort= "Group",
 	default_expansion_mode= "full",
 	two_part_song_selection= false,
