@@ -979,7 +979,7 @@ function generate_song_sort_test_data(sort_factors)
 		end
 		file_handle:Write("}\n")
 		file_handle:Close()
-		file_handle:destroy()
 		lua.ReportScriptError("test song sort data written to '" .. file_name .. "'")
 	end
+	file_handle:destroy()
 end

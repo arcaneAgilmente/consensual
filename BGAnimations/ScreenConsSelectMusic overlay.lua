@@ -943,9 +943,9 @@ local filter_reason_viewer_mt= {
 					file_handle:Write("\n")
 				end
 				file_handle:Close()
-				file_handle:destroy()
 				save_message= "Filter reasons written to '" .. fname .. "' successfully."
 			end
+			file_handle:destroy()
 			SCREENMAN:SystemMessage(save_message)
 			self.cursor_pos= 1
 			self.scroller:set_info_set(self.reasons, 1)

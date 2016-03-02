@@ -51,11 +51,14 @@
 -- Note also that each actor sets a corresponding variable so that the input
 -- handler can run the SetStatus command when something happens.
 
-local toggle_clap_key= "j"
+local toggle_clap_key= "y"
 local toggle_half_rate_key= "h"
 local speed_mod_inc_key= "g"
 local speed_mod_dec_key= "f"
 local speed_mod_change_scale_key= "k"
+local mini_inc_key= "d"
+local mini_dec_key= "s"
+local mini_change_scale_key= "j"
 local show_cur_press= false
 -- Using variables to store the buttons that will be used makes it easy to
 -- configure them because they are set aside in their own section that people
@@ -68,8 +71,12 @@ local half_rate= .5
 local speed_mod_inc= 10
 local speed_mod_scale= 10
 local default_speed_mod= 400
+local mini_inc= .01
+local mini_scale= 10
+local default_mini= 0
 
 local speed_mod_scale_active= false
+local mini_scale_active= false
 
 -- Setting variables to refer to the options objects makes them easier to use
 -- later.  player_state will be needed when applying the speed changes.
@@ -81,6 +88,8 @@ local player_options= player_state:GetPlayerOptions("ModsLevel_Preferred")
 -- access actors.  The actor will do the real initialization in InitCommand.
 local speed_status_actor= false
 local speed_inc_status_actor= false
+local mini_status_actor= false
+local mini_inc_status_actor= false
 local clap_status_actor= false
 local rate_status_actor= false
 local cur_press_status_actor= false
@@ -95,6 +104,14 @@ local function get_speed_inc()
 		return speed_mod_scale * speed_mod_inc
 	else
 		return speed_mod_inc
+	end
+end
+
+local function get_mini_inc()
+	if mini_scale_active then
+		return mini_scale * mini_inc
+	else
+		return mini_inc
 	end
 end
 
@@ -126,6 +143,16 @@ local function set_mmod(mmod)
 	speed_status_actor:playcommand("SetStatus", {mmod= mmod})
 end
 
+local function get_mini()
+	return player_options:Mini()
+end
+
+local function set_mini(mini)
+	player_options:Mini(mini)
+	player_state:ApplyPreferredOptionsToOtherLevels()
+	mini_status_actor:playcommand("SetStatus", {mini= mini})
+end
+
 -- The apply functions are used by the input handler to apply a change, and
 -- by the initialization code to set the initial status of the actors when
 -- the screen starts up.  This ensures that the initial status of an actor
@@ -134,6 +161,11 @@ end
 local function apply_scale_active(active)
 	speed_mod_scale_active= active
 	speed_inc_status_actor:playcommand("SetStatus", {scale_active= speed_mod_scale_active})
+end
+
+local function apply_mini_scale_active(active)
+	mini_scale_active= active
+	mini_inc_status_actor:playcommand("SetStatus", {scale_active= mini_scale_active})
 end
 
 local function apply_clap(clap)
@@ -156,6 +188,8 @@ local function input(event)
 		end
 		if button == speed_mod_change_scale_key then
 			apply_scale_active(true)
+		elseif button == mini_change_scale_key then
+			apply_mini_scale_active(true)
 		elseif button == toggle_clap_key then
 			local clap_status= not song_options:AssistClap()
 			apply_clap(clap_status)
@@ -180,10 +214,16 @@ local function input(event)
 			set_mmod(get_mmod() + get_speed_inc())
 		elseif button == speed_mod_dec_key then
 			set_mmod(get_mmod() - get_speed_inc())
+		elseif button == mini_inc_key then
+			set_mini(get_mini() + get_mini_inc())
+		elseif button == mini_dec_key then
+			set_mini(get_mini() - get_mini_inc())
 		end
 	elseif event.type == "InputEventType_Release" then
 		if button == speed_mod_change_scale_key then
 			apply_scale_active(false)
+		elseif button == mini_change_scale_key then
+			apply_mini_scale_active(false)
 		end
 	end
 end
@@ -195,12 +235,16 @@ local function init_actor()
 		OnCommand= function(self)
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
 			set_mmod(get_mmod())
+			set_mini(get_mini())
 			apply_scale_active()
+			apply_mini_scale_active()
 			apply_clap(false)
 			apply_rate(1)
 		end
 	}
 end
+
+local next_y= 4
 
 local main_frame= Def.ActorFrame{
 	init_actor(),
@@ -222,7 +266,8 @@ local main_frame= Def.ActorFrame{
 	Def.ActorFrame{
 		InitCommand= function(self)
 			speed_inc_status_actor= self
-			self:xy(0, 8)
+			self:xy(0, next_y):vertalign(top)
+			next_y= next_y + 12
 		end,
 		Def.BitmapText{
 			Font= "Common Normal", InitCommand= function(self)
@@ -252,16 +297,59 @@ local main_frame= Def.ActorFrame{
 	Def.BitmapText{
 		Font= "Common Normal", InitCommand= function(self)
 			speed_status_actor= self
-			self:xy(0, 32)
+			self:xy(0, next_y):vertalign(top)
+			next_y= next_y + 36
 		end,
 		SetStatusCommand= function(self, param)
 			self:settextf("Speed: m%d", param.mmod)
 		end
 	},
+	Def.ActorFrame{
+		InitCommand= function(self)
+			mini_inc_status_actor= self
+			self:xy(0, next_y):vertalign(top)
+			next_y= next_y + 12
+		end,
+		Def.BitmapText{
+			Font= "Common Normal", InitCommand= function(self)
+				self:y(-8):zoom(.5)
+					:settextf("(*%d: %s)", mini_scale, mini_change_scale_key)
+			end,
+		},
+		Def.BitmapText{
+			Font= "Common Normal", InitCommand= function(self)
+				self:x(25):horizalign(left)
+			end,
+			SetStatusCommand= function(self, param)
+				local inc= get_mini_inc() * 100
+				self:settextf("+%d (%s)", inc, mini_inc_key)
+			end,
+		},
+		Def.BitmapText{
+			Font= "Common Normal", InitCommand= function(self)
+				self:x(-25):horizalign(right)
+			end,
+			SetStatusCommand= function(self, param)
+				local inc= get_mini_inc() * 100
+				self:settextf("(%s) -%d", mini_dec_key, inc)
+			end,
+		},
+	},
+	Def.BitmapText{
+		Font= "Common Normal", InitCommand= function(self)
+			mini_status_actor= self
+			self:xy(0, next_y):vertalign(top)
+			next_y= next_y + 24
+		end,
+		SetStatusCommand= function(self, param)
+			self:settextf("Mini: %d%%", param.mini*100)
+		end
+	},
 	Def.BitmapText{
 		Font= "Common Normal", InitCommand= function(self)
 			clap_status_actor= self
-			self:xy(0, 56)
+			self:xy(0, next_y):vertalign(top)
+			next_y= next_y + 24
 		end,
 		SetStatusCommand= function(self, param)
 			if param.clap then
@@ -274,7 +362,8 @@ local main_frame= Def.ActorFrame{
 	Def.BitmapText{
 		Font= "Common Normal", InitCommand= function(self)
 			rate_status_actor= self
-			self:xy(0, 80)
+			self:xy(0, next_y):vertalign(top)
+			next_y= next_y + 24
 		end,
 		SetStatusCommand= function(self, param)
 			self:settextf("(%s) Rate: %.2f", toggle_half_rate_key, param.rate)

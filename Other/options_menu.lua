@@ -419,7 +419,12 @@ option_display_mt= {
 			self.sick_wheel:set_element_info(element, info)
 		end,
 		get_element= function(self, element)
-			return self.sick_wheel:get_items_by_info_index(element)[1]
+			local ret= self.sick_wheel:get_items_by_info_index(element)[1]
+			if ret == nil then
+				lua.ReportScriptError("Menu display could not find an element at " .. element)
+				rec_print_table(self)
+			end
+			return ret
 		end,
 		scroll= function(self, pos)
 			self.sick_wheel:scroll_to_pos(pos)

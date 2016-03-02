@@ -29,11 +29,15 @@ local bpm_disps= {}
 local mods_menu= get_sick_options(rate_coordinator, color_manips, bpm_disps)
 local old_fg_visible= false
 
-local function close_menu(pn)
+local function hide_menu(pn)
 	pause_menus[pn]:clear_options_set_stack()
 	pause_menus[pn]:hide()
 	menu_frames[pn]:hide()
 	hit_texts[pn]:visible(false)
+end
+
+local function close_menu(pn)
+	hide_menu(pn)
 	local stay_paused= false
 	for pn, menu in pairs(pause_menus) do
 		if not menu.hidden then
@@ -61,6 +65,7 @@ end
 
 local menu_options= {
 	{name= "Mods", meta= options_sets.menu, args= mods_menu},
+--	{name= "hide_menu", meta= "execute", execute= hide_menu},
 }
 if Screen.SetPrevScreenName then
 	table.insert(menu_options, {name= "Forfeit", meta= "execute", execute= forfeit})

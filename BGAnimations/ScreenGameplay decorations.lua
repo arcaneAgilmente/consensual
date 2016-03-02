@@ -1585,5 +1585,5 @@ return Def.ActorFrame {
 					:horizalign(left)
 			end
 		},
-	}
+	},
 }

@@ -96,8 +96,8 @@ function write_last_played_stats()
 	else
 		file:Write(str)
 		file:Close()
-		file:destroy()
 	end
+	file:destroy()
 end
 
 -- this code is in the public domain because I don't really care about
