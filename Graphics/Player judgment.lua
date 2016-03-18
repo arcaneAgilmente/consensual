@@ -318,37 +318,14 @@ else
 	end
 end
 
-local prev_prev_frame_delta= 0
-local prev_frame_delta= 0
-local frame_delta= 0
-local add_next_next_frame_delta_to_these= {}
-local add_next_frame_delta_to_these= {}
-local function update_frame_delta(self, delta)
-	prev_prev_frame_delta= prev_frame_delta
-	prev_frame_delta= frame_delta
-	frame_delta= delta
-	for i= 1, #add_next_next_frame_delta_to_these do
-		add_next_next_frame_delta_to_these[i][1]= delta
-	end
-	for i= 1, #add_next_frame_delta_to_these do
-		add_next_frame_delta_to_these[i][2]= delta
-	end
-	add_next_frame_delta_to_these= add_next_next_frame_delta_to_these
-	add_next_next_frame_delta_to_these= {}
-end
-
 local function add_to_col(col_score, judge, max_value, offset)
 	local step_value= tns_values[judge]
 	if not step_value then return end
 	col_score.dp= col_score.dp + step_value
 	col_score.mdp= col_score.mdp + max_value
 	col_score.judge_counts[judge]= col_score.judge_counts[judge] + 1
-	local frame_deltas= {
-			[-2]= prev_prev_frame_delta, [-1]= prev_frame_delta, [0]= frame_delta}
 	col_score.step_timings[#col_score.step_timings+1]= {
-		time= get_seconds(), judge= judge, offset= offset,
-		frame_deltas= frame_deltas}
-	table.insert(add_next_next_frame_delta_to_these, frame_deltas)
+		time= get_seconds(), judge= judge, offset= offset}
 end
 
 local function add_tn_to_col(col_score, tapnote, max_value)
@@ -434,6 +411,11 @@ end
 
 local args= {
 	Name= "Judgement",
+	InitCommand= function(self)
+		if newskin_available() then
+			self:draworder(newfield_draw_order.under_field)
+		end
+	end,
 	Def.ActorFrame{
 	normal_text(
 		"Judgment", "", nil, fetch_color("gameplay.text_stroke"), 0, 0, 1,
@@ -441,11 +423,6 @@ local args= {
 			ResetCommand= cmd(xy,0,0;finishtweening;stopeffect;visible,false)}),
 	tani:create_actors("tani", tani_params),
 	errbar:create_actors(),
-	Def.ActorFrame{
-		InitCommand= function(self)
-			self:SetUpdateFunction(update_frame_delta)
-		end
-	},
 	InitCommand= function(self)
 		Judgment= self:GetChild("Judgment")
 		Judgment:visible(false):zoom(el_pos.judgment_scale)

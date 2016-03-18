@@ -1,4 +1,5 @@
 local this_pn= false
+
 local layers= {
 	Def.Quad{
 		Name= "Filter", InitCommand= function(self)
