@@ -210,6 +210,20 @@ local function by_words_in_group(song)
 	return split_string_to_words(song:GetGroupName())
 end
 
+local function by_letters(song)
+	local title= song:GetDisplayMainTitle():lower()
+	local ret= {}
+	local letters_used= {}
+	for i= 1, #title do
+		local letter= title:sub(i, i)
+		if not letters_used[letter] then
+			letters_used[letter]= true
+			ret[#ret+1]= letter
+		end
+	end
+	return ret
+end
+
 local function any_meter(song)
 	if song.GetStepsByStepsType then
 		local all_steps= get_steps_for_current_style(song, nps_player)

@@ -12,12 +12,12 @@ end
 local function flash_quad(zx)
 	return Def.Quad{
 		Name= "Flash", InitCommand= function(self)
-			self:draworder(-97)
+			self:draworder(newfield_draw_order.mid_board)
 		end,
 		WidthSetCommand= function(self, param)
 			self:setsize(param.width/2, 256):diffusealpha(0)
 				:horizalign(right):zoomx(zx):vertalign(top)
-			param.column:set_layer_transform_type(self, "FieldLayerTransformType_HeadPosOnly")
+			param.column:set_layer_transform_type(self, "FieldLayerTransformType_PosOnly")
 		end,
 		ColumnJudgmentCommand= function(self, param)
 			if judge_colors[param.tap_note_score] then
@@ -34,7 +34,8 @@ end
 local function flash_amv()
 	return Def.ActorMultiVertex{
 		Name= "Flash", InitCommand= function(self)
-			self:draworder(-97):SetDrawState{Mode="DrawMode_Fan"}
+			self:draworder(newfield_draw_order.mid_board)
+				:SetDrawState{Mode="DrawMode_Fan"}
 		end,
 		WidthSetCommand= function(self, param)
 			local hw= param.width/2
@@ -42,7 +43,7 @@ local function flash_amv()
 				{{0, 0, 0}}, {{-hw, 0, 0}}, {{0, 512, 0}}, {{hw, 0, 0}},
 				{{hw, -hw, 0}}, {{0, -hw, 0}}, {{-hw, -hw, 0}}, {{-hw, 0, 0}},
 			}
-			param.column:set_layer_transform_type(self, "FieldLayerTransformType_HeadPosOnly")
+			param.column:set_layer_transform_type(self, "FieldLayerTransformType_PosOnly")
 				:set_layer_fade_type(self, "FieldLayerFadeType_Explosion")
 		end,
 		ColumnJudgmentCommand= function(self, param)

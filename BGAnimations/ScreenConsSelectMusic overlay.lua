@@ -1298,6 +1298,13 @@ local function execute_remove_favorite(pn)
 	delayed_set_special_menu[pn]= "wheel"
 end
 
+-- yes, I need a function prototype, in lua.
+local open_sort_menu
+local function execute_open_sort(pn)
+	open_sort_menu(pn)
+	delayed_set_special_menu[pn]= "wheel"
+end
+
 local function show_filter_reasons(pn)
 	filter_viewers[pn]:update_filter_reaons()
 	filter_viewers[pn]:unhide()
@@ -1312,6 +1319,7 @@ base_options= {
 --	{name= "scsm_favor", meta= options_sets.favor_menu, level= 1, args= {}},
 	{name= "scsm_tags", meta= options_sets.tags_menu, level= 1, args= true},
 	{name= "scsm_layout", meta= options_sets.special_functions, level= 1, args= layout_options},
+	{name= "scsm_open_sort", meta= "execute", execute= execute_open_sort},
 	{name= "view_filter_reasons", meta= "execute", execute= show_filter_reasons,
 	 req_func= function() return misc_config:get_data().track_song_filter_reasons end},
 --	{name= "scsm_stepstypes", meta= options_sets.special_functions, level= 1,
@@ -1454,6 +1462,14 @@ local function correct_for_overscroll()
 		music_wheel:scroll_amount(-was_scroll)
 		play_sample_music()
 	end
+end
+
+open_sort_menu= function(pn)
+	stop_auto_scrolling()
+	hide_focus()
+	music_wheel:show_sort_list()
+	change_sort_text(music_wheel.current_sort_name)
+	update_all_info()
 end
 
 update_player_cursors= function()
@@ -1839,11 +1855,7 @@ end
 
 local code_functions= {
 		sort_mode= function(pn)
-			stop_auto_scrolling()
-			hide_focus()
-			music_wheel:show_sort_list()
-			change_sort_text(music_wheel.current_sort_name)
-			update_all_info()
+			open_sort_menu(pn)
 		end,
 		play_song= function(pn)
 			local needs_work, after_func= music_wheel:interact_with_element(pn)

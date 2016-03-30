@@ -1355,6 +1355,8 @@ return Def.ActorFrame {
 						side_actors[pn]:set_newfield_preferred(true)
 						set_newfield_config(pn)
 						maybe_playerize(pn, find_current_stepstype(pn))
+						for i, col in ipairs(newfields[pn]:get_columns()) do
+						end
 					end
 				end
 				if notefields[pn] then
