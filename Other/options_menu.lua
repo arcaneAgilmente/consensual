@@ -419,12 +419,7 @@ option_display_mt= {
 			self.sick_wheel:set_element_info(element, info)
 		end,
 		get_element= function(self, element)
-			local ret= self.sick_wheel:get_items_by_info_index(element)[1]
-			if ret == nil then
-				lua.ReportScriptError("Menu display could not find an element at " .. element)
-				rec_print_table(self)
-			end
-			return ret
+			return self.sick_wheel:get_items_by_info_index(element)[1]
 		end,
 		scroll= function(self, pos)
 			self.sick_wheel:scroll_to_pos(pos)
@@ -496,9 +491,17 @@ option_set_general_mt= {
 			self.display:scroll(self.cursor_pos)
 		end,
 		interpret_code= function(self, code)
+			-- Protect against other code changing cursor_pos to an element that
+			-- isn't visible.
+			local function unfocus_cursor(self)
+				local prev_el= self:get_cursor_element()
+				if prev_el then
+					prev_el:lose_focus()
+				end
+			end
 			local funs= {
 				MenuLeft= function(self)
-					self:get_cursor_element():lose_focus()
+					unfocus_cursor(self)
 					if self.cursor_pos > 1 then
 						self.cursor_pos= self.cursor_pos - 1
 					else
@@ -509,7 +512,7 @@ option_set_general_mt= {
 					return true
 				end,
 				MenuRight= function(self)
-					self:get_cursor_element():lose_focus()
+					unfocus_cursor(self)
 					if self.cursor_pos < #self.info_set then
 						self.cursor_pos= self.cursor_pos + 1
 					else
