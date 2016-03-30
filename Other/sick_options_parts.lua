@@ -428,6 +428,7 @@ options_sets.rate_mod= {
 		end,
 		mod_command= function(self)
 			GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(self.current_value)
+			GAMESTATE:ApplyPreferredSongOptionsToOtherLevels()
 		end,
 		valid_value= function(self, value)
 			if in_edit_mode then

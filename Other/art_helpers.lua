@@ -107,6 +107,54 @@ function hollow_circle_amv(x, y, r, t, chords, color, out_color, blend)
 	end}
 end
 
+local function adj_explosion_actor(add_to, parts)
+	-- Ex:
+	--	explosion:playcommand(
+	--		"explode", {
+	--			x= _screen.cx, y= _screen.cy, start_color= {1, 1, 1, 1},
+	--			end_color= {1, 0, 0, 0}, dist= 128, time= 4, size= 2})
+	local directions= {}
+	local angle_per_particle= 360 / parts
+	for i= 0, parts-1 do
+		local angle= i * angle_per_particle
+		local radan= angle / 180 * math.pi
+		directions[i+1]= {angle= angle, x= math.cos(radan), y= math.sin(radan)}
+	end
+	local frame= Def.ActorFrame{
+		Name= "adj_explosion", InitCommand= function(self)
+			self:hibernate(math.huge)
+			if add_to then
+				add_to.adj_explosion= self
+			end
+		end,
+		explodeCommand= function(self, param)
+			self:hibernate(0):xy(param.x, param.y)
+			local parts= self:GetChildren().parts
+			local grow_fraction= param.size*16 / param.dist
+			local grow_dist= grow_fraction * param.dist
+			local time_to_full_size= math.min(param.time * grow_fraction, param.time)
+			local remaining_time= param.time - time_to_full_size
+			for i, part in ipairs(parts) do
+				local direction= directions[i]
+				part:finishtweening():setsize(param.size, param.size*8)
+					:diffuse(param.start_color):zoom(0):xy(0,0)
+					:linear(time_to_full_size):zoom(1)
+					:xy(direction.x * grow_dist, direction.y * grow_dist)
+					:linear(remaining_time):diffuse(param.end_color)
+					:xy(direction.x * param.dist, direction.y * param.dist)
+			end
+		end
+	}
+	for i= 1, parts do
+		frame[i]= Def.Quad{
+			Name= "parts", InitCommand= function(self)
+				self:rotationz(directions[i].angle)
+			end
+		}
+	end
+	return frame
+end
+
 star_amv_mt= {
 	__index= {
 		create_actors= function(self, name, x, y, r, a, points, time)

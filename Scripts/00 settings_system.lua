@@ -171,8 +171,8 @@ local setting_mt= {
 				local output= "return " .. lua_table_to_string(self.data_set[slot])
 				file_handle:Write(output)
 				file_handle:Close()
-				file_handle:destroy()
 			end
+			file_handle:destroy()
 		end,
 		save_all= function(self)
 			for slot, data in pairs(self.data_set) do
@@ -192,6 +192,6 @@ function write_str_to_file(str, fname, str_name)
 	else
 		file_handle:Write(str)
 		file_handle:Close()
-		file_handle:destroy()
 	end
+	file_handle:destroy()
 end

@@ -318,9 +318,9 @@ function save_column_scores(pn)
 				local output= "return " .. lua_table_to_string(all_attempts) .. "\n"
 				file_handle:Write(output)
 				file_handle:Close()
-				file_handle:destroy()
 				SCREENMAN:SystemMessage("column scores written to '" .. file_name .. "'")
 			end
+			file_handle:destroy()
 		else
 			SCREENMAN:SystemMessage("Nil profile dir, unable to write column scores.")
 		end
