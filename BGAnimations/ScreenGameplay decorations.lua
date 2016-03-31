@@ -1348,15 +1348,12 @@ return Def.ActorFrame {
 				notefields[pn]= side_actors[pn]:GetChild("NoteField")
 				newfields[pn]= side_actors[pn]:GetChild("NewField")
 				set_speed_from_speed_info(cons_players[pn], newfields[pn])
+				notefield_wrappers[pn]= {}
 				if newfields[pn] then
-					if false then
-						side_actors[pn]:set_newfield_preferred(false)
-					else
-						side_actors[pn]:set_newfield_preferred(true)
-						set_newfield_config(pn)
-						maybe_playerize(pn, find_current_stepstype(pn))
-						for i, col in ipairs(newfields[pn]:get_columns()) do
-						end
+					set_newfield_config(pn)
+					maybe_playerize(pn, find_current_stepstype(pn))
+					for i= 1, wrapper_layers do
+						notefield_wrappers[pn][i]= side_actors[pn]:AddWrapperState()
 					end
 				end
 				if notefields[pn] then
@@ -1364,15 +1361,8 @@ return Def.ActorFrame {
 					local ny= side_actors[pn]:GetY()
 					local tocx= nx - (_screen.w*.5)
 					local tocy= (ny - (_screen.h*.5)) * 0
-					notefield_wrappers[pn]= {}
-					if newfields[pn] then
-						for i= 1, wrapper_layers do
-							notefield_wrappers[pn][i]= side_actors[pn]:AddWrapperState()
-						end
-					else
-						for i= 1, wrapper_layers do
-							notefield_wrappers[pn][i]= notefields[pn]:AddWrapperState()
-						end
+					for i= 1, wrapper_layers do
+						notefield_wrappers[pn][i]= notefields[pn]:AddWrapperState()
 					end
 					if notefields[pn].get_column_actors then
 						notecolumns[pn]= notefields[pn]:get_column_actors()

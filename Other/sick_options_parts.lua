@@ -1523,7 +1523,7 @@ local base_options= {
 	{ name= "Newskin params", meta= options_sets.menu,
 		args= gen_noteskin_param_menu, req_func= show_noteskin_param_menu},
 	{ name= "Reload Newskins", meta= "execute", req_func= newskin_available,
-		execute= function() NEWSKIN:reload_skins() end},
+		execute= function() local start= GetTimeSinceStart() NEWSKIN:reload_skins() local finish= GetTimeSinceStart() lua.ReportScriptError("reloaded noteskins in " .. (finish - start)) end},
 	{ name= "Shown Noteskins", meta= options_sets.shown_noteskins, args= {}},
 	{ name= "Playback Options", meta= options_sets.menu, args= playback_options,
 		level= 3},

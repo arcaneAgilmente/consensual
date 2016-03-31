@@ -305,17 +305,8 @@ local tns_inc_miss_combo= tns_reverse[THEME:GetMetric("Gameplay", "MaxScoreToInc
 
 local prev_combo= -1
 
-local get_seconds= function() return 0 end
--- GetStepsSeconds is recently added, in an attempt to make life and combo
--- graphs match better.
-if StageStats.GetStepsSeconds then
-	get_seconds= function()
-		return STATSMAN:GetCurStageStats():GetStepsSeconds()
-	end
-else
-	get_seconds= function()
-		return GAMESTATE:GetCurMusicSeconds()
-	end
+local function get_seconds()
+	return STATSMAN:GetCurStageStats():GetStepsSeconds()
 end
 
 local function add_to_col(col_score, judge, max_value, offset)

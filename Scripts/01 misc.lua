@@ -72,7 +72,7 @@ function update_totals_table(tab, new_tab)
 end
 
 function newskin_available()
-	if Player.set_newfield_preferred then return true end
+	if NewField then return true end
 	return false
 end
 

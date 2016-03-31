@@ -10,11 +10,14 @@ function cons_player:clear_init(player_number)
 			self[k]= nil
 		end
 	end
+	local player_state= GAMESTATE:GetPlayerState(player_number)
+	local option_get= player_state.get_player_options_no_defect or
+		player_state.GetPlayerOptions
 	self.player_number= player_number
-	self.current_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Current")
-	self.song_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Song")
-	self.stage_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Stage")
-	self.preferred_options= GAMESTATE:GetPlayerState(player_number):GetPlayerOptions("ModsLevel_Preferred")
+	self.current_options= option_get(player_state, "ModsLevel_Current")
+	self.song_options= option_get(player_state, "ModsLevel_Song")
+	self.stage_options= option_get(player_state, "ModsLevel_Stage")
+	self.preferred_options= option_get(player_state, "ModsLevel_Preferred")
 	self.judge_totals= {}
 	self:set_speed_info_from_poptions()
 	self.dspeed= {min= dspeed_default_min, max= dspeed_default_max, alternate= false}

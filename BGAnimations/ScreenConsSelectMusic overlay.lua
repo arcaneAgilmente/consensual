@@ -1,21 +1,8 @@
 GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(1)
+if PlayerState.set_needs_defective_field then
+	reset_needs_defective_field_for_all_players()
+end
 update_steps_types_to_show()
---[[
-local skin_params= {tap_graphic= "Chromatic", rots= {Left= -5, Right= 45}}
-GAMESTATE:set_noteskin_params(PLAYER_2, skin_params)
-Trace("skin params after first set:")
-rec_print_table(GAMESTATE:get_noteskin_params(PLAYER_2))
-skin_params.tap_graphic= "3_9"
-Trace("skin params after second set:")
-rec_print_table(GAMESTATE:get_noteskin_params(PLAYER_2))
-Trace("done")
-local skin_info= NEWSKIN:get_skin_parameter_info("judgmental")
-rec_print_table(skin_info)
-lua.ReportScriptError("dumped skin_info from SCSM")
-skin_info= NEWSKIN:get_skin_parameter_info("default")
-rec_print_table(skin_info)
-lua.ReportScriptError("dumped skin_info for default")
-]]
 
 local press_ignore_reporter= false
 local function show_ignore_message(message)
@@ -1126,6 +1113,13 @@ local misc_options= {
 			 end
 		 end
 --		 delayed_set_special_menu[pn]= "wheel"
+	end},
+	{name= "reload_song", meta= "execute", level= 4, execute= function(pn)
+		 if not Song.ReloadFromSongDir then return end
+		 local cong= GAMESTATE:GetCurrentSong()
+		 if cong then
+			 cong:ReloadFromSongDir()
+		 end
 	end},
 	{name= "censor", req_func= privileged, meta= "execute",
 	 execute= function(pn)

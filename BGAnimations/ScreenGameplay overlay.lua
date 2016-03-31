@@ -1,3 +1,4 @@
+dofile(THEME:GetPathO("", "options_menu.lua"))
 dofile(THEME:GetPathO("", "sick_options_parts.lua"))
 
 gameplay_pause_count= 0

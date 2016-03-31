@@ -25,6 +25,12 @@ if PREFSMAN:GetPreference("VideoRenderers"):sub(1, 6) ~= "opengl" then
 	message= "d3d renderer not supported.  If anything looks strange, edit your Preferences.ini to switch VideoRenderers to opengl."
 end
 
+if not version_failed then
+	for i, cn in ipairs{PLAYER_1, PLAYER_2} do
+		cons_players[cn]:clear_init(cn)
+	end
+end
+
 dofile(THEME:GetPathO("", "strokes.lua"))
 dofile(THEME:GetPathO("", "art_helpers.lua"))
 local unfold_time= 4
