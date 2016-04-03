@@ -18,6 +18,7 @@ if not ScreenGameplay.begin_backing_out then
 	pause_buttons.Back= false
 end
 local pause_press_times= {}
+local prev_pause_button= {}
 local double_tap_time= 1
 local tap_debounce_time= .1
 local hit_texts= {}
@@ -122,7 +123,7 @@ local function input(event)
 		button= event.button
 		if event.type ~= "InputEventType_FirstPress" then return end
 		if pause_buttons[button] then
-			if pause_press_times[pn] then
+			if pause_press_times[pn] and button == prev_pause_button[pn] then
 				local time_diff= GetTimeSinceStart() - pause_press_times[pn]
 				if time_diff > tap_debounce_time then
 					if time_diff < double_tap_time then
@@ -143,6 +144,7 @@ local function input(event)
 				end
 			else
 				pause_press_times[pn]= GetTimeSinceStart()
+				prev_pause_button[pn]= button
 			end
 		else
 			pause_press_times[pn]= nil
