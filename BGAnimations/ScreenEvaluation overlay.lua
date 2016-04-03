@@ -848,6 +848,189 @@ local score_report_mt= {
 		end
 }}
 
+local function order_print_table(tbl)
+	foreach_ordered(tbl, function(key, value) Trace(key .. ": " .. value) end)
+end
+
+local score_quantizer_mt= {
+	__index= {
+		create_actors= function(self, name, x, y)
+			self.name= name
+			local frame= Def.ActorFrame{
+				name= name, InitCommand= function(subself)
+					self.container= subself
+					subself:xy(x, y):hibernate(math.huge)
+				end,
+				Def.ActorMultiVertex{
+					InitCommand= function(subself)
+						self.splined_quantization= subself
+						subself:SetDrawState{Mode= "DrawMode_LineStrip"}
+							:SetLineWidth(1)
+						for i= 1, 1024 do
+							subself:SetVertex(i, {{1, 1, 1, 1}})
+						end
+					end,
+				},
+			}
+			self.quant_val_texts= {}
+			for i= 1, 256 do
+				frame[#frame+1]= Def.BitmapText{
+					Font= "Common Normal", InitCommand= function(subself)
+						self.quant_val_texts[i]= subself
+						subself:zoom(.15)
+					end,
+				}
+			end
+			self.timing_window_texts= {}
+			for i= 1, 11 do
+				frame[#frame+1]= Def.BitmapText{
+					Font= "Common Normal", InitCommand= function(subself)
+						self.timing_window_texts[i]= subself
+						subself:zoom(.2)
+					end,
+				}
+			end
+			self.timing_windows= {22.5, 45, 90, 135, 180}
+			return frame
+		end,
+		set= function(self, player_number, col_id, score_data)
+			self.quantization_counts= {}
+			self.quantization_size= 1
+			self.spread= 3.5
+			for i, tim in ipairs(score_data.step_timings) do
+				if tim.offset then
+					local quantized_offset= math.round((tim.offset * 1000) / self.quantization_size)
+					quantized_offset= math.min(quantized_offset, 127)
+					quantized_offset= math.max(quantized_offset, -127)
+					if tim.judge == "TapNoteScore_Miss" then
+						quantized_offset= -128
+					end
+					if not self.quantization_counts[quantized_offset] then
+						self.quantization_counts[quantized_offset]= 1
+					else
+						self.quantization_counts[quantized_offset]=
+							self.quantization_counts[quantized_offset] + 1
+					end
+				end
+			end
+			Trace("quantization_counts")
+			order_print_table(self.quantization_counts)
+			local num_quants= 0
+			for k, _ in pairs(self.quantization_counts) do
+				if tonumber(k) then
+					num_quants= num_quants + 1
+				end
+			end
+			--lua.ReportScriptError(num_quants .. " quantized offsets")
+			local amv_spline= self.splined_quantization:GetSpline(1);
+			amv_spline:set_size(256)
+			for i, text in ipairs(self.quant_val_texts) do
+				local offset= i - 128
+				local value= self.quantization_counts[offset] or 0
+				text:settext(offset .. "\n" .. value)
+					:x(offset * self.quantization_size * self.spread)
+				if i % 2 == 0 then
+					text:y(24)
+				else
+					text:y(12)
+				end
+				amv_spline:set_point(i, {offset * self.quantization_size * self.spread, -value})
+			end
+--			amv_spline:solve()
+			self.splined_quantization:SetVertsFromSplines()
+			self:update_window_counts()
+		end,
+		change_window= function(self, window, amount)
+			self.timing_windows[window]= self.timing_windows[window] + amount
+			self:update_window_counts()
+		end,
+		find_window= function(self, offset)
+			local abs_off= math.abs(offset)
+			for i= 1, #self.timing_windows do
+				if abs_off < self.timing_windows[i] then return i end
+			end
+			return #self.timing_windows + 1
+			--[[
+			local upper= math.abs(offset * self.quantization_size)
+			local lower= upper - self.quantization_size
+			for i= 1, #self.timing_windows do
+				if upper < self.timing_windows[i] then
+					return i
+				elseif lower < self.timing_windows[i] then
+					return i, i+1
+				end
+			end
+			return #self.timing_windows + 1
+			]]
+		end,
+		add_count_to_window= function(self, window, offset, count)
+			if offset < 0 then
+				window= window * -1
+			end
+			self.window_counts[window]= (self.window_counts[window] or 0) + count
+		end,
+		update_window_counts= function(self)
+			for i= 1, self.splined_quantization:GetNumVertices() do
+				local ms= ((i / 4) - 128) * self.quantization_size
+				local window= self:find_window(ms)
+				local window_color
+				if window < 6 then
+					window_color= judge_to_color("TapNoteScore_W"..window)
+				else
+					window_color= judge_to_color("TapNoteScore_Miss")
+				end
+				self.splined_quantization:SetVertex(i, {window_color})
+			end
+			for i= 1, #self.quant_val_texts do
+				local ms= (i - 128) * self.quantization_size
+				local window= self:find_window(ms)
+				local window_color
+				if window < 6 then
+					window_color= judge_to_color("TapNoteScore_W"..window)
+				else
+					window_color= judge_to_color("TapNoteScore_Miss")
+				end
+				self.quant_val_texts[i]:diffuse(window_color)
+			end
+			self.window_counts= {}
+			foreach_ordered(
+				self.quantization_counts, function(offset, count)
+					if offset == -128 then
+						self:add_count_to_window(6, 0, count)
+					else
+						local better_window, worse_window= self:find_window(offset)
+						if worse_window then
+							self:add_count_to_window(better_window, offset, count/2)
+							self:add_count_to_window(worse_window, offset, count/2)
+						else
+							self:add_count_to_window(better_window, offset, count)
+						end
+					end
+			end)
+			Trace("window_counts")
+			order_print_table(self.window_counts)
+			for i, window_text in ipairs(self.timing_window_texts) do
+				local count_index= i - 6
+				if count_index >= 0 then count_index= count_index + 1 end
+				local window_index= math.abs(count_index)
+				local window_color= judge_to_color("TapNoteScore_Miss")
+				local x, y= 0, 48
+				local window_upper= self.timing_windows[window_index]
+				if window_upper then
+					window_color= judge_to_color("TapNoteScore_W"..window_index)
+					y= 36
+					local window_lower= self.timing_windows[window_index-1] or 0
+					x= (window_upper + window_lower) / 2 * self.spread
+					if count_index < 0 then x= x * -1 end
+				end
+				window_text:settext(self.window_counts[count_index] or 0):xy(x, y)
+					:diffuse(window_color)
+				Trace("text " .. i .. " uses count " .. count_index .. " and window " .. window_index)
+			end
+			--lua.ReportScriptError("dumped window counts")
+		end,
+}}
+
 local judge_key_mt= {
 	__index= {
 		create_actors= function(self)
@@ -1022,6 +1205,7 @@ local menu_args= {{}, {}, {}}
 local player_cursors= {}
 local score_reports= {}
 local profile_reports= {}
+local score_quants= {}
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	special_menus[1][pn]= setmetatable({}, options_sets.menu)
 	special_menus[2][pn]= setmetatable({}, options_sets.tags_menu)
@@ -1032,6 +1216,7 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 	player_cursors[pn]= setmetatable({}, cursor_mt)
 	score_reports[pn]= setmetatable({}, score_report_mt)
 	profile_reports[pn]= setmetatable({}, profile_report_mt)
+	--score_quants[pn]= setmetatable({}, score_quantizer_mt)
 --	profile_reports[pn]= setmetatable({}, radar_report_mt)
 end
 
@@ -1292,6 +1477,17 @@ local function make_player_specific_actors()
 			"menu", 0, 0, 288, 160, line_height, 1, true, true)
 		all_actors[#all_actors+1]= Def.ActorFrame(args)
 	end
+	--[[
+	all_actors[#all_actors+1]= Def.Quad{
+		InitCommand= function(subself)
+			subself:diffuse{0, 0, 0, 1}:setsize(1024, 182)
+				:vertalign(top):x(_screen.cx)
+		end,
+	}
+	]]
+	for pn, quant in pairs(score_quants) do
+		all_actors[#all_actors+1]= quant:create_actors("quant"..pn, _screen.cx, 225 - (i * 96))
+	end
 	-- In its own loop to make sure they're above all other actors.
 	for i, pn in ipairs(enabled_players) do
 		all_actors[#all_actors+1]= player_cursors[pn]:create_actors(
@@ -1381,6 +1577,7 @@ set_visible_score_data= function(pn, index)
 	else
 		score_reports[pn]:set(pn, index, cons_players[pn].score_data[index])
 		score_reports[pn].container:diffusealpha(1)
+		--score_quants[pn]:set(pn, index, cons_players[pn].score_data[index])
 		size_frame_to_report(frame_helpers[pn], score_reports[pn].container)
 		if not showing_profile_on_other_side then
 			profile_reports[pn].container:diffusealpha(0)
