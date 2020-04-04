@@ -1,6 +1,8 @@
 # Consensual
 
-A theme for stepmania.
+A theme for stepmania. 5.3 Edition
+
+This is a WIP upd8 for Consensual that (hopefully) will allow for proper functionality with the Pro Timing system introduced in 5.3
 
 Minimalist in graphics, maximalist in functionality.
 
